@@ -18,6 +18,7 @@ public sealed class StandingsRow
     public required bool IsMultiClass { get; init; }
     public required int IRating { get; init; }
     public required string LicString { get; init; }
+    public required bool IsSessionFastestLap { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
 
     // Formatted with InvariantCulture throughout: this machine's locale uses a comma decimal
@@ -29,6 +30,10 @@ public sealed class StandingsRow
     public string LastLapDisplay => FormatLapTime(LastLapTime);
 
     public string BestLapDisplay => FormatLapTime(BestLapTime);
+
+    // The single fastest lap set by anyone in the session, across all cars — matches how RaceLab-
+    // style overlays call out the session's benchmark lap.
+    public string BestLapForeground => IsSessionFastestLap ? "#C060FF" : "#8FD3FF";
 
     public string IRatingDisplay => IRating > 0
         ? (IRating >= 1000 ? $"{(IRating / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)}k" : IRating.ToString(CultureInfo.InvariantCulture))

@@ -66,4 +66,18 @@ internal static class TelemetryVarNames
     public static string TireTempSurfaceLeft(string corner) => $"{corner}tempL";
     public static string TireTempSurfaceMiddle(string corner) => $"{corner}tempM";
     public static string TireTempSurfaceRight(string corner) => $"{corner}tempR";
+
+    /// <summary>
+    /// iRacing computes these deltas itself — no need to derive them from lap-distance interpolation.
+    /// Each has a companion "_OK" bool (valid this tick) confirmed via community documentation.
+    /// </summary>
+    public const string DeltaToSessionBestLap = "LapDeltaToSessionBestLap";
+    public const string DeltaToSessionBestLapOk = "LapDeltaToSessionBestLap_OK";
+    /// <summary>Despite the plain name, this is the driver's personal best across *all* past
+    /// sessions (career-wide), not just the current one — confirmed via community documentation.</summary>
+    public const string DeltaToBestLap = "LapDeltaToBestLap";
+    public const string DeltaToBestLapOk = "LapDeltaToBestLap_OK";
+    /// <summary>Delta to a theoretical lap built from the driver's own best individual sector times.</summary>
+    public const string DeltaToOptimalLap = "LapDeltaToOptimalLap";
+    public const string DeltaToOptimalLapOk = "LapDeltaToOptimalLap_OK";
 }

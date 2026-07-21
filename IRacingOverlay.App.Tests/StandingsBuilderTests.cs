@@ -410,4 +410,37 @@ public class StandingsBuilderTests
         Assert.Equal("3.3k", row.IRatingDisplay);
         Assert.Equal("A 4.32", row.LicStringDisplay);
     }
+
+    [Fact]
+    public void BuildStandings_MarksSessionFastestLapAcrossAllCars_NotJustLeader()
+    {
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [10, 10, 10, 0]);
+            w.SetFloatArray("CarIdxEstTime", [30.0f, 20.0f, 10.0f, 0]); // car 0 leads on track
+            // Car 2 (running P3) actually set the fastest lap of the session, not the leader.
+            w.SetFloatArray("CarIdxBestLapTime", [92.0f, 91.0f, 89.5f, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Leader", CarNumber = "1" },
+                    new DriverEntry { CarIdx = 1, UserName = "Second", CarNumber = "2" },
+                    new DriverEntry { CarIdx = 2, UserName = "FastestLap", CarNumber = "3" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.True(rows.Single(r => r.CarIdx == 2).IsSessionFastestLap);
+        Assert.False(rows.Single(r => r.CarIdx == 0).IsSessionFastestLap);
+        Assert.False(rows.Single(r => r.CarIdx == 1).IsSessionFastestLap);
+    }
 }

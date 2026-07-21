@@ -75,8 +75,8 @@
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="6" Text="{Binding LastLapDisplay}" Foreground="#CCCCCC" FontSize="12"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="7" Text="{Binding BestLapDisplay}" Foreground="#8FD3FF" FontSize="12"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="7" Text="{Binding BestLapDisplay}" Foreground="{Binding BestLapForeground}"
+                                                   FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                         <TextBlock Grid.Column="8" Text="{Binding GapDisplay}" Foreground="#FFD24D" FontSize="12"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                     </Grid>

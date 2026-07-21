@@ -27,7 +27,9 @@ public partial class MainWindow : Window
     private CockpitWidget? _cockpitWidget;
     private FlagWidget? _flagWidget;
     private TireInfoWidget? _tireInfoWidget;
+    private DeltaWidget? _deltaWidget;
     private DashboardWindow? _dashboard;
+    private DeltaReference _deltaReference = DeltaReference.SessionBest;
 
     public MainWindow()
     {
@@ -52,6 +54,7 @@ public partial class MainWindow : Window
             _cockpitWidget?.Close();
             _flagWidget?.Close();
             _tireInfoWidget?.Close();
+            _deltaWidget?.Close();
             _dashboard?.Close();
         };
 
@@ -106,6 +109,13 @@ public partial class MainWindow : Window
             var tireInfoState = TireInfoBuilder.Build(telemetry);
             _tireInfoWidget?.UpdateState(tireInfoState);
             _dashboard?.UpdateTireInfo(tireInfoState);
+        }
+
+        if (_deltaWidget is not null || _dashboard is not null)
+        {
+            var deltaState = DeltaBuilder.Build(telemetry, _deltaReference);
+            _deltaWidget?.UpdateState(deltaState);
+            _dashboard?.UpdateDelta(deltaState);
         }
     }
 
@@ -209,6 +219,34 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DeltaCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (DeltaCheckBox.IsChecked == true)
+        {
+            _deltaWidget ??= new DeltaWidget();
+            if (_deltaWidget.HasSavedLayout)
+            {
+                _deltaWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _deltaWidget.Show();
+        }
+        else
+        {
+            _deltaWidget?.Hide();
+        }
+    }
+
+    private void DeltaReferenceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        _deltaReference = DeltaReferenceComboBox.SelectedIndex switch
+        {
+            1 => DeltaReference.PersonalBestAllTime,
+            2 => DeltaReference.OptimalLap,
+            _ => DeltaReference.SessionBest,
+        };
+    }
+
     private void EditModeCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         var editMode = EditModeCheckBox.IsChecked == true;
@@ -235,6 +273,11 @@ public partial class MainWindow : Window
         if (_tireInfoWidget is not null)
         {
             _tireInfoWidget.IsEditMode = editMode;
+        }
+
+        if (_deltaWidget is not null)
+        {
+            _deltaWidget.IsEditMode = editMode;
         }
     }
 

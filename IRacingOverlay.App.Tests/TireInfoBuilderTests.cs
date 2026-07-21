@@ -67,6 +67,37 @@ public class TireInfoBuilderTests
     }
 
     [Fact]
+    public void Build_SurfaceTempDeclaredButAlwaysZero_FallsBackToCarcass()
+    {
+        // Regression test for the reported "tire temps still not updating" bug: the earlier fix
+        // gated on HasVariable(surfaceTemp) alone, so a build/car where the legacy surface-temp name
+        // is still declared in the var table but never actually written to (permanently 0) would lock
+        // onto three dead zeros forever instead of falling back to the live carcass values.
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LFtempL", IrsdkVarType.Float);
+        builder.AddVar("LFtempM", IrsdkVarType.Float);
+        builder.AddVar("LFtempR", IrsdkVarType.Float);
+        builder.AddVar("LFtempCL", IrsdkVarType.Float);
+        builder.AddVar("LFtempCM", IrsdkVarType.Float);
+        builder.AddVar("LFtempCR", IrsdkVarType.Float);
+
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            // LFtempL/M/R deliberately left at 0 (the default) — declared but dead.
+            w.SetFloat("LFtempCL", 80.0f);
+            w.SetFloat("LFtempCM", 90.0f);
+            w.SetFloat("LFtempCR", 100.0f);
+        });
+
+        var state = TireInfoBuilder.Build(snapshot);
+
+        Assert.Equal(80.0, state.LF.TempLeft, precision: 3);
+        Assert.Equal(90.0, state.LF.TempMiddle, precision: 3);
+        Assert.Equal(100.0, state.LF.TempRight, precision: 3);
+        Assert.False(state.LF.IsSurfaceTemp);
+    }
+
+    [Fact]
     public void Build_MissingVariables_DoesNotThrowAndReportsUnavailable()
     {
         var builder = new SyntheticMemoryBuilder();

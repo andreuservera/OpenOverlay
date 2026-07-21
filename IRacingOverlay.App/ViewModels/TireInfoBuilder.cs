@@ -25,18 +25,21 @@ internal static class TireInfoBuilder
         var pressure = TryGetFloat(telemetry, TelemetryVarNames.TirePressure(corner));
         var coldPressure = TryGetFloat(telemetry, TelemetryVarNames.TireColdPressure(corner));
 
-        // Prefer surface temp (closer to what an in-car dash shows — see TelemetryVarNames) and only
-        // fall back to carcass temp if the surface variables aren't present on this build/car.
-        var hasSurfaceTemp = telemetry.HasVariable(TelemetryVarNames.TireTempSurfaceLeft(corner));
-        var left = hasSurfaceTemp
-            ? TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceLeft(corner))
-            : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassLeft(corner));
-        var middle = hasSurfaceTemp
-            ? TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceMiddle(corner))
-            : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassMiddle(corner));
-        var right = hasSurfaceTemp
-            ? TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceRight(corner))
-            : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassRight(corner));
+        // Prefer surface temp (closer to what an in-car dash shows — see TelemetryVarNames), but
+        // "prefer" has to mean "actually has a live value," not just "the variable name is declared."
+        // The earlier version gated on HasVariable alone — this is a real bug if the legacy surface-
+        // temp name is still present in the var-header table on a given build/car but never actually
+        // written to (stays 0 forever), which would lock onto three permanent zeros and starve the
+        // panel of the live carcass values it should have fallen back to. Gate on an actual nonzero
+        // reading instead.
+        var surfaceLeft = TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceLeft(corner));
+        var surfaceMiddle = TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceMiddle(corner));
+        var surfaceRight = TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceRight(corner));
+        var hasUsableSurfaceTemp = (surfaceLeft ?? 0) > 0 || (surfaceMiddle ?? 0) > 0 || (surfaceRight ?? 0) > 0;
+
+        var left = hasUsableSurfaceTemp ? surfaceLeft : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassLeft(corner));
+        var middle = hasUsableSurfaceTemp ? surfaceMiddle : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassMiddle(corner));
+        var right = hasUsableSurfaceTemp ? surfaceRight : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassRight(corner));
 
         return new TireCornerInfo
         {
@@ -46,7 +49,7 @@ internal static class TireInfoBuilder
             TempLeft = left ?? 0,
             TempMiddle = middle ?? 0,
             TempRight = right ?? 0,
-            IsSurfaceTemp = hasSurfaceTemp,
+            IsSurfaceTemp = hasUsableSurfaceTemp,
         };
     }
 

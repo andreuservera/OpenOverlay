@@ -1,9 +1,9 @@
-<ov:OverlayWindowBase x:Class="IRacingOverlay.App.Widgets.FlagWidget"
+<ov:OverlayWindowBase x:Class="IRacingOverlay.App.Widgets.DeltaWidget"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Flag" Width="320" Height="260" MinWidth="220" MinHeight="100">
+        Title="Delta" Width="220" Height="100" MinWidth="160" MinHeight="80">
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">
@@ -14,6 +14,6 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <w:FlagPanel x:Name="Panel"/>
+        <w:DeltaPanel x:Name="Panel"/>
     </Border>
 </ov:OverlayWindowBase>

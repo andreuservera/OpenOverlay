@@ -200,6 +200,19 @@ internal static class StandingsBuilder
 
         var ordered = eligible.OrderByDescending(d => TimePosition(d.CarIdx)).ToList();
         var leaderTimePosition = ordered.Count > 0 ? TimePosition(ordered[0].CarIdx) : 0;
+
+        // The single fastest lap set by anyone in the session, across every car — not just the
+        // player's own best. 0 (no valid lap yet) never counts.
+        var sessionFastestLap = 0.0;
+        foreach (var driver in ordered)
+        {
+            var bestLap = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0;
+            if (bestLap > 0 && (sessionFastestLap <= 0 || bestLap < sessionFastestLap))
+            {
+                sessionFastestLap = bestLap;
+            }
+        }
+
         var classRank = new Dictionary<int, int>();
         var rows = new List<StandingsRow>();
 
@@ -209,6 +222,8 @@ internal static class StandingsBuilder
             classRank.TryGetValue(driver.CarClassID, out var rank);
             rank++;
             classRank[driver.CarClassID] = rank;
+
+            var bestLapTime = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0;
 
             rows.Add(new StandingsRow
             {
@@ -222,10 +237,11 @@ internal static class StandingsBuilder
                 CurrentLap = driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : 0,
                 GapToLeaderSeconds = leaderTimePosition - TimePosition(driver.CarIdx),
                 LastLapTime = lastLaps is not null && driver.CarIdx < lastLaps.Length ? lastLaps[driver.CarIdx] : 0,
-                BestLapTime = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0,
+                BestLapTime = bestLapTime,
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
                 ClassColor = FormatClassColor(driver.CarClassColor),
             });
         }
