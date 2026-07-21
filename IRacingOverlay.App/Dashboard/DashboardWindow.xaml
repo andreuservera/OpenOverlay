@@ -1,0 +1,19 @@
+<Window x:Class="IRacingOverlay.App.Dashboard.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
+        Title="iRacing Overlay Dashboard"
+        WindowStyle="None"
+        ShowInTaskbar="False"
+        Background="Black"
+        ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="360"/>
+        </Grid.ColumnDefinitions>
+        <w:StandingsPanel x:Name="Standings" Grid.Column="0"/>
+        <w:RelativePanel x:Name="Relative" Grid.Column="2"/>
+    </Grid>
+</Window>

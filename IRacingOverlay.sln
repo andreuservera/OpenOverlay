@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Sdk", "IRacingOverlay.Sdk\IRacingOverlay.Sdk.csproj", "{CA26C817-892A-4F86-B712-0D6B6DC06C34}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Sdk.Tests", "IRacingOverlay.Sdk.Tests\IRacingOverlay.Sdk.Tests.csproj", "{0D30D3F4-FDCF-4B01-BE2C-F4925830B1CA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.App", "IRacingOverlay.App\IRacingOverlay.App.csproj", "{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CA26C817-892A-4F86-B712-0D6B6DC06C34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA26C817-892A-4F86-B712-0D6B6DC06C34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA26C817-892A-4F86-B712-0D6B6DC06C34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA26C817-892A-4F86-B712-0D6B6DC06C34}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D30D3F4-FDCF-4B01-BE2C-F4925830B1CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D30D3F4-FDCF-4B01-BE2C-F4925830B1CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D30D3F4-FDCF-4B01-BE2C-F4925830B1CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D30D3F4-FDCF-4B01-BE2C-F4925830B1CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
