@@ -18,22 +18,38 @@
                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="4">
                     <TextBlock Text="LF" Foreground="#AAAAAA" FontSize="10" FontWeight="Bold"/>
                     <TextBlock x:Name="LFPressureText" Text="—" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                    <TextBlock x:Name="LFTempText" Text="—" Foreground="#FFD24D" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="LFTempLeftText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="LFTempMiddleText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="LFTempRightText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="4">
                     <TextBlock Text="RF" Foreground="#AAAAAA" FontSize="10" FontWeight="Bold"/>
                     <TextBlock x:Name="RFPressureText" Text="—" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                    <TextBlock x:Name="RFTempText" Text="—" Foreground="#FFD24D" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="RFTempLeftText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="RFTempMiddleText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="RFTempRightText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="0" Margin="4">
                     <TextBlock Text="LR" Foreground="#AAAAAA" FontSize="10" FontWeight="Bold"/>
                     <TextBlock x:Name="LRPressureText" Text="—" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                    <TextBlock x:Name="LRTempText" Text="—" Foreground="#FFD24D" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="LRTempLeftText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="LRTempMiddleText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="LRTempRightText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="4">
                     <TextBlock Text="RR" Foreground="#AAAAAA" FontSize="10" FontWeight="Bold"/>
                     <TextBlock x:Name="RRPressureText" Text="—" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                    <TextBlock x:Name="RRTempText" Text="—" Foreground="#FFD24D" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="RRTempLeftText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="RRTempMiddleText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                        <TextBlock x:Name="RRTempRightText" Text="—" Foreground="#FFD24D" FontSize="11" Width="28"/>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </StackPanel>

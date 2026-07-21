@@ -10,17 +10,20 @@ namespace IRacingOverlay.App.ViewModels;
 /// to tune the threshold once you've actually seen it trigger (or not) while driving.
 /// Stateful across ticks (keeps a rolling baseline of the "normal" ratio, one per gear — a plain gear
 /// change shifts this ratio just as much as wheelspin would, so mixing them into one baseline made
-/// every upshift/downshift look like a slip event, which is exactly the "flashing too much on corner
-/// exits" bug reported live: corner exits are precisely when gear changes bunch up).
+/// every upshift/downshift look like a slip event, which was the first "flashing too much on corner
+/// exits" bug reported live). Even per-gear, hard acceleration alone (drivetrain/flywheel rotational
+/// inertia briefly outrunning the car's actual road speed before it catches up — exactly what happens
+/// under power at every corner exit) can nudge the ratio up a little with zero real wheelspin, which is
+/// why the threshold and debounce here are deliberately conservative rather than hair-trigger.
 /// One instance per session, call from a single thread (the UI timer).
 /// </summary>
 internal sealed class WheelSlipDetector
 {
     private const double MinSpeedMps = 3.0;
     private const double MinThrottle = 0.3;
-    private const double SpikeThreshold = 1.12; // ratio jump beyond 12% above baseline counts as slip
+    private const double SpikeThreshold = 1.22; // ratio jump beyond 22% above baseline counts as slip
     private const double BaselineSmoothing = 0.08; // EMA weight applied to each new non-slipping sample
-    private const int RequiredConsecutiveTicks = 2; // debounce: ignore single-tick noise spikes
+    private const int RequiredConsecutiveTicks = 3; // debounce: ignore short-lived noise/accel-lag blips
 
     private readonly Dictionary<int, double> _baselineByGear = [];
     private int _consecutiveSlipTicks;

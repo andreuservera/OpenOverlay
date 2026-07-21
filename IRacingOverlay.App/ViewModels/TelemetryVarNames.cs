@@ -47,7 +47,23 @@ internal static class TelemetryVarNames
     /// </summary>
     public static string TireColdPressure(string corner) => $"{corner}coldPressure";
     public static string TirePressure(string corner) => $"{corner}pressure";
-    public static string TireTempLeft(string corner) => $"{corner}tempCL";
-    public static string TireTempMiddle(string corner) => $"{corner}tempCM";
-    public static string TireTempRight(string corner) => $"{corner}tempCR";
+
+    /// <summary>
+    /// "CL/CM/CR" (Carcass Left/Middle/Right) — the tire's internal structural temperature, which is
+    /// what the garage/setup screen shows. This is the only one of the two still in iRacing's current
+    /// telemetry spec.
+    /// </summary>
+    public static string TireTempCarcassLeft(string corner) => $"{corner}tempCL";
+    public static string TireTempCarcassMiddle(string corner) => $"{corner}tempCM";
+    public static string TireTempCarcassRight(string corner) => $"{corner}tempCR";
+
+    /// <summary>
+    /// "L/M/R" surface temperature (no "C") — closer to what an in-car dash actually displays
+    /// (iRacing's own developer blog describes it as an instantaneous, infrared-sensor-like reading,
+    /// versus the garage's carcass/pyrometer-style reading). Documented as a legacy 2015-era name and
+    /// may not exist live on every car/build, hence tried first with a fallback to carcass temp.
+    /// </summary>
+    public static string TireTempSurfaceLeft(string corner) => $"{corner}tempL";
+    public static string TireTempSurfaceMiddle(string corner) => $"{corner}tempM";
+    public static string TireTempSurfaceRight(string corner) => $"{corner}tempR";
 }

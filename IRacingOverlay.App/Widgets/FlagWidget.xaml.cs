@@ -11,5 +11,5 @@ public partial class FlagWidget : OverlayWindowBase
         DataContext = this;
     }
 
-    public void UpdateState(FlagState state) => Panel.UpdateState(state);
+    public void UpdateState(IReadOnlyList<FlagState> flags) => Panel.UpdateState(flags);
 }

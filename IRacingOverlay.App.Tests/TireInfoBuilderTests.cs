@@ -7,7 +7,7 @@ namespace IRacingOverlay.App.Tests;
 public class TireInfoBuilderTests
 {
     [Fact]
-    public void Build_ReadsPressureAndAveragesTempAcrossTread()
+    public void Build_FallsBackToCarcassTemp_WhenSurfaceTempUnavailable()
     {
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("LFpressure", IrsdkVarType.Float);
@@ -29,7 +29,41 @@ public class TireInfoBuilderTests
 
         Assert.Equal(180.0, state.LF.PressureKPa);
         Assert.Equal(165.0, state.LF.ColdPressureKPa);
-        Assert.Equal(90.0, state.LF.TempC, precision: 3);
+        Assert.Equal(80.0, state.LF.TempLeft, precision: 3);
+        Assert.Equal(90.0, state.LF.TempMiddle, precision: 3);
+        Assert.Equal(100.0, state.LF.TempRight, precision: 3);
+        Assert.False(state.LF.IsSurfaceTemp);
+    }
+
+    [Fact]
+    public void Build_PrefersSurfaceTemp_WhenAvailable()
+    {
+        // Surface temp (no "C") is closer to what an in-car dash actually shows; carcass temp
+        // (garage/setup-screen style) is only a fallback for cars/builds without it.
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LFtempL", IrsdkVarType.Float);
+        builder.AddVar("LFtempM", IrsdkVarType.Float);
+        builder.AddVar("LFtempR", IrsdkVarType.Float);
+        builder.AddVar("LFtempCL", IrsdkVarType.Float);
+        builder.AddVar("LFtempCM", IrsdkVarType.Float);
+        builder.AddVar("LFtempCR", IrsdkVarType.Float);
+
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("LFtempL", 70.0f);
+            w.SetFloat("LFtempM", 75.0f);
+            w.SetFloat("LFtempR", 78.0f);
+            w.SetFloat("LFtempCL", 80.0f);
+            w.SetFloat("LFtempCM", 90.0f);
+            w.SetFloat("LFtempCR", 100.0f);
+        });
+
+        var state = TireInfoBuilder.Build(snapshot);
+
+        Assert.Equal(70.0, state.LF.TempLeft, precision: 3);
+        Assert.Equal(75.0, state.LF.TempMiddle, precision: 3);
+        Assert.Equal(78.0, state.LF.TempRight, precision: 3);
+        Assert.True(state.LF.IsSurfaceTemp);
     }
 
     [Fact]
@@ -42,7 +76,7 @@ public class TireInfoBuilderTests
         var state = TireInfoBuilder.Build(snapshot);
 
         Assert.Equal("—", state.LF.PressureDisplay);
-        Assert.Equal("—", state.RF.TempDisplay);
+        Assert.Equal("—", state.RF.TempLeftDisplay);
         Assert.Equal("LR", state.LR.Label);
         Assert.Equal("RR", state.RR.Label);
     }

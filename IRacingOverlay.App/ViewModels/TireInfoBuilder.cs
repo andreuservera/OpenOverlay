@@ -7,6 +7,8 @@ namespace IRacingOverlay.App.ViewModels;
 /// here: cars without an in-car TPMS only get the "hot" pressure/temp refreshed while sitting in the
 /// pit stall, so these values will simply look frozen between pit visits on those cars — this reads
 /// whatever's there every tick regardless, which is the correct behavior either way.
+/// Shows all three tread zones (inner/middle/outer) per corner rather than one averaged number,
+/// matching how a real dash/telemetry display actually presents it.
 /// </summary>
 internal static class TireInfoBuilder
 {
@@ -22,19 +24,29 @@ internal static class TireInfoBuilder
     {
         var pressure = TryGetFloat(telemetry, TelemetryVarNames.TirePressure(corner));
         var coldPressure = TryGetFloat(telemetry, TelemetryVarNames.TireColdPressure(corner));
-        var tempLeft = TryGetFloat(telemetry, TelemetryVarNames.TireTempLeft(corner));
-        var tempMiddle = TryGetFloat(telemetry, TelemetryVarNames.TireTempMiddle(corner));
-        var tempRight = TryGetFloat(telemetry, TelemetryVarNames.TireTempRight(corner));
 
-        var temps = new[] { tempLeft, tempMiddle, tempRight }.Where(t => t is > 0).Select(t => t!.Value).ToArray();
-        var avgTemp = temps.Length > 0 ? temps.Average() : 0;
+        // Prefer surface temp (closer to what an in-car dash shows — see TelemetryVarNames) and only
+        // fall back to carcass temp if the surface variables aren't present on this build/car.
+        var hasSurfaceTemp = telemetry.HasVariable(TelemetryVarNames.TireTempSurfaceLeft(corner));
+        var left = hasSurfaceTemp
+            ? TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceLeft(corner))
+            : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassLeft(corner));
+        var middle = hasSurfaceTemp
+            ? TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceMiddle(corner))
+            : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassMiddle(corner));
+        var right = hasSurfaceTemp
+            ? TryGetFloat(telemetry, TelemetryVarNames.TireTempSurfaceRight(corner))
+            : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassRight(corner));
 
         return new TireCornerInfo
         {
             Label = corner,
             PressureKPa = pressure ?? 0,
             ColdPressureKPa = coldPressure ?? 0,
-            TempC = avgTemp,
+            TempLeft = left ?? 0,
+            TempMiddle = middle ?? 0,
+            TempRight = right ?? 0,
+            IsSurfaceTemp = hasSurfaceTemp,
         };
     }
 

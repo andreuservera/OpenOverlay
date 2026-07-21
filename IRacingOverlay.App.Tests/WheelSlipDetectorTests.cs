@@ -26,17 +26,19 @@ public class WheelSlipDetectorTests
             detector.Update(rpm: 3000, speedMps: 30, throttle: 0.8f, gear: 3);
         }
 
-        // RPM jumps well above what 30 m/s in this gear implies — wheel spinning free of the road.
-        // Requires two consecutive spiking ticks (debounce against single-sample noise).
-        var firstSpikeTick = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
-        var secondSpikeTick = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
+        // RPM jumps well above what 30 m/s in this gear implies (50% over baseline) — wheel spinning
+        // free of the road. Requires three consecutive spiking ticks (debounce against brief noise).
+        var firstSpikeTick = detector.Update(rpm: 4500, speedMps: 30, throttle: 0.8f, gear: 3);
+        var secondSpikeTick = detector.Update(rpm: 4500, speedMps: 30, throttle: 0.8f, gear: 3);
+        var thirdSpikeTick = detector.Update(rpm: 4500, speedMps: 30, throttle: 0.8f, gear: 3);
 
         Assert.False(firstSpikeTick);
-        Assert.True(secondSpikeTick);
+        Assert.False(secondSpikeTick);
+        Assert.True(thirdSpikeTick);
     }
 
     [Fact]
-    public void SingleTickNoiseSpike_DoesNotFlag()
+    public void BriefNoiseSpike_DoesNotFlag()
     {
         var detector = new WheelSlipDetector();
 
@@ -45,11 +47,14 @@ public class WheelSlipDetectorTests
             detector.Update(rpm: 3000, speedMps: 30, throttle: 0.8f, gear: 3);
         }
 
-        // One noisy tick above threshold, immediately followed by a return to normal.
-        var noisy = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
+        // Two noisy ticks above threshold (short of the 3-tick debounce window), then back to normal —
+        // e.g. the kind of brief ratio bump hard acceleration alone can cause via drivetrain inertia.
+        var noisy1 = detector.Update(rpm: 4500, speedMps: 30, throttle: 0.8f, gear: 3);
+        var noisy2 = detector.Update(rpm: 4500, speedMps: 30, throttle: 0.8f, gear: 3);
         var recovered = detector.Update(rpm: 3000, speedMps: 30, throttle: 0.8f, gear: 3);
 
-        Assert.False(noisy);
+        Assert.False(noisy1);
+        Assert.False(noisy2);
         Assert.False(recovered);
     }
 

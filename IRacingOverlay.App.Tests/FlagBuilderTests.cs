@@ -20,30 +20,32 @@ public class FlagBuilderTests
     }
 
     [Fact]
-    public void NoFlagsSet_ReturnsNone()
+    public void NoFlagsSet_ReturnsEmpty()
     {
-        var state = FlagBuilder.Build(BuildWithFlags(0));
+        var flags = FlagBuilder.Build(BuildWithFlags(0));
 
-        Assert.Equal(FlagState.None.Name, state.Name);
+        Assert.Empty(flags);
     }
 
     [Fact]
     public void GreenBit_ReturnsGreen()
     {
-        var state = FlagBuilder.Build(BuildWithFlags(0x00000004)); // irsdk_green
+        var flags = FlagBuilder.Build(BuildWithFlags(0x00000004)); // irsdk_green
 
-        Assert.Equal("GREEN", state.Name);
-        Assert.False(state.IsCheckered);
-        Assert.False(state.IsMeatball);
+        var flag = Assert.Single(flags);
+        Assert.Equal("GREEN", flag.Name);
+        Assert.False(flag.IsCheckered);
+        Assert.False(flag.IsMeatball);
     }
 
     [Fact]
     public void RepairBit_ReturnsMeatball()
     {
-        var state = FlagBuilder.Build(BuildWithFlags(0x00100000)); // irsdk_repair
+        var flags = FlagBuilder.Build(BuildWithFlags(0x00100000)); // irsdk_repair
 
-        Assert.Equal("SERVICE", state.Name);
-        Assert.True(state.IsMeatball);
+        var flag = Assert.Single(flags);
+        Assert.Equal("SERVICE", flag.Name);
+        Assert.True(flag.IsMeatball);
     }
 
     [Fact]
@@ -55,18 +57,20 @@ public class FlagBuilderTests
         const uint green = 0x00000004;
         const uint servicible = 0x00040000;
 
-        var state = FlagBuilder.Build(BuildWithFlags(green | servicible));
+        var flags = FlagBuilder.Build(BuildWithFlags(green | servicible));
 
-        Assert.Equal("GREEN", state.Name);
+        var flag = Assert.Single(flags);
+        Assert.Equal("GREEN", flag.Name);
     }
 
     [Fact]
     public void CheckeredBit_ReturnsCheckered()
     {
-        var state = FlagBuilder.Build(BuildWithFlags(0x00000001)); // irsdk_checkered
+        var flags = FlagBuilder.Build(BuildWithFlags(0x00000001)); // irsdk_checkered
 
-        Assert.Equal("CHECKERED", state.Name);
-        Assert.True(state.IsCheckered);
+        var flag = Assert.Single(flags);
+        Assert.Equal("CHECKERED", flag.Name);
+        Assert.True(flag.IsCheckered);
     }
 
     [Fact]
@@ -75,9 +79,10 @@ public class FlagBuilderTests
         const uint black = 0x00010000;
         const uint yellow = 0x00000008;
 
-        var state = FlagBuilder.Build(BuildWithFlags(black | yellow));
+        var flags = FlagBuilder.Build(BuildWithFlags(black | yellow));
 
-        Assert.Equal("BLACK FLAG", state.Name);
+        var flag = Assert.Single(flags);
+        Assert.Equal("BLACK FLAG", flag.Name);
     }
 
     [Fact]
@@ -86,20 +91,66 @@ public class FlagBuilderTests
         const uint caution = 0x00004000;
         const uint cautionWaving = 0x00008000;
 
-        var state = FlagBuilder.Build(BuildWithFlags(caution | cautionWaving));
+        var flags = FlagBuilder.Build(BuildWithFlags(caution | cautionWaving));
 
-        Assert.Equal("CAUTION", state.Name);
+        var flag = Assert.Single(flags);
+        Assert.Equal("CAUTION", flag.Name);
     }
 
     [Fact]
-    public void MissingVariable_ReturnsNone()
+    public void DebrisAndYellowTogether_BothAppear()
+    {
+        // Debris is a supplementary flag, not part of the primary priority chain, so it should show
+        // alongside whatever the primary track-state flag is instead of being hidden by it.
+        const uint yellow = 0x00000008;
+        const uint debris = 0x00000040;
+
+        var flags = FlagBuilder.Build(BuildWithFlags(yellow | debris));
+
+        Assert.Contains(flags, f => f.Name == "LOCAL YELLOW");
+        Assert.Contains(flags, f => f.Name == "DEBRIS");
+        Assert.Equal(2, flags.Count);
+    }
+
+    [Fact]
+    public void BlueFlagDuringGreenRacing_BothAppear()
+    {
+        // Blue ("faster car behind") is a personal call that can happen during ordinary green-flag
+        // racing, not just cautions — it must show alongside Green, not be suppressed by it.
+        const uint green = 0x00000004;
+        const uint blue = 0x00000020;
+
+        var flags = FlagBuilder.Build(BuildWithFlags(green | blue));
+
+        Assert.Contains(flags, f => f.Name == "GREEN");
+        Assert.Contains(flags, f => f.Name == "BLUE — CAR BEHIND");
+        Assert.Equal(2, flags.Count);
+    }
+
+    [Fact]
+    public void DebrisYellowAndBlue_AllThreeAppear()
+    {
+        const uint yellow = 0x00000008;
+        const uint debris = 0x00000040;
+        const uint blue = 0x00000020;
+
+        var flags = FlagBuilder.Build(BuildWithFlags(yellow | debris | blue));
+
+        Assert.Equal(3, flags.Count);
+        Assert.Contains(flags, f => f.Name == "LOCAL YELLOW");
+        Assert.Contains(flags, f => f.Name == "DEBRIS");
+        Assert.Contains(flags, f => f.Name == "BLUE — CAR BEHIND");
+    }
+
+    [Fact]
+    public void MissingVariable_ReturnsEmpty()
     {
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("Speed", IrsdkVarType.Float);
         var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("Speed", 10));
 
-        var state = FlagBuilder.Build(snapshot);
+        var flags = FlagBuilder.Build(snapshot);
 
-        Assert.Equal(FlagState.None.Name, state.Name);
+        Assert.Empty(flags);
     }
 }

@@ -96,9 +96,9 @@ public partial class MainWindow : Window
 
         if (_flagWidget is not null || _dashboard is not null)
         {
-            var flagState = FlagBuilder.Build(telemetry);
-            _flagWidget?.UpdateState(flagState);
-            _dashboard?.UpdateFlag(flagState);
+            var flagStates = FlagBuilder.Build(telemetry);
+            _flagWidget?.UpdateState(flagStates);
+            _dashboard?.UpdateFlag(flagStates);
         }
 
         if (_tireInfoWidget is not null || _dashboard is not null)

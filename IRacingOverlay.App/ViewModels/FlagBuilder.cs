@@ -3,8 +3,11 @@ using IRacingOverlay.Sdk;
 namespace IRacingOverlay.App.ViewModels;
 
 /// <summary>
-/// Decodes iRacing's SessionFlags bitfield (irsdk_Flags) into a single most-relevant flag to
-/// display. Bit values confirmed against the iRacing SDK reference documentation.
+/// Decodes iRacing's SessionFlags bitfield (irsdk_Flags) into the set of currently-relevant flags to
+/// display. Bit values confirmed against the iRacing SDK reference documentation. Returns a list
+/// because multiple flags can legitimately be active at once — e.g. a full-course caution for debris,
+/// or a blue "car behind" call during green-flag racing — and iRacing's own flag panel shows them
+/// simultaneously rather than picking just one.
 /// </summary>
 internal static class FlagBuilder
 {
@@ -42,93 +45,87 @@ internal static class FlagBuilder
         StartGo = 0x80000000,
     }
 
-    public static FlagState Build(TelemetrySnapshot telemetry)
+    public static List<FlagState> Build(TelemetrySnapshot telemetry)
     {
         if (!telemetry.HasVariable(TelemetryVarNames.SessionFlags))
         {
-            return FlagState.None;
+            return [];
         }
 
         var bits = (IrsdkFlags)ReadFlagsBits(telemetry);
         if (bits == 0)
         {
-            return FlagState.None;
+            return [];
         }
 
-        // Highest-priority flag wins when several are set at once (e.g. caution + yellowWaving).
+        var flags = new List<FlagState>();
+
+        // Primary track-state flags: mutually exclusive (the race is never simultaneously "green" and
+        // "checkered"), so only the single most severe one is shown — highest priority first.
         if (bits.HasFlag(IrsdkFlags.Disqualify))
         {
-            return Solid("DISQUALIFIED", "#111111", "#FFFFFF");
+            flags.Add(Solid("DISQUALIFIED", "#111111", "#FFFFFF"));
         }
-
-        if (bits.HasFlag(IrsdkFlags.Black))
+        else if (bits.HasFlag(IrsdkFlags.Black))
         {
-            return Solid("BLACK FLAG", "#111111", "#FFFFFF");
+            flags.Add(Solid("BLACK FLAG", "#111111", "#FFFFFF"));
         }
-
-        if (bits.HasFlag(IrsdkFlags.Repair))
+        else if (bits.HasFlag(IrsdkFlags.Repair))
         {
-            return new FlagState { Name = "SERVICE", BackgroundColor = "#111111", ForegroundColor = "#FF8C1A", IsCheckered = false, IsMeatball = true };
+            flags.Add(new FlagState { Name = "SERVICE", BackgroundColor = "#111111", ForegroundColor = "#FF8C1A", IsCheckered = false, IsMeatball = true });
         }
-
-        if (bits.HasFlag(IrsdkFlags.Furled))
+        else if (bits.HasFlag(IrsdkFlags.Furled))
         {
-            return Solid("WARNING", "#2A2A2A", "#FF8800");
+            flags.Add(Solid("WARNING", "#2A2A2A", "#FF8800"));
         }
-
-        // Servicible is deliberately never checked here — it isn't a flag (see enum comment above).
-
-        if (bits.HasFlag(IrsdkFlags.Red))
+        else if (bits.HasFlag(IrsdkFlags.Red))
         {
-            return Solid("RED", "#CC1414", "#FFFFFF");
+            flags.Add(Solid("RED", "#CC1414", "#FFFFFF"));
         }
-
-        if (bits.HasFlag(IrsdkFlags.Checkered))
+        else if (bits.HasFlag(IrsdkFlags.Checkered))
         {
-            return new FlagState { Name = "CHECKERED", BackgroundColor = "#FFFFFF", ForegroundColor = "#111111", IsCheckered = true, IsMeatball = false };
+            flags.Add(new FlagState { Name = "CHECKERED", BackgroundColor = "#FFFFFF", ForegroundColor = "#111111", IsCheckered = true, IsMeatball = false });
         }
-
-        if (bits.HasFlag(IrsdkFlags.White))
+        else if (bits.HasFlag(IrsdkFlags.White))
         {
-            return Solid("WHITE — LAST LAP", "#FFFFFF", "#111111");
+            flags.Add(Solid("WHITE — LAST LAP", "#FFFFFF", "#111111"));
         }
-
-        if (bits.HasFlag(IrsdkFlags.CautionWaving) || bits.HasFlag(IrsdkFlags.YellowWaving))
+        else if (bits.HasFlag(IrsdkFlags.CautionWaving) || bits.HasFlag(IrsdkFlags.Caution))
         {
-            return Solid("CAUTION", "#E8C000", "#111111");
+            flags.Add(Solid("CAUTION", "#E8C000", "#111111"));
         }
-
-        if (bits.HasFlag(IrsdkFlags.Caution) || bits.HasFlag(IrsdkFlags.Yellow))
+        else if (bits.HasFlag(IrsdkFlags.YellowWaving) || bits.HasFlag(IrsdkFlags.Yellow))
         {
-            return Solid("YELLOW", "#E8C000", "#111111");
+            flags.Add(Solid("LOCAL YELLOW", "#E8C000", "#111111"));
+        }
+        else if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.GreenHeld) || bits.HasFlag(IrsdkFlags.OneLapToGreen) || bits.HasFlag(IrsdkFlags.StartGo))
+        {
+            flags.Add(Solid("GREEN", "#1FA028", "#FFFFFF"));
+        }
+        else if (bits.HasFlag(IrsdkFlags.StartSet))
+        {
+            flags.Add(Solid("SET", "#E8C000", "#111111"));
+        }
+        else if (bits.HasFlag(IrsdkFlags.StartReady))
+        {
+            flags.Add(Solid("READY", "#FFFFFF", "#111111"));
         }
 
+        // Secondary/supplementary flags — these can legitimately coexist with any primary state above
+        // (a blue "faster car behind" call can happen mid-caution or mid-green; debris often
+        // accompanies but is distinct from a caution), so they're independent checks, not part of the
+        // priority chain, and both can appear alongside the primary flag and each other.
         if (bits.HasFlag(IrsdkFlags.Debris))
         {
-            return Solid("DEBRIS", "#E8C000", "#111111");
+            flags.Add(Solid("DEBRIS", "#E8C000", "#111111"));
         }
 
         if (bits.HasFlag(IrsdkFlags.Blue))
         {
-            return Solid("BLUE — FASTER CAR", "#1560D4", "#FFFFFF");
+            flags.Add(Solid("BLUE — CAR BEHIND", "#1560D4", "#FFFFFF"));
         }
 
-        if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.GreenHeld) || bits.HasFlag(IrsdkFlags.OneLapToGreen) || bits.HasFlag(IrsdkFlags.StartGo))
-        {
-            return Solid("GREEN", "#1FA028", "#FFFFFF");
-        }
-
-        if (bits.HasFlag(IrsdkFlags.StartSet))
-        {
-            return Solid("SET", "#E8C000", "#111111");
-        }
-
-        if (bits.HasFlag(IrsdkFlags.StartReady))
-        {
-            return Solid("READY", "#FFFFFF", "#111111");
-        }
-
-        return FlagState.None;
+        return flags;
     }
 
     private static uint ReadFlagsBits(TelemetrySnapshot telemetry)

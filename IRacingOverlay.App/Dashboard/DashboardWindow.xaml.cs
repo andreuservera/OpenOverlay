@@ -63,7 +63,7 @@ public partial class DashboardWindow : Window
         RightProximity.SetFraction(state.RightProximity);
     }
 
-    public void UpdateFlag(FlagState state) => Flag.UpdateState(state);
+    public void UpdateFlag(IReadOnlyList<FlagState> flags) => Flag.UpdateState(flags);
 
     public void UpdateTireInfo(TireInfoState state) => TireInfo.UpdateState(state);
 }
