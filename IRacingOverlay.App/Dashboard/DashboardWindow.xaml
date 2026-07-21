@@ -8,12 +8,27 @@
         Background="Black"
         ResizeMode="NoResize">
     <Grid Margin="16">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="16"/>
-            <ColumnDefinition Width="360"/>
-        </Grid.ColumnDefinitions>
-        <w:StandingsPanel x:Name="Standings" Grid.Column="0"/>
-        <w:RelativePanel x:Name="Relative" Grid.Column="2"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="300"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="360"/>
+            </Grid.ColumnDefinitions>
+            <w:StandingsPanel x:Name="Standings" Grid.Column="0"/>
+            <w:RelativePanel x:Name="Relative" Grid.Column="2"/>
+        </Grid>
+
+        <!-- Cockpit (gear/shift lights/ABS/TC/proximity): lower-center, closer to eye level on a
+             second monitor mounted above the main one. Scaled up from its floating-widget size via
+             Viewbox since a dashboard viewer sits further away than someone glancing at an overlay. -->
+        <Viewbox Grid.Row="1" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                 Width="640" Height="300" Margin="0,0,0,8">
+            <w:CockpitPanel x:Name="Cockpit"/>
+        </Viewbox>
     </Grid>
 </Window>

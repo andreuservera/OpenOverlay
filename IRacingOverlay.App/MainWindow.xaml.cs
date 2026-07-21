@@ -70,9 +70,11 @@ public partial class MainWindow : Window
         _standingsWidget?.UpdateRows(standingsRows);
         _dashboard?.UpdateRows(standingsRows, relativeRows);
 
-        if (_cockpitWidget is not null)
+        if (_cockpitWidget is not null || _dashboard is not null)
         {
-            _cockpitWidget.UpdateState(CockpitBuilder.Build(telemetry, session));
+            var cockpitState = CockpitBuilder.Build(telemetry, session);
+            _cockpitWidget?.UpdateState(cockpitState);
+            _dashboard?.UpdateCockpit(cockpitState);
         }
     }
 

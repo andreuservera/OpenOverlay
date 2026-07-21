@@ -5,8 +5,10 @@ using Screen = System.Windows.Forms.Screen;
 namespace IRacingOverlay.App.Dashboard;
 
 /// <summary>
-/// Fullscreen, fixed layout meant for a dedicated second monitor: Standings on the left,
-/// Relative on the right. Not click-through/movable — that's what the floating widgets are for.
+/// Fullscreen, fixed layout meant for a dedicated second monitor: Standings on the left, Relative
+/// on the right, and the Cockpit gear/shift-light/ABS-TC/proximity display lower-center — closer to
+/// eye level, since a second monitor is typically mounted above the main one. Not click-through/
+/// movable — that's what the floating widgets are for.
 /// </summary>
 public partial class DashboardWindow : Window
 {
@@ -37,4 +39,6 @@ public partial class DashboardWindow : Window
         Standings.SetRows(standings);
         Relative.SetRows(relative);
     }
+
+    public void UpdateCockpit(CockpitState state) => Cockpit.UpdateState(state);
 }
