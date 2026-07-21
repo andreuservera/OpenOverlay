@@ -77,6 +77,76 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildRelative_SameLap_MismatchedReferenceLapTimes_StaysSensibleManyLapsIn()
+    {
+        // Regression test for the reported "gap numbers don't make sense" bug: both cars are on lap
+        // 40 (same lap, genuinely close together), but have different (or, for car 1, no) recorded
+        // lap times. The old per-car-reference-lap-time formula multiplied that mismatch by the lap
+        // count (40 * ~90s), producing a gap of thousands of seconds for cars sitting right next to
+        // each other. The fix must keep the gap tiny regardless of car 1's lap-time data.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [40, 40, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [30.0f, 29.5f, 0, 0]); // 0.5s apart on the same lap
+            w.SetFloatArray("CarIdxLastLapTime", [92.3f, 0, 0, 0]); // player has a lap time; rival doesn't
+            w.SetFloatArray("CarIdxBestLapTime", [91.8f, 0, 0, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, session);
+
+        var rivalRow = rows.Single(r => r.CarIdx == 1);
+        Assert.Equal(0.5, rivalRow.GapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void BuildRelative_NoReferenceLapTime_ExcludesCarsOnADifferentLap()
+    {
+        // Regression test for what live testing surfaced: player sitting in the garage (no lap time
+        // set yet, refLapTime == 0) alongside cars actually several laps further into the race. With
+        // no way to correct for the lap difference, comparing them produced a small, plausible-looking
+        // but meaningless gap. Cars genuinely on the same lap should still compare normally.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [0, 12, 0, 0]); // car 1 is 12 laps ahead of the player
+            w.SetFloatArray("CarIdxEstTime", [1.0f, 30.5f, 0, 0]);
+            // no CarIdxLastLapTime/CarIdxBestLapTime set for the player -> refLapTime stays 0
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "LapsAhead", CarNumber = "42" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, session);
+
+        Assert.DoesNotContain(rows, r => r.CarIdx == 1);
+        Assert.Contains(rows, r => r.IsPlayer);
+    }
+
+    [Fact]
     public void BuildRelative_IgnoresPaceCar()
     {
         var builder = RelativeVars();

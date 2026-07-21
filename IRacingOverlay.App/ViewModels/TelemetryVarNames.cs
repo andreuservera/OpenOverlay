@@ -9,6 +9,7 @@ internal static class TelemetryVarNames
     public const string Speed = "Speed";
     public const string Rpm = "RPM";
     public const string Gear = "Gear";
+    public const string Throttle = "Throttle";
     public const string Lap = "Lap";
     public const string LapDistPct = "LapDistPct";
     public const string SessionTime = "SessionTime";
@@ -30,12 +31,23 @@ internal static class TelemetryVarNames
     public const string CarIdxEstTime = "CarIdxEstTime";
 
     public const string BrakeAbsActive = "BrakeABSactive";
-    /// <summary>Best available proxy for TC engagement; iRacing has no documented real-time
-    /// "TC is cutting power right now" flag like BrakeABSactive. This "dc" (driver control) variable
-    /// most likely reflects whether TC is toggled on, not live intervention — needs live confirmation.</summary>
-    public const string TractionControlToggle = "dcTractionControlToggle";
     /// <summary>Enum irsdk_CarLeftRight, confirmed live to be typed as a plain Int (not a bitfield,
     /// despite what the docs say): 0=off,1=clear,2=car left,3=car right,4=car both sides,
     /// 5=two cars left,6=two cars right.</summary>
     public const string CarLeftRight = "CarLeftRight";
+
+    /// <summary>uint bitfield, irsdk_Flags — see FlagBuilder for the bit layout.</summary>
+    public const string SessionFlags = "SessionFlags";
+
+    /// <summary>
+    /// Tire variable name for one corner ("LF"/"RF"/"LR"/"RR"). Some cars only update the live
+    /// "hot" pressure/temp while sitting in the pit stall (no in-car TPMS) — confirmed real iRacing
+    /// behavior, not a bug here: read it every tick regardless and it'll just look "frozen" between
+    /// pit visits for those cars.
+    /// </summary>
+    public static string TireColdPressure(string corner) => $"{corner}coldPressure";
+    public static string TirePressure(string corner) => $"{corner}pressure";
+    public static string TireTempLeft(string corner) => $"{corner}tempCL";
+    public static string TireTempMiddle(string corner) => $"{corner}tempCM";
+    public static string TireTempRight(string corner) => $"{corner}tempCR";
 }

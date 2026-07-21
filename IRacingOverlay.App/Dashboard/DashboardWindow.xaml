@@ -8,27 +8,54 @@
         Background="Black"
         ResizeMode="NoResize">
     <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="300"/>
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="60"/>
+            <ColumnDefinition Width="50"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="50"/>
+            <ColumnDefinition Width="60"/>
+        </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="16"/>
-                <ColumnDefinition Width="360"/>
-            </Grid.ColumnDefinitions>
-            <w:StandingsPanel x:Name="Standings" Grid.Column="0"/>
-            <w:RelativePanel x:Name="Relative" Grid.Column="2"/>
+        <!-- Left proximity + TC: full-height vertical bars on the left edge -->
+        <w:ProximityBarPanel x:Name="LeftProximity" Grid.Column="0" Margin="0,0,8,0"/>
+        <w:GlowBarPanel x:Name="TcBar" Grid.Column="1" Margin="0,0,8,0"/>
+
+        <!-- Center: flag/tires corners, standings/relative, gear+shift lights -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="280"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <w:FlagPanel x:Name="Flag" HorizontalAlignment="Left" VerticalAlignment="Top" Width="200"/>
+                <w:TireInfoPanel x:Name="TireInfo" HorizontalAlignment="Right" VerticalAlignment="Top" Width="260"/>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="360"/>
+                </Grid.ColumnDefinitions>
+                <w:StandingsPanel x:Name="Standings" Grid.Column="0"/>
+                <w:RelativePanel x:Name="Relative" Grid.Column="2"/>
+            </Grid>
+
+            <!-- Gear/shift lights: lower-center, closer to eye level since a second monitor is
+                 typically mounted above the main one. Scaled up via Viewbox since ShiftGearPanel is
+                 sized for a small floating widget, not a full monitor. -->
+            <Border Grid.Row="2" Background="#E6141414" BorderBrush="#3A3A3A" BorderThickness="1" CornerRadius="6"
+                    HorizontalAlignment="Center" Width="420" Height="260" Margin="0,10,0,0">
+                <Viewbox Stretch="Uniform" Margin="16">
+                    <w:ShiftGearPanel x:Name="ShiftGear"/>
+                </Viewbox>
+            </Border>
         </Grid>
 
-        <!-- Cockpit (gear/shift lights/ABS/TC/proximity): lower-center, closer to eye level on a
-             second monitor mounted above the main one. Scaled up from its floating-widget size via
-             Viewbox since a dashboard viewer sits further away than someone glancing at an overlay. -->
-        <Viewbox Grid.Row="1" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                 Width="640" Height="300" Margin="0,0,0,8">
-            <w:CockpitPanel x:Name="Cockpit"/>
-        </Viewbox>
+        <!-- ABS + right proximity: full-height vertical bars on the right edge -->
+        <w:GlowBarPanel x:Name="AbsBar" Grid.Column="3" Margin="8,0,0,0"/>
+        <w:ProximityBarPanel x:Name="RightProximity" Grid.Column="4" Margin="8,0,0,0"/>
     </Grid>
 </Window>

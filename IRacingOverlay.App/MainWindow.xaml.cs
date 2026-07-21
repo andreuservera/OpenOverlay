@@ -13,10 +13,13 @@ public partial class MainWindow : Window
 {
     private readonly IRacingConnection _connection = new();
     private readonly DispatcherTimer _uiTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly WheelSlipDetector _wheelSlipDetector = new();
 
     private RelativeWidget? _relativeWidget;
     private StandingsWidget? _standingsWidget;
     private CockpitWidget? _cockpitWidget;
+    private FlagWidget? _flagWidget;
+    private TireInfoWidget? _tireInfoWidget;
     private DashboardWindow? _dashboard;
 
     public MainWindow()
@@ -40,6 +43,8 @@ public partial class MainWindow : Window
             _relativeWidget?.Close();
             _standingsWidget?.Close();
             _cockpitWidget?.Close();
+            _flagWidget?.Close();
+            _tireInfoWidget?.Close();
             _dashboard?.Close();
         };
 
@@ -72,9 +77,23 @@ public partial class MainWindow : Window
 
         if (_cockpitWidget is not null || _dashboard is not null)
         {
-            var cockpitState = CockpitBuilder.Build(telemetry, session);
+            var cockpitState = CockpitBuilder.Build(telemetry, session, _wheelSlipDetector);
             _cockpitWidget?.UpdateState(cockpitState);
             _dashboard?.UpdateCockpit(cockpitState);
+        }
+
+        if (_flagWidget is not null || _dashboard is not null)
+        {
+            var flagState = FlagBuilder.Build(telemetry);
+            _flagWidget?.UpdateState(flagState);
+            _dashboard?.UpdateFlag(flagState);
+        }
+
+        if (_tireInfoWidget is not null || _dashboard is not null)
+        {
+            var tireInfoState = TireInfoBuilder.Build(telemetry);
+            _tireInfoWidget?.UpdateState(tireInfoState);
+            _dashboard?.UpdateTireInfo(tireInfoState);
         }
     }
 
@@ -142,6 +161,42 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FlagCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (FlagCheckBox.IsChecked == true)
+        {
+            _flagWidget ??= new FlagWidget();
+            if (_flagWidget.HasSavedLayout)
+            {
+                _flagWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _flagWidget.Show();
+        }
+        else
+        {
+            _flagWidget?.Hide();
+        }
+    }
+
+    private void TireInfoCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (TireInfoCheckBox.IsChecked == true)
+        {
+            _tireInfoWidget ??= new TireInfoWidget();
+            if (_tireInfoWidget.HasSavedLayout)
+            {
+                _tireInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _tireInfoWidget.Show();
+        }
+        else
+        {
+            _tireInfoWidget?.Hide();
+        }
+    }
+
     private void EditModeCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         var editMode = EditModeCheckBox.IsChecked == true;
@@ -159,16 +214,39 @@ public partial class MainWindow : Window
         {
             _cockpitWidget.IsEditMode = editMode;
         }
+
+        if (_flagWidget is not null)
+        {
+            _flagWidget.IsEditMode = editMode;
+        }
+
+        if (_tireInfoWidget is not null)
+        {
+            _tireInfoWidget.IsEditMode = editMode;
+        }
     }
 
     private void ShowDashboardButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_dashboard is { IsVisible: true })
+        {
+            _dashboard.Hide();
+            ShowDashboardButton.Content = "Show dashboard";
+            return;
+        }
+
         if (MonitorComboBox.SelectedItem is not Screen screen)
         {
             return;
         }
 
-        _dashboard ??= new DashboardWindow();
+        if (_dashboard is null)
+        {
+            _dashboard = new DashboardWindow();
+            _dashboard.Closed += (_, _) => ShowDashboardButton.Content = "Show dashboard";
+        }
+
         _dashboard.MoveToScreen(screen);
+        ShowDashboardButton.Content = "Hide dashboard";
     }
 }

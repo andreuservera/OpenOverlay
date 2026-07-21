@@ -11,9 +11,12 @@ internal static class StandingsBuilder
     /// Relative gap uses CarIdxEstTime — iRacing's own "estimated time to reach current location on
     /// track" per car — which is precise within a lap and class-agnostic (each car's progress is
     /// measured in its own seconds, so it works the same for a GT3 car as a slower class). Cars a
-    /// full lap apart are corrected using that car's own last/best lap time (falling back to 0, i.e.
-    /// no correction, if neither is known yet — harmless while everyone's still on the same lap,
-    /// which covers the common "who's near me" case even in a solo test session).
+    /// full lap apart are corrected using a *single shared* reference lap time (the player's own),
+    /// not each car's individually — using each car's own lap time here was the earlier bug: two
+    /// cars on the very same lap but with different (or missing) recorded lap times would get a
+    /// spurious offset of `lapNumber * lapTimeDifference` seconds, growing larger every lap and
+    /// producing gaps that made no sense. With one shared reference, same-lap comparisons reduce to
+    /// a plain CarIdxEstTime difference regardless of any car's lap-time data quality.
     /// Always includes the player, even alone with no one else on track.
     /// </summary>
     public static List<RelativeRow> BuildRelative(TelemetrySnapshot telemetry, IracingSessionInfo? session, int maxEachSide = 4)
@@ -42,20 +45,9 @@ internal static class StandingsBuilder
             return [];
         }
 
-        double TimePosition(int carIdx)
-        {
-            var refLapTime = 0.0;
-            if (lastLaps is not null && carIdx < lastLaps.Length && lastLaps[carIdx] > 0)
-            {
-                refLapTime = lastLaps[carIdx];
-            }
-            else if (bestLaps is not null && carIdx < bestLaps.Length && bestLaps[carIdx] > 0)
-            {
-                refLapTime = bestLaps[carIdx];
-            }
+        var refLapTime = GetReferenceLapTime(playerCarIdx, lastLaps, bestLaps);
 
-            return carIdxLap[carIdx] * refLapTime + carIdxEstTime[carIdx];
-        }
+        double TimePosition(int carIdx) => carIdxLap[carIdx] * refLapTime + carIdxEstTime[carIdx];
 
         var playerTimePosition = TimePosition(playerCarIdx);
 
@@ -75,6 +67,17 @@ internal static class StandingsBuilder
             if (!hasStarted)
             {
                 continue; // car not yet out on track this session
+            }
+
+            // Without a reference lap time, the lap-count term is unavailable — a car on a
+            // different lap than the player would then compare as if same-lap, showing a small,
+            // plausible-looking gap that's actually meaningless (observed live: sitting in the
+            // garage with no lap time set yet made several genuinely-lap(s)-apart cars all show
+            // nearly the same ~53s "gap" purely by coincidence of within-lap position). Only compare
+            // cars we can actually place relative to the player.
+            if (!isPlayer && refLapTime <= 0 && carIdxLap[driver.CarIdx] != carIdxLap[playerCarIdx])
+            {
+                continue;
             }
 
             rows.Add(new RelativeRow
@@ -137,21 +140,15 @@ internal static class StandingsBuilder
             && playerCarIdx >= 0 && playerCarIdx < positions.Length
             && positions[playerCarIdx] > 0;
 
+        // Same shared-reference fix as BuildRelative: one lap time for every car's lap-count term,
+        // not each car's own, so the fallback ordering doesn't get skewed by lap-time data quality.
+        var refLapTime = playerCarIdx >= 0 ? GetReferenceLapTime(playerCarIdx, lastLaps, bestLaps) : 0;
+
         double TimePosition(int carIdx)
         {
             if (currentLaps is null || carIdxEstTime is null || carIdx >= currentLaps.Length || carIdx >= carIdxEstTime.Length)
             {
                 return 0;
-            }
-
-            var refLapTime = 0.0;
-            if (lastLaps is not null && carIdx < lastLaps.Length && lastLaps[carIdx] > 0)
-            {
-                refLapTime = lastLaps[carIdx];
-            }
-            else if (bestLaps is not null && carIdx < bestLaps.Length && bestLaps[carIdx] > 0)
-            {
-                refLapTime = bestLaps[carIdx];
             }
 
             return currentLaps[carIdx] * refLapTime + carIdxEstTime[carIdx];
@@ -230,6 +227,21 @@ internal static class StandingsBuilder
 
         rows.Sort((a, b) => a.Position.CompareTo(b.Position));
         return rows;
+    }
+
+    private static double GetReferenceLapTime(int carIdx, float[]? lastLaps, float[]? bestLaps)
+    {
+        if (lastLaps is not null && carIdx < lastLaps.Length && lastLaps[carIdx] > 0)
+        {
+            return lastLaps[carIdx];
+        }
+
+        if (bestLaps is not null && carIdx < bestLaps.Length && bestLaps[carIdx] > 0)
+        {
+            return bestLaps[carIdx];
+        }
+
+        return 0;
     }
 
     private static bool[]? TryGetBoolArray(TelemetrySnapshot telemetry, string name) =>

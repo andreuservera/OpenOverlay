@@ -42,7 +42,7 @@ public class CockpitBuilderTests
             w.SetFloat("RPM", 3000);
         });
 
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(), new WheelSlipDetector());
 
         Assert.Equal(expected, state.Gear);
     }
@@ -57,7 +57,7 @@ public class CockpitBuilderTests
             w.SetFloat("RPM", 4000); // below First=5000
         });
 
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(), new WheelSlipDetector());
 
         Assert.Equal(0, state.ShiftLightsLit);
         Assert.False(state.ShiftBlink);
@@ -73,7 +73,7 @@ public class CockpitBuilderTests
             w.SetFloat("RPM", 7000); // == Shift
         });
 
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(), new WheelSlipDetector());
 
         Assert.Equal(CockpitState.ShiftLightCount, state.ShiftLightsLit);
     }
@@ -88,7 +88,7 @@ public class CockpitBuilderTests
             w.SetFloat("RPM", 7300); // >= Blink=7200
         });
 
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(), new WheelSlipDetector());
 
         Assert.True(state.ShiftBlink);
     }
@@ -105,7 +105,7 @@ public class CockpitBuilderTests
             w.SetBool("BrakeABSactive", true);
         });
 
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(), new WheelSlipDetector());
 
         Assert.True(state.AbsActive);
     }
@@ -143,7 +143,7 @@ public class CockpitBuilderTests
             w.SetFloat("Speed", 50); // m/s -> ~1m gap, well inside a car length
         });
 
-        var state = CockpitBuilder.Build(snapshot, TwoCarSession());
+        var state = CockpitBuilder.Build(snapshot, TwoCarSession(), new WheelSlipDetector());
 
         Assert.True(state.LeftProximity > 0);
         Assert.Equal(0, state.RightProximity);
@@ -160,7 +160,7 @@ public class CockpitBuilderTests
             w.SetFloat("Speed", 50);
         });
 
-        var state = CockpitBuilder.Build(snapshot, TwoCarSession());
+        var state = CockpitBuilder.Build(snapshot, TwoCarSession(), new WheelSlipDetector());
 
         Assert.Equal(0, state.LeftProximity);
         Assert.Equal(0, state.RightProximity);
@@ -177,7 +177,7 @@ public class CockpitBuilderTests
             w.SetFloat("Speed", 50);
         });
 
-        var state = CockpitBuilder.Build(snapshot, TwoCarSession());
+        var state = CockpitBuilder.Build(snapshot, TwoCarSession(), new WheelSlipDetector());
 
         Assert.Equal(0, state.RightProximity);
     }
