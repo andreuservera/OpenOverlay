@@ -34,8 +34,7 @@ public class FlagBuilderTests
 
         var flag = Assert.Single(flags);
         Assert.Equal("GREEN", flag.Name);
-        Assert.False(flag.IsCheckered);
-        Assert.False(flag.IsMeatball);
+        Assert.Equal(FlagVisualStyle.Solid, flag.Style);
     }
 
     [Fact]
@@ -45,7 +44,7 @@ public class FlagBuilderTests
 
         var flag = Assert.Single(flags);
         Assert.Equal("SERVICE", flag.Name);
-        Assert.True(flag.IsMeatball);
+        Assert.Equal(FlagVisualStyle.Meatball, flag.Style);
     }
 
     [Fact]
@@ -70,7 +69,7 @@ public class FlagBuilderTests
 
         var flag = Assert.Single(flags);
         Assert.Equal("CHECKERED", flag.Name);
-        Assert.True(flag.IsCheckered);
+        Assert.Equal(FlagVisualStyle.Checkered, flag.Style);
     }
 
     [Fact]
@@ -140,6 +139,24 @@ public class FlagBuilderTests
         Assert.Contains(flags, f => f.Name == "LOCAL YELLOW");
         Assert.Contains(flags, f => f.Name == "DEBRIS");
         Assert.Contains(flags, f => f.Name == "BLUE — CAR BEHIND");
+    }
+
+    [Fact]
+    public void DebrisFlag_UsesStripedStyle()
+    {
+        var flags = FlagBuilder.Build(BuildWithFlags(0x00000040)); // irsdk_debris
+
+        var flag = Assert.Single(flags);
+        Assert.Equal(FlagVisualStyle.DebrisStripes, flag.Style);
+    }
+
+    [Fact]
+    public void BlueFlag_UsesOrangeStripeStyle()
+    {
+        var flags = FlagBuilder.Build(BuildWithFlags(0x00000020)); // irsdk_blue
+
+        var flag = Assert.Single(flags);
+        Assert.Equal(FlagVisualStyle.BlueWithOrangeStripe, flag.Style);
     }
 
     [Fact]

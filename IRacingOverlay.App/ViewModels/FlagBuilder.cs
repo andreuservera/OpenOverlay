@@ -72,7 +72,7 @@ internal static class FlagBuilder
         }
         else if (bits.HasFlag(IrsdkFlags.Repair))
         {
-            flags.Add(new FlagState { Name = "SERVICE", BackgroundColor = "#111111", ForegroundColor = "#FF8C1A", IsCheckered = false, IsMeatball = true });
+            flags.Add(new FlagState { Name = "SERVICE", BackgroundColor = "#111111", ForegroundColor = "#FF8C1A", Style = FlagVisualStyle.Meatball });
         }
         else if (bits.HasFlag(IrsdkFlags.Furled))
         {
@@ -84,7 +84,7 @@ internal static class FlagBuilder
         }
         else if (bits.HasFlag(IrsdkFlags.Checkered))
         {
-            flags.Add(new FlagState { Name = "CHECKERED", BackgroundColor = "#FFFFFF", ForegroundColor = "#111111", IsCheckered = true, IsMeatball = false });
+            flags.Add(new FlagState { Name = "CHECKERED", BackgroundColor = "#FFFFFF", ForegroundColor = "#111111", Style = FlagVisualStyle.Checkered });
         }
         else if (bits.HasFlag(IrsdkFlags.White))
         {
@@ -117,12 +117,14 @@ internal static class FlagBuilder
         // priority chain, and both can appear alongside the primary flag and each other.
         if (bits.HasFlag(IrsdkFlags.Debris))
         {
-            flags.Add(Solid("DEBRIS", "#E8C000", "#111111"));
+            // The real "surface" flag: yellow and red diagonal stripes, not a plain solid color.
+            flags.Add(new FlagState { Name = "DEBRIS", BackgroundColor = "#E8C000", ForegroundColor = "#111111", Style = FlagVisualStyle.DebrisStripes });
         }
 
         if (bits.HasFlag(IrsdkFlags.Blue))
         {
-            flags.Add(Solid("BLUE — CAR BEHIND", "#1560D4", "#FFFFFF"));
+            // Real-world blue flag has a diagonal orange stripe, not just a solid blue field.
+            flags.Add(new FlagState { Name = "BLUE — CAR BEHIND", BackgroundColor = "#1560D4", ForegroundColor = "#FFFFFF", Style = FlagVisualStyle.BlueWithOrangeStripe });
         }
 
         return flags;
@@ -148,7 +150,6 @@ internal static class FlagBuilder
         Name = name,
         BackgroundColor = background,
         ForegroundColor = foreground,
-        IsCheckered = false,
-        IsMeatball = false,
+        Style = FlagVisualStyle.Solid,
     };
 }
