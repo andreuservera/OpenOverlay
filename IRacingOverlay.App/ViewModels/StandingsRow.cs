@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace IRacingOverlay.App.ViewModels;
 
 public sealed class StandingsRow
@@ -14,18 +16,28 @@ public sealed class StandingsRow
     public required double LastLapTime { get; init; }
     public required double BestLapTime { get; init; }
     public required bool IsMultiClass { get; init; }
+    public required int IRating { get; init; }
+    public required string LicString { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
 
-    public string GapDisplay => Position == 1 ? "Leader" : $"+{GapToLeaderSeconds:0.0}";
+    // Formatted with InvariantCulture throughout: this machine's locale uses a comma decimal
+    // separator, which silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
+    public string GapDisplay => Position == 1 ? "Leader" : $"+{GapToLeaderSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
 
-    public string PositionDisplay => IsMultiClass ? $"{Position} ({ClassPosition})" : Position.ToString();
+    public string PositionDisplay => IsMultiClass ? $"{Position} ({ClassPosition})" : Position.ToString(CultureInfo.InvariantCulture);
 
     public string LastLapDisplay => FormatLapTime(LastLapTime);
 
     public string BestLapDisplay => FormatLapTime(BestLapTime);
 
+    public string IRatingDisplay => IRating > 0
+        ? (IRating >= 1000 ? $"{(IRating / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)}k" : IRating.ToString(CultureInfo.InvariantCulture))
+        : "—";
+
+    public string LicStringDisplay => string.IsNullOrWhiteSpace(LicString) ? "—" : LicString;
+
     public string RowBackground => IsPlayer ? "#4433AAFF" : "Transparent";
 
     private static string FormatLapTime(double seconds) =>
-        seconds > 0 ? TimeSpan.FromSeconds(seconds).ToString(@"m\:ss\.fff") : "—";
+        seconds > 0 ? TimeSpan.FromSeconds(seconds).ToString(@"m\:ss\.fff", CultureInfo.InvariantCulture) : "—";
 }

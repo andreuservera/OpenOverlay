@@ -12,6 +12,8 @@
                     <ColumnDefinition Width="42"/>
                     <ColumnDefinition Width="34"/>
                     <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="50"/>
+                    <ColumnDefinition Width="55"/>
                     <ColumnDefinition Width="34"/>
                     <ColumnDefinition Width="72"/>
                     <ColumnDefinition Width="72"/>
@@ -19,10 +21,12 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="POS" Foreground="#666666" FontSize="10" FontWeight="Bold"/>
                 <TextBlock Grid.Column="2" Text="DRIVER" Foreground="#666666" FontSize="10" FontWeight="Bold" Margin="4,0,0,0"/>
-                <TextBlock Grid.Column="3" Text="LAP" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Column="4" Text="LAST" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Column="5" Text="BEST" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
-                <TextBlock Grid.Column="6" Text="GAP" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="3" Text="iR" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="4" Text="SR" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="5" Text="LAP" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="6" Text="LAST" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="7" Text="BEST" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Column="8" Text="GAP" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"/>
             </Grid>
             <Grid>
                 <TextBlock Text="Waiting for iRacing telemetry…" Foreground="#777777" FontSize="12"
@@ -48,6 +52,8 @@
                                             <ColumnDefinition Width="42"/>
                                             <ColumnDefinition Width="34"/>
                                             <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="50"/>
+                                            <ColumnDefinition Width="55"/>
                                             <ColumnDefinition Width="34"/>
                                             <ColumnDefinition Width="72"/>
                                             <ColumnDefinition Width="72"/>
@@ -61,13 +67,17 @@
                                         </Border>
                                         <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="White" FontSize="12"
                                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="3" Text="{Binding CurrentLap}" Foreground="#CCCCCC" FontSize="12"
+                                        <TextBlock Grid.Column="3" Text="{Binding IRatingDisplay}" Foreground="#9FE0A0" FontSize="12"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="4" Text="{Binding LastLapDisplay}" Foreground="#CCCCCC" FontSize="12"
+                                        <TextBlock Grid.Column="4" Text="{Binding LicStringDisplay}" Foreground="#CCCCCC" FontSize="11"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="5" Text="{Binding BestLapDisplay}" Foreground="#8FD3FF" FontSize="12"
+                                        <TextBlock Grid.Column="5" Text="{Binding CurrentLap}" Foreground="#CCCCCC" FontSize="12"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="6" Text="{Binding GapDisplay}" Foreground="#FFD24D" FontSize="12"
+                                        <TextBlock Grid.Column="6" Text="{Binding LastLapDisplay}" Foreground="#CCCCCC" FontSize="12"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="7" Text="{Binding BestLapDisplay}" Foreground="#8FD3FF" FontSize="12"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="8" Text="{Binding GapDisplay}" Foreground="#FFD24D" FontSize="12"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>

@@ -27,11 +27,15 @@ internal static class FlagBuilder
         RandomWaving = 0x00002000,
         Caution = 0x00004000,
         CautionWaving = 0x00008000,
-        Black = 0x00010000,
-        Disqualify = 0x00020000,
-        Servicible = 0x00040000, // the "meatball" flag: black with an orange dot
+        Black = 0x00010000,      // "Client has a black (penalty) flag" — directed at the local driver
+        Disqualify = 0x00020000, // "Client has been disqualified"
+        Servicible = 0x00040000, // NOT a flag — official SDK comment: "car is allowed service".
+                                  // Confirmed bug source: this was wrongly treated as the meatball
+                                  // flag, so it could outrank Green whenever it happened to be set
+                                  // (e.g. around a rolling start), showing "SERVICE" after the green
+                                  // flag had already dropped. The real meatball/repair flag is below.
         Furled = 0x00080000,
-        Repair = 0x00100000,
+        Repair = 0x00100000,     // the meatball flag: black with an orange dot — car damage, must pit
         StartHidden = 0x10000000,
         StartReady = 0x20000000,
         StartSet = 0x40000000,
@@ -62,15 +66,17 @@ internal static class FlagBuilder
             return Solid("BLACK FLAG", "#111111", "#FFFFFF");
         }
 
-        if (bits.HasFlag(IrsdkFlags.Servicible))
+        if (bits.HasFlag(IrsdkFlags.Repair))
         {
             return new FlagState { Name = "SERVICE", BackgroundColor = "#111111", ForegroundColor = "#FF8C1A", IsCheckered = false, IsMeatball = true };
         }
 
-        if (bits.HasFlag(IrsdkFlags.Furled) || bits.HasFlag(IrsdkFlags.Repair))
+        if (bits.HasFlag(IrsdkFlags.Furled))
         {
             return Solid("WARNING", "#2A2A2A", "#FF8800");
         }
+
+        // Servicible is deliberately never checked here — it isn't a flag (see enum comment above).
 
         if (bits.HasFlag(IrsdkFlags.Red))
         {

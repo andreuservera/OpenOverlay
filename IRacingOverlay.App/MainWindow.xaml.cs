@@ -11,9 +11,16 @@ namespace IRacingOverlay.App;
 
 public partial class MainWindow : Window
 {
+    // Standings only needs to feel "live," not sub-second precise — recomputing every 100ms was
+    // wasted work (and, before the continuous-ordering fix, it happened to disguise a bug: since the
+    // underlying data barely changed within a lap either way, it *looked* like updates only landed
+    // at lap boundaries). This throttles it to roughly once a second without a second timer.
+    private const int StandingsUpdateEveryNTicks = 10;
+
     private readonly IRacingConnection _connection = new();
     private readonly DispatcherTimer _uiTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly WheelSlipDetector _wheelSlipDetector = new();
+    private int _tickCount;
 
     private RelativeWidget? _relativeWidget;
     private StandingsWidget? _standingsWidget;
@@ -69,11 +76,16 @@ public partial class MainWindow : Window
 
         var session = _connection.Session;
         var relativeRows = StandingsBuilder.BuildRelative(telemetry, session);
-        var standingsRows = StandingsBuilder.BuildStandings(telemetry, session);
-
         _relativeWidget?.UpdateRows(relativeRows);
-        _standingsWidget?.UpdateRows(standingsRows);
-        _dashboard?.UpdateRows(standingsRows, relativeRows);
+        _dashboard?.UpdateRelativeRows(relativeRows);
+
+        _tickCount++;
+        if ((_standingsWidget is not null || _dashboard is not null) && _tickCount % StandingsUpdateEveryNTicks == 0)
+        {
+            var standingsRows = StandingsBuilder.BuildStandings(telemetry, session);
+            _standingsWidget?.UpdateRows(standingsRows);
+            _dashboard?.UpdateStandingsRows(standingsRows);
+        }
 
         if (_cockpitWidget is not null || _dashboard is not null)
         {

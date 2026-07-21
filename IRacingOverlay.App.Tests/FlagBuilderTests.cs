@@ -38,12 +38,26 @@ public class FlagBuilderTests
     }
 
     [Fact]
-    public void ServicibleBit_ReturnsMeatball()
+    public void RepairBit_ReturnsMeatball()
     {
-        var state = FlagBuilder.Build(BuildWithFlags(0x00040000)); // irsdk_servicible
+        var state = FlagBuilder.Build(BuildWithFlags(0x00100000)); // irsdk_repair
 
         Assert.Equal("SERVICE", state.Name);
         Assert.True(state.IsMeatball);
+    }
+
+    [Fact]
+    public void ServicibleBit_IsNotAFlag_GreenStillWins()
+    {
+        // Regression test: irsdk_servicible ("car is allowed service") is not a flag at all per the
+        // official SDK comment, but was previously mistaken for the meatball flag. It can legitimately
+        // be set at the same time as green (e.g. around a rolling start) and must never override it.
+        const uint green = 0x00000004;
+        const uint servicible = 0x00040000;
+
+        var state = FlagBuilder.Build(BuildWithFlags(green | servicible));
+
+        Assert.Equal("GREEN", state.Name);
     }
 
     [Fact]

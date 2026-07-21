@@ -17,7 +17,7 @@ public class WheelSlipDetectorTests
     }
 
     [Fact]
-    public void SuddenRpmSpike_FlagsSlip()
+    public void SuddenRpmSpike_FlagsSlipAfterDebounceWindow()
     {
         var detector = new WheelSlipDetector();
 
@@ -27,9 +27,60 @@ public class WheelSlipDetectorTests
         }
 
         // RPM jumps well above what 30 m/s in this gear implies — wheel spinning free of the road.
-        var slipping = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
+        // Requires two consecutive spiking ticks (debounce against single-sample noise).
+        var firstSpikeTick = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
+        var secondSpikeTick = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
 
-        Assert.True(slipping);
+        Assert.False(firstSpikeTick);
+        Assert.True(secondSpikeTick);
+    }
+
+    [Fact]
+    public void SingleTickNoiseSpike_DoesNotFlag()
+    {
+        var detector = new WheelSlipDetector();
+
+        for (var i = 0; i < 10; i++)
+        {
+            detector.Update(rpm: 3000, speedMps: 30, throttle: 0.8f, gear: 3);
+        }
+
+        // One noisy tick above threshold, immediately followed by a return to normal.
+        var noisy = detector.Update(rpm: 4200, speedMps: 30, throttle: 0.8f, gear: 3);
+        var recovered = detector.Update(rpm: 3000, speedMps: 30, throttle: 0.8f, gear: 3);
+
+        Assert.False(noisy);
+        Assert.False(recovered);
+    }
+
+    [Fact]
+    public void GearChange_DoesNotFalselyFlagSlip()
+    {
+        // Regression test for what live testing surfaced: corner exits bunch up gear shifts, and a
+        // gear change alone shifts the RPM-to-speed ratio just as much as real wheelspin would. A
+        // shared baseline across gears made every shift look like a slip event ("flashing too much on
+        // corner exits"). Each gear now has its own learned baseline.
+        var detector = new WheelSlipDetector();
+
+        // Learn a stable baseline in 2nd gear.
+        for (var i = 0; i < 10; i++)
+        {
+            detector.Update(rpm: 5000, speedMps: 20, throttle: 0.9f, gear: 2);
+        }
+
+        // Shift to 3rd: same speed, much lower RPM (as a normal upshift would produce) — the ratio
+        // for 3rd hasn't been learned yet, so the first sample there must not be flagged as a spike.
+        var afterUpshift = detector.Update(rpm: 3200, speedMps: 20, throttle: 0.9f, gear: 3);
+        Assert.False(afterUpshift);
+
+        // Continue steadily in 3rd — still shouldn't flag.
+        var stillSteady = false;
+        for (var i = 0; i < 10; i++)
+        {
+            stillSteady |= detector.Update(rpm: 3200 + i * 5, speedMps: 20 + i * 0.3f, throttle: 0.9f, gear: 3);
+        }
+
+        Assert.False(stillSteady);
     }
 
     [Fact]

@@ -18,9 +18,9 @@ public partial class DashboardWindow : Window
     private static readonly Color AbsDim = Color.FromRgb(0x80, 0x18, 0x18);
     private static readonly Color AbsBright = Color.FromRgb(0xFF, 0x30, 0x30);
 
-    private static readonly Color TcIdle = Color.FromRgb(0x1E, 0x2E, 0x1E);
-    private static readonly Color TcDim = Color.FromRgb(0x18, 0x80, 0x18);
-    private static readonly Color TcBright = Color.FromRgb(0x30, 0xFF, 0x30);
+    private static readonly Color TcIdle = Color.FromRgb(0x22, 0x1E, 0x2E);
+    private static readonly Color TcDim = Color.FromRgb(0x60, 0x18, 0x80);
+    private static readonly Color TcBright = Color.FromRgb(0xB0, 0x30, 0xFF);
 
     private bool _blinkPhase;
 
@@ -48,11 +48,9 @@ public partial class DashboardWindow : Window
         WindowState = WindowState.Maximized;
     }
 
-    public void UpdateRows(IReadOnlyList<StandingsRow> standings, IReadOnlyList<RelativeRow> relative)
-    {
-        Standings.SetRows(standings);
-        Relative.SetRows(relative);
-    }
+    public void UpdateStandingsRows(IReadOnlyList<StandingsRow> standings) => Standings.SetRows(standings);
+
+    public void UpdateRelativeRows(IReadOnlyList<RelativeRow> relative) => Relative.SetRows(relative);
 
     public void UpdateCockpit(CockpitState state)
     {

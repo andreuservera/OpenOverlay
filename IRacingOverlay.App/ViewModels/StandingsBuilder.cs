@@ -60,6 +60,15 @@ internal static class StandingsBuilder
             }
 
             var isPlayer = driver.CarIdx == playerCarIdx;
+
+            // CurrentLap == -1 is iRacing's own "never left the garage this session" sentinel —
+            // never include such a car regardless of any other signal (see BuildStandings for the
+            // live-confirmed failure mode this guards against: a session's placeholder AI roster).
+            if (!isPlayer && carIdxLap[driver.CarIdx] < 0)
+            {
+                continue;
+            }
+
             var hasStarted = isPlayer
                 || carIdxLap[driver.CarIdx] > 0
                 || carIdxEstTime[driver.CarIdx] > 0
@@ -106,11 +115,12 @@ internal static class StandingsBuilder
     }
 
     /// <summary>
-    /// Prefers iRacing's own official race position (CarIdxPosition), which is only meaningful once
-    /// a session is actually scoring (practice/qualify/race with the field classified). A solo/offline
-    /// Test session never populates it, so this falls back to ordering by track position ourselves —
-    /// the same CarIdxLap+CarIdxEstTime technique BuildRelative uses — so standings still shows at
-    /// least the player (and anyone else out there) instead of going blank.
+    /// Always orders and computes gaps continuously from CarIdxLap+CarIdxEstTime (the same technique
+    /// BuildRelative uses), rather than iRacing's own CarIdxPosition/CarIdxF2Time. Those official
+    /// values are only recomputed at scoring-line crossings (effectively once per lap), which is
+    /// exactly the "standings only updates when finishing a lap" behavior reported live — using them
+    /// made the whole table look frozen mid-lap. CarIdxPosition is still used as one signal for "has
+    /// this car actually started," just not for the displayed position/gap numbers themselves.
     /// </summary>
     public static List<StandingsRow> BuildStandings(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
@@ -119,11 +129,15 @@ internal static class StandingsBuilder
             return [];
         }
 
+        if (!telemetry.HasVariable(TelemetryVarNames.CarIdxLap) ||
+            !telemetry.HasVariable(TelemetryVarNames.CarIdxEstTime))
+        {
+            return [];
+        }
+
+        var currentLaps = telemetry.GetIntArray(TelemetryVarNames.CarIdxLap);
+        var carIdxEstTime = telemetry.GetFloatArray(TelemetryVarNames.CarIdxEstTime);
         var positions = TryGetIntArray(telemetry, TelemetryVarNames.CarIdxPosition);
-        var classPositions = TryGetIntArray(telemetry, TelemetryVarNames.CarIdxClassPosition);
-        var currentLaps = TryGetIntArray(telemetry, TelemetryVarNames.CarIdxLap);
-        var carIdxEstTime = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxEstTime);
-        var gapToLeader = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxF2Time);
         var lastLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxLastLapTime);
         var bestLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxBestLapTime);
         var onPitRoad = TryGetBoolArray(telemetry, TelemetryVarNames.CarIdxOnPitRoad);
@@ -136,40 +150,19 @@ internal static class StandingsBuilder
             .Count();
         var isMultiClass = distinctClasses > 1;
 
-        var hasOfficialPositions = positions is not null
-            && playerCarIdx >= 0 && playerCarIdx < positions.Length
-            && positions[playerCarIdx] > 0;
-
-        // Same shared-reference fix as BuildRelative: one lap time for every car's lap-count term,
-        // not each car's own, so the fallback ordering doesn't get skewed by lap-time data quality.
-        var refLapTime = playerCarIdx >= 0 ? GetReferenceLapTime(playerCarIdx, lastLaps, bestLaps) : 0;
-
-        double TimePosition(int carIdx)
+        // Standings needs to order the *whole* field, including cars on laps the player hasn't
+        // reached yet, so — unlike BuildRelative, which just excludes cars it can't place — this
+        // falls back to any car's recorded pace in the field when the player hasn't set a lap time.
+        var refLapTime = GetReferenceLapTime(playerCarIdx, lastLaps, bestLaps);
+        if (refLapTime <= 0)
         {
-            if (currentLaps is null || carIdxEstTime is null || carIdx >= currentLaps.Length || carIdx >= carIdxEstTime.Length)
-            {
-                return 0;
-            }
-
-            return currentLaps[carIdx] * refLapTime + carIdxEstTime[carIdx];
+            refLapTime = GetAnyRecordedLapTime(lastLaps, bestLaps);
         }
 
-        StandingsRow BuildRow(DriverEntry driver, int position, int classPosition) => new()
-        {
-            CarIdx = driver.CarIdx,
-            Position = position,
-            ClassPosition = classPosition,
-            Name = driver.UserName,
-            CarNumber = driver.CarNumber,
-            IsPlayer = driver.CarIdx == playerCarIdx,
-            OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
-            CurrentLap = currentLaps is not null && driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : 0,
-            GapToLeaderSeconds = gapToLeader is not null && driver.CarIdx < gapToLeader.Length ? gapToLeader[driver.CarIdx] : 0,
-            LastLapTime = lastLaps is not null && driver.CarIdx < lastLaps.Length ? lastLaps[driver.CarIdx] : 0,
-            BestLapTime = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0,
-            IsMultiClass = isMultiClass,
-            ClassColor = FormatClassColor(driver.CarClassColor),
-        };
+        double TimePosition(int carIdx) =>
+            carIdx < currentLaps.Length && carIdx < carIdxEstTime.Length
+                ? currentLaps[carIdx] * refLapTime + carIdxEstTime[carIdx]
+                : 0;
 
         var eligible = new List<DriverEntry>();
         foreach (var driver in driverInfo.Drivers)
@@ -179,54 +172,92 @@ internal static class StandingsBuilder
                 continue;
             }
 
-            if (hasOfficialPositions)
+            var isPlayer = driver.CarIdx == playerCarIdx;
+
+            // CurrentLap == -1 is iRacing's own "never left the garage this session" sentinel.
+            // Confirmed live: a solo Test session's placeholder AI roster all sat at Lap -1 but
+            // still carried an assigned CarIdxPosition, which let them slip through as "eligible" and
+            // show up as a full grid of cars all tied on an identical, meaningless gap. A real
+            // position assignment does not override a car that plainly never went on track.
+            var lap = driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : -1;
+            if (!isPlayer && lap < 0)
             {
-                if (driver.CarIdx >= positions!.Length || positions[driver.CarIdx] <= 0)
-                {
-                    continue; // not currently classified (e.g. not yet on track)
-                }
+                continue;
             }
-            else
+
+            var hasOfficialPosition = positions is not null && driver.CarIdx < positions.Length && positions[driver.CarIdx] > 0;
+            var hasStarted = isPlayer
+                || hasOfficialPosition
+                || lap > 0
+                || (driver.CarIdx < carIdxEstTime.Length && carIdxEstTime[driver.CarIdx] > 0);
+            if (!hasStarted)
             {
-                var hasStarted = driver.CarIdx == playerCarIdx
-                    || (currentLaps is not null && driver.CarIdx < currentLaps.Length && currentLaps[driver.CarIdx] > 0)
-                    || (carIdxEstTime is not null && driver.CarIdx < carIdxEstTime.Length && carIdxEstTime[driver.CarIdx] > 0);
-                if (!hasStarted)
-                {
-                    continue;
-                }
+                continue; // car not yet out on track this session
             }
 
             eligible.Add(driver);
         }
 
-        List<StandingsRow> rows;
-        if (hasOfficialPositions)
+        var ordered = eligible.OrderByDescending(d => TimePosition(d.CarIdx)).ToList();
+        var leaderTimePosition = ordered.Count > 0 ? TimePosition(ordered[0].CarIdx) : 0;
+        var classRank = new Dictionary<int, int>();
+        var rows = new List<StandingsRow>();
+
+        for (var i = 0; i < ordered.Count; i++)
         {
-            rows = eligible
-                .Select(driver => BuildRow(
-                    driver,
-                    positions![driver.CarIdx],
-                    classPositions is not null && driver.CarIdx < classPositions.Length ? classPositions[driver.CarIdx] : positions[driver.CarIdx]))
-                .ToList();
-        }
-        else
-        {
-            var ordered = eligible.OrderByDescending(d => TimePosition(d.CarIdx)).ToList();
-            var classRank = new Dictionary<int, int>();
-            rows = [];
-            for (var i = 0; i < ordered.Count; i++)
+            var driver = ordered[i];
+            classRank.TryGetValue(driver.CarClassID, out var rank);
+            rank++;
+            classRank[driver.CarClassID] = rank;
+
+            rows.Add(new StandingsRow
             {
-                var driver = ordered[i];
-                classRank.TryGetValue(driver.CarClassID, out var rank);
-                rank++;
-                classRank[driver.CarClassID] = rank;
-                rows.Add(BuildRow(driver, i + 1, rank));
+                CarIdx = driver.CarIdx,
+                Position = i + 1,
+                ClassPosition = rank,
+                Name = driver.UserName,
+                CarNumber = driver.CarNumber,
+                IsPlayer = driver.CarIdx == playerCarIdx,
+                OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                CurrentLap = driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : 0,
+                GapToLeaderSeconds = leaderTimePosition - TimePosition(driver.CarIdx),
+                LastLapTime = lastLaps is not null && driver.CarIdx < lastLaps.Length ? lastLaps[driver.CarIdx] : 0,
+                BestLapTime = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0,
+                IsMultiClass = isMultiClass,
+                IRating = driver.IRating,
+                LicString = driver.LicString,
+                ClassColor = FormatClassColor(driver.CarClassColor),
+            });
+        }
+
+        return rows;
+    }
+
+    private static double GetAnyRecordedLapTime(float[]? lastLaps, float[]? bestLaps)
+    {
+        if (lastLaps is not null)
+        {
+            foreach (var t in lastLaps)
+            {
+                if (t > 0)
+                {
+                    return t;
+                }
             }
         }
 
-        rows.Sort((a, b) => a.Position.CompareTo(b.Position));
-        return rows;
+        if (bestLaps is not null)
+        {
+            foreach (var t in bestLaps)
+            {
+                if (t > 0)
+                {
+                    return t;
+                }
+            }
+        }
+
+        return 0;
     }
 
     private static double GetReferenceLapTime(int carIdx, float[]? lastLaps, float[]? bestLaps)

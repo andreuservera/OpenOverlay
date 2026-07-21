@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace IRacingOverlay.App.ViewModels;
 
 public sealed class RelativeRow
@@ -10,9 +12,13 @@ public sealed class RelativeRow
     public required bool OnPitRoad { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
 
+    // InvariantCulture: this machine's locale uses a comma decimal separator, which silently turned
+    // "+0.0" into "+0,0" in the live UI — a real display bug, not just a cosmetic preference.
     public string GapDisplay => IsPlayer
         ? "—"
-        : (GapSeconds <= 0 ? $"-{Math.Abs(GapSeconds):0.0}" : $"+{GapSeconds:0.0}");
+        : (GapSeconds <= 0
+            ? $"-{Math.Abs(GapSeconds).ToString("0.0", CultureInfo.InvariantCulture)}"
+            : $"+{GapSeconds.ToString("0.0", CultureInfo.InvariantCulture)}");
 
     public string RowBackground => IsPlayer ? "#4433AAFF" : "Transparent";
 }

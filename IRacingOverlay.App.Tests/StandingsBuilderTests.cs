@@ -218,6 +218,41 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_GhostAiWithAssignedPositionButNeverStarted_IsExcluded()
+    {
+        // Regression test for what live testing surfaced: a solo Test session's placeholder AI
+        // roster all sat at CarIdxLap == -1 (iRacing's "never left the garage" sentinel) but still
+        // carried an assigned CarIdxPosition, which let them slip through as "eligible" and show up
+        // as a full grid of cars all tied on an identical, meaningless gap to the actual player.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxPosition", [1, 2, 3, 0]);
+            w.SetIntArray("CarIdxLap", [5, -1, -1, 0]);
+            w.SetFloatArray("CarIdxEstTime", [12.5f, 0, 0, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "Ghost1", CarNumber = "9" },
+                    new DriverEntry { CarIdx = 2, UserName = "Ghost2", CarNumber = "11" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        var row = Assert.Single(rows);
+        Assert.True(row.IsPlayer);
+    }
+
+    [Fact]
     public void BuildStandings_NoOfficialPosition_OrdersMultipleCarsByTrackPosition()
     {
         var builder = StandingsVars();
@@ -251,11 +286,14 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildStandings_MultipleClasses_FlagsMultiClassAndTracksClassPosition()
     {
+        // Position/class position now come from the continuous CarIdxLap+CarIdxEstTime ordering
+        // (see BuildStandings doc comment), not the quantized official CarIdxPosition/ClassPosition —
+        // car 0 is further along the same lap, so it leads overall and leads its own (only) class member.
         var builder = StandingsVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
-            w.SetIntArray("CarIdxPosition", [1, 2, 0, 0]);
-            w.SetIntArray("CarIdxClassPosition", [1, 1, 0, 0]); // each leads their own class
+            w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [20.0f, 15.0f, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [90.0f, 95.0f, 0, 0]);
         });
 
@@ -285,8 +323,8 @@ public class StandingsBuilderTests
         var builder = StandingsVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
-            w.SetIntArray("CarIdxPosition", [1, 2, 0, 0]);
-            w.SetIntArray("CarIdxClassPosition", [1, 2, 0, 0]);
+            w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [20.0f, 15.0f, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -306,5 +344,70 @@ public class StandingsBuilderTests
 
         var leader = rows.Single(r => r.CarIdx == 0);
         Assert.Equal("1", leader.PositionDisplay);
+    }
+
+    [Fact]
+    public void BuildStandings_UpdatesContinuouslyMidLap_NotJustAtLapBoundaries()
+    {
+        // Regression test for the reported "standings only updates when finishing a lap" bug: gap
+        // and order must change as CarIdxEstTime changes mid-lap, not just when CarIdxLap increments.
+        var builder = StandingsVars();
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "9" },
+                ],
+            },
+        };
+
+        // Rival (car 1) is out front leading in both snapshots; the player (car 0) is the one whose
+        // gap-to-leader should shrink as they close in, mid-lap, with no lap boundary crossed.
+        var early = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 3, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [10.0f, 20.0f, 0, 0]); // player 10s behind the rival
+        });
+        var laterSameLap = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 3, 0, 0]); // still the same lap
+            w.SetFloatArray("CarIdxEstTime", [18.0f, 20.0f, 0, 0]); // player has closed to 2s behind
+        });
+
+        var earlyPlayer = StandingsBuilder.BuildStandings(early, session).Single(r => r.CarIdx == 0);
+        var laterPlayer = StandingsBuilder.BuildStandings(laterSameLap, session).Single(r => r.CarIdx == 0);
+
+        Assert.Equal(10.0, earlyPlayer.GapToLeaderSeconds, precision: 3);
+        Assert.Equal(2.0, laterPlayer.GapToLeaderSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void BuildStandings_IncludesIRatingAndLicenseFromDriverInfo()
+    {
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [1, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [1.0f, 0, 0, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers = [new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", IRating = 3250, LicString = "A 4.32" }],
+            },
+        };
+
+        var row = Assert.Single(StandingsBuilder.BuildStandings(snapshot, session));
+
+        Assert.Equal(3250, row.IRating);
+        Assert.Equal("3.3k", row.IRatingDisplay);
+        Assert.Equal("A 4.32", row.LicStringDisplay);
     }
 }
