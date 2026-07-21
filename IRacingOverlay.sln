@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Sdk.Tests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.App", "IRacingOverlay.App\IRacingOverlay.App.csproj", "{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.App.Tests", "IRacingOverlay.App.Tests\IRacingOverlay.App.Tests.csproj", "{1B37AC04-5285-43A1-9059-81935C3BD367}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{90BC248C-E7FD-4A60-8884-7D19FD32F9F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B37AC04-5285-43A1-9059-81935C3BD367}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B37AC04-5285-43A1-9059-81935C3BD367}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B37AC04-5285-43A1-9059-81935C3BD367}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B37AC04-5285-43A1-9059-81935C3BD367}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

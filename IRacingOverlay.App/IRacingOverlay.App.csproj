@@ -24,4 +24,8 @@
     <Using Remove="System.Drawing" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="IRacingOverlay.App.Tests" />
+  </ItemGroup>
+
 </Project>

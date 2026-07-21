@@ -16,6 +16,7 @@ public partial class MainWindow : Window
 
     private RelativeWidget? _relativeWidget;
     private StandingsWidget? _standingsWidget;
+    private CockpitWidget? _cockpitWidget;
     private DashboardWindow? _dashboard;
 
     public MainWindow()
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
             _connection.Stop();
             _relativeWidget?.Close();
             _standingsWidget?.Close();
+            _cockpitWidget?.Close();
             _dashboard?.Close();
         };
 
@@ -67,6 +69,11 @@ public partial class MainWindow : Window
         _relativeWidget?.UpdateRows(relativeRows);
         _standingsWidget?.UpdateRows(standingsRows);
         _dashboard?.UpdateRows(standingsRows, relativeRows);
+
+        if (_cockpitWidget is not null)
+        {
+            _cockpitWidget.UpdateState(CockpitBuilder.Build(telemetry, session));
+        }
     }
 
     private void UpdateDebugText(TelemetrySnapshot telemetry)
@@ -115,6 +122,24 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CockpitCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (CockpitCheckBox.IsChecked == true)
+        {
+            _cockpitWidget ??= new CockpitWidget();
+            if (_cockpitWidget.HasSavedLayout)
+            {
+                _cockpitWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _cockpitWidget.Show();
+        }
+        else
+        {
+            _cockpitWidget?.Hide();
+        }
+    }
+
     private void EditModeCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         var editMode = EditModeCheckBox.IsChecked == true;
@@ -126,6 +151,11 @@ public partial class MainWindow : Window
         if (_standingsWidget is not null)
         {
             _standingsWidget.IsEditMode = editMode;
+        }
+
+        if (_cockpitWidget is not null)
+        {
+            _cockpitWidget.IsEditMode = editMode;
         }
     }
 

@@ -31,6 +31,11 @@ public sealed class WeekendInfoSection
 public sealed class DriverInfoSection
 {
     public int DriverCarIdx { get; set; }
+    public double DriverCarSLFirstRPM { get; set; }
+    public double DriverCarSLShiftRPM { get; set; }
+    public double DriverCarSLLastRPM { get; set; }
+    public double DriverCarSLBlinkRPM { get; set; }
+    public double DriverCarRedLine { get; set; }
     public List<DriverEntry> Drivers { get; set; } = [];
 }
 

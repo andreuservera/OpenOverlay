@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="IRacingOverlay.Sdk.Tests" />
+    <InternalsVisibleTo Include="IRacingOverlay.App.Tests" />
   </ItemGroup>
 
 </Project>

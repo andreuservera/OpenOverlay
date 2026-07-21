@@ -7,7 +7,7 @@ namespace IRacingOverlay.Sdk.Tests;
 /// Builds a synthetic byte image that mimics iRacing's real shared-memory layout, so the
 /// binary parsing code can be exercised without a live iRacing session.
 /// </summary>
-internal sealed class SyntheticMemoryBuilder
+public sealed class SyntheticMemoryBuilder
 {
     public sealed class VarDef
     {
@@ -21,6 +21,9 @@ internal sealed class SyntheticMemoryBuilder
 
     private readonly List<VarDef> _vars = [];
     private int _cursor;
+
+    /// <summary>Total bytes a tick buffer needs to hold every var declared so far via AddVar.</summary>
+    public int TotalSize => _cursor;
 
     public VarDef AddVar(string name, IrsdkVarType type, int count = 1, string unit = "", string desc = "")
     {
