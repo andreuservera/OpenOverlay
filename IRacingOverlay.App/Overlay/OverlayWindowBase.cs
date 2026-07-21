@@ -17,7 +17,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     private readonly string _widgetName;
     private bool _isEditMode;
 
-    protected OverlayWindowBase(string widgetName)
+    protected OverlayWindowBase(string widgetName, double defaultLeft = 100, double defaultTop = 100)
     {
         _widgetName = widgetName;
 
@@ -36,11 +36,18 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
             Width = saved.Width;
             Height = saved.Height;
             _isEditMode = false;
+            HasSavedLayout = true;
         }
         else
         {
             // No saved position yet — start editable so the user can place it the first time.
+            // Window.Left/Top default to NaN until first shown; give them real values up front
+            // since IsEditMode can flip (and try to persist Left/Top) before Show() is ever called.
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = defaultLeft;
+            Top = defaultTop;
             _isEditMode = true;
+            HasSavedLayout = false;
         }
 
         SourceInitialized += (_, _) => ApplyClickThrough();
@@ -53,6 +60,9 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         };
         Closing += (_, _) => SaveLayout();
     }
+
+    /// <summary>True once this widget has a persisted position/size from a previous run.</summary>
+    public bool HasSavedLayout { get; private set; }
 
     public bool IsEditMode
     {
@@ -84,8 +94,17 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         }
     }
 
-    private void SaveLayout() =>
+    private void SaveLayout()
+    {
+        // Left/Top/Width/Height can still be NaN in edge cases (e.g. closed before ever shown);
+        // System.Text.Json throws on NaN, so skip persisting rather than crash.
+        if (double.IsNaN(Left) || double.IsNaN(Top) || double.IsNaN(Width) || double.IsNaN(Height))
+        {
+            return;
+        }
+
         WidgetLayoutStore.Save(_widgetName, new WidgetLayout(Left, Top, Width, Height));
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

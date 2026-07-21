@@ -5,7 +5,7 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class RelativeWidget : OverlayWindowBase
 {
-    public RelativeWidget() : base("Relative")
+    public RelativeWidget() : base("Relative", defaultLeft: 100, defaultTop: 100)
     {
         InitializeComponent();
         DataContext = this;

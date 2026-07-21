@@ -82,7 +82,13 @@ public partial class MainWindow : Window
         if (RelativeCheckBox.IsChecked == true)
         {
             _relativeWidget ??= new RelativeWidget();
-            _relativeWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            // A brand-new widget (no saved position yet) starts in edit mode so it can be placed;
+            // only force it from the checkbox once it actually has a position worth locking.
+            if (_relativeWidget.HasSavedLayout)
+            {
+                _relativeWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
             _relativeWidget.Show();
         }
         else
@@ -96,7 +102,11 @@ public partial class MainWindow : Window
         if (StandingsCheckBox.IsChecked == true)
         {
             _standingsWidget ??= new StandingsWidget();
-            _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            if (_standingsWidget.HasSavedLayout)
+            {
+                _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
             _standingsWidget.Show();
         }
         else

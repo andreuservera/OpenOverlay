@@ -5,7 +5,7 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class StandingsWidget : OverlayWindowBase
 {
-    public StandingsWidget() : base("Standings")
+    public StandingsWidget() : base("Standings", defaultLeft: 420, defaultTop: 100)
     {
         InitializeComponent();
         DataContext = this;
