@@ -19,7 +19,6 @@ public partial class MainWindow : Window
 
     private readonly IRacingConnection _connection = new();
     private readonly DispatcherTimer _uiTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
-    private readonly WheelSlipDetector _wheelSlipDetector = new();
     private int _tickCount;
 
     private RelativeWidget? _relativeWidget;
@@ -92,7 +91,7 @@ public partial class MainWindow : Window
 
         if (_cockpitWidget is not null || _dashboard is not null)
         {
-            var cockpitState = CockpitBuilder.Build(telemetry, session, _wheelSlipDetector);
+            var cockpitState = CockpitBuilder.Build(telemetry, session);
             _cockpitWidget?.UpdateState(cockpitState);
             _dashboard?.UpdateCockpit(cockpitState);
         }

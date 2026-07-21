@@ -3,7 +3,11 @@ using IRacingOverlay.Sdk;
 namespace IRacingOverlay.App.ViewModels;
 
 /// <summary>
-/// Builds the gear/shift-light/ABS/TC/proximity display state for CockpitWidget.
+/// Builds the gear/shift-light/ABS/proximity display state for CockpitWidget. There's no TC bar:
+/// iRacing exposes no traction-control-intervention telemetry and no wheel-speed data to derive one
+/// from (confirmed — a deliberate anti-cheat limitation, the same wall the SimHub community has hit),
+/// so rather than ship an approximation with no ground truth to verify against, that indicator was
+/// dropped entirely.
 /// </summary>
 internal static class CockpitBuilder
 {
@@ -12,12 +16,11 @@ internal static class CockpitBuilder
     // this — combined with CarLeftRight for which side — is an approximation, not a measurement.
     private const double CarLengthMeters = 4.8;
 
-    public static CockpitState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session, WheelSlipDetector wheelSlipDetector)
+    public static CockpitState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
         var gear = BuildGearText(telemetry);
         var (litCount, blink) = BuildShiftLights(telemetry, session);
         var abs = telemetry.HasVariable(TelemetryVarNames.BrakeAbsActive) && telemetry.GetBool(TelemetryVarNames.BrakeAbsActive);
-        var tc = BuildWheelSlip(telemetry, wheelSlipDetector);
         var (left, right) = BuildProximity(telemetry, session);
 
         return new CockpitState
@@ -26,33 +29,9 @@ internal static class CockpitBuilder
             ShiftLightsLit = litCount,
             ShiftBlink = blink,
             AbsActive = abs,
-            TcActive = tc,
             LeftProximity = left,
             RightProximity = right,
         };
-    }
-
-    /// <summary>
-    /// See WheelSlipDetector for why this exists: iRacing has no real TC-intervention telemetry, so
-    /// this reuses the "TC" bar to show a wheelspin heuristic instead — the same physical event a real
-    /// traction control system would be reacting to, even though we can't see the system's own decision.
-    /// </summary>
-    private static bool BuildWheelSlip(TelemetrySnapshot telemetry, WheelSlipDetector wheelSlipDetector)
-    {
-        if (!telemetry.HasVariable(TelemetryVarNames.Rpm) ||
-            !telemetry.HasVariable(TelemetryVarNames.Speed) ||
-            !telemetry.HasVariable(TelemetryVarNames.Throttle) ||
-            !telemetry.HasVariable(TelemetryVarNames.Gear))
-        {
-            return false;
-        }
-
-        var rpm = telemetry.GetFloat(TelemetryVarNames.Rpm);
-        var speed = telemetry.GetFloat(TelemetryVarNames.Speed);
-        var throttle = telemetry.GetFloat(TelemetryVarNames.Throttle);
-        var gear = telemetry.GetInt(TelemetryVarNames.Gear);
-
-        return wheelSlipDetector.Update(rpm, speed, throttle, gear);
     }
 
     private static string BuildGearText(TelemetrySnapshot telemetry)
