@@ -6,3 +6,4 @@ publish/
 .idea/
 *.DotSettings.user
 TestResults/
+*.zip
