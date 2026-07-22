@@ -11,7 +11,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- AssemblyName is independent of the project file name / root namespace above — this is the
+         branding name users see (exe file name, taskbar, Explorer), while the project and all C#
+         namespaces stay IRacingOverlay.* internally. -->
+    <AssemblyName>OpenOverlay</AssemblyName>
+    <Product>OpenOverlay</Product>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\icon.ico" />
+  </ItemGroup>
 
   <!--
     UseWindowsForms injects a global "using System.Windows.Forms;" which collides with WPF's
