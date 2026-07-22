@@ -8,6 +8,20 @@ namespace IRacingOverlay.Sdk.Interop;
 /// </summary>
 public static class IrsdkParser
 {
+    // iRacing writes the session-info YAML blob using the Windows-1252 codepage, not UTF-8 —
+    // decoding it as UTF-8 turns any accented or special character (é, ñ, ö, …) into a replacement
+    // glyph, since almost no single high-order byte is valid UTF-8 on its own. Registering the
+    // codepages provider is required on .NET Core/5+, where 1252 isn't available by default. Both
+    // steps must happen in the static constructor's *body* — a field initializer runs before it,
+    // not after, so GetEncoding(1252) would fail if it ran as a field initializer instead.
+    private static readonly Encoding SessionInfoEncoding;
+
+    static IrsdkParser()
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        SessionInfoEncoding = Encoding.GetEncoding(1252);
+    }
+
     public static IrsdkHeader ParseHeader(ReadOnlySpan<byte> buffer)
     {
         var varBufs = new IrsdkVarBuf[IrsdkConstants.MaxBufs];
@@ -74,7 +88,7 @@ public static class IrsdkParser
             slice = slice[..nul];
         }
 
-        return Encoding.UTF8.GetString(slice);
+        return SessionInfoEncoding.GetString(slice);
     }
 
     private static int ReadInt32(ReadOnlySpan<byte> buffer, int offset) =>

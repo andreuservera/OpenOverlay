@@ -1,30 +1,28 @@
+using System.Globalization;
 using System.Windows.Controls;
-using System.Windows.Media;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class CockpitPanel : UserControl
 {
-    private static readonly Color AbsIdle = Color.FromRgb(0x2E, 0x1E, 0x1E);
-    private static readonly Color AbsDim = Color.FromRgb(0x80, 0x18, 0x18);
-    private static readonly Color AbsBright = Color.FromRgb(0xFF, 0x30, 0x30);
-
     private bool _blinkPhase;
 
     public CockpitPanel()
     {
         InitializeComponent();
-        AbsBar.Configure(AbsIdle, AbsDim, AbsBright);
     }
 
     public void UpdateState(CockpitState state)
     {
         _blinkPhase = !_blinkPhase;
 
-        ShiftGear.UpdateState(state.Gear, state.ShiftLightsLit, state.ShiftBlink, _blinkPhase);
-        AbsBar.SetActive(state.AbsActive, _blinkPhase);
-        LeftProximity.SetFraction(state.LeftProximity);
-        RightProximity.SetFraction(state.RightProximity);
+        ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink, _blinkPhase);
+        ShiftGear.SetGear(state.Gear);
+        AbsIndicator.SetActive(state.AbsActive, _blinkPhase);
+        SpeedText.Text = state.SpeedKph > 0 ? state.SpeedKph.ToString("0", CultureInfo.InvariantCulture) : "—";
+        RpmText.Text = state.Rpm > 0 ? state.Rpm.ToString("0", CultureInfo.InvariantCulture) : "—";
+        LeftProximity.SetBand(state.LeftProximity.BandStart, state.LeftProximity.BandEnd);
+        RightProximity.SetBand(state.RightProximity.BandStart, state.RightProximity.BandEnd);
     }
 }

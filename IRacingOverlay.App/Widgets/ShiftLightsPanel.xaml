@@ -1,0 +1,8 @@
+<UserControl x:Class="IRacingOverlay.App.Widgets.ShiftLightsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <!-- Dots are added in code-behind, one per CockpitState.ShiftLightCount, so the count only
+         needs to change in one place. -->
+    <StackPanel x:Name="LightsStack" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+</UserControl>

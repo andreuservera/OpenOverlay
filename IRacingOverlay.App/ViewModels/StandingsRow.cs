@@ -18,8 +18,11 @@ public sealed class StandingsRow
     public required bool IsMultiClass { get; init; }
     public required int IRating { get; init; }
     public required string LicString { get; init; }
+    public required double IRatingDelta { get; init; }
     public required bool IsSessionFastestLap { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
+    public int CarClassID { get; init; }
+    public string CarClassName { get; init; } = "";
 
     // Formatted with InvariantCulture throughout: this machine's locale uses a comma decimal
     // separator, which silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
@@ -41,7 +44,39 @@ public sealed class StandingsRow
 
     public string LicStringDisplay => string.IsNullOrWhiteSpace(LicString) ? "—" : LicString;
 
-    public string RowBackground => IsPlayer ? "#4433AAFF" : "Transparent";
+    // iRacing's own license-bar colors: Rookie red, D orange, C yellow, B green, A blue, Pro purple.
+    // Falls back to gray for a blank/unrecognized license string rather than guessing.
+    public string LicenseColor => (string.IsNullOrWhiteSpace(LicString) ? ' ' : char.ToUpperInvariant(LicString[0])) switch
+    {
+        'R' => "#E0413D",
+        'D' => "#E08A2E",
+        'C' => "#E0C93D",
+        'B' => "#3DBF5C",
+        'A' => "#3D7FE0",
+        'P' => "#9B4DE0",
+        _ => "#666666",
+    };
+
+    // Estimated points swing for the current race — StandingsBuilder's pairwise-duel approximation
+    // of iRacing's undisclosed iRating formula. Direction and rough magnitude only; iRacing has
+    // never published the exact constant, so this won't necessarily match the real post-race number.
+    public string IRatingDeltaDisplay => IRating > 0
+        ? (IRatingDelta >= 0 ? $"+{Math.Round(IRatingDelta):0}" : Math.Round(IRatingDelta).ToString(CultureInfo.InvariantCulture))
+        : "—";
+
+    public string IRatingDeltaForeground => IRatingDelta switch
+    {
+        > 0 => "#3DDC7A",
+        < 0 => "#FF4D4D",
+        _ => "#999999",
+    };
+
+    // Player keeps the brighter blue "find yourself" highlight; every other row is tinted by its
+    // own class color so classes read apart at a glance without drowning the text. iRacing's class
+    // colors ARE genuinely distinct hues (confirmed live: e.g. 0x33ceff vs 0xffda59) — the original
+    // ~16% alpha ("#2A") was just too subtle against a near-black panel to let the hue read; both
+    // ended up looking like similarly-dim gray. Bumped to ~33% ("#55") so the actual hue shows.
+    public string RowBackground => IsPlayer ? "#4433AAFF" : $"#55{ClassColor.TrimStart('#')}";
 
     private static string FormatLapTime(double seconds) =>
         seconds > 0 ? TimeSpan.FromSeconds(seconds).ToString(@"m\:ss\.fff", CultureInfo.InvariantCulture) : "—";

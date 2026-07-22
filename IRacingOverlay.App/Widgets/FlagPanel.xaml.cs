@@ -25,16 +25,13 @@ public partial class FlagPanel : UserControl
         InitializeComponent();
     }
 
+    // Purely a dumb renderer: draws exactly the list it's given, in order, with no "what if it's
+    // empty" policy of its own — FlagWidget and DashboardWindow each decide when/whether a
+    // placeholder "None" entry belongs in that list, since only they know their own edit-mode
+    // context (see FlagWidget.Render for why that matters).
     public void UpdateState(IReadOnlyList<FlagState> flags)
     {
         FlagsStack.Children.Clear();
-
-        if (flags.Count == 0)
-        {
-            FlagsStack.Children.Add(BuildBox(FlagState.None));
-            return;
-        }
-
         foreach (var flag in flags)
         {
             FlagsStack.Children.Add(BuildBox(flag));
@@ -43,7 +40,10 @@ public partial class FlagPanel : UserControl
 
     private static Border BuildBox(FlagState state)
     {
-        var overlay = new Grid();
+        // The overlay Grid is what actually gets clipped: it, not the outer Border, is what the
+        // rotated blue stripe would otherwise spill out of once the box is narrower than the
+        // stripe's fixed 280px design width (e.g. inside the dashboard's 280px-wide flag column).
+        var overlay = new Grid { ClipToBounds = true };
 
         if (state.Style == FlagVisualStyle.BlueWithOrangeStripe)
         {
@@ -59,35 +59,47 @@ public partial class FlagPanel : UserControl
             });
         }
 
-        var content = new StackPanel
+        // DockPanel instead of a horizontal StackPanel: a StackPanel measures its stacking-direction
+        // children with infinite available width, so TextWrapping never actually kicks in and long
+        // labels ("BLUE — CAR BEHIND") get cut off at the container edge. DockPanel's non-docked
+        // (filling) child gets a real, finite measured width, so wrapping works.
+        var content = new DockPanel
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            LastChildFill = true,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
         };
 
         if (state.Style == FlagVisualStyle.Meatball)
         {
-            content.Children.Add(new Ellipse
+            var dot = new Ellipse
             {
                 Width = 24,
                 Height = 24,
                 Fill = new SolidColorBrush(OrangeAccent),
                 Margin = new Thickness(0, 0, 12, 0),
-            });
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            DockPanel.SetDock(dot, Dock.Left);
+            content.Children.Add(dot);
         }
 
         if (state.Style == FlagVisualStyle.Checkered)
         {
-            content.Children.Add(BuildCheckerPattern());
+            var checker = BuildCheckerPattern();
+            DockPanel.SetDock(checker, Dock.Left);
+            content.Children.Add(checker);
         }
 
         var text = new TextBlock
         {
             Text = state.Name,
-            FontSize = 30,
+            FontSize = 28,
             FontWeight = FontWeights.Bold,
             Foreground = ParseBrush(state.ForegroundColor),
+            TextWrapping = TextWrapping.Wrap,
+            TextAlignment = TextAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
         };
 
@@ -101,6 +113,7 @@ public partial class FlagPanel : UserControl
                 Background = new SolidColorBrush(Color.FromArgb(0xCC, 0, 0, 0)),
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(8, 3, 8, 3),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
                 Child = text,
             });
         }
@@ -115,16 +128,23 @@ public partial class FlagPanel : UserControl
             ? BuildDiagonalStripeBrush(DebrisYellow, DebrisRed)
             : ParseBrush(state.BackgroundColor);
 
-        return new Border
+        var box = new Border
         {
             Background = background,
-            BorderBrush = new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(16, 14, 16, 14),
             Margin = new Thickness(0, 0, 0, 6),
             Child = overlay,
         };
+
+        // Flag colors are semantic (must match iRacing's real flag colors regardless of theme) so
+        // Background stays hardcoded above, but the box's chrome — border and corner style — follows
+        // the Dashboard theme same as every other panel (SetResourceReference is the code-behind
+        // equivalent of a XAML DynamicResource binding).
+        box.SetResourceReference(Border.BorderBrushProperty, "Theme.PanelBorder");
+        box.SetResourceReference(Border.BorderThicknessProperty, "Theme.PanelBorderThickness");
+        box.SetResourceReference(Border.CornerRadiusProperty, "Theme.PanelCornerRadius");
+
+        return box;
     }
 
     private static UniformGrid BuildCheckerPattern()

@@ -318,6 +318,37 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_ClassShortNameBlank_FallsBackToCarName()
+    {
+        // Fixed/spec series (one car model per "class", e.g. Porsche Cup) leave CarClassShortName
+        // blank in iRacing's own YAML — the car's own name is the only informative label available.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5]);
+            w.SetFloatArray("CarIdxEstTime", [20.0f, 15.0f]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassID = 100, CarClassShortName = "", CarScreenNameShort = "Porsche Cup" },
+                    new DriverEntry { CarIdx = 1, UserName = "GT3 Driver", CarNumber = "9", CarClassID = 200, CarClassShortName = "GT3", CarScreenNameShort = "911 GT3 R" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.Equal("Porsche Cup", rows.Single(r => r.CarIdx == 0).CarClassName);
+        Assert.Equal("GT3", rows.Single(r => r.CarIdx == 1).CarClassName);
+    }
+
+    [Fact]
     public void BuildStandings_SingleClass_PositionDisplayIsPlainNumber()
     {
         var builder = StandingsVars();
@@ -412,6 +443,46 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_TiedTrackPositionAtRaceStart_OrdersByOfficialGridPosition()
+    {
+        // Regression test for what live testing surfaced: right at a race's start, every car can
+        // have identical (Lap 0, EstTime 0) track position — a genuine driver who started last in
+        // their class was showing ahead of faster-starting classmates purely because
+        // OrderByDescending's stable-sort tie-break fell back to DriverInfo's roster order, which has
+        // nothing to do with the actual starting grid. Official CarIdxPosition — assigned at grid
+        // formation, before any lap timing exists — must break the tie correctly instead.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]); // player is officially last of the three
+            w.SetIntArray("CarIdxLap", [0, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [0, 0, 0, 0]); // identical track position for everyone
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    // Roster order deliberately puts the player first — the bug used to let this
+                    // roster order leak through as race order despite the player starting last.
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "PoleSitter", CarNumber = "1" },
+                    new DriverEntry { CarIdx = 2, UserName = "SecondPlace", CarNumber = "2" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.Equal(3, rows.Single(r => r.CarIdx == 0).Position); // player last
+        Assert.Equal(1, rows.Single(r => r.CarIdx == 1).Position);
+        Assert.Equal(2, rows.Single(r => r.CarIdx == 2).Position);
+    }
+
+    [Fact]
     public void BuildStandings_MarksSessionFastestLapAcrossAllCars_NotJustLeader()
     {
         var builder = StandingsVars();
@@ -442,5 +513,195 @@ public class StandingsBuilderTests
         Assert.True(rows.Single(r => r.CarIdx == 2).IsSessionFastestLap);
         Assert.False(rows.Single(r => r.CarIdx == 0).IsSessionFastestLap);
         Assert.False(rows.Single(r => r.CarIdx == 1).IsSessionFastestLap);
+    }
+
+    private static List<StandingsRow> MakeRows(bool isMultiClass, params (int carIdx, bool isPlayer, int classId, string className, int position)[] specs) =>
+        specs.Select(s => new StandingsRow
+        {
+            CarIdx = s.carIdx,
+            Position = s.position,
+            ClassPosition = 1,
+            Name = $"Driver{s.carIdx}",
+            CarNumber = s.carIdx.ToString(),
+            IsPlayer = s.isPlayer,
+            OnPitRoad = false,
+            CurrentLap = 1,
+            GapToLeaderSeconds = 0,
+            LastLapTime = 0,
+            BestLapTime = 0,
+            IsMultiClass = isMultiClass,
+            IRating = 0,
+            LicString = "",
+            IRatingDelta = 0,
+            IsSessionFastestLap = false,
+            CarClassID = s.classId,
+            CarClassName = s.className,
+        }).ToList();
+
+    [Fact]
+    public void GroupForDisplay_SingleClass_PassesThroughUnchanged()
+    {
+        var rows = MakeRows(isMultiClass: false, (0, true, 100, "GT3", 1), (1, false, 100, "GT3", 2));
+
+        var display = StandingsBuilder.GroupForDisplay(rows);
+
+        Assert.Equal(2, display.Count);
+        Assert.All(display, item => Assert.IsType<StandingsRow>(item));
+    }
+
+    [Fact]
+    public void GroupForDisplay_MultiClass_PlayerClassShowsAllRows_OthersCappedAtLimit()
+    {
+        var rows = MakeRows(
+            isMultiClass: true,
+            (0, true, 100, "GT3", 1),
+            (1, false, 100, "GT3", 3),
+            (2, false, 100, "GT3", 5),
+            (3, false, 100, "GT3", 7),
+            (4, false, 100, "GT3", 9),
+            (5, false, 100, "GT3", 11),
+            (6, false, 100, "GT3", 13), // player's class: 7 cars total, none capped
+            (7, false, 200, "LMP2", 2),
+            (8, false, 200, "LMP2", 4),
+            (9, false, 200, "LMP2", 6),
+            (10, false, 200, "LMP2", 8),
+            (11, false, 200, "LMP2", 10),
+            (12, false, 200, "LMP2", 12) // other class: 6 cars, should cap to 5
+        );
+
+        var display = StandingsBuilder.GroupForDisplay(rows, otherClassLimit: 5);
+
+        var gt3Rows = display.OfType<StandingsRow>().Where(r => r.CarClassID == 100).ToList();
+        var lmp2Rows = display.OfType<StandingsRow>().Where(r => r.CarClassID == 200).ToList();
+        Assert.Equal(7, gt3Rows.Count);
+        Assert.Equal(5, lmp2Rows.Count);
+
+        var headers = display.OfType<StandingsHeaderRow>().ToList();
+        Assert.Equal(2, headers.Count);
+        Assert.Equal("GT3", headers[0].ClassName);
+        Assert.Equal("LMP2", headers[1].ClassName);
+    }
+
+    [Fact]
+    public void GroupForDisplay_PlayerClassBlockComesFirst_RegardlessOfOverallPosition()
+    {
+        // Player is in the slower class (running further back overall) — their class block should
+        // still be the first thing shown, ahead of the other class that's actually leading the race.
+        var rows = MakeRows(
+            isMultiClass: true,
+            (0, false, 200, "LMP2", 1),
+            (1, true, 100, "GT3", 2),
+            (2, false, 100, "GT3", 4)
+        );
+
+        var display = StandingsBuilder.GroupForDisplay(rows);
+
+        var firstHeader = display.OfType<StandingsHeaderRow>().First();
+        Assert.Equal("GT3", firstHeader.ClassName);
+    }
+
+    [Fact]
+    public void ComputeStrengthOfField_UniformField_EqualsThatSharedIRating()
+    {
+        // Self-consistency check baked into iRacing's own published SOF formula: a field where
+        // every driver carries the exact same iRating must produce that same number as the SOF.
+        var baseRows = MakeRows(isMultiClass: false, (0, true, 100, "GT3", 1), (1, false, 100, "GT3", 2), (2, false, 100, "GT3", 3));
+        var rows = baseRows.Select(r => new StandingsRow
+        {
+            CarIdx = r.CarIdx,
+            Position = r.Position,
+            ClassPosition = r.ClassPosition,
+            Name = r.Name,
+            CarNumber = r.CarNumber,
+            IsPlayer = r.IsPlayer,
+            OnPitRoad = r.OnPitRoad,
+            CurrentLap = r.CurrentLap,
+            GapToLeaderSeconds = r.GapToLeaderSeconds,
+            LastLapTime = r.LastLapTime,
+            BestLapTime = r.BestLapTime,
+            IsMultiClass = r.IsMultiClass,
+            IRating = 2500,
+            LicString = r.LicString,
+            IRatingDelta = r.IRatingDelta,
+            IsSessionFastestLap = r.IsSessionFastestLap,
+            CarClassID = r.CarClassID,
+            CarClassName = r.CarClassName,
+        }).ToList();
+
+        var sof = StandingsBuilder.ComputeStrengthOfField(rows);
+
+        Assert.Equal(2500, sof, precision: 3);
+    }
+
+    [Fact]
+    public void ComputeStrengthOfField_NoRatedDrivers_ReturnsZero()
+    {
+        var rows = MakeRows(isMultiClass: false, (0, true, 100, "GT3", 1));
+
+        var sof = StandingsBuilder.ComputeStrengthOfField(rows);
+
+        Assert.Equal(0, sof);
+    }
+
+    [Fact]
+    public void BuildStandings_HigherIRatingDriverFinishingAhead_GainsIRating()
+    {
+        // A lower-rated driver beating a field of higher-rated drivers should show a positive
+        // delta; those higher-rated drivers they beat should show negative deltas.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxPosition", [1, 2, 3, 0]);
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 0]);
+            w.SetFloatArray("CarIdxEstTime", [30.0f, 20.0f, 10.0f, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Underdog", CarNumber = "7", IRating = 1500 },
+                    new DriverEntry { CarIdx = 1, UserName = "Mid", CarNumber = "8", IRating = 3000 },
+                    new DriverEntry { CarIdx = 2, UserName = "Top", CarNumber = "9", IRating = 4500 },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        var underdog = rows.Single(r => r.CarIdx == 0);
+        var top = rows.Single(r => r.CarIdx == 2);
+        Assert.Equal(1, underdog.Position); // furthest along -> leading
+        Assert.True(underdog.IRatingDelta > 0, "lower-rated driver leading a stronger field should gain");
+        Assert.True(top.IRatingDelta < 0, "higher-rated driver finishing last should lose");
+    }
+
+    [Fact]
+    public void BuildStandings_UnratedDrivers_GetZeroIRatingDelta()
+    {
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxPosition", [1, 0, 0, 0]);
+            w.SetIntArray("CarIdxLap", [5, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [30.0f, 0, 0, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers = [new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", IRating = 0 }],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.Equal(0, Assert.Single(rows).IRatingDelta);
     }
 }

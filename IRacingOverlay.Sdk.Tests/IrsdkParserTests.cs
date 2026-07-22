@@ -107,4 +107,18 @@ public class IrsdkParserTests
 
         Assert.Equal("a: 1\n", yaml);
     }
+
+    [Fact]
+    public void ReadSessionInfoYaml_DecodesWindows1252AccentedCharacters()
+    {
+        // iRacing writes this blob using the Windows-1252 codepage, not UTF-8 — decoding an
+        // accented name's bytes as UTF-8 instead produces replacement characters (the "weird
+        // character" bug reported live). é in CP1252 is the single byte 0xE9.
+        var encoding = System.Text.Encoding.GetEncoding(1252);
+        var text = encoding.GetBytes("UserName: José Müller\n");
+
+        var yaml = IrsdkParser.ReadSessionInfoYaml(text, 0, text.Length);
+
+        Assert.Equal("UserName: José Müller\n", yaml);
+    }
 }

@@ -1,0 +1,21 @@
+<ov:OverlayWindowBase x:Class="IRacingOverlay.App.Widgets.FuelWidget"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
+        xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
+        Title="Fuel" Width="220" Height="120" MinWidth="180" MinHeight="100">
+    <Border BorderBrush="Orange" BorderThickness="0">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Fuel">
+            <w:FuelPanel/>
+        </ov:ScalablePanel>
+    </Border>
+</ov:OverlayWindowBase>

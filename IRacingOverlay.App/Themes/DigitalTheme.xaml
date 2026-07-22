@@ -1,0 +1,20 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+      "Digital HUD": near-black, sharp corners, thin neon-cyan edges, monospace everywhere -
+      a flat, glowing telemetry-readout look rather than the default's soft dark-red panels.
+    -->
+    <LinearGradientBrush x:Key="Theme.WindowBackground" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#050A10" Offset="0"/>
+        <GradientStop Color="#02040A" Offset="0.5"/>
+        <GradientStop Color="#0A1620" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="Theme.PanelBackground" Color="#E60A1218"/>
+    <SolidColorBrush x:Key="Theme.PanelBorder" Color="#33E5FF"/>
+    <Thickness x:Key="Theme.PanelBorderThickness">1.5</Thickness>
+    <CornerRadius x:Key="Theme.PanelCornerRadius">0</CornerRadius>
+    <SolidColorBrush x:Key="Theme.LabelForeground" Color="#2FBEDB"/>
+    <FontFamily x:Key="Theme.FontFamily">Bahnschrift</FontFamily>
+    <!-- Condensed/SemiBold for the big gear numeral — sharper, more "HUD readout" than the label font. -->
+    <FontFamily x:Key="Theme.GearFontFamily">Bahnschrift SemiBold Condensed</FontFamily>
+</ResourceDictionary>

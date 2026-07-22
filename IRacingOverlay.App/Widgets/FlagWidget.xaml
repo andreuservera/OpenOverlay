@@ -4,16 +4,28 @@
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
         Title="Flag" Width="320" Height="260" MinWidth="220" MinHeight="100">
+    <!-- Unlike every other widget's panel, FlagPanel paints nothing across most of its area when
+         few/no flags are active — its Background is Transparent by design, so the game shows
+         through. But a window with AllowsTransparency="True" only receives mouse clicks where
+         something is actually painted (non-zero alpha); fully transparent pixels are click-through
+         at the OS level no matter what edit mode says. That left most of this window physically
+         unclickable, which is why it couldn't be dragged. Painting a real (semi-transparent, so it
+         still reads as "editing") background across the FULL window while editing makes the whole
+         thing grabbable, matching how every other widget's always-opaque panel background already
+         behaves. -->
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsEditMode}" Value="True">
                         <Setter Property="BorderThickness" Value="2"/>
+                        <Setter Property="Background" Value="#803A3A3A"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <w:FlagPanel x:Name="Panel"/>
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Flag">
+            <w:FlagPanel/>
+        </ov:ScalablePanel>
     </Border>
 </ov:OverlayWindowBase>

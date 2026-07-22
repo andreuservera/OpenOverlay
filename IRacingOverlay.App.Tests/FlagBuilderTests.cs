@@ -38,6 +38,31 @@ public class FlagBuilderTests
     }
 
     [Fact]
+    public void OneLapToGreenBit_Alone_DoesNotShowGreen()
+    {
+        // Regression test: OneLapToGreen means "still on the formation/pace lap, green is one lap
+        // away" — not "green is out." Reported live as a confusing false-positive green flag showing
+        // before the race had actually started.
+        var flags = FlagBuilder.Build(BuildWithFlags(0x00000200)); // irsdk_oneLapToGreen
+
+        Assert.DoesNotContain(flags, f => f.Name == "GREEN");
+    }
+
+    [Fact]
+    public void OneLapToGreenAndYellow_StillShowsYellowNotGreen()
+    {
+        // Formation laps commonly carry a caution/yellow alongside OneLapToGreen right up until the
+        // green actually drops — must not flip to green early just because OneLapToGreen is set.
+        const uint yellow = 0x00000008;
+        const uint oneLapToGreen = 0x00000200;
+
+        var flags = FlagBuilder.Build(BuildWithFlags(yellow | oneLapToGreen));
+
+        var flag = Assert.Single(flags);
+        Assert.Equal("LOCAL YELLOW", flag.Name);
+    }
+
+    [Fact]
     public void RepairBit_ReturnsMeatball()
     {
         var flags = FlagBuilder.Build(BuildWithFlags(0x00100000)); // irsdk_repair

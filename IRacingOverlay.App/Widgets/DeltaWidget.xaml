@@ -14,6 +14,8 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <w:DeltaPanel x:Name="Panel"/>
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Delta">
+            <w:DeltaPanel/>
+        </ov:ScalablePanel>
     </Border>
 </ov:OverlayWindowBase>

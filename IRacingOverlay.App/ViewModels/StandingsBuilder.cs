@@ -97,7 +97,7 @@ internal static class StandingsBuilder
                 IsPlayer = isPlayer,
                 GapSeconds = playerTimePosition - TimePosition(driver.CarIdx),
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
-                ClassColor = FormatClassColor(driver.CarClassColor),
+                ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
             });
         }
 
@@ -198,7 +198,22 @@ internal static class StandingsBuilder
             eligible.Add(driver);
         }
 
-        var ordered = eligible.OrderByDescending(d => TimePosition(d.CarIdx)).ToList();
+        // Real bug reported live: right at a race's start, many cars can have identical or
+        // near-identical TimePosition (everyone still sitting on the grid, Lap 0, EstTime ~0).
+        // OrderByDescending is a *stable* sort, so ties fall back to `eligible`'s original order —
+        // which is just DriverInfo's roster/YAML order, unrelated to actual grid position. That
+        // let a driver who legitimately started last in their class appear ahead of faster-starting
+        // classmates purely by roster-order coincidence. Breaking ties by iRacing's own official
+        // CarIdxPosition (already assigned at grid formation, well before anyone's first lap timing
+        // data exists) fixes this without reintroducing the "frozen until lap end" staleness that's
+        // the whole reason official position isn't used as the *primary* sort key.
+        int TieBreakPosition(int carIdx) =>
+            positions is not null && carIdx < positions.Length && positions[carIdx] > 0 ? positions[carIdx] : int.MaxValue;
+
+        var ordered = eligible
+            .OrderByDescending(d => TimePosition(d.CarIdx))
+            .ThenBy(d => TieBreakPosition(d.CarIdx))
+            .ToList();
         var leaderTimePosition = ordered.Count > 0 ? TimePosition(ordered[0].CarIdx) : 0;
 
         // The single fastest lap set by anyone in the session, across every car — not just the
@@ -212,6 +227,8 @@ internal static class StandingsBuilder
                 sessionFastestLap = bestLap;
             }
         }
+
+        var iRatingDeltaByCarIdx = EstimateIRatingDeltas(ordered);
 
         var classRank = new Dictionary<int, int>();
         var rows = new List<StandingsRow>();
@@ -241,12 +258,142 @@ internal static class StandingsBuilder
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
+                IRatingDelta = iRatingDeltaByCarIdx.GetValueOrDefault(driver.CarIdx, 0),
                 IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
-                ClassColor = FormatClassColor(driver.CarClassColor),
+                ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
+                CarClassID = driver.CarClassID,
+                // iRacing leaves CarClassShortName blank for fixed/spec series (a "class" of one car
+                // model, e.g. Porsche Cup) — it's only populated for genuine multi-car classes like
+                // GT3. Falling back to the car's own name keeps the header informative either way.
+                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
             });
         }
 
         return rows;
+    }
+
+    /// <summary>
+    /// iRacing's published Strength of Field formula: BR1 = 1600/ln(2); each driver contributes
+    /// e^(-iRating/BR1) to a sum; SOF = BR1 * ln(driverCount / sum). Self-consistency check: a field
+    /// where every driver carries the exact same iRating R comes out to SOF == R.
+    /// </summary>
+    public static double ComputeStrengthOfField(IReadOnlyList<StandingsRow> rows)
+    {
+        var iratings = rows.Where(r => r.IRating > 0).Select(r => (double)r.IRating).ToList();
+        if (iratings.Count == 0)
+        {
+            return 0;
+        }
+
+        var br1 = 1600.0 / Math.Log(2);
+        var sum = iratings.Sum(r => Math.Exp(-r / br1));
+        return sum > 0 ? br1 * Math.Log(iratings.Count / sum) : 0;
+    }
+
+    /// <summary>
+    /// Best-effort approximation of iRacing's undisclosed live iRating-change formula. iRacing has
+    /// confirmed the shape of the real calculation (treat the race as a round-robin of 1-on-1
+    /// "duels" against every other rated driver — win the duel by finishing ahead, lose it by
+    /// finishing behind — score each duel Elo-style, and scale the total by field size so a bigger
+    /// field doesn't inflate the swing) but has never published the exact scoring constant. This
+    /// uses a commonly-cited community reconstruction (K=200, divided by field size) — it tracks
+    /// direction and rough magnitude reliably, but won't necessarily match the official post-race
+    /// number. Uses current running order as a live "if it ended right now" position, same as the
+    /// rest of Standings.
+    /// </summary>
+    private static Dictionary<int, double> EstimateIRatingDeltas(List<DriverEntry> ordered)
+    {
+        var rated = new List<(int CarIdx, int IRating, int Position)>();
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            if (ordered[i].IRating > 0)
+            {
+                rated.Add((ordered[i].CarIdx, ordered[i].IRating, i));
+            }
+        }
+
+        var result = new Dictionary<int, double>();
+        var n = rated.Count;
+        if (n < 2)
+        {
+            return result;
+        }
+
+        var k = 200.0 / n;
+        foreach (var driver in rated)
+        {
+            var delta = 0.0;
+            foreach (var opponent in rated)
+            {
+                if (opponent.CarIdx == driver.CarIdx)
+                {
+                    continue;
+                }
+
+                var expected = 1.0 / (1.0 + Math.Pow(10, (opponent.IRating - driver.IRating) / 1600.0));
+                var actual = driver.Position < opponent.Position ? 1.0 : 0.0;
+                delta += k * (actual - expected);
+            }
+
+            result[driver.CarIdx] = delta;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Restructures BuildStandings' flat, overall-order rows for multiclass display: the player's
+    /// own class is shown in full (that's the race that matters most to them), every other class is
+    /// capped to its top <paramref name="otherClassLimit"/> (leaders only, for context), and a
+    /// header item naming each class is inserted before its block. The player's class block comes
+    /// first; other classes follow ordered by their leading car's overall position. Single-class
+    /// sessions pass through unchanged — nothing to group or cap when there's only one class.
+    /// </summary>
+    public static List<object> GroupForDisplay(IReadOnlyList<StandingsRow> rows, int otherClassLimit = 5)
+    {
+        if (rows.Count == 0 || !rows[0].IsMultiClass)
+        {
+            return rows.Cast<object>().ToList();
+        }
+
+        var playerClassId = rows.FirstOrDefault(r => r.IsPlayer)?.CarClassID ?? rows[0].CarClassID;
+
+        // Rows already arrive in overall race order, so grouping by class while preserving
+        // first-seen order keeps each class's own rows in class-position order too, and the first
+        // row recorded for a class is that class's current leader.
+        var classOrder = new List<int>();
+        var byClass = new Dictionary<int, List<StandingsRow>>();
+        foreach (var row in rows)
+        {
+            if (!byClass.TryGetValue(row.CarClassID, out var classRows))
+            {
+                classRows = [];
+                byClass[row.CarClassID] = classRows;
+                classOrder.Add(row.CarClassID);
+            }
+
+            classRows.Add(row);
+        }
+
+        var orderedClassIds = classOrder
+            .OrderBy(id => id == playerClassId ? 0 : 1)
+            .ThenBy(id => byClass[id][0].Position);
+
+        var display = new List<object>();
+        foreach (var classId in orderedClassIds)
+        {
+            var classRows = byClass[classId];
+            var className = classRows[0].CarClassName;
+            display.Add(new StandingsHeaderRow
+            {
+                ClassName = string.IsNullOrWhiteSpace(className) ? $"CLASS {classId}" : className.ToUpperInvariant(),
+                ClassColor = classRows[0].ClassColor,
+            });
+
+            display.AddRange(classId == playerClassId ? classRows : classRows.Take(otherClassLimit));
+        }
+
+        return display;
     }
 
     private static double GetAnyRecordedLapTime(float[]? lastLaps, float[]? bestLaps)
@@ -299,18 +446,4 @@ internal static class StandingsBuilder
 
     private static int[]? TryGetIntArray(TelemetrySnapshot telemetry, string name) =>
         telemetry.HasVariable(name) ? telemetry.GetIntArray(name) : null;
-
-    private static string FormatClassColor(string carClassColor)
-    {
-        // iRacing supplies class colors as a decimal or hex-without-# integer string; normalize to "#RRGGBB".
-        if (string.IsNullOrWhiteSpace(carClassColor))
-        {
-            return "#FFFFFF";
-        }
-
-        var trimmed = carClassColor.TrimStart('#');
-        return int.TryParse(trimmed, System.Globalization.NumberStyles.HexNumber, null, out var value)
-            ? $"#{value & 0xFFFFFF:X6}"
-            : "#FFFFFF";
-    }
 }

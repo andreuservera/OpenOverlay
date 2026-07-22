@@ -4,6 +4,24 @@
              xmlns:local="clr-namespace:IRacingOverlay.App"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <!--
+          Default ("Classic") dashboard theme, application-wide. Floating widgets always resolve
+          these (they never merge a theme dictionary of their own), so they keep this look
+          regardless of what theme is picked for the Dashboard. DashboardWindow overrides these same
+          keys in its own Resources when a different theme is selected, which DynamicResource lookups
+          from inside that window find first.
+        -->
+        <RadialGradientBrush x:Key="Theme.WindowBackground" Center="0.5,0.4" RadiusX="0.9" RadiusY="0.9">
+            <GradientStop Color="#1A1010" Offset="0"/>
+            <GradientStop Color="#000000" Offset="1"/>
+        </RadialGradientBrush>
+        <SolidColorBrush x:Key="Theme.PanelBackground" Color="#E6141414"/>
+        <SolidColorBrush x:Key="Theme.PanelBorder" Color="#3A3A3A"/>
+        <Thickness x:Key="Theme.PanelBorderThickness">1</Thickness>
+        <CornerRadius x:Key="Theme.PanelCornerRadius">6</CornerRadius>
+        <SolidColorBrush x:Key="Theme.LabelForeground" Color="#888888"/>
+        <FontFamily x:Key="Theme.FontFamily">Segoe UI</FontFamily>
+        <!-- Just for the big gear numeral — bolder/more dramatic than the panel-label font. -->
+        <FontFamily x:Key="Theme.GearFontFamily">Impact</FontFamily>
     </Application.Resources>
 </Application>

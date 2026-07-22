@@ -1,29 +1,77 @@
 using System.Windows;
-using System.Windows.Media;
+using System.Windows.Controls;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.App.Widgets;
 using Screen = System.Windows.Forms.Screen;
 
 namespace IRacingOverlay.App.Dashboard;
 
 /// <summary>
-/// Fullscreen, fixed layout meant for a dedicated second monitor: tire info in the top-right corner,
-/// flag indicators enlarged in the bottom-left corner, Standings/Relative in the middle, delta +
-/// gear/shift lights lower-center (closer to eye level, since a second monitor is typically mounted
-/// above the main one), and the ABS/proximity bars running the full height of the left and right
-/// edges. Not click-through/movable — that's what the floating widgets are for.
+/// Fullscreen, fixed layout meant for a dedicated second monitor: a track map spans the *entire*
+/// screen width at the very top, a track info bar spans the top of the center column below that,
+/// tire info sits in the top-right corner, flag indicators enlarged in the bottom-left corner,
+/// Standings/Relative in the middle, delta + the cockpit cluster (speed/gear/RPM/ABS/proximity, all
+/// in one bezel — the same CockpitPanel the floating widget uses) lower-center, closer to eye level
+/// since a second monitor is typically mounted above the main one. Not click-through/movable —
+/// that's what the floating widgets are for.
 /// </summary>
 public partial class DashboardWindow : Window
 {
-    private static readonly Color AbsIdle = Color.FromRgb(0x2E, 0x1E, 0x1E);
-    private static readonly Color AbsDim = Color.FromRgb(0x80, 0x18, 0x18);
-    private static readonly Color AbsBright = Color.FromRgb(0xFF, 0x30, 0x30);
-
-    private bool _blinkPhase;
+    private readonly FuelPanel _fuelPanel;
+    private readonly IncidentPanel _incidentPanel;
+    private readonly TireInfoPanel _tireInfoPanel;
+    private readonly StandingsPanel _standingsPanel;
+    private readonly RelativePanel _relativePanel;
+    private readonly DeltaPanel _deltaPanel;
+    private readonly CockpitPanel _cockpitPanel;
+    private readonly FlagPanel _flagPanel;
+    private readonly PedalTracePanel _pedalTracePanel;
+    private readonly TrackInfoPanel _trackInfoPanel;
+    private readonly TrackMapPanel _trackMapPanel;
 
     public DashboardWindow()
     {
         InitializeComponent();
-        AbsBar.Configure(AbsIdle, AbsDim, AbsBright);
+
+        _trackMapPanel = (TrackMapPanel)TrackMapScaler.ScalableContent!;
+        _trackInfoPanel = (TrackInfoPanel)TrackInfoScaler.ScalableContent!;
+        _fuelPanel = (FuelPanel)FuelScaler.ScalableContent!;
+        _incidentPanel = (IncidentPanel)IncidentScaler.ScalableContent!;
+        _tireInfoPanel = (TireInfoPanel)TireInfoScaler.ScalableContent!;
+        _standingsPanel = (StandingsPanel)StandingsScaler.ScalableContent!;
+        _relativePanel = (RelativePanel)RelativeScaler.ScalableContent!;
+        _deltaPanel = (DeltaPanel)DeltaScaler.ScalableContent!;
+        _flagPanel = (FlagPanel)FlagScaler.ScalableContent!;
+        _pedalTracePanel = (PedalTracePanel)PedalTraceScaler.ScalableContent!;
+
+        // Structural lookup, not x:Name — naming elements nested inside a ScalablePanel's
+        // ContentProperty subtree hits WPF's MC3093 "already had a name registered" error.
+        var cockpitViewbox = (Viewbox)CockpitScaler.ScalableContent!;
+        _cockpitPanel = (CockpitPanel)cockpitViewbox.Child;
+
+        ApplyTheme(DashboardThemeStore.Get());
+    }
+
+    /// <summary>Merges the selected theme's resource dictionary into this window's own Resources —
+    /// DynamicResource lookups from anywhere in the Dashboard's tree find these before falling
+    /// through to the Classic defaults in App.xaml, while floating widgets (which never merge a
+    /// theme dictionary of their own) are unaffected regardless of what's picked here.</summary>
+    public void ApplyTheme(DashboardTheme theme)
+    {
+        Resources.MergedDictionaries.Clear();
+
+        var themeFile = theme switch
+        {
+            DashboardTheme.DigitalHud => "Themes/DigitalTheme.xaml",
+            DashboardTheme.RawDiy => "Themes/RawDiyTheme.xaml",
+            _ => null, // Classic: no override, falls through to Application-level defaults
+        };
+
+        if (themeFile is not null)
+        {
+            Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri(themeFile, UriKind.Relative) });
+        }
     }
 
     public void MoveToScreen(Screen screen)
@@ -43,23 +91,30 @@ public partial class DashboardWindow : Window
         WindowState = WindowState.Maximized;
     }
 
-    public void UpdateStandingsRows(IReadOnlyList<StandingsRow> standings) => Standings.SetRows(standings);
+    public void UpdateStandingsRows(IReadOnlyList<object> standings) => _standingsPanel.SetRows(standings);
 
-    public void UpdateRelativeRows(IReadOnlyList<RelativeRow> relative) => Relative.SetRows(relative);
+    public void UpdateStandingsSof(double sof) => _standingsPanel.SetSof(sof);
 
-    public void UpdateCockpit(CockpitState state)
-    {
-        _blinkPhase = !_blinkPhase;
+    public void UpdateRelativeRows(IReadOnlyList<RelativeRow> relative) => _relativePanel.SetRows(relative);
 
-        ShiftGear.UpdateState(state.Gear, state.ShiftLightsLit, state.ShiftBlink, _blinkPhase);
-        AbsBar.SetActive(state.AbsActive, _blinkPhase);
-        LeftProximity.SetFraction(state.LeftProximity);
-        RightProximity.SetFraction(state.RightProximity);
-    }
+    public void UpdateCockpit(CockpitState state) => _cockpitPanel.UpdateState(state);
 
-    public void UpdateFlag(IReadOnlyList<FlagState> flags) => Flag.UpdateState(flags);
+    // Dashboard has no edit/drag mode of its own — unlike the floating FlagWidget, it always shows
+    // an explicit "all clear" placeholder rather than going blank when nothing's happening.
+    public void UpdateFlag(IReadOnlyList<FlagState> flags) =>
+        _flagPanel.UpdateState(flags.Count > 0 ? flags : [FlagState.None]);
 
-    public void UpdateTireInfo(TireInfoState state) => TireInfo.UpdateState(state);
+    public void UpdateTireInfo(TireInfoState state) => _tireInfoPanel.UpdateState(state);
 
-    public void UpdateDelta(DeltaState state) => Delta.UpdateState(state);
+    public void UpdateDelta(DeltaState state) => _deltaPanel.UpdateState(state);
+
+    public void UpdateFuel(FuelState state) => _fuelPanel.UpdateState(state);
+
+    public void UpdatePedalTrace(PedalTraceState state) => _pedalTracePanel.UpdateState(state);
+
+    public void UpdateIncident(IncidentState state) => _incidentPanel.UpdateState(state);
+
+    public void UpdateTrackInfo(TrackInfoState state) => _trackInfoPanel.UpdateState(state);
+
+    public void UpdateTrackMap(IReadOnlyList<TrackMapMarker> markers) => _trackMapPanel.UpdateState(markers);
 }

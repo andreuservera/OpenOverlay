@@ -98,7 +98,10 @@ internal static class FlagBuilder
         {
             flags.Add(Solid("LOCAL YELLOW", "#E8C000", "#111111"));
         }
-        else if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.GreenHeld) || bits.HasFlag(IrsdkFlags.OneLapToGreen) || bits.HasFlag(IrsdkFlags.StartGo))
+        // OneLapToGreen deliberately excluded here: it means "still on the formation/pace lap, one
+        // lap away from green," not "green is out" — including it made the green flag show up before
+        // the race had actually started, which is exactly the confusing behavior reported live.
+        else if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.GreenHeld) || bits.HasFlag(IrsdkFlags.StartGo))
         {
             flags.Add(Solid("GREEN", "#1FA028", "#FFFFFF"));
         }

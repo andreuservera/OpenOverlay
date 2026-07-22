@@ -1,10 +1,16 @@
 <Window x:Class="IRacingOverlay.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="iRacing Overlay — Control Panel" Height="470" Width="460"
+        Title="OpenOverlay — Control Panel" Height="710" Width="460"
+        Icon="Assets/icon.ico"
         Background="#1E1E1E">
     <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -29,7 +35,7 @@
                       Checked="CockpitCheckBox_Changed" Unchecked="CockpitCheckBox_Changed"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
             <CheckBox x:Name="FlagCheckBox" Content="Flag widget" Foreground="White" Margin="0,0,16,0"
                       Checked="FlagCheckBox_Changed" Unchecked="FlagCheckBox_Changed"/>
             <CheckBox x:Name="TireInfoCheckBox" Content="Tire info widget" Foreground="White" Margin="0,0,16,0"
@@ -38,7 +44,43 @@
                       Checked="DeltaCheckBox_Changed" Unchecked="DeltaCheckBox_Changed"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,12">
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+            <CheckBox x:Name="FuelCheckBox" Content="Fuel widget" Foreground="White" Margin="0,0,16,0"
+                      Checked="FuelCheckBox_Changed" Unchecked="FuelCheckBox_Changed"/>
+            <CheckBox x:Name="PedalTraceCheckBox" Content="Pedal trace widget" Foreground="White" Margin="0,0,16,0"
+                      Checked="PedalTraceCheckBox_Changed" Unchecked="PedalTraceCheckBox_Changed"/>
+            <CheckBox x:Name="IncidentCheckBox" Content="Incident widget" Foreground="White"
+                      Checked="IncidentCheckBox_Changed" Unchecked="IncidentCheckBox_Changed"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,12">
+            <CheckBox x:Name="TrackInfoCheckBox" Content="Track info widget" Foreground="White" Margin="0,0,16,0"
+                      Checked="TrackInfoCheckBox_Changed" Unchecked="TrackInfoCheckBox_Changed"/>
+            <CheckBox x:Name="TrackMapCheckBox" Content="Track map widget" Foreground="White"
+                      Checked="TrackMapCheckBox_Changed" Unchecked="TrackMapCheckBox_Changed"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Orientation="Vertical" Margin="0,0,0,12">
+            <TextBlock Text="Standings columns (overlay widget only):" Foreground="White" Margin="0,0,0,4"/>
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="StandingsIRatingCheckBox" Content="iR" Foreground="White" Margin="0,0,12,0"
+                          Checked="StandingsIRatingCheckBox_Changed" Unchecked="StandingsIRatingCheckBox_Changed"/>
+                <CheckBox x:Name="StandingsIRatingDeltaCheckBox" Content="iRΔ" Foreground="White" Margin="0,0,12,0"
+                          Checked="StandingsIRatingDeltaCheckBox_Changed" Unchecked="StandingsIRatingDeltaCheckBox_Changed"/>
+                <CheckBox x:Name="StandingsLicenseCheckBox" Content="License" Foreground="White" Margin="0,0,12,0"
+                          Checked="StandingsLicenseCheckBox_Changed" Unchecked="StandingsLicenseCheckBox_Changed"/>
+                <CheckBox x:Name="StandingsLapCheckBox" Content="Lap" Foreground="White" Margin="0,0,12,0"
+                          Checked="StandingsLapCheckBox_Changed" Unchecked="StandingsLapCheckBox_Changed"/>
+                <CheckBox x:Name="StandingsLastLapCheckBox" Content="Last" Foreground="White" Margin="0,0,12,0"
+                          Checked="StandingsLastLapCheckBox_Changed" Unchecked="StandingsLastLapCheckBox_Changed"/>
+                <CheckBox x:Name="StandingsBestLapCheckBox" Content="Best" Foreground="White" Margin="0,0,12,0"
+                          Checked="StandingsBestLapCheckBox_Changed" Unchecked="StandingsBestLapCheckBox_Changed"/>
+                <CheckBox x:Name="StandingsGapCheckBox" Content="Gap" Foreground="White"
+                          Checked="StandingsGapCheckBox_Changed" Unchecked="StandingsGapCheckBox_Changed"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="Delta reference:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox x:Name="DeltaReferenceComboBox" Width="180" SelectionChanged="DeltaReferenceComboBox_SelectionChanged">
                 <ComboBoxItem Content="Session best lap" IsSelected="True"/>
@@ -47,19 +89,41 @@
             </ComboBox>
         </StackPanel>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,12">
+        <StackPanel Grid.Row="7" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="Critical refresh rate:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"
+                       ToolTip="How often the proximity/ABS bars and pedal trace re-read telemetry — independent of everything else."/>
+            <ComboBox x:Name="CriticalRefreshComboBox" Width="180" SelectionChanged="CriticalRefreshComboBox_SelectionChanged">
+                <ComboBoxItem Content="Fastest (~30 Hz)"/>
+                <ComboBoxItem Content="Fast (20 Hz)"/>
+                <ComboBoxItem Content="Normal (10 Hz)" IsSelected="True"/>
+                <ComboBoxItem Content="Slow (5 Hz)"/>
+                <ComboBoxItem Content="Slowest (2 Hz)"/>
+            </ComboBox>
+        </StackPanel>
+
+        <StackPanel Grid.Row="8" Orientation="Horizontal" Margin="0,0,0,12">
             <CheckBox x:Name="EditModeCheckBox" Content="Edit layout (drag/resize widgets)" Foreground="White"
                       Checked="EditModeCheckBox_Changed" Unchecked="EditModeCheckBox_Changed"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,0,0,12">
+        <StackPanel Grid.Row="9" Orientation="Horizontal" Margin="0,0,0,12">
             <TextBlock Text="Dashboard monitor:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox x:Name="MonitorComboBox" Width="180" Margin="0,0,8,0"/>
             <Button x:Name="ShowDashboardButton" Content="Show dashboard" Click="ShowDashboardButton_Click"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="6" Margin="0,0,0,8">
+        <StackPanel Grid.Row="10" Orientation="Horizontal" Margin="0,0,0,12">
+            <TextBlock Text="Dashboard theme:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="DashboardThemeComboBox" Width="180" SelectionChanged="DashboardThemeComboBox_SelectionChanged">
+                <ComboBoxItem Content="Classic" IsSelected="True"/>
+                <ComboBoxItem Content="Digital HUD"/>
+                <ComboBoxItem Content="Raw DIY"/>
+            </ComboBox>
+        </StackPanel>
+
+        <StackPanel Grid.Row="11" Margin="0,0,0,8">
             <TextBlock x:Name="DebugText" Text="Speed: —   Lap: —   Gear: —" Foreground="#AAAAAA" FontFamily="Consolas" FontSize="12"/>
+            <TextBlock x:Name="MemoryText" Text="Memory: — MB" Foreground="#AAAAAA" FontFamily="Consolas" FontSize="12" Margin="0,2,0,0"/>
         </StackPanel>
     </Grid>
 </Window>

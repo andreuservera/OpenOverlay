@@ -41,6 +41,11 @@ internal static class TireInfoBuilder
         var middle = hasUsableSurfaceTemp ? surfaceMiddle : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassMiddle(corner));
         var right = hasUsableSurfaceTemp ? surfaceRight : TryGetFloat(telemetry, TelemetryVarNames.TireTempCarcassRight(corner));
 
+        var wearLeft = TryGetFloat(telemetry, TelemetryVarNames.TireWearLeft(corner));
+        var wearMiddle = TryGetFloat(telemetry, TelemetryVarNames.TireWearMiddle(corner));
+        var wearRight = TryGetFloat(telemetry, TelemetryVarNames.TireWearRight(corner));
+        var hasWearData = wearLeft.HasValue || wearMiddle.HasValue || wearRight.HasValue;
+
         return new TireCornerInfo
         {
             Label = corner,
@@ -50,6 +55,10 @@ internal static class TireInfoBuilder
             TempMiddle = middle ?? 0,
             TempRight = right ?? 0,
             IsSurfaceTemp = hasUsableSurfaceTemp,
+            WearLeft = wearLeft ?? 1.0,
+            WearMiddle = wearMiddle ?? 1.0,
+            WearRight = wearRight ?? 1.0,
+            HasWearData = hasWearData,
         };
     }
 

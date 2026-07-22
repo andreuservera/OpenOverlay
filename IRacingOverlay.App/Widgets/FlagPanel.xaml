@@ -1,8 +1,10 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.FlagPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Name="Root">
-    <ScrollViewer VerticalScrollBarVisibility="Disabled">
-        <StackPanel x:Name="FlagsStack" Orientation="Vertical"/>
+             x:Name="Root"
+             Background="Transparent"
+             FontFamily="{DynamicResource Theme.FontFamily}">
+    <ScrollViewer Background="Transparent" VerticalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="FlagsStack" Orientation="Vertical" Background="Transparent"/>
     </ScrollViewer>
 </UserControl>

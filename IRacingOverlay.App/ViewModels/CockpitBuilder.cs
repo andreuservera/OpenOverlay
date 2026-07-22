@@ -22,6 +22,8 @@ internal static class CockpitBuilder
         var (litCount, blink) = BuildShiftLights(telemetry, session);
         var abs = telemetry.HasVariable(TelemetryVarNames.BrakeAbsActive) && telemetry.GetBool(TelemetryVarNames.BrakeAbsActive);
         var (left, right) = BuildProximity(telemetry, session);
+        var speedKph = telemetry.HasVariable(TelemetryVarNames.Speed) ? telemetry.GetFloat(TelemetryVarNames.Speed) * 3.6 : 0;
+        var rpm = telemetry.HasVariable(TelemetryVarNames.Rpm) ? telemetry.GetFloat(TelemetryVarNames.Rpm) : 0;
 
         return new CockpitState
         {
@@ -29,6 +31,8 @@ internal static class CockpitBuilder
             ShiftLightsLit = litCount,
             ShiftBlink = blink,
             AbsActive = abs,
+            SpeedKph = speedKph,
+            Rpm = rpm,
             LeftProximity = left,
             RightProximity = right,
         };
@@ -73,23 +77,19 @@ internal static class CockpitBuilder
         return (litCount, blink);
     }
 
-    private static (double left, double right) BuildProximity(TelemetrySnapshot telemetry, IracingSessionInfo? session)
+    private static (ProximitySide left, ProximitySide right) BuildProximity(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
         if (session?.DriverInfo is not { } driverInfo ||
             !telemetry.HasVariable(TelemetryVarNames.CarLeftRight) ||
             !telemetry.HasVariable(TelemetryVarNames.CarIdxEstTime) ||
             !telemetry.HasVariable(TelemetryVarNames.Speed))
         {
-            return (0, 0);
+            return (ProximitySide.None, ProximitySide.None);
         }
 
         // Docs describe this as a bitfield, but the live shared-memory var header actually reports
         // it as a plain Int (confirmed against a running session) — read it as such.
         var carLeftRight = telemetry.GetInt(TelemetryVarNames.CarLeftRight);
-        if (carLeftRight <= 1) // irsdk_LROff or irsdk_LRClear — nobody alongside
-        {
-            return (0, 0);
-        }
 
         var playerCarIdx = driverInfo.DriverCarIdx;
         var carIdxEstTime = telemetry.GetFloatArray(TelemetryVarNames.CarIdxEstTime);
@@ -97,10 +97,18 @@ internal static class CockpitBuilder
 
         if (playerCarIdx < 0 || playerCarIdx >= carIdxEstTime.Length || speed <= 0.5)
         {
-            return (0, 0);
+            return (ProximitySide.None, ProximitySide.None);
         }
 
-        var minGapMeters = double.MaxValue;
+        // Track the closest car by absolute gap, but keep its SIGN too — a positive gap means the
+        // other car's front is ahead of ours (we're catching up from behind or just clearing them
+        // after a pass); negative means their front is behind ours (we've drawn ahead, or they're
+        // about to draw level from behind). That sign is what lets ComputeBand place the overlap at
+        // the right end of our own car instead of just reporting how much of them is alongside.
+        // Deliberately class-agnostic — same technique the Relative/Standings/Track Map widgets use,
+        // all confirmed live to work correctly across classes.
+        var minAbsGapMeters = double.MaxValue;
+        var closestSignedGapMeters = 0.0;
         foreach (var driver in driverInfo.Drivers)
         {
             if (driver.IsPaceCar || driver.CarIdx == playerCarIdx || driver.CarIdx < 0 || driver.CarIdx >= carIdxEstTime.Length)
@@ -110,25 +118,62 @@ internal static class CockpitBuilder
 
             // Nearby-car gaps are dominated by the same-lap term, so plain CarIdxEstTime difference
             // (no lap-count correction) is accurate enough for "is this car within a car length of me."
-            var gapSeconds = carIdxEstTime[playerCarIdx] - carIdxEstTime[driver.CarIdx];
-            var gapMeters = Math.Abs(gapSeconds) * speed;
-            minGapMeters = Math.Min(minGapMeters, gapMeters);
+            // Positive => the other car's EstTime (progress along track) is further than ours, i.e.
+            // their front is ahead of ours.
+            var gapSeconds = carIdxEstTime[driver.CarIdx] - carIdxEstTime[playerCarIdx];
+            var gapMeters = gapSeconds * speed;
+            var absGapMeters = Math.Abs(gapMeters);
+            if (absGapMeters < minAbsGapMeters)
+            {
+                minAbsGapMeters = absGapMeters;
+                closestSignedGapMeters = gapMeters;
+            }
         }
 
-        if (minGapMeters == double.MaxValue)
+        if (minAbsGapMeters == double.MaxValue)
         {
-            return (0, 0);
+            return (ProximitySide.None, ProximitySide.None);
         }
 
-        var overlap = Math.Clamp(1 - minGapMeters / CarLengthMeters, 0, 1);
+        var side = ComputeBand(closestSignedGapMeters);
+        if (side.Amount <= 0)
+        {
+            return (ProximitySide.None, ProximitySide.None); // closest car is further than a car length away
+        }
 
-        // irsdk_CarLeftRight: 2=CarLeft, 3=CarRight, 4=CarLeftRight, 5=2CarsLeft, 6=2CarsRight
+        // irsdk_CarLeftRight: 0=Off, 1=Clear, 2=CarLeft, 3=CarRight, 4=CarLeftRight, 5=2CarsLeft, 6=2CarsRight.
         return carLeftRight switch
         {
-            2 or 5 => (overlap, 0),
-            3 or 6 => (0, overlap),
-            4 => (overlap, overlap),
-            _ => (0, 0),
+            2 or 5 => (side, ProximitySide.None),
+            3 or 6 => (ProximitySide.None, side),
+            4 => (side, side),
+            _ => (ProximitySide.None, ProximitySide.None),
         };
+    }
+
+    /// <summary>
+    /// Projects the other car's signed along-track offset onto our own car's front-to-rear span,
+    /// returning the band of OUR car (0 = front, 1 = rear) that they currently overlap.
+    /// </summary>
+    private static ProximitySide ComputeBand(double signedGapMeters)
+    {
+        double bandStart, bandEnd;
+        if (signedGapMeters >= 0)
+        {
+            // Their front is at or ahead of ours: overlap runs from our front down to wherever
+            // their front currently is — shrinks toward the top as they pull clear ahead.
+            bandStart = 0;
+            bandEnd = Math.Clamp(CarLengthMeters - signedGapMeters, 0, CarLengthMeters);
+        }
+        else
+        {
+            // Their front is behind ours: overlap runs from wherever their front is up to our
+            // rear — shrinks toward the bottom as they fall clear behind.
+            bandStart = Math.Clamp(-signedGapMeters, 0, CarLengthMeters);
+            bandEnd = CarLengthMeters;
+        }
+
+        var amount = Math.Clamp((bandEnd - bandStart) / CarLengthMeters, 0, 1);
+        return new ProximitySide(amount, bandStart / CarLengthMeters, bandEnd / CarLengthMeters);
     }
 }

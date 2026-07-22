@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 using IRacingOverlay.App.Dashboard;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
 using IRacingOverlay.Sdk;
@@ -19,6 +20,13 @@ public partial class MainWindow : Window
 
     private readonly IRacingConnection _connection = new();
     private readonly DispatcherTimer _uiTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    // Cockpit (proximity/ABS bars) and the pedal trace are the two displays where update rate is
+    // itself the whole point — they're read on their own timer, decoupled from the general 100ms
+    // tick, so the user can push them faster (lower latency, more CPU) or slower independently of
+    // everything else.
+    private readonly DispatcherTimer _criticalTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private readonly PedalTraceBuilder _pedalTraceBuilder = new();
+    private readonly FuelBuilder _fuelBuilder = new();
     private int _tickCount;
 
     private RelativeWidget? _relativeWidget;
@@ -27,8 +35,14 @@ public partial class MainWindow : Window
     private FlagWidget? _flagWidget;
     private TireInfoWidget? _tireInfoWidget;
     private DeltaWidget? _deltaWidget;
+    private FuelWidget? _fuelWidget;
+    private PedalTraceWidget? _pedalTraceWidget;
+    private IncidentWidget? _incidentWidget;
+    private TrackInfoWidget? _trackInfoWidget;
+    private TrackMapWidget? _trackMapWidget;
     private DashboardWindow? _dashboard;
     private DeltaReference _deltaReference = DeltaReference.SessionBest;
+    private readonly StandingsColumnVisibility _standingsColumnVisibility = new();
 
     public MainWindow()
     {
@@ -38,15 +52,26 @@ public partial class MainWindow : Window
         MonitorComboBox.DisplayMemberPath = "DeviceName";
         MonitorComboBox.SelectedIndex = Screen.AllScreens.Length > 1 ? 1 : 0;
 
+        DashboardThemeComboBox.SelectedIndex = DashboardThemeStore.Get() switch
+        {
+            DashboardTheme.DigitalHud => 1,
+            DashboardTheme.RawDiy => 2,
+            _ => 0,
+        };
+
         _connection.Connected += (_, _) => Dispatcher.BeginInvoke(() => SetStatus(connected: true));
         _connection.Disconnected += (_, _) => Dispatcher.BeginInvoke(() => SetStatus(connected: false));
 
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
 
+        _criticalTimer.Tick += CriticalTimer_Tick;
+        _criticalTimer.Start();
+
         Closed += (_, _) =>
         {
             _uiTimer.Stop();
+            _criticalTimer.Stop();
             _connection.Stop();
             _relativeWidget?.Close();
             _standingsWidget?.Close();
@@ -54,10 +79,51 @@ public partial class MainWindow : Window
             _flagWidget?.Close();
             _tireInfoWidget?.Close();
             _deltaWidget?.Close();
+            _fuelWidget?.Close();
+            _pedalTraceWidget?.Close();
+            _incidentWidget?.Close();
+            _trackInfoWidget?.Close();
+            _trackMapWidget?.Close();
             _dashboard?.Close();
         };
 
+        RestoreWidgetVisibility();
+        RestoreStandingsColumnVisibility();
+
         _connection.Start();
+    }
+
+    /// <summary>Loads persisted Standings column toggles into both the checkboxes and the shared
+    /// StandingsColumnVisibility instance the overlay widget's panel binds to — the Dashboard's own
+    /// panel instance never sees this object, so it always shows every column.</summary>
+    private void RestoreStandingsColumnVisibility()
+    {
+        StandingsColumnVisibilityStore.ApplyTo(_standingsColumnVisibility);
+        StandingsIRatingCheckBox.IsChecked = _standingsColumnVisibility.ShowIRating;
+        StandingsIRatingDeltaCheckBox.IsChecked = _standingsColumnVisibility.ShowIRatingDelta;
+        StandingsLicenseCheckBox.IsChecked = _standingsColumnVisibility.ShowLicense;
+        StandingsLapCheckBox.IsChecked = _standingsColumnVisibility.ShowLap;
+        StandingsLastLapCheckBox.IsChecked = _standingsColumnVisibility.ShowLastLap;
+        StandingsBestLapCheckBox.IsChecked = _standingsColumnVisibility.ShowBestLap;
+        StandingsGapCheckBox.IsChecked = _standingsColumnVisibility.ShowGap;
+    }
+
+    /// <summary>Re-checks whichever overlay checkboxes were checked last run — each CheckBox's
+    /// Checked event handler (already wired via XAML) does the actual widget-creation/Show() work,
+    /// so setting IsChecked here is enough; unchanged (false->false) values don't re-fire it.</summary>
+    private void RestoreWidgetVisibility()
+    {
+        RelativeCheckBox.IsChecked = WidgetVisibilityStore.Get("Relative");
+        StandingsCheckBox.IsChecked = WidgetVisibilityStore.Get("Standings");
+        CockpitCheckBox.IsChecked = WidgetVisibilityStore.Get("Cockpit");
+        FlagCheckBox.IsChecked = WidgetVisibilityStore.Get("Flag");
+        TireInfoCheckBox.IsChecked = WidgetVisibilityStore.Get("TireInfo");
+        DeltaCheckBox.IsChecked = WidgetVisibilityStore.Get("Delta");
+        FuelCheckBox.IsChecked = WidgetVisibilityStore.Get("Fuel");
+        PedalTraceCheckBox.IsChecked = WidgetVisibilityStore.Get("PedalTrace");
+        IncidentCheckBox.IsChecked = WidgetVisibilityStore.Get("Incident");
+        TrackInfoCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackInfo");
+        TrackMapCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackMap");
     }
 
     private void SetStatus(bool connected)
@@ -85,15 +151,12 @@ public partial class MainWindow : Window
         if ((_standingsWidget is not null || _dashboard is not null) && _tickCount % StandingsUpdateEveryNTicks == 0)
         {
             var standingsRows = StandingsBuilder.BuildStandings(telemetry, session);
-            _standingsWidget?.UpdateRows(standingsRows);
-            _dashboard?.UpdateStandingsRows(standingsRows);
-        }
-
-        if (_cockpitWidget is not null || _dashboard is not null)
-        {
-            var cockpitState = CockpitBuilder.Build(telemetry, session);
-            _cockpitWidget?.UpdateState(cockpitState);
-            _dashboard?.UpdateCockpit(cockpitState);
+            var standingsDisplay = StandingsBuilder.GroupForDisplay(standingsRows);
+            var sof = StandingsBuilder.ComputeStrengthOfField(standingsRows);
+            _standingsWidget?.UpdateRows(standingsDisplay);
+            _standingsWidget?.SetSof(sof);
+            _dashboard?.UpdateStandingsRows(standingsDisplay);
+            _dashboard?.UpdateStandingsSof(sof);
         }
 
         if (_flagWidget is not null || _dashboard is not null)
@@ -116,6 +179,64 @@ public partial class MainWindow : Window
             _deltaWidget?.UpdateState(deltaState);
             _dashboard?.UpdateDelta(deltaState);
         }
+
+        if (_fuelWidget is not null || _dashboard is not null)
+        {
+            var fuelState = _fuelBuilder.Build(telemetry);
+            _fuelWidget?.UpdateState(fuelState);
+            _dashboard?.UpdateFuel(fuelState);
+        }
+
+        if (_incidentWidget is not null || _dashboard is not null)
+        {
+            var incidentState = IncidentBuilder.Build(telemetry);
+            _incidentWidget?.UpdateState(incidentState);
+            _dashboard?.UpdateIncident(incidentState);
+        }
+
+        if (_trackInfoWidget is not null || _dashboard is not null)
+        {
+            var trackInfoState = TrackInfoBuilder.Build(telemetry, session);
+            _trackInfoWidget?.UpdateState(trackInfoState);
+            _dashboard?.UpdateTrackInfo(trackInfoState);
+        }
+
+        if (_trackMapWidget is not null || _dashboard is not null)
+        {
+            var trackMapMarkers = TrackMapBuilder.Build(telemetry, session);
+            _trackMapWidget?.UpdateState(trackMapMarkers);
+            _dashboard?.UpdateTrackMap(trackMapMarkers);
+        }
+
+        // Memory usage barely changes tick to tick — reuse the same once-a-second cadence as
+        // Standings rather than recomputing it on every 100ms tick.
+        if (_tickCount % StandingsUpdateEveryNTicks == 0)
+        {
+            UpdateMemoryText();
+        }
+    }
+
+    private void CriticalTimer_Tick(object? sender, EventArgs e)
+    {
+        var telemetry = _connection.Latest;
+        if (telemetry is null)
+        {
+            return;
+        }
+
+        if (_cockpitWidget is not null || _dashboard is not null)
+        {
+            var cockpitState = CockpitBuilder.Build(telemetry, _connection.Session);
+            _cockpitWidget?.UpdateState(cockpitState);
+            _dashboard?.UpdateCockpit(cockpitState);
+        }
+
+        if (_pedalTraceWidget is not null || _dashboard is not null)
+        {
+            var pedalTraceState = _pedalTraceBuilder.Build(telemetry);
+            _pedalTraceWidget?.UpdateState(pedalTraceState);
+            _dashboard?.UpdatePedalTrace(pedalTraceState);
+        }
     }
 
     private void UpdateDebugText(TelemetrySnapshot telemetry)
@@ -126,8 +247,28 @@ public partial class MainWindow : Window
         DebugText.Text = $"Speed: {speed:0} km/h   Lap: {lap}   Gear: {gear}";
     }
 
+    private void UpdateMemoryText()
+    {
+        var megabytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024.0 * 1024.0);
+        MemoryText.Text = $"Memory: {megabytes:0} MB";
+    }
+
+    private void CriticalRefreshComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var ms = CriticalRefreshComboBox.SelectedIndex switch
+        {
+            0 => 33,
+            1 => 50,
+            3 => 200,
+            4 => 500,
+            _ => 100, // index 2, "Normal (10 Hz)"
+        };
+        _criticalTimer.Interval = TimeSpan.FromMilliseconds(ms);
+    }
+
     private void RelativeCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        WidgetVisibilityStore.Save("Relative", RelativeCheckBox.IsChecked == true);
         if (RelativeCheckBox.IsChecked == true)
         {
             _relativeWidget ??= new RelativeWidget();
@@ -148,9 +289,15 @@ public partial class MainWindow : Window
 
     private void StandingsCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        WidgetVisibilityStore.Save("Standings", StandingsCheckBox.IsChecked == true);
         if (StandingsCheckBox.IsChecked == true)
         {
-            _standingsWidget ??= new StandingsWidget();
+            if (_standingsWidget is null)
+            {
+                _standingsWidget = new StandingsWidget();
+                _standingsWidget.SetColumnVisibility(_standingsColumnVisibility);
+            }
+
             if (_standingsWidget.HasSavedLayout)
             {
                 _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
@@ -166,6 +313,7 @@ public partial class MainWindow : Window
 
     private void CockpitCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        WidgetVisibilityStore.Save("Cockpit", CockpitCheckBox.IsChecked == true);
         if (CockpitCheckBox.IsChecked == true)
         {
             _cockpitWidget ??= new CockpitWidget();
@@ -184,6 +332,7 @@ public partial class MainWindow : Window
 
     private void FlagCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        WidgetVisibilityStore.Save("Flag", FlagCheckBox.IsChecked == true);
         if (FlagCheckBox.IsChecked == true)
         {
             _flagWidget ??= new FlagWidget();
@@ -202,6 +351,7 @@ public partial class MainWindow : Window
 
     private void TireInfoCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        WidgetVisibilityStore.Save("TireInfo", TireInfoCheckBox.IsChecked == true);
         if (TireInfoCheckBox.IsChecked == true)
         {
             _tireInfoWidget ??= new TireInfoWidget();
@@ -220,6 +370,7 @@ public partial class MainWindow : Window
 
     private void DeltaCheckBox_Changed(object sender, RoutedEventArgs e)
     {
+        WidgetVisibilityStore.Save("Delta", DeltaCheckBox.IsChecked == true);
         if (DeltaCheckBox.IsChecked == true)
         {
             _deltaWidget ??= new DeltaWidget();
@@ -236,6 +387,143 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FuelCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        WidgetVisibilityStore.Save("Fuel", FuelCheckBox.IsChecked == true);
+        if (FuelCheckBox.IsChecked == true)
+        {
+            _fuelWidget ??= new FuelWidget();
+            if (_fuelWidget.HasSavedLayout)
+            {
+                _fuelWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _fuelWidget.Show();
+        }
+        else
+        {
+            _fuelWidget?.Hide();
+        }
+    }
+
+    private void PedalTraceCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        WidgetVisibilityStore.Save("PedalTrace", PedalTraceCheckBox.IsChecked == true);
+        if (PedalTraceCheckBox.IsChecked == true)
+        {
+            _pedalTraceWidget ??= new PedalTraceWidget();
+            if (_pedalTraceWidget.HasSavedLayout)
+            {
+                _pedalTraceWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _pedalTraceWidget.Show();
+        }
+        else
+        {
+            _pedalTraceWidget?.Hide();
+        }
+    }
+
+    private void IncidentCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        WidgetVisibilityStore.Save("Incident", IncidentCheckBox.IsChecked == true);
+        if (IncidentCheckBox.IsChecked == true)
+        {
+            _incidentWidget ??= new IncidentWidget();
+            if (_incidentWidget.HasSavedLayout)
+            {
+                _incidentWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _incidentWidget.Show();
+        }
+        else
+        {
+            _incidentWidget?.Hide();
+        }
+    }
+
+    private void TrackInfoCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        WidgetVisibilityStore.Save("TrackInfo", TrackInfoCheckBox.IsChecked == true);
+        if (TrackInfoCheckBox.IsChecked == true)
+        {
+            _trackInfoWidget ??= new TrackInfoWidget();
+            if (_trackInfoWidget.HasSavedLayout)
+            {
+                _trackInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _trackInfoWidget.Show();
+        }
+        else
+        {
+            _trackInfoWidget?.Hide();
+        }
+    }
+
+    private void TrackMapCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        WidgetVisibilityStore.Save("TrackMap", TrackMapCheckBox.IsChecked == true);
+        if (TrackMapCheckBox.IsChecked == true)
+        {
+            _trackMapWidget ??= new TrackMapWidget();
+            if (_trackMapWidget.HasSavedLayout)
+            {
+                _trackMapWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            }
+
+            _trackMapWidget.Show();
+        }
+        else
+        {
+            _trackMapWidget?.Hide();
+        }
+    }
+
+    private void StandingsIRatingCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowIRating = StandingsIRatingCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowIRating), _standingsColumnVisibility.ShowIRating);
+    }
+
+    private void StandingsIRatingDeltaCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowIRatingDelta = StandingsIRatingDeltaCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowIRatingDelta), _standingsColumnVisibility.ShowIRatingDelta);
+    }
+
+    private void StandingsLicenseCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowLicense = StandingsLicenseCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowLicense), _standingsColumnVisibility.ShowLicense);
+    }
+
+    private void StandingsLapCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowLap = StandingsLapCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowLap), _standingsColumnVisibility.ShowLap);
+    }
+
+    private void StandingsLastLapCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowLastLap = StandingsLastLapCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowLastLap), _standingsColumnVisibility.ShowLastLap);
+    }
+
+    private void StandingsBestLapCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowBestLap = StandingsBestLapCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowBestLap), _standingsColumnVisibility.ShowBestLap);
+    }
+
+    private void StandingsGapCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        _standingsColumnVisibility.ShowGap = StandingsGapCheckBox.IsChecked == true;
+        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowGap), _standingsColumnVisibility.ShowGap);
+    }
+
     private void DeltaReferenceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         _deltaReference = DeltaReferenceComboBox.SelectedIndex switch
@@ -244,6 +532,18 @@ public partial class MainWindow : Window
             2 => DeltaReference.OptimalLap,
             _ => DeltaReference.SessionBest,
         };
+    }
+
+    private void DashboardThemeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var theme = DashboardThemeComboBox.SelectedIndex switch
+        {
+            1 => DashboardTheme.DigitalHud,
+            2 => DashboardTheme.RawDiy,
+            _ => DashboardTheme.Classic,
+        };
+        DashboardThemeStore.Save(theme);
+        _dashboard?.ApplyTheme(theme);
     }
 
     private void EditModeCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -277,6 +577,31 @@ public partial class MainWindow : Window
         if (_deltaWidget is not null)
         {
             _deltaWidget.IsEditMode = editMode;
+        }
+
+        if (_fuelWidget is not null)
+        {
+            _fuelWidget.IsEditMode = editMode;
+        }
+
+        if (_pedalTraceWidget is not null)
+        {
+            _pedalTraceWidget.IsEditMode = editMode;
+        }
+
+        if (_incidentWidget is not null)
+        {
+            _incidentWidget.IsEditMode = editMode;
+        }
+
+        if (_trackInfoWidget is not null)
+        {
+            _trackInfoWidget.IsEditMode = editMode;
+        }
+
+        if (_trackMapWidget is not null)
+        {
+            _trackMapWidget.IsEditMode = editMode;
         }
     }
 

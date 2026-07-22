@@ -3,19 +3,58 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
-    <Border Background="#E6141414" BorderBrush="#3A3A3A" BorderThickness="1" CornerRadius="6" Padding="10">
+    <!-- Chrome (background/border/corners) follows the active Dashboard theme like every other
+         panel — only the semantic colors (shift-light dots, amber proximity bars, gear brackets,
+         ABS glow) stay hardcoded, since those must match their real-world meaning regardless of
+         theme, the same principle FlagPanel already uses for flag colors. -->
+    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
+            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="8,6">
         <Grid>
+            <!-- The three center columns are fixed pixel widths sized tightly to their actual
+                 content (not star-ratios, which stretch to fill however much space the design
+                 canvas declares whether or not the digits need it — that's what was leaving visible
+                 dead air between speed/gear/RPM). These specific numbers were derived from measuring
+                 this panel's own natural (Auto-sized) width in isolation, NOT re-declared as Auto
+                 here — Auto columns measured correctly standalone but badly miscomputed (a large,
+                 wrong blowup) once nested under the Dashboard's LayoutTransform-based +/- zoom, a
+                 known-troublesome WPF combination (LayoutTransform + Auto/content-driven sizing can
+                 mis-iterate). Fixed pixel widths give the exact same tight fit without that risk. -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="28"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="26"/>
-                <ColumnDefinition Width="28"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="84"/>
+                <ColumnDefinition Width="92"/>
+                <ColumnDefinition Width="78"/>
+                <ColumnDefinition Width="20"/>
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <w:ProximityBarPanel x:Name="LeftProximity" Grid.Column="0" Margin="2,0"/>
-            <w:ShiftGearPanel x:Name="ShiftGear" Grid.Column="1"/>
-            <w:GlowBarPanel x:Name="AbsBar" Grid.Column="2" Margin="2,0"/>
-            <w:ProximityBarPanel x:Name="RightProximity" Grid.Column="3" Margin="2,0"/>
+            <!-- Proximity bars run the full height of the panel, flanking everything else. -->
+            <w:ProximityBarPanel x:Name="LeftProximity" Grid.Column="0" Grid.RowSpan="2" Margin="0,2"/>
+            <w:ProximityBarPanel x:Name="RightProximity" Grid.Column="4" Grid.RowSpan="2" Margin="0,2"/>
+
+            <!-- Shift lights span the speed/gear/RPM columns, not just the gear digit. -->
+            <w:ShiftLightsPanel x:Name="ShiftLights" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,6"/>
+
+            <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="SpeedText" Text="—" FontSize="40" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center" FontFamily="Consolas"/>
+                <Border BorderBrush="{DynamicResource Theme.PanelBorder}" BorderThickness="0,0,0,1" Margin="4,4,4,2"/>
+                <TextBlock Text="KM/H" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Theme.LabelForeground}" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <w:ShiftGearPanel x:Name="ShiftGear" Grid.Row="1" Grid.Column="2"/>
+
+            <StackPanel Grid.Row="1" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="RPM" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Theme.LabelForeground}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                <TextBlock x:Name="RpmText" Text="—" FontSize="26" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center" FontFamily="Consolas"/>
+                <Border BorderBrush="{DynamicResource Theme.PanelBorder}" BorderThickness="0,0,0,1" Margin="4,4,4,6"/>
+                <w:AbsIndicatorPanel x:Name="AbsIndicator" HorizontalAlignment="Center"/>
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>

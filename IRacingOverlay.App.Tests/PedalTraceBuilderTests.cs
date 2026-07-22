@@ -1,0 +1,119 @@
+using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.Sdk.Interop;
+using IRacingOverlay.Sdk.Tests;
+
+namespace IRacingOverlay.App.Tests;
+
+public class PedalTraceBuilderTests
+{
+    private static SyntheticMemoryBuilder PedalVars()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("Throttle", IrsdkVarType.Float);
+        builder.AddVar("Brake", IrsdkVarType.Float);
+        builder.AddVar("Clutch", IrsdkVarType.Float);
+        return builder;
+    }
+
+    [Fact]
+    public void Build_ReadsCurrentPedalValues()
+    {
+        var builder = PedalVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("Throttle", 0.8f);
+            w.SetFloat("Brake", 0.1f);
+            w.SetFloat("Clutch", 0f); // raw 0 = fully disengaged (pedal to the floor)
+        });
+
+        var state = new PedalTraceBuilder().Build(snapshot);
+
+        Assert.Equal(0.8, state.Throttle, precision: 3);
+        Assert.Equal(0.1, state.Brake, precision: 3);
+        Assert.Equal(1, state.Clutch, precision: 3); // inverted: fully pressed
+    }
+
+    [Fact]
+    public void Build_ClutchReleased_ReadsAsNotPressed()
+    {
+        // iRacing reports raw Clutch=1 when the pedal is released (e.g. autoclutch idling) —
+        // must display as 0% pressed, not 100%.
+        var builder = PedalVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("Throttle", 0f);
+            w.SetFloat("Brake", 0f);
+            w.SetFloat("Clutch", 1f);
+        });
+
+        var state = new PedalTraceBuilder().Build(snapshot);
+
+        Assert.Equal(0, state.Clutch, precision: 3);
+    }
+
+    [Fact]
+    public void Build_AccumulatesHistoryAcrossCalls()
+    {
+        var builder = PedalVars();
+        var pedalTraceBuilder = new PedalTraceBuilder();
+
+        for (var i = 0; i < 5; i++)
+        {
+            var value = i / 10.0f;
+            var snapshot = TestSnapshotFactory.Build(builder, w =>
+            {
+                w.SetFloat("Throttle", value);
+                w.SetFloat("Brake", 0f);
+                w.SetFloat("Clutch", 0f);
+            });
+            pedalTraceBuilder.Build(snapshot);
+        }
+
+        var final = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("Throttle", 0.9f);
+            w.SetFloat("Brake", 0f);
+            w.SetFloat("Clutch", 0f);
+        });
+        var state = pedalTraceBuilder.Build(final);
+
+        Assert.Equal(6, state.ThrottleHistory.Count);
+        Assert.Equal(0.9, state.ThrottleHistory[^1], precision: 3);
+        Assert.Equal(0.0, state.ThrottleHistory[0], precision: 3);
+    }
+
+    [Fact]
+    public void Build_HistoryCapsAtFixedLength()
+    {
+        var builder = PedalVars();
+        var pedalTraceBuilder = new PedalTraceBuilder();
+        PedalTraceState state = PedalTraceState.Empty;
+
+        for (var i = 0; i < 100; i++)
+        {
+            var snapshot = TestSnapshotFactory.Build(builder, w =>
+            {
+                w.SetFloat("Throttle", 0.5f);
+                w.SetFloat("Brake", 0f);
+                w.SetFloat("Clutch", 0f);
+            });
+            state = pedalTraceBuilder.Build(snapshot);
+        }
+
+        Assert.True(state.ThrottleHistory.Count <= 50);
+    }
+
+    [Fact]
+    public void Build_MissingVariables_DefaultsToZero()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("Speed", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("Speed", 10));
+
+        var state = new PedalTraceBuilder().Build(snapshot);
+
+        Assert.Equal(0, state.Throttle);
+        Assert.Equal(0, state.Brake);
+        Assert.Equal(0, state.Clutch);
+    }
+}

@@ -1,0 +1,54 @@
+<UserControl x:Class="IRacingOverlay.App.Widgets.PedalTracePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
+            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <TextBlock Text="PEDALS" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11" FontWeight="Bold" Margin="0,0,0,4"/>
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Width="20" Margin="0,0,4,0">
+                        <Border x:Name="ThrottleTrack" Background="#2A2A2A" CornerRadius="3" Height="90">
+                            <Grid VerticalAlignment="Stretch">
+                                <Rectangle x:Name="ThrottleFill" Fill="#3DDC7A" VerticalAlignment="Bottom" Height="0"/>
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="T" Foreground="#3DDC7A" FontSize="10" HorizontalAlignment="Center" FontWeight="Bold" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Width="20" Margin="0,0,4,0">
+                        <Border x:Name="BrakeTrack" Background="#2A2A2A" CornerRadius="3" Height="90">
+                            <Grid VerticalAlignment="Stretch">
+                                <Rectangle x:Name="BrakeFill" Fill="#FF4D4D" VerticalAlignment="Bottom" Height="0"/>
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="B" Foreground="#FF4D4D" FontSize="10" HorizontalAlignment="Center" FontWeight="Bold" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Width="20">
+                        <Border x:Name="ClutchTrack" Background="#2A2A2A" CornerRadius="3" Height="90">
+                            <Grid VerticalAlignment="Stretch">
+                                <Rectangle x:Name="ClutchFill" Fill="#6FB8FF" VerticalAlignment="Bottom" Height="0"/>
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="C" Foreground="#6FB8FF" FontSize="10" HorizontalAlignment="Center" FontWeight="Bold" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="THROTTLE / BRAKE TRACE" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11" FontWeight="Bold" Margin="0,0,0,4"/>
+                <Canvas x:Name="TraceCanvas" Grid.Row="1" Background="#0F0F0F" ClipToBounds="True"/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

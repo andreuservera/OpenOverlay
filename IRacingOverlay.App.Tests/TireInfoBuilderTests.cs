@@ -110,5 +110,28 @@ public class TireInfoBuilderTests
         Assert.Equal("—", state.RF.TempLeftDisplay);
         Assert.Equal("LR", state.LR.Label);
         Assert.Equal("RR", state.RR.Label);
+        Assert.False(state.LF.HasWearData);
+        Assert.Equal(1.0, state.LF.WorstWearFraction);
+    }
+
+    [Fact]
+    public void Build_WearReported_UsesWorstZoneAsWorstWearFraction()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LFwearL", IrsdkVarType.Float);
+        builder.AddVar("LFwearM", IrsdkVarType.Float);
+        builder.AddVar("LFwearR", IrsdkVarType.Float);
+
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("LFwearL", 0.6f);
+            w.SetFloat("LFwearM", 0.4f); // worst zone
+            w.SetFloat("LFwearR", 0.7f);
+        });
+
+        var state = TireInfoBuilder.Build(snapshot);
+
+        Assert.True(state.LF.HasWearData);
+        Assert.Equal(0.4, state.LF.WorstWearFraction, precision: 3);
     }
 }

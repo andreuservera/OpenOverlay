@@ -20,5 +20,10 @@ public sealed class RelativeRow
             ? $"-{Math.Abs(GapSeconds).ToString("0.0", CultureInfo.InvariantCulture)}"
             : $"+{GapSeconds.ToString("0.0", CultureInfo.InvariantCulture)}");
 
-    public string RowBackground => IsPlayer ? "#4433AAFF" : "Transparent";
+    // Player keeps the brighter blue "find yourself" highlight; every other row is tinted by its
+    // own class color so classes read apart at a glance without drowning the text. iRacing's class
+    // colors ARE genuinely distinct hues (confirmed live: e.g. 0x33ceff vs 0xffda59) — the original
+    // ~16% alpha ("#2A") was just too subtle against a near-black panel to let the hue read; both
+    // ended up looking like similarly-dim gray. Bumped to ~33% ("#55") so the actual hue shows.
+    public string RowBackground => IsPlayer ? "#4433AAFF" : $"#55{ClassColor.TrimStart('#')}";
 }

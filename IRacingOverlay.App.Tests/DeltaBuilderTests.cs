@@ -109,4 +109,50 @@ public class DeltaBuilderTests
 
         Assert.Equal("+0.812", state.Display);
     }
+
+    [Fact]
+    public void Build_RateOfChangePresent_IsReadRegardlessOfDeltaSign()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LapDeltaToSessionBestLap", IrsdkVarType.Float);
+        builder.AddVar("LapDeltaToSessionBestLap_DD", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("LapDeltaToSessionBestLap", 0.3f); // behind overall
+            w.SetFloat("LapDeltaToSessionBestLap_DD", -0.2f); // but currently gaining
+        });
+
+        var state = DeltaBuilder.Build(snapshot, DeltaReference.SessionBest);
+
+        Assert.Equal(-0.2, state.RateOfChange, precision: 3);
+    }
+
+    [Fact]
+    public void Build_RateOfChangeMissing_DefaultsToZero()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LapDeltaToSessionBestLap", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("LapDeltaToSessionBestLap", 0.1f));
+
+        var state = DeltaBuilder.Build(snapshot, DeltaReference.SessionBest);
+
+        Assert.Equal(0, state.RateOfChange);
+    }
+
+    [Fact]
+    public void Build_OptimalLapReference_ReadsItsOwnRateVariable()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LapDeltaToOptimalLap", IrsdkVarType.Float);
+        builder.AddVar("LapDeltaToOptimalLap_DD", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("LapDeltaToOptimalLap", -0.1f);
+            w.SetFloat("LapDeltaToOptimalLap_DD", 0.15f);
+        });
+
+        var state = DeltaBuilder.Build(snapshot, DeltaReference.OptimalLap);
+
+        Assert.Equal(0.15, state.RateOfChange, precision: 3);
+    }
 }

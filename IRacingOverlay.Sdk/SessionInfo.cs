@@ -62,6 +62,7 @@ public sealed class DriverEntry
 
 public sealed class SessionInfoSection
 {
+    public int CurrentSessionNum { get; set; }
     public List<SessionEntry> Sessions { get; set; } = [];
 }
 

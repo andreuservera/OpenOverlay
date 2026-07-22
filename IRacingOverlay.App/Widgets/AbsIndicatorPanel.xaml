@@ -1,0 +1,10 @@
+<UserControl x:Class="IRacingOverlay.App.Widgets.AbsIndicatorPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Outlined pill, not a filled block — matches the reference design's "ABS" telltale, which
+         glows amber via its border+text rather than a solid fill. -->
+    <Border x:Name="Light" Width="76" Height="30" CornerRadius="15" BorderThickness="2" Background="Transparent">
+        <TextBlock x:Name="Label" Text="ABS" FontWeight="Bold" FontSize="14"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    </Border>
+</UserControl>

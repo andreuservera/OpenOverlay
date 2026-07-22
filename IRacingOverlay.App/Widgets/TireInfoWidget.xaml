@@ -14,6 +14,8 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <w:TireInfoPanel x:Name="Panel"/>
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.TireInfo">
+            <w:TireInfoPanel/>
+        </ov:ScalablePanel>
     </Border>
 </ov:OverlayWindowBase>
