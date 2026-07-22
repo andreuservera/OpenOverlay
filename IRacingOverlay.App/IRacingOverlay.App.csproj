@@ -4,6 +4,10 @@
     <ProjectReference Include="..\IRacingOverlay.Sdk\IRacingOverlay.Sdk.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -17,10 +21,18 @@
     <AssemblyName>OpenOverlay</AssemblyName>
     <Product>OpenOverlay</Product>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <!-- Velopack needs a custom Main (below, in App.xaml.cs) instead of WPF's own generated one, so
+         it can call VelopackApp.Build().Run() — which handles first-run install hooks and applying
+         pending updates — before any WPF/Application machinery spins up. -->
+    <StartupObject>IRacingOverlay.App.App</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
     <Resource Include="Assets\icon.ico" />
+    <!-- Must not be an ApplicationDefinition (which auto-generates its own Main) now that
+         App.xaml.cs provides one explicitly for Velopack's sake. -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
   </ItemGroup>
 
   <!--

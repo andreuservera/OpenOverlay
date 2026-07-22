@@ -1,0 +1,61 @@
+name: Release
+
+# Cutting a release is just: git tag vX.Y.Z && git push origin vX.Y.Z — this workflow builds a
+# self-contained installer via Velopack and publishes it to GitHub Releases automatically.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: get-version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run tests
+        run: dotnet test --configuration Release
+
+      - name: Publish self-contained build
+        run: dotnet publish IRacingOverlay.App/IRacingOverlay.App.csproj -c Release -r win-x64 --self-contained true -o publish-selfcontained
+
+      - name: Install vpk
+        run: dotnet tool install -g vpk
+
+      - name: Download previous release (for delta patches)
+        run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true # fine to fail on the very first Velopack-packaged release — nothing to diff against yet
+
+      - name: Pack installer
+        run: >
+          vpk pack
+          --packId OpenOverlay
+          --packVersion ${{ steps.get-version.outputs.version }}
+          --packDir publish-selfcontained
+          --packTitle "OpenOverlay"
+          --packAuthors "OpenOverlay contributors"
+          --mainExe OpenOverlay.exe
+          --icon IRacingOverlay.App/Assets/icon.ico
+          --shortcuts Desktop,StartMenuRoot
+
+      - name: Publish to GitHub Releases
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --publish
+          --releaseName "OpenOverlay ${{ github.ref_name }}"
+          --tag ${{ github.ref_name }}

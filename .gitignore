@@ -3,7 +3,10 @@ obj/
 .vs/
 *.user
 publish/
+publish-selfcontained/
+Releases/
 .idea/
 *.DotSettings.user
 TestResults/
 *.zip
+*.nupkg

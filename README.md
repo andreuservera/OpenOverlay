@@ -52,7 +52,10 @@ and rendered directly by the app.
 
 ## Getting started
 
-1. Download the latest release from the [Releases page](../../releases) and unzip it anywhere.
+1. Download `OpenOverlay-win-Setup.exe` from the latest [Release](../../releases) and run it. It
+   installs to your user profile (no admin rights needed), adds a Desktop and Start Menu shortcut,
+   and launches the app automatically when it's done. Installed copies check for new releases on
+   every launch and silently update themselves in the background — nothing to do manually.
 2. **Set iRacing's display mode to Borderless (or Windowed) — not exclusive Fullscreen.**
    This is the single most important setup step: exclusive Fullscreen mode takes full control of
    the display and won't let *any* other window, including OpenOverlay's widgets, render on top of
@@ -90,7 +93,7 @@ dotnet build
 dotnet test
 ```
 
-To produce an optimized Release build (what the Releases page ships):
+To produce an optimized Release build as a loose folder of files (no installer, no auto-update):
 
 ```powershell
 .\publish-release.ps1                      # framework-dependent, needs .NET 8 Desktop Runtime installed
@@ -98,6 +101,9 @@ To produce an optimized Release build (what the Releases page ships):
 ```
 
 The published executable lands at `publish\OpenOverlay.exe`.
+
+To instead build the real installer (`Setup.exe`) that the Releases page ships — see
+[Cutting a release](#cutting-a-release) below.
 
 ### Project layout
 
@@ -109,6 +115,32 @@ The published executable lands at `publish\OpenOverlay.exe`.
 
 (The project folders/namespaces above are still named `IRacingOverlay.*` internally — only the
 published app itself is branded OpenOverlay.)
+
+## Cutting a release
+
+Installers and auto-updates are built with [Velopack](https://velopack.io) (MIT), which packages
+the app into a `Setup.exe`, creates the Desktop/Start Menu shortcuts on install, and lets installed
+copies check GitHub Releases and self-update in the background — see `App.xaml.cs` for the
+update-check code and `IRacingOverlay.App.csproj` for how Velopack hooks into a custom `Main`.
+
+**Automatically (recommended):** push a version tag and GitHub Actions
+(`.github/workflows/release.yml`) builds and publishes the release for you:
+
+```powershell
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+**Manually**, if you want to build/test an installer locally first:
+
+```powershell
+.\pack-installer.ps1 -Version 0.2.0            # builds Setup.exe under .\Releases, doesn't publish
+.\pack-installer.ps1 -Version 0.2.0 -Publish   # also uploads it as a GitHub release (needs $env:GITHUB_TOKEN)
+```
+
+The first time you ever cut a Velopack release, `vpk download github` will warn that there's no
+previous release to diff against — that's expected, it just means there's no delta patch to
+compute yet; every release after that will ship a small delta update instead of a full download.
 
 ## Contributing
 
