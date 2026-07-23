@@ -123,6 +123,12 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
             {
                 NativeMethods.BeginNativeResize(hwnd);
             }
+            else if (IsOverInteractiveElement(lParam))
+            {
+                // e.g. ScalablePanel's +/- buttons: let WPF's own routed Button.Click fire instead
+                // of hijacking the click into a window drag.
+                return IntPtr.Zero;
+            }
             else
             {
                 NativeMethods.BeginNativeDrag(hwnd);
@@ -159,6 +165,35 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         var clientX = unchecked((short)(raw & 0xFFFF));
         var clientY = unchecked((short)((raw >> 16) & 0xFFFF));
         return NativeMethods.IsNearBottomRightCorner(hwnd, clientX, clientY, ResizeGripMargin);
+    }
+
+    // Unlike the resize-grip check above, this hit-test genuinely needs WPF's own device->DIU
+    // transform: we're asking "is there a Button here in the visual tree," a question posed in
+    // WPF's coordinate space, not comparing against a raw Win32 rect.
+    private bool IsOverInteractiveElement(IntPtr lParam)
+    {
+        if (PresentationSource.FromVisual(this) is not HwndSource hwndSource)
+        {
+            return false;
+        }
+
+        var raw = lParam.ToInt64();
+        var clientX = unchecked((short)(raw & 0xFFFF));
+        var clientY = unchecked((short)((raw >> 16) & 0xFFFF));
+        var point = hwndSource.CompositionTarget.TransformFromDevice.Transform(new Point(clientX, clientY));
+
+        var hit = System.Windows.Media.VisualTreeHelper.HitTest(this, point)?.VisualHit;
+        while (hit is not null)
+        {
+            if (hit is System.Windows.Controls.Primitives.ButtonBase)
+            {
+                return true;
+            }
+
+            hit = System.Windows.Media.VisualTreeHelper.GetParent(hit);
+        }
+
+        return false;
     }
 
     private void ApplyClickThrough()

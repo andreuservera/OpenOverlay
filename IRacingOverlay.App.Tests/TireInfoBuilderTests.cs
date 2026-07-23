@@ -10,7 +10,6 @@ public class TireInfoBuilderTests
     public void Build_FallsBackToCarcassTemp_WhenSurfaceTempUnavailable()
     {
         var builder = new SyntheticMemoryBuilder();
-        builder.AddVar("LFpressure", IrsdkVarType.Float);
         builder.AddVar("LFcoldPressure", IrsdkVarType.Float);
         builder.AddVar("LFtempCL", IrsdkVarType.Float);
         builder.AddVar("LFtempCM", IrsdkVarType.Float);
@@ -18,7 +17,6 @@ public class TireInfoBuilderTests
 
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
-            w.SetFloat("LFpressure", 180.0f);
             w.SetFloat("LFcoldPressure", 165.0f);
             w.SetFloat("LFtempCL", 80.0f);
             w.SetFloat("LFtempCM", 90.0f);
@@ -27,8 +25,44 @@ public class TireInfoBuilderTests
 
         var state = TireInfoBuilder.Build(snapshot);
 
-        Assert.Equal(180.0, state.LF.PressureKPa);
+        // iRacing never exposes a live/"hot" pressure channel on any car — cold/garage-set pressure
+        // is the only pressure telemetry that actually exists, so it's what the panel shows.
+        Assert.Equal(165.0, state.LF.PressureKPa);
         Assert.Equal(165.0, state.LF.ColdPressureKPa);
+        Assert.Equal(80.0, state.LF.TempLeft, precision: 3);
+        Assert.Equal(90.0, state.LF.TempMiddle, precision: 3);
+        Assert.Equal(100.0, state.LF.TempRight, precision: 3);
+        Assert.False(state.LF.IsSurfaceTemp);
+    }
+
+    [Fact]
+    public void Build_SurfaceTempDeclaredButGarbage_FallsBackToCarcass()
+    {
+        // Regression test for the reported "tire info displaying random numbers" bug: the legacy
+        // surface-temp variable name can be present in the var-header table without ever being
+        // written a real value — if that leftover memory isn't cleanly zeroed, reinterpreting it as a
+        // float can produce an enormous, nonsensical reading that still passes a bare "> 0" check.
+        // A physically-implausible reading must be treated the same as "not available."
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LFtempL", IrsdkVarType.Float);
+        builder.AddVar("LFtempM", IrsdkVarType.Float);
+        builder.AddVar("LFtempR", IrsdkVarType.Float);
+        builder.AddVar("LFtempCL", IrsdkVarType.Float);
+        builder.AddVar("LFtempCM", IrsdkVarType.Float);
+        builder.AddVar("LFtempCR", IrsdkVarType.Float);
+
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("LFtempL", float.MaxValue); // garbage/uninitialized reading
+            w.SetFloat("LFtempM", float.MaxValue);
+            w.SetFloat("LFtempR", float.MaxValue);
+            w.SetFloat("LFtempCL", 80.0f);
+            w.SetFloat("LFtempCM", 90.0f);
+            w.SetFloat("LFtempCR", 100.0f);
+        });
+
+        var state = TireInfoBuilder.Build(snapshot);
+
         Assert.Equal(80.0, state.LF.TempLeft, precision: 3);
         Assert.Equal(90.0, state.LF.TempMiddle, precision: 3);
         Assert.Equal(100.0, state.LF.TempRight, precision: 3);

@@ -11,6 +11,14 @@ public sealed class TelemetrySnapshot
     private readonly byte[] _data;
     private readonly IReadOnlyDictionary<string, IrsdkVarHeader> _varsByName;
 
+    // A fresh TelemetrySnapshot instance is handed out once per tick and never mutated afterward, but
+    // several independent Builders each ask for the same per-car array (e.g. CarIdxEstTime is read by
+    // Cockpit, Relative, Standings, and TrackMap builders every tick) — without this cache, every one
+    // of those call sites re-parsed and re-allocated its own full copy of the array from raw bytes,
+    // several times per tick. Caching by variable name here means each array is parsed once per tick
+    // no matter how many builders ask for it, since it's scoped to (and discarded with) this instance.
+    private Dictionary<string, Array>? _arrayCache;
+
     internal TelemetrySnapshot(byte[] data, IReadOnlyDictionary<string, IrsdkVarHeader> varsByName, int tickCount)
     {
         _data = data;
@@ -60,6 +68,11 @@ public sealed class TelemetrySnapshot
 
     private T[] GetArray<T>(string name, IrsdkVarType expectedType, int elementSize, Func<byte[], int, T> convert)
     {
+        if (_arrayCache is not null && _arrayCache.TryGetValue(name, out var cached))
+        {
+            return (T[])cached;
+        }
+
         var header = ResolveHeader(name, expectedType);
         var result = new T[header.Count];
         for (var i = 0; i < header.Count; i++)
@@ -67,6 +80,7 @@ public sealed class TelemetrySnapshot
             result[i] = convert(_data, header.Offset + i * elementSize);
         }
 
+        (_arrayCache ??= new Dictionary<string, Array>())[name] = result;
         return result;
     }
 

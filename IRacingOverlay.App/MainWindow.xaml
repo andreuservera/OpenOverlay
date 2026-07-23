@@ -170,11 +170,11 @@
                 <TextBlock Text="Critical refresh rate:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"
                            ToolTip="How often the proximity/ABS bars and pedal trace re-read telemetry — independent of everything else."/>
                 <ComboBox x:Name="CriticalRefreshComboBox" Width="180" SelectionChanged="CriticalRefreshComboBox_SelectionChanged">
-                    <ComboBoxItem Content="Fastest (~30 Hz)"/>
-                    <ComboBoxItem Content="Fast (20 Hz)"/>
-                    <ComboBoxItem Content="Normal (10 Hz)" IsSelected="True"/>
-                    <ComboBoxItem Content="Slow (5 Hz)"/>
-                    <ComboBoxItem Content="Slowest (2 Hz)"/>
+                    <ComboBoxItem Content="Fastest (~60 Hz)"/>
+                    <ComboBoxItem Content="Fast (30 Hz)"/>
+                    <ComboBoxItem Content="Normal (15 Hz)" IsSelected="True"/>
+                    <ComboBoxItem Content="Slow (10 Hz)"/>
+                    <ComboBoxItem Content="Slowest (5 Hz)"/>
                 </ComboBox>
             </StackPanel>
 

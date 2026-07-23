@@ -10,14 +10,19 @@ internal static class StandingsBuilder
     /// <summary>
     /// Relative gap uses CarIdxEstTime — iRacing's own "estimated time to reach current location on
     /// track" per car — which is precise within a lap and class-agnostic (each car's progress is
-    /// measured in its own seconds, so it works the same for a GT3 car as a slower class). Cars a
-    /// full lap apart are corrected using a *single shared* reference lap time (the player's own),
-    /// not each car's individually — using each car's own lap time here was the earlier bug: two
-    /// cars on the very same lap but with different (or missing) recorded lap times would get a
-    /// spurious offset of `lapNumber * lapTimeDifference` seconds, growing larger every lap and
-    /// producing gaps that made no sense. With one shared reference, same-lap comparisons reduce to
-    /// a plain CarIdxEstTime difference regardless of any car's lap-time data quality.
-    /// Always includes the player, even alone with no one else on track.
+    /// measured in its own seconds, so it works the same for a GT3 car as a slower class). The gap
+    /// is the raw CarIdxEstTime difference folded into the nearest ±half-lap-time window (a shared
+    /// reference lap time, not each car's individually — using each car's own lap time here was an
+    /// earlier bug), rather than corrected by each car's own *total completed laps*: CarIdxLap only
+    /// tracks laps-since-session-start, which is meaningless for "how far apart on track are we
+    /// right now" in Practice/Qualifying — cars don't start together there, so a car that joined
+    /// earlier can be dozens of laps ahead in count while still running right next to the player.
+    /// Multiplying that raw lap-count difference by a lap time (the earlier approach) produced gaps
+    /// of thousands of seconds for cars that were genuinely side by side (reported live). Folding to
+    /// the nearest half-lap instead answers the question a Relative widget actually needs to: what's
+    /// the smallest gap consistent with this car's current track position, regardless of how many
+    /// total laps either car has done. Always includes the player, even alone with no one else on
+    /// track.
     /// </summary>
     public static List<RelativeRow> BuildRelative(TelemetrySnapshot telemetry, IracingSessionInfo? session, int maxEachSide = 4)
     {
@@ -45,11 +50,33 @@ internal static class StandingsBuilder
             return [];
         }
 
+        // Fall back to ANY car's recorded lap time, not just the player's own — otherwise the whole
+        // field disappears from Relative for the player's entire first lap of every session (reported
+        // live), even though by then other cars in a live session have almost always already set one.
         var refLapTime = GetReferenceLapTime(playerCarIdx, lastLaps, bestLaps);
+        if (refLapTime <= 0)
+        {
+            refLapTime = GetAnyRecordedLapTime(lastLaps, bestLaps);
+        }
 
-        double TimePosition(int carIdx) => carIdxLap[carIdx] * refLapTime + carIdxEstTime[carIdx];
+        double GapTo(int carIdx)
+        {
+            var gap = (double)carIdxEstTime[playerCarIdx] - carIdxEstTime[carIdx];
+            if (refLapTime > 0)
+            {
+                gap %= refLapTime;
+                if (gap > refLapTime / 2)
+                {
+                    gap -= refLapTime;
+                }
+                else if (gap < -refLapTime / 2)
+                {
+                    gap += refLapTime;
+                }
+            }
 
-        var playerTimePosition = TimePosition(playerCarIdx);
+            return gap;
+        }
 
         var rows = new List<RelativeRow>();
         foreach (var driver in driverInfo.Drivers)
@@ -78,12 +105,13 @@ internal static class StandingsBuilder
                 continue; // car not yet out on track this session
             }
 
-            // Without a reference lap time, the lap-count term is unavailable — a car on a
-            // different lap than the player would then compare as if same-lap, showing a small,
-            // plausible-looking gap that's actually meaningless (observed live: sitting in the
-            // garage with no lap time set yet made several genuinely-lap(s)-apart cars all show
-            // nearly the same ~53s "gap" purely by coincidence of within-lap position). Only compare
-            // cars we can actually place relative to the player.
+            // With no reference lap time available anywhere in the whole session (nobody, including
+            // the player, has ever completed a lap this session — a genuinely rare "just loaded in"
+            // moment), the wrap in GapTo can't be applied at all, and an un-wrapped raw CarIdxEstTime
+            // difference against a car on a different lap is a small, plausible-looking gap that's
+            // actually meaningless (observed live: sitting in the garage made several genuinely-
+            // lap(s)-apart cars all show nearly the same ~53s "gap" purely by coincidence of
+            // within-lap position). Only compare cars we can actually place relative to the player.
             if (!isPlayer && refLapTime <= 0 && carIdxLap[driver.CarIdx] != carIdxLap[playerCarIdx])
             {
                 continue;
@@ -95,7 +123,7 @@ internal static class StandingsBuilder
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
-                GapSeconds = playerTimePosition - TimePosition(driver.CarIdx),
+                GapSeconds = GapTo(driver.CarIdx),
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
             });

@@ -147,6 +147,74 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildRelative_PlayerOnFirstLap_StillShowsNearbyCarUsingItsRecordedLapTime()
+    {
+        // Regression test for the reported "in the first lap it doesn't pick anything" bug: the
+        // player hasn't completed a lap yet (no CarIdxLastLapTime/CarIdxBestLapTime of their own),
+        // but another car in the session already has one. The reference lap time should fall back to
+        // that car's, rather than leaving refLapTime at 0 and excluding everyone on a different lap.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [0, 15, 0, 0]); // rival has circulated many more laps
+            w.SetFloatArray("CarIdxEstTime", [10.0f, 10.5f, 0, 0]); // but is right next to the player
+            w.SetFloatArray("CarIdxLastLapTime", [0, 90.0f, 0, 0]); // only the rival has a lap time
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, session);
+
+        var rivalRow = rows.Single(r => r.CarIdx == 1);
+        Assert.Equal(-0.5, rivalRow.GapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void BuildRelative_PracticeSession_HighLapCountDifference_DoesNotProduceMultiLapGap()
+    {
+        // Regression test for the reported "very large number of seconds" bug: in Practice, cars
+        // don't start together, so a car dozens of laps ahead in count can still be right next to the
+        // player on track. The old model multiplied the raw lap-count difference by a lap time,
+        // producing gaps of thousands of seconds for cars that were genuinely side by side.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [2, 40, 0, 0]); // rival is 38 laps further into the session
+            w.SetFloatArray("CarIdxEstTime", [12.0f, 11.0f, 0, 0]); // but only 1s away on track
+            w.SetFloatArray("CarIdxLastLapTime", [90.0f, 90.0f, 0, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, session);
+
+        var rivalRow = rows.Single(r => r.CarIdx == 1);
+        Assert.Equal(1.0, rivalRow.GapSeconds, precision: 3);
+    }
+
+    [Fact]
     public void BuildRelative_IgnoresPaceCar()
     {
         var builder = RelativeVars();

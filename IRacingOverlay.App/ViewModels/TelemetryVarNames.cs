@@ -48,13 +48,14 @@ internal static class TelemetryVarNames
     public const string SessionFlags = "SessionFlags";
 
     /// <summary>
-    /// Tire variable name for one corner ("LF"/"RF"/"LR"/"RR"). Some cars only update the live
-    /// "hot" pressure/temp while sitting in the pit stall (no in-car TPMS) — confirmed real iRacing
-    /// behavior, not a bug here: read it every tick regardless and it'll just look "frozen" between
-    /// pit visits for those cars.
+    /// Tire variable name for one corner ("LF"/"RF"/"LR"/"RR"). Confirmed via iRacing's own published
+    /// telemetry variable list: there is no live/"hot" tire pressure channel at all — cold/garage-set
+    /// pressure (as last set in the garage, refreshed on pit stops) is the only pressure telemetry
+    /// iRacing actually exposes for any car. An earlier version of this code assumed a "{corner}
+    /// pressure" hot-pressure variable also existed and read it first — it never does, on any car, so
+    /// the pressure display always fell back to "—" instead of showing the cold pressure it could have.
     /// </summary>
     public static string TireColdPressure(string corner) => $"{corner}coldPressure";
-    public static string TirePressure(string corner) => $"{corner}pressure";
 
     /// <summary>
     /// "CL/CM/CR" (Carcass Left/Middle/Right) — the tire's internal structural temperature, which is

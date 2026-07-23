@@ -11,19 +11,27 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 internal sealed class PedalTraceBuilder
 {
-    private const int HistoryLength = 50; // ~5s at the app's 100ms tick rate
+    private const double HistorySeconds = 5.0;
 
-    private readonly Queue<double> _throttleHistory = new(HistoryLength);
-    private readonly Queue<double> _brakeHistory = new(HistoryLength);
+    private readonly Queue<double> _throttleHistory = new();
+    private readonly Queue<double> _brakeHistory = new();
 
-    public PedalTraceState Build(TelemetrySnapshot telemetry)
+    // Sample count needed for a HistorySeconds-wide trace scales with however fast this Builder is
+    // actually being ticked (the "critical refresh rate" combo) — fixing this at a sample COUNT
+    // (as before, tuned for the old 100ms/10Hz default) silently shrank the visible time window to a
+    // fraction of a second once the refresh rate was raised toward 60Hz, which is what read as
+    // "stutter": the same 50 samples then only covered ~0.8s, so every new tick visibly lurched the
+    // whole trace instead of scrolling it smoothly.
+    public PedalTraceState Build(TelemetrySnapshot telemetry, double tickIntervalMs)
     {
+        var maxSamples = Math.Max(2, (int)Math.Round(HistorySeconds * 1000.0 / Math.Max(1.0, tickIntervalMs)));
+
         var throttle = ReadPedal(telemetry, TelemetryVarNames.Throttle);
         var brake = ReadPedal(telemetry, TelemetryVarNames.Brake);
         var clutch = ReadClutch(telemetry);
 
-        Push(_throttleHistory, throttle);
-        Push(_brakeHistory, brake);
+        Push(_throttleHistory, throttle, maxSamples);
+        Push(_brakeHistory, brake, maxSamples);
 
         return new PedalTraceState
         {
@@ -35,10 +43,10 @@ internal sealed class PedalTraceBuilder
         };
     }
 
-    private static void Push(Queue<double> history, double value)
+    private static void Push(Queue<double> history, double value, int maxSamples)
     {
         history.Enqueue(value);
-        while (history.Count > HistoryLength)
+        while (history.Count > maxSamples)
         {
             history.Dequeue();
         }

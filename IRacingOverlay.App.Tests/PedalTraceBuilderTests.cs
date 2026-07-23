@@ -26,7 +26,7 @@ public class PedalTraceBuilderTests
             w.SetFloat("Clutch", 0f); // raw 0 = fully disengaged (pedal to the floor)
         });
 
-        var state = new PedalTraceBuilder().Build(snapshot);
+        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
 
         Assert.Equal(0.8, state.Throttle, precision: 3);
         Assert.Equal(0.1, state.Brake, precision: 3);
@@ -46,7 +46,7 @@ public class PedalTraceBuilderTests
             w.SetFloat("Clutch", 1f);
         });
 
-        var state = new PedalTraceBuilder().Build(snapshot);
+        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
 
         Assert.Equal(0, state.Clutch, precision: 3);
     }
@@ -66,7 +66,7 @@ public class PedalTraceBuilderTests
                 w.SetFloat("Brake", 0f);
                 w.SetFloat("Clutch", 0f);
             });
-            pedalTraceBuilder.Build(snapshot);
+            pedalTraceBuilder.Build(snapshot, tickIntervalMs: 100);
         }
 
         var final = TestSnapshotFactory.Build(builder, w =>
@@ -75,7 +75,7 @@ public class PedalTraceBuilderTests
             w.SetFloat("Brake", 0f);
             w.SetFloat("Clutch", 0f);
         });
-        var state = pedalTraceBuilder.Build(final);
+        var state = pedalTraceBuilder.Build(final, tickIntervalMs: 100);
 
         Assert.Equal(6, state.ThrottleHistory.Count);
         Assert.Equal(0.9, state.ThrottleHistory[^1], precision: 3);
@@ -97,10 +97,36 @@ public class PedalTraceBuilderTests
                 w.SetFloat("Brake", 0f);
                 w.SetFloat("Clutch", 0f);
             });
-            state = pedalTraceBuilder.Build(snapshot);
+            state = pedalTraceBuilder.Build(snapshot, tickIntervalMs: 100);
         }
 
         Assert.True(state.ThrottleHistory.Count <= 50);
+    }
+
+    [Fact]
+    public void Build_FasterTickInterval_KeepsSameTimeWindowWithMoreSamples()
+    {
+        // At a faster refresh rate, the trace must still span ~5 real seconds — capping at a fixed
+        // sample COUNT regardless of tick rate would compress that window (this was the actual bug:
+        // 50 samples at a 16ms/60Hz tick is under a second of history, not 5s, which read as the
+        // trace stuttering/lurching every tick).
+        var builder = PedalVars();
+        var pedalTraceBuilder = new PedalTraceBuilder();
+        PedalTraceState state = PedalTraceState.Empty;
+
+        for (var i = 0; i < 400; i++)
+        {
+            var snapshot = TestSnapshotFactory.Build(builder, w =>
+            {
+                w.SetFloat("Throttle", 0.5f);
+                w.SetFloat("Brake", 0f);
+                w.SetFloat("Clutch", 0f);
+            });
+            state = pedalTraceBuilder.Build(snapshot, tickIntervalMs: 16);
+        }
+
+        // ~5000ms / 16ms ≈ 312 samples — comfortably more than the old fixed 50-sample cap.
+        Assert.True(state.ThrottleHistory.Count > 50);
     }
 
     [Fact]
@@ -110,7 +136,7 @@ public class PedalTraceBuilderTests
         builder.AddVar("Speed", IrsdkVarType.Float);
         var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("Speed", 10));
 
-        var state = new PedalTraceBuilder().Build(snapshot);
+        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
 
         Assert.Equal(0, state.Throttle);
         Assert.Equal(0, state.Brake);

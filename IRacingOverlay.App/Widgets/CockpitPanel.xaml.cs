@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Windows.Controls;
 using IRacingOverlay.App.ViewModels;
@@ -6,7 +7,12 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class CockpitPanel : UserControl
 {
-    private bool _blinkPhase;
+    // Half-period of the shift-light/ABS blink, in milliseconds — a fixed wall-clock cadence rather
+    // than "flip once per update," so the blink rate stays the same regardless of how fast the
+    // critical refresh rate (Cockpit's own update timer) is set. Toggling once per tick used to look
+    // like a genuine blink at the old 10Hz default (100ms => a 5Hz blink) but turned into a
+    // ~30Hz flicker/stutter once the refresh rate was raised toward 60Hz.
+    private const long BlinkHalfPeriodMs = 150;
 
     public CockpitPanel()
     {
@@ -15,11 +21,11 @@ public partial class CockpitPanel : UserControl
 
     public void UpdateState(CockpitState state)
     {
-        _blinkPhase = !_blinkPhase;
+        var blinkPhase = (Environment.TickCount64 / BlinkHalfPeriodMs) % 2 == 0;
 
-        ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink, _blinkPhase);
+        ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink, blinkPhase);
         ShiftGear.SetGear(state.Gear);
-        AbsIndicator.SetActive(state.AbsActive, _blinkPhase);
+        AbsIndicator.SetActive(state.AbsActive, blinkPhase);
         SpeedText.Text = state.SpeedKph > 0 ? state.SpeedKph.ToString("0", CultureInfo.InvariantCulture) : "—";
         RpmText.Text = state.Rpm > 0 ? state.Rpm.ToString("0", CultureInfo.InvariantCulture) : "—";
         LeftProximity.SetBand(state.LeftProximity.BandStart, state.LeftProximity.BandEnd);

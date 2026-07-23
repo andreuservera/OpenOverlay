@@ -30,6 +30,23 @@ public partial class MainWindow : Window
     private readonly SessionBestLapTracker _sessionBestLapTracker = new();
     private int _tickCount;
 
+    // Perf diagnostics for the reported "stutter, even at low Hz" — both timers share one UI thread
+    // with WPF's own layout/render passes, so a slow tick BODY (data-processing time) and a late tick
+    // FIRING (the Dispatcher not getting around to it on schedule — e.g. because the other timer's
+    // tick, or a GC pause, or the OS scheduler, is hogging that same thread) are two different
+    // possible causes and need to be told apart. Reset once a second in UpdateMemoryText.
+    private readonly System.Diagnostics.Stopwatch _uiTickStopwatch = new();
+    private double _uiTickMaxMs;
+    private double _uiTickTotalMs;
+    private int _uiTickSamples;
+
+    private readonly System.Diagnostics.Stopwatch _criticalTickStopwatch = new();
+    private double _criticalTickMaxMs;
+    private double _criticalTickTotalMs;
+    private int _criticalTickSamples;
+    private long _lastCriticalTickTimestampMs = -1;
+    private double _criticalTickMaxGapMs;
+
     private RelativeWidget? _relativeWidget;
     private StandingsWidget? _standingsWidget;
     private CockpitWidget? _cockpitWidget;
@@ -166,6 +183,19 @@ public partial class MainWindow : Window
 
     private void UiTimer_Tick(object? sender, EventArgs e)
     {
+        _uiTickStopwatch.Restart();
+        try
+        {
+            UiTimer_TickCore();
+        }
+        finally
+        {
+            RecordTickDuration(_uiTickStopwatch.Elapsed.TotalMilliseconds, ref _uiTickTotalMs, ref _uiTickMaxMs, ref _uiTickSamples);
+        }
+    }
+
+    private void UiTimer_TickCore()
+    {
         var telemetry = _connection.Latest;
         if (telemetry is null)
         {
@@ -301,6 +331,31 @@ public partial class MainWindow : Window
 
     private void CriticalTimer_Tick(object? sender, EventArgs e)
     {
+        var nowMs = Environment.TickCount64;
+        if (_lastCriticalTickTimestampMs >= 0)
+        {
+            var gap = nowMs - _lastCriticalTickTimestampMs;
+            if (gap > _criticalTickMaxGapMs)
+            {
+                _criticalTickMaxGapMs = gap;
+            }
+        }
+
+        _lastCriticalTickTimestampMs = nowMs;
+
+        _criticalTickStopwatch.Restart();
+        try
+        {
+            CriticalTimer_TickCore();
+        }
+        finally
+        {
+            RecordTickDuration(_criticalTickStopwatch.Elapsed.TotalMilliseconds, ref _criticalTickTotalMs, ref _criticalTickMaxMs, ref _criticalTickSamples);
+        }
+    }
+
+    private void CriticalTimer_TickCore()
+    {
         var telemetry = _connection.Latest;
         if (telemetry is null)
         {
@@ -316,7 +371,7 @@ public partial class MainWindow : Window
 
         if (_pedalTraceWidget is not null || _dashboard is not null)
         {
-            var pedalTraceState = _pedalTraceBuilder.Build(telemetry);
+            var pedalTraceState = _pedalTraceBuilder.Build(telemetry, _criticalTimer.Interval.TotalMilliseconds);
             _pedalTraceWidget?.UpdateState(pedalTraceState);
             _dashboard?.UpdatePedalTrace(pedalTraceState);
         }
@@ -333,18 +388,47 @@ public partial class MainWindow : Window
     private void UpdateMemoryText()
     {
         var megabytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024.0 * 1024.0);
-        MemoryText.Text = $"Memory: {megabytes:0} MB";
+        var uiAvg = _uiTickSamples > 0 ? _uiTickTotalMs / _uiTickSamples : 0;
+        var criticalAvg = _criticalTickSamples > 0 ? _criticalTickTotalMs / _criticalTickSamples : 0;
+        var criticalTargetMs = _criticalTimer.Interval.TotalMilliseconds;
+
+        MemoryText.Text =
+            $"Memory: {megabytes:0} MB | GC0/1/2: {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)}\n" +
+            $"UI tick: avg {uiAvg:0.0}ms max {_uiTickMaxMs:0.0}ms | " +
+            $"Critical tick (target {criticalTargetMs:0}ms): avg {criticalAvg:0.0}ms max {_criticalTickMaxMs:0.0}ms, " +
+            $"actual gap max {_criticalTickMaxGapMs:0}ms";
+
+        // Rolling ~1s window (this is called once every StandingsUpdateEveryNTicks UI ticks) rather
+        // than a since-launch average — a stutter from 10 minutes ago shouldn't still be dragging
+        // down what the user sees right now.
+        _uiTickTotalMs = 0;
+        _uiTickMaxMs = 0;
+        _uiTickSamples = 0;
+        _criticalTickTotalMs = 0;
+        _criticalTickMaxMs = 0;
+        _criticalTickSamples = 0;
+        _criticalTickMaxGapMs = 0;
+    }
+
+    private static void RecordTickDuration(double elapsedMs, ref double totalMs, ref double maxMs, ref int samples)
+    {
+        totalMs += elapsedMs;
+        samples++;
+        if (elapsedMs > maxMs)
+        {
+            maxMs = elapsedMs;
+        }
     }
 
     private void CriticalRefreshComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         var ms = CriticalRefreshComboBox.SelectedIndex switch
         {
-            0 => 33,
-            1 => 50,
-            3 => 200,
-            4 => 500,
-            _ => 100, // index 2, "Normal (10 Hz)"
+            0 => 16,
+            1 => 33,
+            3 => 100,
+            4 => 200,
+            _ => 67, // index 2, "Normal (15 Hz)"
         };
         _criticalTimer.Interval = TimeSpan.FromMilliseconds(ms);
         CriticalRefreshStore.Save(CriticalRefreshComboBox.SelectedIndex);
@@ -368,13 +452,7 @@ public partial class MainWindow : Window
         if (RelativeCheckBox.IsChecked == true)
         {
             _relativeWidget ??= new RelativeWidget();
-            // A brand-new widget (no saved position yet) starts in edit mode so it can be placed;
-            // only force it from the checkbox once it actually has a position worth locking.
-            if (_relativeWidget.HasSavedLayout)
-            {
-                _relativeWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _relativeWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _relativeWidget.Show();
         }
         else
@@ -394,11 +472,7 @@ public partial class MainWindow : Window
                 _standingsWidget.SetColumnVisibility(_standingsColumnVisibility);
             }
 
-            if (_standingsWidget.HasSavedLayout)
-            {
-                _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _standingsWidget.Show();
         }
         else
@@ -413,11 +487,7 @@ public partial class MainWindow : Window
         if (CockpitCheckBox.IsChecked == true)
         {
             _cockpitWidget ??= new CockpitWidget();
-            if (_cockpitWidget.HasSavedLayout)
-            {
-                _cockpitWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _cockpitWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _cockpitWidget.Show();
         }
         else
@@ -432,11 +502,7 @@ public partial class MainWindow : Window
         if (FlagCheckBox.IsChecked == true)
         {
             _flagWidget ??= new FlagWidget();
-            if (_flagWidget.HasSavedLayout)
-            {
-                _flagWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _flagWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _flagWidget.Show();
         }
         else
@@ -451,11 +517,7 @@ public partial class MainWindow : Window
         if (TireInfoCheckBox.IsChecked == true)
         {
             _tireInfoWidget ??= new TireInfoWidget();
-            if (_tireInfoWidget.HasSavedLayout)
-            {
-                _tireInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _tireInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _tireInfoWidget.Show();
         }
         else
@@ -470,11 +532,7 @@ public partial class MainWindow : Window
         if (DeltaCheckBox.IsChecked == true)
         {
             _deltaWidget ??= new DeltaWidget();
-            if (_deltaWidget.HasSavedLayout)
-            {
-                _deltaWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _deltaWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _deltaWidget.Show();
         }
         else
@@ -489,11 +547,7 @@ public partial class MainWindow : Window
         if (FuelCheckBox.IsChecked == true)
         {
             _fuelWidget ??= new FuelWidget();
-            if (_fuelWidget.HasSavedLayout)
-            {
-                _fuelWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _fuelWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _fuelWidget.Show();
         }
         else
@@ -508,11 +562,7 @@ public partial class MainWindow : Window
         if (PedalTraceCheckBox.IsChecked == true)
         {
             _pedalTraceWidget ??= new PedalTraceWidget();
-            if (_pedalTraceWidget.HasSavedLayout)
-            {
-                _pedalTraceWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _pedalTraceWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _pedalTraceWidget.Show();
         }
         else
@@ -527,11 +577,7 @@ public partial class MainWindow : Window
         if (IncidentCheckBox.IsChecked == true)
         {
             _incidentWidget ??= new IncidentWidget();
-            if (_incidentWidget.HasSavedLayout)
-            {
-                _incidentWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _incidentWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _incidentWidget.Show();
         }
         else
@@ -546,11 +592,7 @@ public partial class MainWindow : Window
         if (TrackInfoCheckBox.IsChecked == true)
         {
             _trackInfoWidget ??= new TrackInfoWidget();
-            if (_trackInfoWidget.HasSavedLayout)
-            {
-                _trackInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _trackInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _trackInfoWidget.Show();
         }
         else
@@ -565,11 +607,7 @@ public partial class MainWindow : Window
         if (TrackMapCheckBox.IsChecked == true)
         {
             _trackMapWidget ??= new TrackMapWidget();
-            if (_trackMapWidget.HasSavedLayout)
-            {
-                _trackMapWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            }
-
+            _trackMapWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _trackMapWidget.Show();
         }
         else
