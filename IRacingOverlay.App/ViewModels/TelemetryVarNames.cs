@@ -16,9 +16,12 @@ internal static class TelemetryVarNames
     public const string LapDistPct = "LapDistPct";
     public const string SessionTime = "SessionTime";
     public const string SessionState = "SessionState";
-    /// <summary>bool — the local player's own car, distinct from the per-car CarIdxOnPitRoad array
-    /// below (which is indexed by CarIdx and covers every car, including this one).</summary>
-    public const string OnPitRoad = "OnPitRoad";
+    /// <summary>bool — confirmed via iRacing's own SDK docs: "true only when the player is running
+    /// the physics for the car and is currently in the car," i.e. false at the main menu, on a
+    /// garage/setup screen, spectating, or watching a replay — even if a car is sitting out on
+    /// track. This is "is the driver actually driving," not "is the car on pit road" (CarIdxOnPitRoad
+    /// covers that, per-car, elsewhere below).</summary>
+    public const string IsOnTrack = "IsOnTrack";
     public const string PlayerLastLapTime = "LapLastLapTime";
     public const string PlayerBestLapTime = "LapBestLapTime";
 

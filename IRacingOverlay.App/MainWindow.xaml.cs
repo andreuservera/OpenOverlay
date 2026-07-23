@@ -101,7 +101,7 @@ public partial class MainWindow : Window
         };
 
         RestoreWidgetVisibility();
-        RestoreHideInPitCheckboxes();
+        RestoreAutoHideCheckboxes();
         RestoreStandingsColumnVisibility();
 
         _connection.Start();
@@ -140,22 +140,22 @@ public partial class MainWindow : Window
         TrackMapCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackMap");
     }
 
-    /// <summary>Re-checks whichever "hide in pit" checkboxes were checked last run — each one shares
-    /// the single HideInPitCheckBox_Changed handler (wired via XAML) keyed off its Tag, so setting
-    /// IsChecked here is enough to both restore and persist the same value.</summary>
-    private void RestoreHideInPitCheckboxes()
+    /// <summary>Re-checks whichever "hide outside car" checkboxes were checked last run — each one
+    /// shares the single AutoHideCheckBox_Changed handler (wired via XAML) keyed off its Tag, so
+    /// setting IsChecked here is enough to both restore and persist the same value.</summary>
+    private void RestoreAutoHideCheckboxes()
     {
-        RelativeHideInPitCheckBox.IsChecked = HideInPitStore.Get("Relative");
-        StandingsHideInPitCheckBox.IsChecked = HideInPitStore.Get("Standings");
-        CockpitHideInPitCheckBox.IsChecked = HideInPitStore.Get("Cockpit");
-        FlagHideInPitCheckBox.IsChecked = HideInPitStore.Get("Flag");
-        TireInfoHideInPitCheckBox.IsChecked = HideInPitStore.Get("TireInfo");
-        DeltaHideInPitCheckBox.IsChecked = HideInPitStore.Get("Delta");
-        FuelHideInPitCheckBox.IsChecked = HideInPitStore.Get("Fuel");
-        PedalTraceHideInPitCheckBox.IsChecked = HideInPitStore.Get("PedalTrace");
-        IncidentHideInPitCheckBox.IsChecked = HideInPitStore.Get("Incident");
-        TrackInfoHideInPitCheckBox.IsChecked = HideInPitStore.Get("TrackInfo");
-        TrackMapHideInPitCheckBox.IsChecked = HideInPitStore.Get("TrackMap");
+        RelativeAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Relative");
+        StandingsAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Standings");
+        CockpitAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Cockpit");
+        FlagAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Flag");
+        TireInfoAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TireInfo");
+        DeltaAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Delta");
+        FuelAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Fuel");
+        PedalTraceAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("PedalTrace");
+        IncidentAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Incident");
+        TrackInfoAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TrackInfo");
+        TrackMapAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TrackMap");
     }
 
     private void SetStatus(bool connected)
@@ -174,8 +174,12 @@ public partial class MainWindow : Window
 
         UpdateDebugText(telemetry);
 
-        var playerOnPitRoad = telemetry.HasVariable(TelemetryVarNames.OnPitRoad) && telemetry.GetBool(TelemetryVarNames.OnPitRoad);
-        ApplyPitVisibility(playerOnPitRoad);
+        // IsOnTrack is false at the main menu, on a garage/setup screen, spectating, or watching a
+        // replay — true only once the player is actually in the car with physics running. A missing
+        // variable defaults to "driving" (don't hide anything) rather than risk hiding widgets from a
+        // false read.
+        var playerNotDriving = telemetry.HasVariable(TelemetryVarNames.IsOnTrack) && !telemetry.GetBool(TelemetryVarNames.IsOnTrack);
+        ApplyAutoHideVisibility(playerNotDriving);
 
         var session = _connection.Session;
         var relativeRows = StandingsBuilder.BuildRelative(telemetry, session);
@@ -251,40 +255,40 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Hides (or reveals) every enabled widget whose "hide in pit" checkbox is on, based on
-    /// the player's own pit-road status — without touching the "enabled" checkbox itself, so the
-    /// widget picks back up exactly where it was the moment the player leaves the pits.</summary>
-    private void ApplyPitVisibility(bool onPitRoad)
+    /// <summary>Hides (or reveals) every enabled widget whose "hide outside car" checkbox is on,
+    /// based on whether the player is currently actually driving — without touching the "enabled"
+    /// checkbox itself, so the widget picks back up exactly where it was the moment the player gets
+    /// back in the car.</summary>
+    private void ApplyAutoHideVisibility(bool notDriving)
     {
-        ApplyPitVisibilityFor(_relativeWidget, RelativeCheckBox, RelativeHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_standingsWidget, StandingsCheckBox, StandingsHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_cockpitWidget, CockpitCheckBox, CockpitHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_flagWidget, FlagCheckBox, FlagHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_tireInfoWidget, TireInfoCheckBox, TireInfoHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_deltaWidget, DeltaCheckBox, DeltaHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_fuelWidget, FuelCheckBox, FuelHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_pedalTraceWidget, PedalTraceCheckBox, PedalTraceHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_incidentWidget, IncidentCheckBox, IncidentHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_trackInfoWidget, TrackInfoCheckBox, TrackInfoHideInPitCheckBox, onPitRoad);
-        ApplyPitVisibilityFor(_trackMapWidget, TrackMapCheckBox, TrackMapHideInPitCheckBox, onPitRoad);
+        ApplyAutoHideVisibilityFor(_relativeWidget, RelativeCheckBox, RelativeAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_standingsWidget, StandingsCheckBox, StandingsAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_cockpitWidget, CockpitCheckBox, CockpitAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_flagWidget, FlagCheckBox, FlagAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_tireInfoWidget, TireInfoCheckBox, TireInfoAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_deltaWidget, DeltaCheckBox, DeltaAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_fuelWidget, FuelCheckBox, FuelAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_pedalTraceWidget, PedalTraceCheckBox, PedalTraceAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_incidentWidget, IncidentCheckBox, IncidentAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_trackInfoWidget, TrackInfoCheckBox, TrackInfoAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_trackMapWidget, TrackMapCheckBox, TrackMapAutoHideCheckBox, notDriving);
     }
 
     // Skipped entirely while a widget is in edit mode — fighting the user's own Show/Hide while
-    // they're actively dragging/resizing it would be actively annoying, and "hide in pit" is a
-    // driving-time convenience, not something anyone needs while parked in the garage laying out
-    // widgets.
-    private static void ApplyPitVisibilityFor(
+    // they're actively dragging/resizing it would be actively annoying, and "hide outside car" is a
+    // driving-time convenience, not something anyone needs while laying out widgets from the menu.
+    private static void ApplyAutoHideVisibilityFor(
         OverlayWindowBase? widget,
         System.Windows.Controls.CheckBox enabledCheckBox,
-        System.Windows.Controls.CheckBox hideInPitCheckBox,
-        bool onPitRoad)
+        System.Windows.Controls.CheckBox autoHideCheckBox,
+        bool notDriving)
     {
         if (widget is null || enabledCheckBox.IsChecked != true || widget.IsEditMode)
         {
             return;
         }
 
-        var shouldHide = hideInPitCheckBox.IsChecked == true && onPitRoad;
+        var shouldHide = autoHideCheckBox.IsChecked == true && notDriving;
         if (shouldHide && widget.IsVisible)
         {
             widget.Hide();
@@ -346,15 +350,15 @@ public partial class MainWindow : Window
         CriticalRefreshStore.Save(CriticalRefreshComboBox.SelectedIndex);
     }
 
-    /// <summary>Shared by every widget's "hide in pit" checkbox in MainWindow.xaml — each one carries
-    /// its widget's store key in its Tag, since the save logic is otherwise identical for all of
-    /// them. Actually hiding/showing the widget happens continuously in ApplyPitVisibility, driven by
-    /// live pit-road telemetry, not from this handler.</summary>
-    private void HideInPitCheckBox_Changed(object sender, RoutedEventArgs e)
+    /// <summary>Shared by every widget's "hide outside car" checkbox in MainWindow.xaml — each one
+    /// carries its widget's store key in its Tag, since the save logic is otherwise identical for all
+    /// of them. Actually hiding/showing the widget happens continuously in ApplyAutoHideVisibility,
+    /// driven by live IsOnTrack telemetry, not from this handler.</summary>
+    private void AutoHideCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.CheckBox { Tag: string widgetName } checkBox)
         {
-            HideInPitStore.Save(widgetName, checkBox.IsChecked == true);
+            HideOutsideCarStore.Save(widgetName, checkBox.IsChecked == true);
         }
     }
 

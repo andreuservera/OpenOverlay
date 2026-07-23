@@ -35,15 +35,16 @@
                 <TextBlock x:Name="StatusText" Text="Waiting for iRacing…" Foreground="White" FontSize="14" VerticalAlignment="Center"/>
             </StackPanel>
 
-            <!-- Widgets: which are enabled, and which should duck out of view while on pit road. -->
+            <!-- Widgets: which are enabled, and which should duck out of view whenever the player
+                 isn't actually in the car driving (main menu, garage/setup, spectating, replay). -->
             <Border Style="{StaticResource SectionHeaderBorder}">
                 <TextBlock Text="WIDGETS" Style="{StaticResource SectionHeaderText}"/>
             </Border>
             <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="150"/>
                     <ColumnDefinition Width="55"/>
-                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="120"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -61,74 +62,74 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Show" Style="{StaticResource ColumnHeaderText}" Margin="0,0,0,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="2" Text="Hide in pit" Style="{StaticResource ColumnHeaderText}" Margin="0,0,0,4"
-                           ToolTip="Automatically hides this widget whenever your car is on pit road, without unchecking it — it reappears the moment you leave the pits."/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Hide outside car" Style="{StaticResource ColumnHeaderText}" Margin="0,0,0,4" TextWrapping="Wrap"
+                           ToolTip="Automatically hides this widget whenever you're not actually in the car driving — main menu, garage/setup screens, spectating, or watching a replay — without unchecking it. Reappears the instant you're back in the car, even while still on pit road."/>
 
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Relative" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="1" Grid.Column="1" x:Name="RelativeCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="RelativeCheckBox_Changed" Unchecked="RelativeCheckBox_Changed"/>
-                <CheckBox Grid.Row="1" Grid.Column="2" x:Name="RelativeHideInPitCheckBox" Tag="Relative" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="1" Grid.Column="2" x:Name="RelativeAutoHideCheckBox" Tag="Relative" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Standings" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="2" Grid.Column="1" x:Name="StandingsCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="StandingsCheckBox_Changed" Unchecked="StandingsCheckBox_Changed"/>
-                <CheckBox Grid.Row="2" Grid.Column="2" x:Name="StandingsHideInPitCheckBox" Tag="Standings" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="2" Grid.Column="2" x:Name="StandingsAutoHideCheckBox" Tag="Standings" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Cockpit" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="3" Grid.Column="1" x:Name="CockpitCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="CockpitCheckBox_Changed" Unchecked="CockpitCheckBox_Changed"/>
-                <CheckBox Grid.Row="3" Grid.Column="2" x:Name="CockpitHideInPitCheckBox" Tag="Cockpit" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="3" Grid.Column="2" x:Name="CockpitAutoHideCheckBox" Tag="Cockpit" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="Flag" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="4" Grid.Column="1" x:Name="FlagCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="FlagCheckBox_Changed" Unchecked="FlagCheckBox_Changed"/>
-                <CheckBox Grid.Row="4" Grid.Column="2" x:Name="FlagHideInPitCheckBox" Tag="Flag" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="4" Grid.Column="2" x:Name="FlagAutoHideCheckBox" Tag="Flag" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="5" Grid.Column="0" Text="Tire info" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="5" Grid.Column="1" x:Name="TireInfoCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="TireInfoCheckBox_Changed" Unchecked="TireInfoCheckBox_Changed"/>
-                <CheckBox Grid.Row="5" Grid.Column="2" x:Name="TireInfoHideInPitCheckBox" Tag="TireInfo" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="5" Grid.Column="2" x:Name="TireInfoAutoHideCheckBox" Tag="TireInfo" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="6" Grid.Column="0" Text="Delta" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="6" Grid.Column="1" x:Name="DeltaCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="DeltaCheckBox_Changed" Unchecked="DeltaCheckBox_Changed"/>
-                <CheckBox Grid.Row="6" Grid.Column="2" x:Name="DeltaHideInPitCheckBox" Tag="Delta" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="6" Grid.Column="2" x:Name="DeltaAutoHideCheckBox" Tag="Delta" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="7" Grid.Column="0" Text="Fuel" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="7" Grid.Column="1" x:Name="FuelCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="FuelCheckBox_Changed" Unchecked="FuelCheckBox_Changed"/>
-                <CheckBox Grid.Row="7" Grid.Column="2" x:Name="FuelHideInPitCheckBox" Tag="Fuel" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="7" Grid.Column="2" x:Name="FuelAutoHideCheckBox" Tag="Fuel" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="8" Grid.Column="0" Text="Pedal trace" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="8" Grid.Column="1" x:Name="PedalTraceCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="PedalTraceCheckBox_Changed" Unchecked="PedalTraceCheckBox_Changed"/>
-                <CheckBox Grid.Row="8" Grid.Column="2" x:Name="PedalTraceHideInPitCheckBox" Tag="PedalTrace" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="8" Grid.Column="2" x:Name="PedalTraceAutoHideCheckBox" Tag="PedalTrace" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="9" Grid.Column="0" Text="Incident" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="9" Grid.Column="1" x:Name="IncidentCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="IncidentCheckBox_Changed" Unchecked="IncidentCheckBox_Changed"/>
-                <CheckBox Grid.Row="9" Grid.Column="2" x:Name="IncidentHideInPitCheckBox" Tag="Incident" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="9" Grid.Column="2" x:Name="IncidentAutoHideCheckBox" Tag="Incident" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="10" Grid.Column="0" Text="Track info" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="10" Grid.Column="1" x:Name="TrackInfoCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="TrackInfoCheckBox_Changed" Unchecked="TrackInfoCheckBox_Changed"/>
-                <CheckBox Grid.Row="10" Grid.Column="2" x:Name="TrackInfoHideInPitCheckBox" Tag="TrackInfo" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="10" Grid.Column="2" x:Name="TrackInfoAutoHideCheckBox" Tag="TrackInfo" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
 
                 <TextBlock Grid.Row="11" Grid.Column="0" Text="Track map" Foreground="White" VerticalAlignment="Center"/>
                 <CheckBox Grid.Row="11" Grid.Column="1" x:Name="TrackMapCheckBox" Style="{StaticResource TableCheckBox}"
                           Checked="TrackMapCheckBox_Changed" Unchecked="TrackMapCheckBox_Changed"/>
-                <CheckBox Grid.Row="11" Grid.Column="2" x:Name="TrackMapHideInPitCheckBox" Tag="TrackMap" Style="{StaticResource TableCheckBox}"
-                          Checked="HideInPitCheckBox_Changed" Unchecked="HideInPitCheckBox_Changed"/>
+                <CheckBox Grid.Row="11" Grid.Column="2" x:Name="TrackMapAutoHideCheckBox" Tag="TrackMap" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
             </Grid>
 
             <!-- Standings overlay: which columns show, in the floating widget only (the Dashboard's
