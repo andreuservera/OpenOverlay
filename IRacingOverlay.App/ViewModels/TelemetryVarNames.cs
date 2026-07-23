@@ -16,6 +16,9 @@ internal static class TelemetryVarNames
     public const string LapDistPct = "LapDistPct";
     public const string SessionTime = "SessionTime";
     public const string SessionState = "SessionState";
+    /// <summary>bool — the local player's own car, distinct from the per-car CarIdxOnPitRoad array
+    /// below (which is indexed by CarIdx and covers every car, including this one).</summary>
+    public const string OnPitRoad = "OnPitRoad";
     public const string PlayerLastLapTime = "LapLastLapTime";
     public const string PlayerBestLapTime = "LapBestLapTime";
 
