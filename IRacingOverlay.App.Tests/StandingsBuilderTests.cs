@@ -515,6 +515,79 @@ public class StandingsBuilderTests
         Assert.False(rows.Single(r => r.CarIdx == 1).IsSessionFastestLap);
     }
 
+    private static IracingSessionInfo QualifyingSession(DriverInfoSection driverInfo) => new()
+    {
+        DriverInfo = driverInfo,
+        SessionInfo = new SessionInfoSection
+        {
+            CurrentSessionNum = 0,
+            Sessions = [new SessionEntry { SessionNum = 0, SessionType = "Lone Qualify" }],
+        },
+    };
+
+    [Fact]
+    public void BuildStandings_Qualifying_IncludesDriverParkedInPitsWithATime()
+    {
+        // Regression test for the reported bug: once a driver finishes their timed qualifying lap
+        // and parks back in their pit stall, iRacing can report their CarIdxLap back at the "never
+        // left the garage" sentinel (-1) — the normal race eligibility check would exclude them
+        // entirely even though they've genuinely set a lap time and belong on the grid.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
+            w.SetIntArray("CarIdxLap", [2, -1, 0, 0]); // car 1 parked back in the pits, "reset" to -1
+            w.SetFloatArray("CarIdxEstTime", [15.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [92.0f, 90.5f, 0, 0]); // car 1 is actually faster
+        });
+
+        var driverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                new DriverEntry { CarIdx = 1, UserName = "ParkedInPits", CarNumber = "9" },
+            ],
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, QualifyingSession(driverInfo));
+
+        Assert.Equal(2, rows.Count);
+        var parked = rows.Single(r => r.CarIdx == 1);
+        var player = rows.Single(r => r.CarIdx == 0);
+        Assert.Equal(1, parked.Position); // faster lap -> P1 despite being parked
+        Assert.Equal(2, player.Position);
+    }
+
+    [Fact]
+    public void BuildStandings_Qualifying_DriverWithNoTimeYetSortsLastButStillAppears()
+    {
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [1, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [5.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [90.0f, 0, 0, 0]); // car 1 hasn't set a time yet
+        });
+
+        var driverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                new DriverEntry { CarIdx = 1, UserName = "NoTimeYet", CarNumber = "9" },
+            ],
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, QualifyingSession(driverInfo));
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(1, rows.Single(r => r.CarIdx == 0).Position);
+        Assert.Equal(2, rows.Single(r => r.CarIdx == 1).Position);
+    }
+
     private static List<StandingsRow> MakeRows(bool isMultiClass, params (int carIdx, bool isPlayer, int classId, string className, int position)[] specs) =>
         specs.Select(s => new StandingsRow
         {

@@ -150,6 +150,16 @@ internal static class StandingsBuilder
             .Count();
         var isMultiClass = distinctClasses > 1;
 
+        // Qualifying needs every driver in the session ranked by their own best lap time, not the
+        // on-track running order: a driver who's set a fast lap and driven back to their pit stall
+        // still needs to show up (and know their grid slot), even though they're now stationary in
+        // the pits and iRacing may have reset their CarIdxLap to the "not on track" sentinel that
+        // BuildStandings' normal eligibility check below would otherwise exclude them for.
+        if (IsQualifyingSession(session))
+        {
+            return BuildQualifyingStandings(driverInfo, currentLaps, lastLaps, bestLaps, onPitRoad, playerCarIdx, isMultiClass);
+        }
+
         // Standings needs to order the *whole* field, including cars on laps the player hasn't
         // reached yet, so — unlike BuildRelative, which just excludes cars it can't place — this
         // falls back to any car's recorded pace in the field when the player hasn't set a lap time.
@@ -394,6 +404,101 @@ internal static class StandingsBuilder
         }
 
         return display;
+    }
+
+    private static bool IsQualifyingSession(IracingSessionInfo? session)
+    {
+        if (session?.SessionInfo is not { } sessionInfo)
+        {
+            return false;
+        }
+
+        var current = sessionInfo.Sessions.FirstOrDefault(s => s.SessionNum == sessionInfo.CurrentSessionNum);
+        return current?.SessionType.Contains("Qualify", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    /// <summary>
+    /// Ranks every non-pace-car driver by their own best (falling back to last) qualifying lap time,
+    /// fastest first — regardless of whether they're currently out on track or parked back in their
+    /// pit stall — so the player can see their actual grid slot at any point during qualifying, not
+    /// just while cars happen to still be circulating.
+    /// </summary>
+    private static List<StandingsRow> BuildQualifyingStandings(
+        DriverInfoSection driverInfo,
+        int[] currentLaps,
+        float[]? lastLaps,
+        float[]? bestLaps,
+        bool[]? onPitRoad,
+        int playerCarIdx,
+        bool isMultiClass)
+    {
+        var drivers = driverInfo.Drivers.Where(d => !d.IsPaceCar && d.CarIdx >= 0).ToList();
+
+        double QualTime(DriverEntry d)
+        {
+            var best = bestLaps is not null && d.CarIdx < bestLaps.Length ? bestLaps[d.CarIdx] : 0;
+            if (best > 0)
+            {
+                return best;
+            }
+
+            var last = lastLaps is not null && d.CarIdx < lastLaps.Length ? lastLaps[d.CarIdx] : 0;
+            return last > 0 ? last : double.MaxValue;
+        }
+
+        // Drivers with no time yet sort to the bottom (double.MaxValue), stable-tied by CarIdx.
+        var ordered = drivers.OrderBy(QualTime).ThenBy(d => d.CarIdx).ToList();
+
+        var sessionFastestLap = 0.0;
+        foreach (var d in drivers)
+        {
+            var best = bestLaps is not null && d.CarIdx < bestLaps.Length ? bestLaps[d.CarIdx] : 0;
+            if (best > 0 && (sessionFastestLap <= 0 || best < sessionFastestLap))
+            {
+                sessionFastestLap = best;
+            }
+        }
+
+        var poleTime = ordered.Count > 0 ? QualTime(ordered[0]) : double.MaxValue;
+
+        var classRank = new Dictionary<int, int>();
+        var rows = new List<StandingsRow>();
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var driver = ordered[i];
+            classRank.TryGetValue(driver.CarClassID, out var rank);
+            rank++;
+            classRank[driver.CarClassID] = rank;
+
+            var bestLapTime = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0;
+            var thisTime = QualTime(driver);
+
+            rows.Add(new StandingsRow
+            {
+                CarIdx = driver.CarIdx,
+                Position = i + 1,
+                ClassPosition = rank,
+                Name = driver.UserName,
+                CarNumber = driver.CarNumber,
+                IsPlayer = driver.CarIdx == playerCarIdx,
+                OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                CurrentLap = driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : 0,
+                GapToLeaderSeconds = thisTime < double.MaxValue && poleTime < double.MaxValue ? thisTime - poleTime : 0,
+                LastLapTime = lastLaps is not null && driver.CarIdx < lastLaps.Length ? lastLaps[driver.CarIdx] : 0,
+                BestLapTime = bestLapTime,
+                IsMultiClass = isMultiClass,
+                IRating = driver.IRating,
+                LicString = driver.LicString,
+                // A single pairwise-duel iRating estimate makes no sense against a qualifying order.
+                IRatingDelta = 0,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
+                ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
+                CarClassID = driver.CarClassID,
+                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+            });
+        }
+
+        return rows;
     }
 
     private static double GetAnyRecordedLapTime(float[]? lastLaps, float[]? bestLaps)

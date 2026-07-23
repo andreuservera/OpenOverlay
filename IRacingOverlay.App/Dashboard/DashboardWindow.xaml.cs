@@ -74,21 +74,26 @@ public partial class DashboardWindow : Window
         }
     }
 
+    // Deliberately never uses WindowState.Maximized: with WindowStyle="None" the maximize
+    // transition is only reliable the very first time the HWND is shown. On a second Show() after
+    // Hide() (the HWND survives Hide(), still carrying WS_MAXIMIZE from the first run) re-applying
+    // Maximized is a no-op as far as Windows is concerned, so the window reappears at whatever
+    // Normal-state bounds were last set instead of covering the screen. Setting Left/Top/Width/
+    // Height directly to the target monitor's full bounds sidesteps the OS maximize state machine
+    // entirely and is exactly as "fullscreen" for a chromeless window either way.
     public void MoveToScreen(Screen screen)
     {
         WindowStartupLocation = WindowStartupLocation.Manual;
         WindowState = WindowState.Normal;
-        Left = screen.Bounds.Left + 1;
-        Top = screen.Bounds.Top + 1;
-        Width = 800;
-        Height = 600;
+        Left = screen.Bounds.Left;
+        Top = screen.Bounds.Top;
+        Width = screen.Bounds.Width;
+        Height = screen.Bounds.Height;
 
         if (!IsVisible)
         {
             Show();
         }
-
-        WindowState = WindowState.Maximized;
     }
 
     public void UpdateStandingsRows(IReadOnlyList<object> standings) => _standingsPanel.SetRows(standings);
