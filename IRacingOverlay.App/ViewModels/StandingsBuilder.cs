@@ -122,7 +122,7 @@ internal static class StandingsBuilder
     /// made the whole table look frozen mid-lap. CarIdxPosition is still used as one signal for "has
     /// this car actually started," just not for the displayed position/gap numbers themselves.
     /// </summary>
-    public static List<StandingsRow> BuildStandings(TelemetrySnapshot telemetry, IracingSessionInfo? session)
+    public static List<StandingsRow> BuildStandings(TelemetrySnapshot telemetry, IracingSessionInfo? session, SessionBestLapTracker? bestLapTracker = null)
     {
         if (session?.DriverInfo is not { } driverInfo)
         {
@@ -150,14 +150,17 @@ internal static class StandingsBuilder
             .Count();
         var isMultiClass = distinctClasses > 1;
 
-        // Qualifying needs every driver in the session ranked by their own best lap time, not the
-        // on-track running order: a driver who's set a fast lap and driven back to their pit stall
-        // still needs to show up (and know their grid slot), even though they're now stationary in
-        // the pits and iRacing may have reset their CarIdxLap to the "not on track" sentinel that
+        // Practice and Qualifying both need every driver in the session ranked by their own best
+        // lap time, not the on-track running order: a driver who's set a fast lap and driven back to
+        // their pit stall still needs to show up (and know their grid slot / where their pace ranks),
+        // even though they're now stationary in the pits and iRacing can drop their live
+        // CarIdxBestLapTime/CarIdxLastLapTime/CarIdxLap back toward the "not on track" values that
         // BuildStandings' normal eligibility check below would otherwise exclude them for.
-        if (IsQualifyingSession(session))
+        if (IsPracticeOrQualifyingSession(session))
         {
-            return BuildQualifyingStandings(driverInfo, currentLaps, lastLaps, bestLaps, onPitRoad, playerCarIdx, isMultiClass);
+            return BuildFastestLapStandings(
+                session, driverInfo, currentLaps, lastLaps, bestLaps, onPitRoad, playerCarIdx, isMultiClass,
+                bestLapTracker ?? new SessionBestLapTracker());
         }
 
         // Standings needs to order the *whole* field, including cars on laps the player hasn't
@@ -286,10 +289,24 @@ internal static class StandingsBuilder
     /// iRacing's published Strength of Field formula: BR1 = 1600/ln(2); each driver contributes
     /// e^(-iRating/BR1) to a sum; SOF = BR1 * ln(driverCount / sum). Self-consistency check: a field
     /// where every driver carries the exact same iRating R comes out to SOF == R.
+    ///
+    /// Computed directly from the session's driver roster (iRating is a per-driver, session-lifetime
+    /// value from the YAML, not per-tick telemetry) rather than from already-built StandingsRows —
+    /// SOF describes the whole lobby, so it must include every driver regardless of whether they
+    /// currently happen to be on track or parked in the pits, which the eligibility filtering in
+    /// BuildStandings' rows deliberately does not guarantee.
     /// </summary>
-    public static double ComputeStrengthOfField(IReadOnlyList<StandingsRow> rows)
+    public static double ComputeStrengthOfField(IracingSessionInfo? session)
     {
-        var iratings = rows.Where(r => r.IRating > 0).Select(r => (double)r.IRating).ToList();
+        if (session?.DriverInfo is not { } driverInfo)
+        {
+            return 0;
+        }
+
+        var iratings = driverInfo.Drivers
+            .Where(d => !d.IsPaceCar && d.IRating > 0)
+            .Select(d => (double)d.IRating)
+            .ToList();
         if (iratings.Count == 0)
         {
             return 0;
@@ -406,7 +423,7 @@ internal static class StandingsBuilder
         return display;
     }
 
-    private static bool IsQualifyingSession(IracingSessionInfo? session)
+    private static bool IsPracticeOrQualifyingSession(IracingSessionInfo? session)
     {
         if (session?.SessionInfo is not { } sessionInfo)
         {
@@ -414,48 +431,46 @@ internal static class StandingsBuilder
         }
 
         var current = sessionInfo.Sessions.FirstOrDefault(s => s.SessionNum == sessionInfo.CurrentSessionNum);
-        return current?.SessionType.Contains("Qualify", StringComparison.OrdinalIgnoreCase) == true;
+        var type = current?.SessionType ?? "";
+        return type.Contains("Qualify", StringComparison.OrdinalIgnoreCase) ||
+               type.Contains("Practice", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// Ranks every non-pace-car driver by their own best (falling back to last) qualifying lap time,
-    /// fastest first — regardless of whether they're currently out on track or parked back in their
-    /// pit stall — so the player can see their actual grid slot at any point during qualifying, not
-    /// just while cars happen to still be circulating.
+    /// Ranks every non-pace-car driver by their own best lap time, fastest first — regardless of
+    /// whether they're currently out on track or parked back in their pit stall — so the player can
+    /// see their actual grid slot (Qualifying) or where their pace ranks (Practice) at any point in
+    /// the session, not just while cars happen to still be circulating. Sourced from
+    /// <paramref name="bestLapTracker"/>'s running cache rather than this tick's raw telemetry, since
+    /// iRacing can drop a parked car's live CarIdxBestLapTime/CarIdxLastLapTime back toward 0 — the
+    /// tracker is what remembers the real number for the rest of the session.
     /// </summary>
-    private static List<StandingsRow> BuildQualifyingStandings(
+    private static List<StandingsRow> BuildFastestLapStandings(
+        IracingSessionInfo session,
         DriverInfoSection driverInfo,
         int[] currentLaps,
         float[]? lastLaps,
         float[]? bestLaps,
         bool[]? onPitRoad,
         int playerCarIdx,
-        bool isMultiClass)
+        bool isMultiClass,
+        SessionBestLapTracker bestLapTracker)
     {
         var drivers = driverInfo.Drivers.Where(d => !d.IsPaceCar && d.CarIdx >= 0).ToList();
+        var sessionNum = session.SessionInfo?.CurrentSessionNum ?? 0;
+        var cachedBest = bestLapTracker.Update(sessionNum, drivers.Select(d => d.CarIdx), bestLaps, lastLaps);
 
-        double QualTime(DriverEntry d)
-        {
-            var best = bestLaps is not null && d.CarIdx < bestLaps.Length ? bestLaps[d.CarIdx] : 0;
-            if (best > 0)
-            {
-                return best;
-            }
-
-            var last = lastLaps is not null && d.CarIdx < lastLaps.Length ? lastLaps[d.CarIdx] : 0;
-            return last > 0 ? last : double.MaxValue;
-        }
+        double QualTime(DriverEntry d) => cachedBest.TryGetValue(d.CarIdx, out var t) && t > 0 ? t : double.MaxValue;
 
         // Drivers with no time yet sort to the bottom (double.MaxValue), stable-tied by CarIdx.
         var ordered = drivers.OrderBy(QualTime).ThenBy(d => d.CarIdx).ToList();
 
         var sessionFastestLap = 0.0;
-        foreach (var d in drivers)
+        foreach (var t in cachedBest.Values)
         {
-            var best = bestLaps is not null && d.CarIdx < bestLaps.Length ? bestLaps[d.CarIdx] : 0;
-            if (best > 0 && (sessionFastestLap <= 0 || best < sessionFastestLap))
+            if (t > 0 && (sessionFastestLap <= 0 || t < sessionFastestLap))
             {
-                sessionFastestLap = best;
+                sessionFastestLap = t;
             }
         }
 
@@ -470,7 +485,7 @@ internal static class StandingsBuilder
             rank++;
             classRank[driver.CarClassID] = rank;
 
-            var bestLapTime = bestLaps is not null && driver.CarIdx < bestLaps.Length ? bestLaps[driver.CarIdx] : 0;
+            var bestLapTime = cachedBest.GetValueOrDefault(driver.CarIdx, 0);
             var thisTime = QualTime(driver);
 
             rows.Add(new StandingsRow
@@ -489,7 +504,7 @@ internal static class StandingsBuilder
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
-                // A single pairwise-duel iRating estimate makes no sense against a qualifying order.
+                // A single pairwise-duel iRating estimate makes no sense against a fastest-lap order.
                 IRatingDelta = 0,
                 IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),

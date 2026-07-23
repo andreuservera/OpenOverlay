@@ -525,6 +525,16 @@ public class StandingsBuilderTests
         },
     };
 
+    private static IracingSessionInfo PracticeSession(DriverInfoSection driverInfo) => new()
+    {
+        DriverInfo = driverInfo,
+        SessionInfo = new SessionInfoSection
+        {
+            CurrentSessionNum = 0,
+            Sessions = [new SessionEntry { SessionNum = 0, SessionType = "Practice" }],
+        },
+    };
+
     [Fact]
     public void BuildStandings_Qualifying_IncludesDriverParkedInPitsWithATime()
     {
@@ -586,6 +596,103 @@ public class StandingsBuilderTests
         Assert.Equal(2, rows.Count);
         Assert.Equal(1, rows.Single(r => r.CarIdx == 0).Position);
         Assert.Equal(2, rows.Single(r => r.CarIdx == 1).Position);
+    }
+
+    [Fact]
+    public void BuildStandings_Qualifying_ParkedDriverKeepsTimeAcrossTicksEvenWhenTelemetryZeroesOut()
+    {
+        // Regression test for what live testing surfaced even after the previous fix: iRacing doesn't
+        // just reset a parked car's CarIdxLap — it can drop CarIdxBestLapTime/CarIdxLastLapTime back
+        // to 0 for that car too, on a *later* tick, well after the fast lap was genuinely recorded.
+        // Reading only the current tick can't tell "never set a time" apart from "set a time, now
+        // parked" — the tracker must remember the real number across ticks.
+        var builder = StandingsVars();
+        var driverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                new DriverEntry { CarIdx = 1, UserName = "ParkedLater", CarNumber = "9" },
+            ],
+        };
+        var session = QualifyingSession(driverInfo);
+        var tracker = new SessionBestLapTracker();
+
+        var duringHotLap = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [1, 2, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [5.0f, 5.0f, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [95.0f, 90.5f, 0, 0]); // car 1 sets a fast lap
+        });
+        StandingsBuilder.BuildStandings(duringHotLap, session, tracker);
+
+        var parkedInPits = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [1, -1, 0, 0]); // car 1 now parked, lap reset
+            w.SetFloatArray("CarIdxEstTime", [8.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [95.0f, 0, 0, 0]); // and its best lap telemetry zeroed out
+        });
+
+        var rows = StandingsBuilder.BuildStandings(parkedInPits, session, tracker);
+
+        Assert.Equal(2, rows.Count);
+        var parked = rows.Single(r => r.CarIdx == 1);
+        Assert.Equal(1, parked.Position); // still ranked on its earlier, now-cached fast lap
+        Assert.Equal(90.5, parked.BestLapTime, precision: 3);
+    }
+
+    [Fact]
+    public void BuildStandings_Practice_RanksByFastestLapLikeQualifying()
+    {
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, -1, 0, 0]); // car 1 parked after a fast lap
+            w.SetFloatArray("CarIdxEstTime", [10.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [92.0f, 89.0f, 0, 0]);
+        });
+
+        var driverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                new DriverEntry { CarIdx = 1, UserName = "FastInPits", CarNumber = "9" },
+            ],
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, PracticeSession(driverInfo));
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(1, rows.Single(r => r.CarIdx == 1).Position);
+        Assert.Equal(2, rows.Single(r => r.CarIdx == 0).Position);
+    }
+
+    [Fact]
+    public void ComputeStrengthOfField_CountsEveryDriverInRosterRegardlessOfTrackStatus()
+    {
+        // SOF describes the whole lobby, not just whoever's currently on track — a driver sitting in
+        // the pits (or one who hasn't yet been marked "started" by BuildStandings' own eligibility
+        // logic) must still count, since iRating is a per-driver roster fact, not live telemetry.
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", IRating = 2500 },
+                    new DriverEntry { CarIdx = 1, UserName = "InPits", CarNumber = "9", IRating = 2500 },
+                    new DriverEntry { CarIdx = 2, UserName = "PaceCar", CarIsPaceCar = 1, IRating = 9999 },
+                ],
+            },
+        };
+
+        var sof = StandingsBuilder.ComputeStrengthOfField(session);
+
+        Assert.Equal(2500, sof, precision: 3);
     }
 
     private static List<StandingsRow> MakeRows(bool isMultiClass, params (int carIdx, bool isPlayer, int classId, string className, int position)[] specs) =>
@@ -678,30 +785,21 @@ public class StandingsBuilderTests
     {
         // Self-consistency check baked into iRacing's own published SOF formula: a field where
         // every driver carries the exact same iRating must produce that same number as the SOF.
-        var baseRows = MakeRows(isMultiClass: false, (0, true, 100, "GT3", 1), (1, false, 100, "GT3", 2), (2, false, 100, "GT3", 3));
-        var rows = baseRows.Select(r => new StandingsRow
+        var session = new IracingSessionInfo
         {
-            CarIdx = r.CarIdx,
-            Position = r.Position,
-            ClassPosition = r.ClassPosition,
-            Name = r.Name,
-            CarNumber = r.CarNumber,
-            IsPlayer = r.IsPlayer,
-            OnPitRoad = r.OnPitRoad,
-            CurrentLap = r.CurrentLap,
-            GapToLeaderSeconds = r.GapToLeaderSeconds,
-            LastLapTime = r.LastLapTime,
-            BestLapTime = r.BestLapTime,
-            IsMultiClass = r.IsMultiClass,
-            IRating = 2500,
-            LicString = r.LicString,
-            IRatingDelta = r.IRatingDelta,
-            IsSessionFastestLap = r.IsSessionFastestLap,
-            CarClassID = r.CarClassID,
-            CarClassName = r.CarClassName,
-        }).ToList();
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Driver0", CarNumber = "0", IRating = 2500 },
+                    new DriverEntry { CarIdx = 1, UserName = "Driver1", CarNumber = "1", IRating = 2500 },
+                    new DriverEntry { CarIdx = 2, UserName = "Driver2", CarNumber = "2", IRating = 2500 },
+                ],
+            },
+        };
 
-        var sof = StandingsBuilder.ComputeStrengthOfField(rows);
+        var sof = StandingsBuilder.ComputeStrengthOfField(session);
 
         Assert.Equal(2500, sof, precision: 3);
     }
@@ -709,9 +807,16 @@ public class StandingsBuilderTests
     [Fact]
     public void ComputeStrengthOfField_NoRatedDrivers_ReturnsZero()
     {
-        var rows = MakeRows(isMultiClass: false, (0, true, 100, "GT3", 1));
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers = [new DriverEntry { CarIdx = 0, UserName = "Driver0", CarNumber = "0" }],
+            },
+        };
 
-        var sof = StandingsBuilder.ComputeStrengthOfField(rows);
+        var sof = StandingsBuilder.ComputeStrengthOfField(session);
 
         Assert.Equal(0, sof);
     }

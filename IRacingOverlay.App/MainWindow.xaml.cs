@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _criticalTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly PedalTraceBuilder _pedalTraceBuilder = new();
     private readonly FuelBuilder _fuelBuilder = new();
+    private readonly SessionBestLapTracker _sessionBestLapTracker = new();
     private int _tickCount;
 
     private RelativeWidget? _relativeWidget;
@@ -46,18 +47,30 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        // Read both stores *before* InitializeComponent(): every ComboBoxItem in MainWindow.xaml
+        // that has IsSelected="True" (the XAML-declared first-run default) fires that ComboBox's
+        // SelectionChanged handler the moment InitializeComponent() constructs it — and both
+        // handlers below immediately persist whatever's currently selected. Reading the previous
+        // launch's saved value first means we still have it in hand even though InitializeComponent
+        // is about to overwrite the file on disk with the XAML default; the actual restore
+        // assignment further down fires SelectionChanged again and writes the real value back.
+        var savedDashboardTheme = DashboardThemeStore.Get();
+        var savedCriticalRefreshIndex = CriticalRefreshStore.Get();
+
         InitializeComponent();
 
         MonitorComboBox.ItemsSource = Screen.AllScreens;
         MonitorComboBox.DisplayMemberPath = "DeviceName";
         MonitorComboBox.SelectedIndex = Screen.AllScreens.Length > 1 ? 1 : 0;
 
-        DashboardThemeComboBox.SelectedIndex = DashboardThemeStore.Get() switch
+        DashboardThemeComboBox.SelectedIndex = savedDashboardTheme switch
         {
             DashboardTheme.DigitalHud => 1,
             DashboardTheme.RawDiy => 2,
             _ => 0,
         };
+
+        CriticalRefreshComboBox.SelectedIndex = savedCriticalRefreshIndex;
 
         _connection.Connected += (_, _) => Dispatcher.BeginInvoke(() => SetStatus(connected: true));
         _connection.Disconnected += (_, _) => Dispatcher.BeginInvoke(() => SetStatus(connected: false));
@@ -150,9 +163,9 @@ public partial class MainWindow : Window
         _tickCount++;
         if ((_standingsWidget is not null || _dashboard is not null) && _tickCount % StandingsUpdateEveryNTicks == 0)
         {
-            var standingsRows = StandingsBuilder.BuildStandings(telemetry, session);
+            var standingsRows = StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker);
             var standingsDisplay = StandingsBuilder.GroupForDisplay(standingsRows);
-            var sof = StandingsBuilder.ComputeStrengthOfField(standingsRows);
+            var sof = StandingsBuilder.ComputeStrengthOfField(session);
             _standingsWidget?.UpdateRows(standingsDisplay);
             _standingsWidget?.SetSof(sof);
             _dashboard?.UpdateStandingsRows(standingsDisplay);
@@ -264,6 +277,7 @@ public partial class MainWindow : Window
             _ => 100, // index 2, "Normal (10 Hz)"
         };
         _criticalTimer.Interval = TimeSpan.FromMilliseconds(ms);
+        CriticalRefreshStore.Save(CriticalRefreshComboBox.SelectedIndex);
     }
 
     private void RelativeCheckBox_Changed(object sender, RoutedEventArgs e)

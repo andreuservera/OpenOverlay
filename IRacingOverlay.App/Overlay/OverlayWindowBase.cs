@@ -40,8 +40,6 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         {
             Left = saved.Left;
             Top = saved.Top;
-            Width = saved.Width;
-            Height = saved.Height;
             _isEditMode = false;
             HasSavedLayout = true;
         }
@@ -59,6 +57,19 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
 
         SourceInitialized += (_, _) =>
         {
+            // Width/Height are deliberately NOT restored above: every derived widget's XAML hardcodes
+            // an explicit Width/Height on its root Window tag (its first-run default size), and that
+            // widget's own InitializeComponent() — called in the derived constructor, which runs
+            // *after* this base constructor — would immediately overwrite whatever we set here. This
+            // is exactly why a resized Cockpit/etc. widget always reset to its default size on every
+            // relaunch. SourceInitialized fires later, once Show() actually creates the window, so
+            // applying the saved size here is what makes it stick.
+            if (saved is not null)
+            {
+                Width = saved.Width;
+                Height = saved.Height;
+            }
+
             ApplyClickThrough();
             if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
             {
