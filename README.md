@@ -21,6 +21,22 @@ mechanism SimHub, CrewChief, and RaceLab use) and displays it as:
 No telemetry ever leaves your machine — everything is read locally from iRacing's shared memory
 and rendered directly by the app.
 
+## Screenshots
+
+**Fullscreen dashboard**, on a second monitor — track map, standings, relative, tires, fuel,
+incidents, and the cockpit cluster all on one screen, captured live mid-race:
+
+![Fullscreen dashboard](docs/screenshots/dashboard.png)
+
+**Floating widgets**, overlaid directly on top of the sim while driving:
+
+![Floating widgets over iRacing](docs/screenshots/floating-widgets.jpg)
+
+The cockpit cluster up close — speed, gear, RPM, shift lights, ABS indicator, and the
+throttle/brake trace:
+
+![Cockpit cluster close-up](docs/screenshots/cockpit-cluster.png)
+
 ## Features
 
 - **Cockpit cluster** — speed, gear, RPM, shift lights, ABS indicator, and left/right proximity
