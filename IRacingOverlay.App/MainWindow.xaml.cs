@@ -387,7 +387,8 @@ public partial class MainWindow : Window
 
     private void UpdateMemoryText()
     {
-        var megabytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64 / (1024.0 * 1024.0);
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        var megabytes = process.WorkingSet64 / (1024.0 * 1024.0);
         var uiAvg = _uiTickSamples > 0 ? _uiTickTotalMs / _uiTickSamples : 0;
         var criticalAvg = _criticalTickSamples > 0 ? _criticalTickTotalMs / _criticalTickSamples : 0;
         var criticalTargetMs = _criticalTimer.Interval.TotalMilliseconds;

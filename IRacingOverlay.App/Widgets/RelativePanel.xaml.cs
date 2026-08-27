@@ -15,10 +15,17 @@ public partial class RelativePanel : UserControl
 
     public void SetRows(IReadOnlyList<RelativeRow> rows)
     {
-        Rows.Clear();
-        foreach (var row in rows)
+        // Sync in-place: Replace at each index instead of Clear + Add, which fires a Reset
+        // notification that tears down the entire ItemsControl visual tree every tick.
+        for (var i = 0; i < rows.Count; i++)
         {
-            Rows.Add(row);
+            if (i < Rows.Count)
+                Rows[i] = rows[i];
+            else
+                Rows.Add(rows[i]);
         }
+
+        while (Rows.Count > rows.Count)
+            Rows.RemoveAt(Rows.Count - 1);
     }
 }

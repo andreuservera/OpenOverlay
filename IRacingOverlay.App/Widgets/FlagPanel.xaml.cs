@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -20,6 +21,9 @@ public partial class FlagPanel : UserControl
     private static readonly Color DebrisYellow = Color.FromRgb(0xE8, 0xC0, 0x00);
     private static readonly Color DebrisRed = Color.FromRgb(0xCC, 0x14, 0x14);
 
+    // Cache the last set of flag names so we skip the expensive visual rebuild when nothing changed.
+    private string _lastFlagKey = "";
+
     public FlagPanel()
     {
         InitializeComponent();
@@ -31,11 +35,24 @@ public partial class FlagPanel : UserControl
     // context (see FlagWidget.Render for why that matters).
     public void UpdateState(IReadOnlyList<FlagState> flags)
     {
+        // Flags rarely change mid-session — skip the full visual tree rebuild when the set is the same.
+        var key = BuildFlagKey(flags);
+        if (key == _lastFlagKey)
+            return;
+        _lastFlagKey = key;
+
         FlagsStack.Children.Clear();
         foreach (var flag in flags)
         {
             FlagsStack.Children.Add(BuildBox(flag));
         }
+    }
+
+    private static string BuildFlagKey(IReadOnlyList<FlagState> flags)
+    {
+        if (flags.Count == 0) return "";
+        if (flags.Count == 1) return flags[0].Name;
+        return string.Join('|', flags.Select(f => f.Name));
     }
 
     private static Border BuildBox(FlagState state)
