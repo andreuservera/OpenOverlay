@@ -7,7 +7,7 @@ namespace IRacingOverlay.App.Tests;
 
 public class CockpitBuilderTests
 {
-    private static IracingSessionInfo SessionWithShiftLights(double first = 5000, double shift = 7000, double blink = 7200) =>
+    private static IracingSessionInfo SessionWithShiftLights(double first = 5000, double shift = 7000, double blink = 7200, double last = 0) =>
         new()
         {
             DriverInfo = new DriverInfoSection
@@ -16,6 +16,7 @@ public class CockpitBuilderTests
                 DriverCarSLFirstRPM = first,
                 DriverCarSLShiftRPM = shift,
                 DriverCarSLBlinkRPM = blink,
+                DriverCarSLLastRPM = last,
                 Drivers = [new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" }],
             },
         };
@@ -89,6 +90,36 @@ public class CockpitBuilderTests
         });
 
         var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+
+        Assert.True(state.ShiftBlink);
+    }
+
+    [Fact]
+    public void Build_BlinkThresholdMissing_FallsBackToLastRpm()
+    {
+        GearAndShiftVars(out var builder);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("Gear", 3);
+            w.SetFloat("RPM", 7150); // >= Last=7100
+        });
+
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(blink: 0, last: 7100));
+
+        Assert.True(state.ShiftBlink);
+    }
+
+    [Fact]
+    public void Build_BlinkAndLastThresholdsMissing_FallsBackToShiftPoint()
+    {
+        GearAndShiftVars(out var builder);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("Gear", 3);
+            w.SetFloat("RPM", 7000); // == Shift
+        });
+
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(blink: 0));
 
         Assert.True(state.ShiftBlink);
     }

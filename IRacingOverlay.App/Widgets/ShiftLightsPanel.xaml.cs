@@ -1,5 +1,8 @@
+using System;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using IRacingOverlay.App.ViewModels;
 
@@ -13,13 +16,21 @@ public partial class ShiftLightsPanel : UserControl
 {
     private const int GreenCount = 5;
     private const int YellowCount = 5;
+    private const int BlinkHalfPeriodMs = 90;
 
     private static readonly Brush Off = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
     private static readonly Brush Green = new SolidColorBrush(Color.FromRgb(0x30, 0xC0, 0x30));
     private static readonly Brush Yellow = new SolidColorBrush(Color.FromRgb(0xE0, 0xC0, 0x20));
     private static readonly Brush Red = new SolidColorBrush(Color.FromRgb(0xE0, 0x30, 0x30));
 
+    // Driven by WPF's own animation clock rather than a phase flag sampled once per telemetry tick:
+    // at the default 100ms refresh a 150ms half-period aliased into an uneven on-on-off pattern that
+    // read as an occasional flicker rather than a blink, and changing the refresh rate changed the
+    // pattern. An animation runs at render frequency, so the cadence is the same at any refresh rate.
+    private static readonly DoubleAnimationUsingKeyFrames BlinkAnimation = CreateBlinkAnimation();
+
     private readonly Ellipse[] _dots = new Ellipse[CockpitState.ShiftLightCount];
+    private bool _blinking;
 
     public ShiftLightsPanel()
     {
@@ -27,23 +38,43 @@ public partial class ShiftLightsPanel : UserControl
 
         for (var i = 0; i < _dots.Length; i++)
         {
-            var dot = new Ellipse { Width = 14, Height = 14, Fill = Off, Margin = new System.Windows.Thickness(2) };
+            var dot = new Ellipse { Width = 14, Height = 14, Fill = Off, Margin = new Thickness(2) };
             LightsStack.Children.Add(dot);
             _dots[i] = dot;
         }
     }
 
-    public void SetLit(int litCount, bool blink, bool blinkPhase)
+    public void SetLit(int litCount, bool blink)
     {
         for (var i = 0; i < _dots.Length; i++)
         {
-            if (i >= litCount || (blink && !blinkPhase))
-            {
-                _dots[i].Fill = Off;
-                continue;
-            }
-
-            _dots[i].Fill = i < GreenCount ? Green : i < GreenCount + YellowCount ? Yellow : Red;
+            _dots[i].Fill = i >= litCount
+                ? Off
+                : i < GreenCount ? Green : i < GreenCount + YellowCount ? Yellow : Red;
         }
+
+        if (blink == _blinking)
+        {
+            return;
+        }
+
+        _blinking = blink;
+        // Passing null detaches the animation and restores the underlying Opacity.
+        LightsStack.BeginAnimation(OpacityProperty, blink ? BlinkAnimation : null);
+    }
+
+    private static DoubleAnimationUsingKeyFrames CreateBlinkAnimation()
+    {
+        var animation = new DoubleAnimationUsingKeyFrames
+        {
+            Duration = TimeSpan.FromMilliseconds(BlinkHalfPeriodMs * 2),
+            RepeatBehavior = RepeatBehavior.Forever,
+        };
+
+        // Discrete frames, so the row snaps fully on/off like a real LED strip instead of fading.
+        animation.KeyFrames.Add(new DiscreteDoubleKeyFrame(1.0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        animation.KeyFrames.Add(new DiscreteDoubleKeyFrame(0.0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(BlinkHalfPeriodMs))));
+        animation.Freeze();
+        return animation;
     }
 }
