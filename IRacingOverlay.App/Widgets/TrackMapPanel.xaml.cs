@@ -29,19 +29,35 @@ public partial class TrackMapPanel : UserControl
 
     public void UpdateState(IReadOnlyList<TrackMapMarker> markers)
     {
-        MarkerLayer.Children.Clear();
-
         var width = MapArea.ActualWidth;
         if (width <= 0)
         {
+            // Hide all pooled badges when the panel has no layout yet.
+            for (var i = 0; i < MarkerLayer.Children.Count; i++)
+                MarkerLayer.Children[i].Visibility = Visibility.Collapsed;
             return;
         }
 
         var centerY = MapArea.ActualHeight / 2;
 
-        foreach (var marker in markers)
+        // Reuse existing Badge visuals — creating new Border/TextBlock/DropShadowEffect objects
+        // every tick generated enough garbage to trigger visible GC pauses (the reported stutter).
+        for (var i = 0; i < markers.Count; i++)
         {
-            var badge = BuildBadge(marker);
+            var marker = markers[i];
+            Border badge;
+            if (i < MarkerLayer.Children.Count)
+            {
+                badge = (Border)MarkerLayer.Children[i];
+                UpdateBadge(badge, marker);
+            }
+            else
+            {
+                badge = BuildBadge(marker);
+                MarkerLayer.Children.Add(badge);
+            }
+
+            badge.Visibility = Visibility.Visible;
 
             var size = marker.IsPlayer ? PlayerMarkerWidth : MarkerWidth;
             var height = marker.IsPlayer ? PlayerMarkerHeight : MarkerHeight;
@@ -51,8 +67,33 @@ public partial class TrackMapPanel : UserControl
             Canvas.SetLeft(badge, x);
             Canvas.SetTop(badge, y);
             Panel.SetZIndex(badge, marker.IsPlayer ? 10 : 1);
-            MarkerLayer.Children.Add(badge);
         }
+
+        // Hide surplus pooled elements instead of removing them.
+        for (var i = markers.Count; i < MarkerLayer.Children.Count; i++)
+            MarkerLayer.Children[i].Visibility = Visibility.Collapsed;
+    }
+
+    private static void UpdateBadge(Border badge, TrackMapMarker marker)
+    {
+        var baseColor = ColorConverter.ConvertFromString(marker.ClassColor) is Color color ? color : Colors.White;
+        var alpha = marker.IsPlayer ? (byte)0xFF : RegularCarAlpha;
+
+        badge.Width = marker.IsPlayer ? PlayerMarkerWidth : MarkerWidth;
+        badge.Height = marker.IsPlayer ? PlayerMarkerHeight : MarkerHeight;
+        badge.CornerRadius = new CornerRadius(marker.IsPlayer ? 4 : 3);
+        badge.Background = new SolidColorBrush(Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
+        badge.BorderThickness = new Thickness(marker.IsPlayer ? 2.5 : marker.OnPitRoad ? 1.5 : 0);
+        badge.BorderBrush = marker.IsPlayer ? PlayerBorder : marker.OnPitRoad ? PitBorder : Brushes.Transparent;
+
+        if (marker.IsPlayer && badge.Effect is not DropShadowEffect)
+            badge.Effect = new DropShadowEffect { Color = Colors.White, BlurRadius = 10, ShadowDepth = 0, Opacity = 0.9 };
+        else if (!marker.IsPlayer && badge.Effect is not null)
+            badge.Effect = null;
+
+        var text = (TextBlock)badge.Child;
+        text.Text = marker.CarNumber;
+        text.FontSize = marker.IsPlayer ? 12 : 9;
     }
 
     private static Border BuildBadge(TrackMapMarker marker)

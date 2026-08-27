@@ -36,11 +36,16 @@ public partial class StandingsPanel : UserControl
 
     public void SetRows(IReadOnlyList<object> rows)
     {
-        Rows.Clear();
-        foreach (var row in rows)
+        for (var i = 0; i < rows.Count; i++)
         {
-            Rows.Add(row);
+            if (i < Rows.Count)
+                Rows[i] = rows[i];
+            else
+                Rows.Add(rows[i]);
         }
+
+        while (Rows.Count > rows.Count)
+            Rows.RemoveAt(Rows.Count - 1);
     }
 
     public void SetSof(double sof) => SofText.Text = sof > 0 ? $"SOF {Math.Round(sof):N0}" : "";
