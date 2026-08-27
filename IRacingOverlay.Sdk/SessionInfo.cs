@@ -73,4 +73,5 @@ public sealed class SessionEntry
     public string SessionName { get; set; } = "";
     public string SessionLaps { get; set; } = "";
     public string SessionTime { get; set; } = "";
+    public string SessionTrackRubberState { get; set; } = "";
 }

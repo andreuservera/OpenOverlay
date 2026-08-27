@@ -31,6 +31,21 @@
                 <TextBlock x:Name="HumidityText" Text="—" FontSize="13" Foreground="#8FD3FF" VerticalAlignment="Center"/>
             </StackPanel>
 
+            <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
+                <TextBlock Text="USAGE" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <StackPanel x:Name="TrackUsageBar" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="#2A2A2A"/>
+                    <Rectangle Width="5" Height="11" RadiusX="1" RadiusY="1" Fill="#2A2A2A"/>
+                </StackPanel>
+                <TextBlock x:Name="TrackUsageText" Text="—" FontSize="13" Foreground="#C8A2FF" VerticalAlignment="Center"/>
+            </StackPanel>
+
             <Rectangle Width="1" Fill="#3A3A3A" Margin="0,1,16,1"/>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,16,0">
