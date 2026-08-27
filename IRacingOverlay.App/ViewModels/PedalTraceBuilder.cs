@@ -15,6 +15,7 @@ internal sealed class PedalTraceBuilder
 
     private readonly Queue<double> _throttleHistory = new();
     private readonly Queue<double> _brakeHistory = new();
+    private readonly Queue<bool> _absHistory = new();
 
     // Sample count needed for a HistorySeconds-wide trace scales with however fast this Builder is
     // actually being ticked (the "critical refresh rate" combo) — fixing this at a sample COUNT
@@ -29,9 +30,11 @@ internal sealed class PedalTraceBuilder
         var throttle = ReadPedal(telemetry, TelemetryVarNames.Throttle);
         var brake = ReadPedal(telemetry, TelemetryVarNames.Brake);
         var clutch = ReadClutch(telemetry);
+        var abs = telemetry.HasVariable(TelemetryVarNames.BrakeAbsActive) && telemetry.GetBool(TelemetryVarNames.BrakeAbsActive);
 
         Push(_throttleHistory, throttle, maxSamples);
         Push(_brakeHistory, brake, maxSamples);
+        Push(_absHistory, abs, maxSamples);
 
         return new PedalTraceState
         {
@@ -40,10 +43,11 @@ internal sealed class PedalTraceBuilder
             Clutch = clutch,
             ThrottleHistory = _throttleHistory.ToArray(),
             BrakeHistory = _brakeHistory.ToArray(),
+            AbsHistory = _absHistory.ToArray(),
         };
     }
 
-    private static void Push(Queue<double> history, double value, int maxSamples)
+    private static void Push<T>(Queue<T> history, T value, int maxSamples)
     {
         history.Enqueue(value);
         while (history.Count > maxSamples)

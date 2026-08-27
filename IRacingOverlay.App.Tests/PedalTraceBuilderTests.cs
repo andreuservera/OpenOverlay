@@ -142,4 +142,46 @@ public class PedalTraceBuilderTests
         Assert.Equal(0, state.Brake);
         Assert.Equal(0, state.Clutch);
     }
+
+    [Fact]
+    public void Build_TracksAbsPerSample_AlignedWithBrakeHistory()
+    {
+        var builder = PedalVars();
+        builder.AddVar("BrakeABSactive", IrsdkVarType.Bool);
+        var pedalTraceBuilder = new PedalTraceBuilder();
+        PedalTraceState state = PedalTraceState.Empty;
+
+        // ABS only intervenes on the middle sample of three — the trace must recolor that stretch
+        // alone, so the flag has to be recorded per sample rather than as one panel-wide state.
+        foreach (var absActive in new[] { false, true, false })
+        {
+            var snapshot = TestSnapshotFactory.Build(builder, w =>
+            {
+                w.SetFloat("Throttle", 0f);
+                w.SetFloat("Brake", 0.9f);
+                w.SetFloat("Clutch", 0f);
+                w.SetBool("BrakeABSactive", absActive);
+            });
+            state = pedalTraceBuilder.Build(snapshot, tickIntervalMs: 100);
+        }
+
+        Assert.Equal(state.BrakeHistory.Count, state.AbsHistory.Count);
+        Assert.Equal(new[] { false, true, false }, state.AbsHistory);
+    }
+
+    [Fact]
+    public void Build_NoAbsVariable_ReportsAbsInactive()
+    {
+        var builder = PedalVars(); // no BrakeABSactive — e.g. a car without ABS
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("Throttle", 0f);
+            w.SetFloat("Brake", 1f);
+            w.SetFloat("Clutch", 0f);
+        });
+
+        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
+
+        Assert.All(state.AbsHistory, abs => Assert.False(abs));
+    }
 }

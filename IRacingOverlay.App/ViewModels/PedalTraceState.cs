@@ -8,6 +8,10 @@ public sealed class PedalTraceState
     public required IReadOnlyList<double> ThrottleHistory { get; init; }
     public required IReadOnlyList<double> BrakeHistory { get; init; }
 
+    /// <summary>Per-sample ABS state, index-aligned with <see cref="BrakeHistory"/> — lets the trace
+    /// recolor only the stretch of the brake line where ABS was actually intervening.</summary>
+    public required IReadOnlyList<bool> AbsHistory { get; init; }
+
     public static PedalTraceState Empty { get; } = new()
     {
         Throttle = 0,
@@ -15,5 +19,6 @@ public sealed class PedalTraceState
         Clutch = 0,
         ThrottleHistory = [],
         BrakeHistory = [],
+        AbsHistory = [],
     };
 }
