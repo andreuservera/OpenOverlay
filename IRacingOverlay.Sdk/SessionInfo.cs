@@ -36,6 +36,12 @@ public sealed class DriverInfoSection
     public double DriverCarSLLastRPM { get; set; }
     public double DriverCarSLBlinkRPM { get; set; }
     public double DriverCarRedLine { get; set; }
+    /// <summary>Physical fuel tank capacity, in liters.</summary>
+    public double DriverCarFuelMaxLtr { get; set; }
+    /// <summary>Fraction of the tank the series allows to be filled — some series run a fuel
+    /// restriction, so this is not always 1.0 and the two have to be multiplied to get the real
+    /// usable capacity.</summary>
+    public double DriverCarMaxFuelPct { get; set; }
     public List<DriverEntry> Drivers { get; set; } = [];
 }
 
