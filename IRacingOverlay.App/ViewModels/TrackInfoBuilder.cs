@@ -28,6 +28,7 @@ internal static class TrackInfoBuilder
         }
 
         var sessionLabel = "";
+        var trackUsage = "";
         if (session?.SessionInfo is { } sessionInfo)
         {
             var current = sessionInfo.Sessions.FirstOrDefault(s => s.SessionNum == sessionInfo.CurrentSessionNum);
@@ -36,6 +37,8 @@ internal static class TrackInfoBuilder
             {
                 sessionLabel = current?.SessionType ?? "";
             }
+
+            trackUsage = current?.SessionTrackRubberState ?? "";
         }
 
         double? timeRemaining = null;
@@ -62,10 +65,13 @@ internal static class TrackInfoBuilder
         {
             TrackName = trackName ?? "",
             SessionLabel = sessionLabel ?? "",
+            TrackUsage = trackUsage ?? "",
             AirTempC = GetFloatOrZero(telemetry, TelemetryVarNames.AirTemp),
             TrackTempC = GetFloatOrZero(telemetry, TelemetryVarNames.TrackTempCrew),
             WindSpeedMs = GetFloatOrZero(telemetry, TelemetryVarNames.WindVel),
-            HumidityPct = GetFloatOrZero(telemetry, TelemetryVarNames.RelativeHumidity),
+            WindDirRad = GetFloatOrZero(telemetry, TelemetryVarNames.WindDir),
+            // iRacing's "%" unit is a 0-1 fraction (same as Throttle/FuelLevelPct), so 38% arrives as 0.38.
+            HumidityPct = GetFloatOrZero(telemetry, TelemetryVarNames.RelativeHumidity) * 100,
             TimeRemainingSeconds = timeRemaining,
             LapsRemaining = lapsRemaining,
         };

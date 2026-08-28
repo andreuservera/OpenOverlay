@@ -123,5 +123,9 @@ internal static class TelemetryVarNames
     /// <summary>Not "TrackTemp" (that one's documented as deprecated, kept only for back-compat).</summary>
     public const string TrackTempCrew = "TrackTempCrew";
     public const string WindVel = "WindVel";
+    /// <summary>Bearing in radians, clockwise from north.</summary>
+    public const string WindDir = "WindDir";
+    /// <summary>Reported as a 0-1 fraction despite iRacing documenting the unit as "%" — multiply by
+    /// 100 before display.</summary>
     public const string RelativeHumidity = "RelativeHumidity";
 }
