@@ -8,12 +8,14 @@
         <GradientStop Color="#141210" Offset="0"/>
         <GradientStop Color="#000000" Offset="1"/>
     </RadialGradientBrush>
-    <SolidColorBrush x:Key="Theme.PanelBackground" Color="#F0121010"/>
+    <SolidColorBrush x:Key="Theme.PanelBackground" Color="#F5121010"/>
     <SolidColorBrush x:Key="Theme.PanelBorder" Color="#FF8C1A"/>
     <Thickness x:Key="Theme.PanelBorderThickness">2.5</Thickness>
     <CornerRadius x:Key="Theme.PanelCornerRadius">1</CornerRadius>
-    <SolidColorBrush x:Key="Theme.LabelForeground" Color="#FF8C1A"/>
-    <FontFamily x:Key="Theme.FontFamily">Consolas</FontFamily>
+    <SolidColorBrush x:Key="Theme.LabelForeground" Color="#FFA340"/>
+    <FontFamily x:Key="Theme.FontFamily">Cascadia Mono, Consolas</FontFamily>
+    <FontFamily x:Key="Theme.NumericFontFamily">Cascadia Mono SemiBold, Consolas</FontFamily>
+    <FontFamily x:Key="Theme.DataFontFamily">Cascadia Mono, Consolas</FontFamily>
     <!-- Heavier monospace for the big gear numeral — reads like a home-built 7-segment counter. -->
-    <FontFamily x:Key="Theme.GearFontFamily">Cascadia Mono SemiBold</FontFamily>
+    <FontFamily x:Key="Theme.GearFontFamily">Cascadia Mono SemiBold, Consolas</FontFamily>
 </ResourceDictionary>

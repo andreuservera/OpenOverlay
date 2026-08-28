@@ -39,20 +39,23 @@
             <!-- Shift lights span the speed/gear/RPM columns, not just the gear digit. -->
             <w:ShiftLightsPanel x:Name="ShiftLights" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,6"/>
 
+            <!-- Speed and RPM share one layout — value, hairline rule, unit — so the eye learns a
+                 single pattern and the two units line up horizontally instead of one label sitting
+                 above its number and the other below. -->
             <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock x:Name="SpeedText" Text="—" FontSize="40" FontWeight="Bold" Foreground="White"
-                           HorizontalAlignment="Center" FontFamily="Consolas"/>
-                <Border BorderBrush="{DynamicResource Theme.PanelBorder}" BorderThickness="0,0,0,1" Margin="4,4,4,2"/>
-                <TextBlock Text="KM/H" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Theme.LabelForeground}" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="SpeedText" Text="—" Style="{StaticResource DisplayValue}"
+                           FontSize="{StaticResource Type.DisplayLarge}" HorizontalAlignment="Center"/>
+                <Border Background="{StaticResource Surface.Divider}" Height="1" Margin="4,3,4,4"/>
+                <TextBlock Text="KM/H" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center"/>
             </StackPanel>
 
             <w:ShiftGearPanel x:Name="ShiftGear" Grid.Row="1" Grid.Column="2"/>
 
             <StackPanel Grid.Row="1" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="RPM" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Theme.LabelForeground}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                <TextBlock x:Name="RpmText" Text="—" FontSize="26" FontWeight="Bold" Foreground="White"
-                           HorizontalAlignment="Center" FontFamily="Consolas"/>
-                <Border BorderBrush="{DynamicResource Theme.PanelBorder}" BorderThickness="0,0,0,1" Margin="4,4,4,6"/>
+                <TextBlock x:Name="RpmText" Text="—" Style="{StaticResource DisplayValue}"
+                           FontSize="{StaticResource Type.DisplaySmall}" HorizontalAlignment="Center"/>
+                <Border Background="{StaticResource Surface.Divider}" Height="1" Margin="4,3,4,4"/>
+                <TextBlock Text="RPM" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                 <w:AbsIndicatorPanel x:Name="AbsIndicator" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>

@@ -3,36 +3,38 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="OpenOverlay — Control Panel" Height="820" Width="480"
         Icon="Assets/icon.ico"
-        Background="#1E1E1E">
+        Background="#14171A"
+        FontFamily="{DynamicResource Theme.FontFamily}"
+        FontSize="13">
     <Window.Resources>
         <Style x:Key="SectionHeaderBorder" TargetType="Border">
-            <Setter Property="BorderBrush" Value="#3A3A3A"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Surface.Divider}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="Margin" Value="0,4,0,8"/>
-            <Setter Property="Padding" Value="0,0,0,4"/>
+            <Setter Property="Margin" Value="0,6,0,10"/>
+            <Setter Property="Padding" Value="0,0,0,5"/>
         </Style>
         <Style x:Key="SectionHeaderText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFB238"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource State.Warning}"/>
+            <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
-        <Style x:Key="ColumnHeaderText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#AAAAAA"/>
-            <Setter Property="FontSize" Value="11"/>
+        <Style x:Key="ColumnHeaderText" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="TableCheckBox" TargetType="CheckBox">
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,4"/>
         </Style>
     </Window.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="16" Orientation="Vertical">
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="Red" Margin="0,0,8,0"/>
-                <TextBlock x:Name="StatusText" Text="Waiting for iRacing…" Foreground="White" FontSize="14" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="Red" Margin="0,0,10,0"/>
+                <TextBlock x:Name="StatusText" Text="Waiting for iRacing…" Foreground="{StaticResource Text.Primary}"
+                           FontSize="{StaticResource Type.Value}" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Widgets: which are enabled, and which should duck out of view whenever the player
@@ -41,6 +43,15 @@
                 <TextBlock Text="WIDGETS" Style="{StaticResource SectionHeaderText}"/>
             </Border>
             <Grid Margin="0,0,0,12">
+                <!-- Implicit style, so it reaches the twelve widget-name labels without touching the
+                     two column headers above them (those carry an explicit Style of their own). -->
+                <Grid.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="Margin" Value="0,4"/>
+                    </Style>
+                </Grid.Resources>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="150"/>
                     <ColumnDefinition Width="55"/>
@@ -260,8 +271,10 @@
                 <TextBlock Text="DEBUG" Style="{StaticResource SectionHeaderText}"/>
             </Border>
             <StackPanel Margin="0,0,0,8">
-                <TextBlock x:Name="DebugText" Text="Speed: —   Lap: —   Gear: —" Foreground="#AAAAAA" FontFamily="Consolas" FontSize="12"/>
-                <TextBlock x:Name="MemoryText" Text="Memory: — MB" Foreground="#AAAAAA" FontFamily="Consolas" FontSize="12" Margin="0,2,0,0"/>
+                <TextBlock x:Name="DebugText" Text="Speed: —   Lap: —   Gear: —" Foreground="{StaticResource Text.Muted}"
+                           FontFamily="{DynamicResource Theme.DataFontFamily}" FontSize="{StaticResource Type.Body}"/>
+                <TextBlock x:Name="MemoryText" Text="Memory: — MB" Foreground="{StaticResource Text.Muted}"
+                           FontFamily="{DynamicResource Theme.DataFontFamily}" FontSize="{StaticResource Type.Body}" Margin="0,3,0,0"/>
             </StackPanel>
 
         </StackPanel>

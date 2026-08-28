@@ -1,13 +1,15 @@
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class FuelPanel : UserControl
 {
-    private static readonly Brush Ample = new SolidColorBrush(Color.FromRgb(0xFF, 0xB2, 0x38));
-    private static readonly Brush Short = new SolidColorBrush(Color.FromRgb(0xFF, 0x4D, 0x4D));
+    private static readonly Brush Ample = StatePalette.TextPrimary;
+    private static readonly Brush Short = StatePalette.Critical;
+    private static readonly Brush LevelNormal = StatePalette.Warning;
 
     public FuelPanel()
     {
@@ -25,6 +27,10 @@ public partial class FuelPanel : UserControl
 
         // Only color-flag "not enough fuel" when we can actually compare both sides — otherwise
         // (practice/timed sessions with no lap limit) this is just informational, not a warning.
-        LapsOfFuelText.Foreground = state.WillMakeItToTheEnd == false ? Short : Ample;
+        // The number stays plain white until then: an always-amber readout would train the eye to
+        // ignore the one color that's supposed to mean "act now".
+        var willRunShort = state.WillMakeItToTheEnd == false;
+        LapsOfFuelText.Foreground = willRunShort ? Short : Ample;
+        LevelFill.Fill = willRunShort ? Short : LevelNormal;
     }
 }

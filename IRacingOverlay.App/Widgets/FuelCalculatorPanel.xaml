@@ -4,28 +4,17 @@
              x:Name="Root">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <Style x:Key="StatLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#777777"/>
-            <Setter Property="FontSize" Value="9"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+        <!-- Two ranks of readout: the four compact usage columns (secondary, you scan them), and
+             the strategy rows underneath (primary, you act on them). -->
+        <Style x:Key="StatLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="StatValue" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#CCCCCC"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontFamily" Value="Consolas"/>
+        <Style x:Key="StatValue" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
             <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="RowLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#888888"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style x:Key="RowValue" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontSize" Value="18"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontFamily" Value="Consolas"/>
+        <Style x:Key="RowLabel" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}"/>
+        <Style x:Key="RowValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
             <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
@@ -33,25 +22,26 @@
 
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="12,8">
         <StackPanel>
-            <TextBlock Text="FUEL CALC" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11"
-                       FontWeight="Bold" Margin="0,0,0,4"/>
+            <TextBlock Text="FUEL CALC" Style="{StaticResource PanelTitle}" Margin="0,0,0,3"/>
 
             <!-- Fuel remaining: the headline number, big enough to read at a glance mid-corner. -->
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                         Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <TextBlock x:Name="LevelText" Text="—" FontSize="30" FontWeight="Bold" Foreground="White" FontFamily="Consolas"/>
-                <TextBlock Text=" L" Foreground="#AAAAAA" FontSize="14" VerticalAlignment="Bottom" Margin="4,0,0,4"/>
+                <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource DisplayValue}"/>
+                <TextBlock Text="L" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
             </StackPanel>
 
-            <Border x:Name="LevelTrack" Background="#2A2A2A" CornerRadius="3" Height="8" Margin="0,6,0,4"
+            <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
+                    Height="8" Margin="0,7,0,5"
                     Visibility="{Binding Options.ShowFuelBar, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <Rectangle x:Name="LevelFill" Fill="#FFB238" HorizontalAlignment="Left" Width="0"/>
+                <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
+                           RadiusX="3" RadiusY="3"/>
             </Border>
 
             <!-- Per-lap usage: up to four compact columns, each independently toggleable. -->
-            <Grid Margin="0,4,0,0"
+            <Grid Margin="0,5,0,0"
                   Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -69,7 +59,10 @@
                 <StackPanel Grid.Column="1"
                             Visibility="{Binding Options.ShowAverage, ElementName=Root, Converter={StaticResource BoolToVis}}">
                     <TextBlock x:Name="AverageLabel" Text="AVG" Style="{StaticResource StatLabel}"/>
-                    <TextBlock x:Name="AverageText" Text="—" Style="{StaticResource StatValue}" Foreground="#FFB238"/>
+                    <!-- The average is the figure the strategy rows below are actually derived from,
+                         so it's the one of the four that reads at full strength. -->
+                    <TextBlock x:Name="AverageText" Text="—" Style="{StaticResource StatValue}"
+                               Foreground="{StaticResource Text.Primary}" FontWeight="Bold"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="2"
@@ -85,22 +78,22 @@
                 </StackPanel>
             </Grid>
 
-            <Rectangle Height="1" Fill="#2A2A2A" Margin="0,8,0,6"
+            <Rectangle Height="1" Fill="{StaticResource Surface.Divider}" Margin="0,9,0,7"
                        Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
 
-            <Grid Margin="0,0,0,2"
+            <Grid Margin="0,0,0,3"
                   Visibility="{Binding Options.ShowLapsRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="LAPS LEFT" Style="{StaticResource RowLabel}"/>
                 <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource RowValue}"/>
             </Grid>
 
-            <Grid Margin="0,0,0,2"
+            <Grid Margin="0,0,0,3"
                   Visibility="{Binding Options.ShowFuelToFinish, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="TO FINISH" Style="{StaticResource RowLabel}"/>
                 <TextBlock x:Name="FuelDeltaText" Text="—" Style="{StaticResource RowValue}"/>
             </Grid>
 
-            <Grid Margin="0,0,0,2"
+            <Grid Margin="0,0,0,3"
                   Visibility="{Binding Options.ShowRefuel, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="REFUEL" Style="{StaticResource RowLabel}"/>
                 <TextBlock x:Name="RefuelText" Text="—" Style="{StaticResource RowValue}"/>

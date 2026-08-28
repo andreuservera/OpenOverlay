@@ -1,14 +1,15 @@
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class DeltaPanel : UserControl
 {
-    private static readonly Color Neutral = Color.FromRgb(0xFF, 0xFF, 0xFF); // no data at all
-    private static readonly Color Green = Color.FromRgb(0x30, 0xE0, 0x30);
-    private static readonly Color Red = Color.FromRgb(0xE8, 0x30, 0x30);
+    private static readonly Brush Neutral = StatePalette.TextPrimary; // no data at all
+    private static readonly Brush Green = StatePalette.Positive;
+    private static readonly Brush Red = StatePalette.Negative;
 
     public DeltaPanel()
     {
@@ -19,9 +20,9 @@ public partial class DeltaPanel : UserControl
     {
         LabelText.Text = state.ReferenceLabel;
         DeltaText.Text = state.Display;
-        DeltaText.Foreground = new SolidColorBrush(!state.IsValid ? Neutral : ColorForRate(state.RateOfChange));
+        DeltaText.Foreground = !state.IsValid ? Neutral : BrushForRate(state.RateOfChange);
     }
 
     // Gaining on the reference lap -> green, losing -> red.
-    private static Color ColorForRate(double rateOfChange) => rateOfChange < 0 ? Green : Red;
+    private static Brush BrushForRate(double rateOfChange) => rateOfChange < 0 ? Green : Red;
 }

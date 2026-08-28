@@ -9,48 +9,52 @@
     </UserControl.Resources>
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="6">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10,8">
         <DockPanel>
-            <Grid DockPanel.Dock="Top" Margin="0,0,0,4">
-                <TextBlock Text="STANDINGS" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11" FontWeight="Bold"/>
-                <TextBlock x:Name="SofText" Text="" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11"
-                           FontWeight="Bold" HorizontalAlignment="Right"/>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                <TextBlock Text="STANDINGS" Style="{StaticResource PanelTitle}"/>
+                <TextBlock x:Name="SofText" Text="" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"/>
             </Grid>
-            <Grid DockPanel.Dock="Top" Margin="2,0,2,2">
+            <!-- Header cells and row cells share one column ruler: this Grid's left margin matches
+                 each row Border's left padding, so "BEST" sits exactly over the lap times beneath
+                 it instead of drifting a few pixels out of column. -->
+            <Grid DockPanel.Dock="Top" Margin="5,0,5,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="42"/>
+                    <ColumnDefinition Width="46"/>
                     <ColumnDefinition Width="34"/>
-                    <ColumnDefinition Width="130"/>
-                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=50}"/>
+                    <ColumnDefinition Width="132"/>
+                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=48}"/>
                     <ColumnDefinition Width="{Binding ColumnVisibility.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=44}"/>
                     <ColumnDefinition Width="{Binding ColumnVisibility.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=40}"/>
-                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=34}"/>
-                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=72}"/>
-                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=72}"/>
-                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=60}"/>
+                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=32}"/>
+                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=68}"/>
+                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=68}"/>
+                    <ColumnDefinition Width="{Binding ColumnVisibility.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=58}"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="POS" Foreground="#666666" FontSize="10" FontWeight="Bold"/>
-                <TextBlock Grid.Column="2" Text="DRIVER" Foreground="#666666" FontSize="10" FontWeight="Bold" Margin="4,0,0,0"/>
-                <TextBlock Grid.Column="3" Text="iR" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="0" Text="POS" Style="{StaticResource ColumnHeader}"/>
+                <TextBlock Grid.Column="2" Text="DRIVER" Style="{StaticResource ColumnHeader}" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="3" Text="iR" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="4" Text="iRΔ" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="4" Text="iRΔ" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="5" Text="SR" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="5" Text="SR" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="6" Text="LAP" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="6" Text="LAP" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="7" Text="LAST" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="7" Text="LAST" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="8" Text="BEST" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="8" Text="BEST" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="9" Text="GAP" Foreground="#666666" FontSize="10" FontWeight="Bold" HorizontalAlignment="Right"
+                <TextBlock Grid.Column="9" Text="GAP" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Right"
                            Visibility="{Binding ColumnVisibility.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
             </Grid>
+            <!-- Hairline under the ruler: separates "what the columns are" from "what the data is"
+                 without spending as much vertical space as a gap big enough to do the same job. -->
+            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.Divider}" Margin="0,0,0,4"/>
             <Grid>
-                <TextBlock Text="Waiting for iRacing telemetry…" Foreground="#777777" FontSize="12"
-                           FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="Waiting for iRacing telemetry…">
                     <TextBlock.Style>
-                        <Style TargetType="TextBlock">
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource PlaceholderText}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Rows.Count, ElementName=Root}" Value="0">
@@ -67,56 +71,56 @@
                                  whichever of these matches each item's runtime type, so a plain
                                  mixed list of StandingsRow/StandingsHeaderRow renders correctly. -->
                             <DataTemplate DataType="{x:Type vm:StandingsHeaderRow}">
-                                <Border Background="{Binding HeaderBackground}" Margin="0,6,0,2" Padding="4,2" CornerRadius="2">
-                                    <TextBlock Text="{Binding ClassName}" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                                <Border Background="{Binding HeaderBackground}" Margin="0,8,0,3" Padding="6,3"
+                                        CornerRadius="{StaticResource Radius.Chip}">
+                                    <TextBlock Text="{Binding ClassName}" Foreground="{StaticResource Text.Primary}"
+                                               FontSize="{StaticResource Type.Label}" FontWeight="Bold"/>
                                 </Border>
                             </DataTemplate>
                             <DataTemplate DataType="{x:Type vm:StandingsRow}">
-                                <Border Background="{Binding RowBackground}" Margin="0,1" Padding="2,1" CornerRadius="2">
+                                <Border Background="{Binding RowBackground}" Margin="0,1" Padding="5,2"
+                                        CornerRadius="{StaticResource Radius.Row}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="42"/>
+                                            <ColumnDefinition Width="46"/>
                                             <ColumnDefinition Width="34"/>
-                                            <ColumnDefinition Width="130"/>
-                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=50}"/>
+                                            <ColumnDefinition Width="132"/>
+                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=48}"/>
                                             <ColumnDefinition Width="{Binding ColumnVisibility.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=44}"/>
                                             <ColumnDefinition Width="{Binding ColumnVisibility.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=40}"/>
-                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=34}"/>
-                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=72}"/>
-                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=72}"/>
-                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=60}"/>
+                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=32}"/>
+                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=68}"/>
+                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=68}"/>
+                                            <ColumnDefinition Width="{Binding ColumnVisibility.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter=58}"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding PositionDisplay}" Foreground="#AAAAAA" FontSize="12"
-                                                   FontWeight="Bold" VerticalAlignment="Center"/>
-                                        <Border Grid.Column="1" Background="{Binding ClassColor}" CornerRadius="2" Margin="0,0,4,0">
-                                            <TextBlock Text="{Binding CarNumber}" Foreground="Black" FontWeight="Bold"
-                                                       HorizontalAlignment="Center" FontSize="12"/>
+                                        <TextBlock Grid.Column="0" Text="{Binding PositionDisplay}" Style="{StaticResource DataCellNumeric}"
+                                                   Foreground="{StaticResource Text.Primary}" FontWeight="Bold" HorizontalAlignment="Left"/>
+                                        <Border Grid.Column="1" Background="{Binding ClassColor}" CornerRadius="{StaticResource Radius.Chip}" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding CarNumber}" Foreground="{StaticResource Text.OnAccent}" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" FontSize="{StaticResource Type.Body}"/>
                                         </Border>
-                                        <TextBlock Grid.Column="2" Text="{Binding Name}" Foreground="White" FontSize="12"
-                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="3" Text="{Binding IRatingDisplay}" Foreground="#9FE0A0" FontSize="12"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="2" Text="{Binding Name}" Style="{StaticResource DataCell}"
+                                                   Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding IRatingDisplay}" Style="{StaticResource DataCellNumeric}"
                                                    Visibility="{Binding ColumnVisibility.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                                        <TextBlock Grid.Column="4" Text="{Binding IRatingDeltaDisplay}" Foreground="{Binding IRatingDeltaForeground}" FontSize="12"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="4" Text="{Binding IRatingDeltaDisplay}" Style="{StaticResource DataCellNumeric}"
+                                                   Foreground="{Binding IRatingDeltaForeground}"
                                                    Visibility="{Binding ColumnVisibility.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                                        <Border Grid.Column="5" Background="{Binding LicenseColor}" CornerRadius="2" Margin="4,1"
+                                        <Border Grid.Column="5" Background="{Binding LicenseColor}" CornerRadius="{StaticResource Radius.Chip}" Margin="4,1"
                                                 HorizontalAlignment="Right"
                                                 Visibility="{Binding ColumnVisibility.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}">
-                                            <TextBlock Text="{Binding LicStringDisplay}" Foreground="White" FontWeight="Bold"
-                                                       FontSize="10" Padding="3,1" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding LicStringDisplay}" Foreground="{StaticResource Text.Primary}" FontWeight="Bold"
+                                                       FontSize="{StaticResource Type.Micro}" Padding="4,1" HorizontalAlignment="Center"/>
                                         </Border>
-                                        <TextBlock Grid.Column="6" Text="{Binding CurrentLap}" Foreground="#CCCCCC" FontSize="12"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="6" Text="{Binding CurrentLap}" Style="{StaticResource DataCellNumeric}"
                                                    Visibility="{Binding ColumnVisibility.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                                        <TextBlock Grid.Column="7" Text="{Binding LastLapDisplay}" Foreground="#CCCCCC" FontSize="12"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="7" Text="{Binding LastLapDisplay}" Style="{StaticResource DataCellNumeric}"
                                                    Visibility="{Binding ColumnVisibility.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                                        <TextBlock Grid.Column="8" Text="{Binding BestLapDisplay}" Foreground="{Binding BestLapForeground}"
-                                                   FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="8" Text="{Binding BestLapDisplay}" Style="{StaticResource DataCellNumeric}"
+                                                   Foreground="{Binding BestLapForeground}"
                                                    Visibility="{Binding ColumnVisibility.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                                        <TextBlock Grid.Column="9" Text="{Binding GapDisplay}" Foreground="#FFD24D" FontSize="12"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="9" Text="{Binding GapDisplay}" Style="{StaticResource DataCellNumeric}"
+                                                   Foreground="{StaticResource State.Accent}" FontWeight="Bold"
                                                    Visibility="{Binding ColumnVisibility.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                                     </Grid>
                                 </Border>

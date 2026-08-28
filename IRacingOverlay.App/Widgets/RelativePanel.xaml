@@ -5,15 +5,14 @@
              x:Name="Root">
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="6">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10,8">
         <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="RELATIVE" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11"
-                       FontWeight="Bold" Margin="0,0,0,4"/>
+            <TextBlock DockPanel.Dock="Top" Text="RELATIVE" Style="{StaticResource PanelTitle}" Margin="0,0,0,6"/>
+            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.Divider}" Margin="0,0,0,4"/>
             <Grid>
-                <TextBlock Text="Waiting for iRacing telemetry…" Foreground="#777777" FontSize="12"
-                           FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Text="Waiting for iRacing telemetry…">
                     <TextBlock.Style>
-                        <Style TargetType="TextBlock">
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource PlaceholderText}">
                             <Setter Property="Visibility" Value="Collapsed"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Rows.Count, ElementName=Root}" Value="0">
@@ -26,21 +25,22 @@
                 <ItemsControl ItemsSource="{Binding Rows, ElementName=Root}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:RelativeRow}">
-                            <Border Background="{Binding RowBackground}" Margin="0,1" Padding="2,1" CornerRadius="2">
+                            <Border Background="{Binding RowBackground}" Margin="0,1" Padding="5,2"
+                                    CornerRadius="{StaticResource Radius.Row}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="34"/>
-                                        <ColumnDefinition Width="140"/>
-                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="54"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{Binding ClassColor}" CornerRadius="2" Margin="0,0,4,0">
-                                        <TextBlock Text="{Binding CarNumber}" Foreground="Black" FontWeight="Bold"
-                                                   HorizontalAlignment="Center" FontSize="12"/>
+                                    <Border Grid.Column="0" Background="{Binding ClassColor}" CornerRadius="{StaticResource Radius.Chip}" Margin="0,0,6,0">
+                                        <TextBlock Text="{Binding CarNumber}" Foreground="{StaticResource Text.OnAccent}" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" FontSize="{StaticResource Type.Body}"/>
                                     </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="White" FontSize="12"
-                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding GapDisplay}" Foreground="#FFD24D" FontSize="12"
-                                               FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource DataCell}"
+                                               Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding GapDisplay}" Style="{StaticResource DataCellNumeric}"
+                                               Foreground="{StaticResource State.Accent}" FontWeight="Bold"/>
                                 </Grid>
                             </Border>
                         </DataTemplate>

@@ -4,12 +4,12 @@
              x:Name="Root">
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="14,10">
         <StackPanel HorizontalAlignment="Center">
-            <TextBlock x:Name="LabelText" Text="VS SESSION BEST" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11"
-                       FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-            <TextBlock x:Name="DeltaText" Text="—" FontSize="32" FontWeight="Bold" Foreground="White"
-                       HorizontalAlignment="Center" FontFamily="Consolas"/>
+            <TextBlock x:Name="LabelText" Text="VS SESSION BEST" Style="{StaticResource PanelTitle}"
+                       HorizontalAlignment="Center" Margin="0,0,0,4"/>
+            <TextBlock x:Name="DeltaText" Text="—" Style="{StaticResource DisplayValue}"
+                       HorizontalAlignment="Center"/>
         </StackPanel>
     </Border>
 </UserControl>

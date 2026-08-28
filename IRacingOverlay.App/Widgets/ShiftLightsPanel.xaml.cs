@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
@@ -18,10 +19,10 @@ public partial class ShiftLightsPanel : UserControl
     private const int YellowCount = 5;
     private const int BlinkHalfPeriodMs = 90;
 
-    private static readonly Brush Off = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x2A));
-    private static readonly Brush Green = new SolidColorBrush(Color.FromRgb(0x30, 0xC0, 0x30));
-    private static readonly Brush Yellow = new SolidColorBrush(Color.FromRgb(0xE0, 0xC0, 0x20));
-    private static readonly Brush Red = new SolidColorBrush(Color.FromRgb(0xE0, 0x30, 0x30));
+    private static readonly Brush Off = StatePalette.TrackEmpty;
+    private static readonly Brush Green = StatePalette.Positive;
+    private static readonly Brush Yellow = StatePalette.Accent;
+    private static readonly Brush Red = StatePalette.Critical;
 
     // Driven by WPF's own animation clock rather than a phase flag sampled once per telemetry tick:
     // at the default 100ms refresh a 150ms half-period aliased into an uneven on-on-off pattern that

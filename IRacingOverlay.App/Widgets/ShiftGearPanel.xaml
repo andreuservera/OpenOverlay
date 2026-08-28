@@ -11,7 +11,7 @@
 
             <!-- Angled accent brackets flanking the gear digit, matching the reference design —
                  not a real control, just two static polylines, so no code-behind needed for these. -->
-            <Polyline Grid.Column="0" Points="14,0 3,28 14,56" Stroke="#FFB000" StrokeThickness="3"
+            <Polyline Grid.Column="0" Points="14,0 3,28 14,56" Stroke="{StaticResource State.Warning}" StrokeThickness="3"
                       VerticalAlignment="Center" Margin="0,0,8,0"/>
 
             <!-- The CockpitPanel that hosts this is always wrapped in a Viewbox (both the floating
@@ -19,13 +19,12 @@
                  Speed/RPM in the same cluster — the Viewbox re-normalizes the whole thing to fit
                  whatever space is actually available, so it can never overflow/overlap regardless of
                  zoom level or window size. -->
-            <TextBlock x:Name="GearText" Grid.Column="1" Text="–" FontSize="56" FontWeight="Bold" Foreground="White"
+            <TextBlock x:Name="GearText" Grid.Column="1" Text="–" FontSize="56" FontWeight="Bold" Foreground="{StaticResource Text.Primary}"
                        HorizontalAlignment="Center" FontFamily="{DynamicResource Theme.GearFontFamily}"/>
 
-            <Polyline Grid.Column="2" Points="3,0 14,28 3,56" Stroke="#FFB000" StrokeThickness="3"
+            <Polyline Grid.Column="2" Points="3,0 14,28 3,56" Stroke="{StaticResource State.Warning}" StrokeThickness="3"
                       VerticalAlignment="Center" Margin="8,0,0,0"/>
         </Grid>
-        <TextBlock Text="GEAR" FontSize="12" FontWeight="Bold" Foreground="#888888" HorizontalAlignment="Center"
-                   Margin="0,0,0,0"/>
+        <TextBlock Text="GEAR" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center"/>
     </StackPanel>
 </UserControl>

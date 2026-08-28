@@ -1,0 +1,139 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!--
+      Shared design tokens: the type scale, the semantic state palette and the handful of TextBlock
+      styles every panel builds its rows out of. Merged application-wide from App.xaml so the
+      floating widgets and the Dashboard resolve exactly the same values.
+
+      These are deliberately NOT theme keys: the three Dashboard themes (Classic/Digital HUD/Raw DIY)
+      keep overriding chrome (Theme.PanelBackground/Border/CornerRadius/FontFamily/LabelForeground),
+      but sizes and state colors stay constant so "amber = warning, red = critical" never changes
+      meaning between themes. The styles below reference the theme keys with DynamicResource, so a
+      panel styled here still repaints correctly when a theme is merged into DashboardWindow.
+    -->
+
+    <!-- ===== Type scale =====
+         Six steps only. Anything smaller than 11 is unreadable at a glance on a second monitor, and
+         the jumps are large enough (≈1.3x) that value/label rank is obvious without reading. -->
+    <sys:Double x:Key="Type.Micro">11</sys:Double>
+    <sys:Double x:Key="Type.Label">12</sys:Double>
+    <sys:Double x:Key="Type.Body">13</sys:Double>
+    <sys:Double x:Key="Type.Value">17</sys:Double>
+    <sys:Double x:Key="Type.DisplaySmall">27</sys:Double>
+    <sys:Double x:Key="Type.Display">34</sys:Double>
+    <sys:Double x:Key="Type.DisplayLarge">42</sys:Double>
+
+    <!-- ===== Neutral text ramp =====
+         Every level clears 7:1 against the panel background, so nothing "greys out" over a bright
+         track. The old #666/#777/#888 greys sat near 3:1 and were the main legibility problem. -->
+    <SolidColorBrush x:Key="Text.Primary" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Text.Secondary" Color="#D2D8DE"/>
+    <SolidColorBrush x:Key="Text.Muted" Color="#9BA5AE"/>
+    <SolidColorBrush x:Key="Text.OnAccent" Color="#0B0B0B"/>
+
+    <!-- ===== Semantic state palette =====
+         One color per meaning, reused by every widget and by the code-behind constants. -->
+    <Color x:Key="State.PositiveColor">#3DDC7A</Color>
+    <Color x:Key="State.NegativeColor">#FF5A5A</Color>
+    <Color x:Key="State.WarningColor">#FFB238</Color>
+    <Color x:Key="State.CriticalColor">#FF3B30</Color>
+    <Color x:Key="State.AccentColor">#FFD24D</Color>
+    <Color x:Key="State.InfoColor">#8FD3FF</Color>
+    <Color x:Key="State.SpecialColor">#C88BFF</Color>
+
+    <SolidColorBrush x:Key="State.Positive" Color="{StaticResource State.PositiveColor}"/>
+    <SolidColorBrush x:Key="State.Negative" Color="{StaticResource State.NegativeColor}"/>
+    <SolidColorBrush x:Key="State.Warning" Color="{StaticResource State.WarningColor}"/>
+    <SolidColorBrush x:Key="State.Critical" Color="{StaticResource State.CriticalColor}"/>
+    <SolidColorBrush x:Key="State.Accent" Color="{StaticResource State.AccentColor}"/>
+    <SolidColorBrush x:Key="State.Info" Color="{StaticResource State.InfoColor}"/>
+    <SolidColorBrush x:Key="State.Special" Color="{StaticResource State.SpecialColor}"/>
+
+    <!-- Empty half of any gauge/meter track (fuel level, tire wear, pedal bars). Slightly lighter
+         than the old #2A2A2A so the *unfilled* portion still reads as a track, not a hole. -->
+    <SolidColorBrush x:Key="Surface.Track" Color="#33383D"/>
+    <!-- Hairline divider inside a panel — dimmer than the panel border, never a full-strength line. -->
+    <SolidColorBrush x:Key="Surface.Divider" Color="#4A5158"/>
+
+    <!-- ===== Radii ===== -->
+    <CornerRadius x:Key="Radius.Chip">3</CornerRadius>
+    <CornerRadius x:Key="Radius.Row">4</CornerRadius>
+
+    <!-- ===== Text styles =====
+         Panel title, column header, value, unit. Everything a widget draws should be one of these
+         (optionally with a Foreground override for a state color) rather than a hand-set FontSize. -->
+
+    <!-- Widget name, e.g. "STANDINGS". Deliberately the theme's label color and not white: it is
+         chrome, and must never compete with the numbers underneath it. -->
+    <Style x:Key="PanelTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{DynamicResource Theme.LabelForeground}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
+    </Style>
+
+    <!-- Table column header, e.g. "POS" / "BEST". One step below the panel title. -->
+    <Style x:Key="ColumnHeader" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Inline caption sitting next to a value, e.g. "AIR" before the temperature. -->
+    <Style x:Key="FieldLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource Theme.LabelForeground}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Unit suffix ("laps", "kPa"): present but never competing with the number it trails. -->
+    <Style x:Key="UnitLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
+    </Style>
+
+    <!-- A cell inside a data table (driver name, lap count). Tabular numerals so digits stay in
+         their columns while the value changes instead of shuffling sideways every update. -->
+    <Style x:Key="DataCell" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+
+    <!-- Numeric table cell: same size as DataCell but in the tabular font, for lap times/gaps. -->
+    <Style x:Key="DataCellNumeric" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+
+    <!-- Mid-size readout inside a multi-value panel (tire pressures). -->
+    <Style x:Key="ValueText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Value}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+
+    <!-- The one number a panel exists to show (speed, gear, delta, laps of fuel). -->
+    <Style x:Key="DisplayValue" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Display}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+
+    <!-- Placeholder shown while there is no telemetry yet. -->
+    <Style x:Key="PlaceholderText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+</ResourceDictionary>

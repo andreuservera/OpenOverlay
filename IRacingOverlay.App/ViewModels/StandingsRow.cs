@@ -36,7 +36,7 @@ public sealed class StandingsRow
 
     // The single fastest lap set by anyone in the session, across all cars — matches how RaceLab-
     // style overlays call out the session's benchmark lap.
-    public string BestLapForeground => IsSessionFastestLap ? "#C060FF" : "#8FD3FF";
+    public string BestLapForeground => IsSessionFastestLap ? "#C88BFF" : "#8FD3FF";
 
     public string IRatingDisplay => IRating > 0
         ? (IRating >= 1000 ? $"{(IRating / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)}k" : IRating.ToString(CultureInfo.InvariantCulture))
@@ -67,8 +67,8 @@ public sealed class StandingsRow
     public string IRatingDeltaForeground => IRatingDelta switch
     {
         > 0 => "#3DDC7A",
-        < 0 => "#FF4D4D",
-        _ => "#999999",
+        < 0 => "#FF5A5A",
+        _ => "#9BA5AE",
     };
 
     // Player keeps the brighter blue "find yourself" highlight; every other row is tinted by its
