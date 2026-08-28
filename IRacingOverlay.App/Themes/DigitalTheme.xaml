@@ -9,12 +9,15 @@
         <GradientStop Color="#02040A" Offset="0.5"/>
         <GradientStop Color="#0A1620" Offset="1"/>
     </LinearGradientBrush>
-    <SolidColorBrush x:Key="Theme.PanelBackground" Color="#E60A1218"/>
+    <SolidColorBrush x:Key="Theme.PanelBackground" Color="#F2081016"/>
     <SolidColorBrush x:Key="Theme.PanelBorder" Color="#33E5FF"/>
     <Thickness x:Key="Theme.PanelBorderThickness">1.5</Thickness>
     <CornerRadius x:Key="Theme.PanelCornerRadius">0</CornerRadius>
-    <SolidColorBrush x:Key="Theme.LabelForeground" Color="#2FBEDB"/>
-    <FontFamily x:Key="Theme.FontFamily">Bahnschrift</FontFamily>
+    <!-- Lifted from #2FBEDB: label text one shade brighter clears 7:1 on the near-black panel. -->
+    <SolidColorBrush x:Key="Theme.LabelForeground" Color="#59D6EF"/>
+    <FontFamily x:Key="Theme.FontFamily">Bahnschrift, Segoe UI</FontFamily>
+    <FontFamily x:Key="Theme.NumericFontFamily">Bahnschrift SemiBold Condensed, Bahnschrift SemiBold, Consolas</FontFamily>
+    <FontFamily x:Key="Theme.DataFontFamily">Bahnschrift Condensed, Bahnschrift, Consolas</FontFamily>
     <!-- Condensed/SemiBold for the big gear numeral — sharper, more "HUD readout" than the label font. -->
-    <FontFamily x:Key="Theme.GearFontFamily">Bahnschrift SemiBold Condensed</FontFamily>
+    <FontFamily x:Key="Theme.GearFontFamily">Bahnschrift SemiBold Condensed, Consolas</FontFamily>
 </ResourceDictionary>

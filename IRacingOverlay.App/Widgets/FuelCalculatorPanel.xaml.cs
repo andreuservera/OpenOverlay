@@ -1,16 +1,17 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class FuelCalculatorPanel : UserControl
 {
-    private static readonly Brush Ample = new SolidColorBrush(Color.FromRgb(0x3D, 0xDC, 0x7A));
-    private static readonly Brush Short = new SolidColorBrush(Color.FromRgb(0xFF, 0x4D, 0x4D));
-    private static readonly Brush Neutral = Brushes.White;
-    private static readonly Brush BarAmple = new SolidColorBrush(Color.FromRgb(0xFF, 0xB2, 0x38));
+    private static readonly Brush Ample = StatePalette.Positive;
+    private static readonly Brush Short = StatePalette.Critical;
+    private static readonly Brush Neutral = StatePalette.TextPrimary;
+    private static readonly Brush BarAmple = StatePalette.Warning;
 
     // Same reasoning as StandingsPanel.ColumnVisibilityProperty: XAML visibility bindings latch onto
     // whatever object this returns during InitializeComponent, so swapping in MainWindow's persisted

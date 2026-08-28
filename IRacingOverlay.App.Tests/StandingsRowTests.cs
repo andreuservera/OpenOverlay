@@ -63,8 +63,11 @@ public class StandingsRowTests
     [Fact]
     public void IRatingDeltaForeground_PositiveIsGreen_NegativeIsRed_ZeroIsGray()
     {
+        // These are the semantic State.Positive / State.Negative / Text.Muted values from
+        // Themes/DesignTokens.xaml — the ViewModel hands the UI a color string, so the two have to
+        // agree by hand.
         Assert.Equal("#3DDC7A", Row(iRatingDelta: 5).IRatingDeltaForeground);
-        Assert.Equal("#FF4D4D", Row(iRatingDelta: -5).IRatingDeltaForeground);
-        Assert.Equal("#999999", Row(iRatingDelta: 0).IRatingDeltaForeground);
+        Assert.Equal("#FF5A5A", Row(iRatingDelta: -5).IRatingDeltaForeground);
+        Assert.Equal("#9BA5AE", Row(iRatingDelta: 0).IRatingDeltaForeground);
     }
 }

@@ -23,8 +23,8 @@ public sealed class FlagState
     public static FlagState None { get; } = new()
     {
         Name = "—",
-        BackgroundColor = "#1A1A1A",
-        ForegroundColor = "#555555",
+        BackgroundColor = "#1C1F23",
+        ForegroundColor = "#7A838B",
         Style = FlagVisualStyle.Solid,
     };
 }

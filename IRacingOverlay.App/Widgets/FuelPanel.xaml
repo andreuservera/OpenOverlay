@@ -4,23 +4,25 @@
              x:Name="Root">
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="12,8">
         <StackPanel>
-            <TextBlock Text="FUEL" Foreground="{DynamicResource Theme.LabelForeground}" FontSize="11" FontWeight="Bold" Margin="0,0,0,4"/>
+            <TextBlock Text="FUEL" Style="{StaticResource PanelTitle}" Margin="0,0,0,3"/>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="LapsOfFuelText" Text="—" FontSize="30" FontWeight="Bold" Foreground="White" FontFamily="Consolas"/>
-                <TextBlock Text=" laps" Foreground="#AAAAAA" FontSize="14" VerticalAlignment="Bottom" Margin="4,0,0,4"/>
+                <TextBlock x:Name="LapsOfFuelText" Text="—" Style="{StaticResource DisplayValue}"/>
+                <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
             </StackPanel>
-            <Border x:Name="LevelTrack" Background="#2A2A2A" CornerRadius="3" Height="8" Margin="0,6,0,4">
-                <Rectangle x:Name="LevelFill" Fill="#FFB238" HorizontalAlignment="Left" Width="0"/>
+            <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
+                    Height="8" Margin="0,7,0,5">
+                <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
+                           RadiusX="3" RadiusY="3"/>
             </Border>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="LevelText" Grid.Column="0" Text="— L" Foreground="#CCCCCC" FontSize="12"/>
-                <TextBlock x:Name="PerLapText" Grid.Column="1" Text="—" Foreground="#CCCCCC" FontSize="12" HorizontalAlignment="Right"/>
+                <TextBlock x:Name="LevelText" Grid.Column="0" Text="— L" Style="{StaticResource DataCellNumeric}" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="PerLapText" Grid.Column="1" Text="—" Style="{StaticResource DataCellNumeric}"/>
             </Grid>
         </StackPanel>
     </Border>

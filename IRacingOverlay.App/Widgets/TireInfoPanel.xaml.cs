@@ -1,15 +1,16 @@
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class TireInfoPanel : UserControl
 {
-    private static readonly Brush WearGood = new SolidColorBrush(Color.FromRgb(0x3D, 0xDC, 0x7A));
-    private static readonly Brush WearWarning = new SolidColorBrush(Color.FromRgb(0xFF, 0xB2, 0x38));
-    private static readonly Brush WearCritical = new SolidColorBrush(Color.FromRgb(0xFF, 0x4D, 0x4D));
+    private static readonly Brush WearGood = StatePalette.Positive;
+    private static readonly Brush WearWarning = StatePalette.Warning;
+    private static readonly Brush WearCritical = StatePalette.Critical;
 
     public TireInfoPanel()
     {

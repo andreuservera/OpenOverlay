@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.Widgets;
 
@@ -12,8 +13,8 @@ public partial class ProximityBarPanel : UserControl
 {
     private const int SegmentCount = 12;
 
-    private static readonly Brush Lit = new SolidColorBrush(Color.FromRgb(0xFF, 0xB0, 0x00));
-    private static readonly Brush Off = new SolidColorBrush(Color.FromRgb(0x2A, 0x22, 0x14));
+    private static readonly Brush Lit = StatePalette.Warning;
+    private static readonly Brush Off = StatePalette.TrackEmptyWarm;
 
     private readonly Border[] _segments = new Border[SegmentCount];
 

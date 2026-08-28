@@ -1,13 +1,14 @@
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class IncidentPanel : UserControl
 {
-    private static readonly Brush Low = Brushes.White;
-    private static readonly Brush High = new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B));
+    private static readonly Brush Low = StatePalette.TextPrimary;
+    private static readonly Brush High = StatePalette.Critical;
 
     public IncidentPanel()
     {

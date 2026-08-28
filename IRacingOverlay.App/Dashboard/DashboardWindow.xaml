@@ -9,7 +9,7 @@
         ShowInTaskbar="False"
         Background="{DynamicResource Theme.WindowBackground}"
         ResizeMode="NoResize">
-    <Grid Margin="16">
+    <Grid Margin="20">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="70"/>
             <ColumnDefinition Width="*"/>
@@ -24,7 +24,7 @@
              bar columns too), pinned at the very top — every other panel lives inside the center
              column only. -->
         <ov:ScalablePanel x:Name="TrackMapScaler" PersistenceKey="Dashboard.TrackMap"
-                          Grid.Row="0" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Margin="0,0,0,10">
+                          Grid.Row="0" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Margin="0,0,0,14">
             <w:TrackMapPanel/>
         </ov:ScalablePanel>
 
@@ -45,7 +45,7 @@
                  else — the one piece of context (track, weather, session clock) that applies to the
                  whole screen rather than any particular corner. -->
             <ov:ScalablePanel x:Name="TrackInfoScaler" PersistenceKey="Dashboard.TrackInfo"
-                              Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,10">
+                              Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,14">
                 <w:TrackInfoPanel/>
             </ov:ScalablePanel>
 
@@ -58,7 +58,7 @@
             <Grid Grid.Row="1" Grid.RowSpan="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="20"/>
                     <ColumnDefinition Width="Auto" MinWidth="360"/>
                 </Grid.ColumnDefinitions>
                 <ov:ScalablePanel x:Name="StandingsScaler" PersistenceKey="Dashboard.Standings" Grid.Column="0">
@@ -74,7 +74,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <ov:ScalablePanel x:Name="TireInfoScaler" PersistenceKey="Dashboard.TireInfo"
-                                      Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" MinWidth="300" Margin="0,0,0,10">
+                                      Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" MinWidth="300" Margin="0,0,0,12">
                         <w:TireInfoPanel/>
                     </ov:ScalablePanel>
                     <ov:ScalablePanel x:Name="RelativeScaler" PersistenceKey="Dashboard.Relative" Grid.Row="1">
@@ -104,7 +104,7 @@
                  that's what actually eliminated the dead space between speed/gear/RPM, not the
                  Viewbox structure. -->
             <ov:ScalablePanel x:Name="CockpitScaler" PersistenceKey="Dashboard.Cockpit"
-                              Grid.Row="4" HorizontalAlignment="Center" Margin="0,10,0,0">
+                              Grid.Row="4" HorizontalAlignment="Center" Margin="0,14,0,0">
                 <Viewbox Stretch="Uniform" Width="310" Height="150">
                     <w:CockpitPanel/>
                 </Viewbox>
@@ -120,8 +120,8 @@
                 <ov:ScalablePanel x:Name="FlagScaler" PersistenceKey="Dashboard.Flag" MinWidth="280">
                     <w:FlagPanel/>
                 </ov:ScalablePanel>
-                <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" Margin="10,0,0,0">
-                    <ov:ScalablePanel x:Name="FuelScaler" PersistenceKey="Dashboard.Fuel" Width="210" Margin="0,0,0,8">
+                <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" Margin="12,0,0,0">
+                    <ov:ScalablePanel x:Name="FuelScaler" PersistenceKey="Dashboard.Fuel" Width="210" Margin="0,0,0,10">
                         <w:FuelPanel/>
                     </ov:ScalablePanel>
                     <ov:ScalablePanel x:Name="IncidentScaler" PersistenceKey="Dashboard.Incident" Width="210">

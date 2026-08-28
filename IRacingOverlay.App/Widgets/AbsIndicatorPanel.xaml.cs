@@ -7,10 +7,12 @@ namespace IRacingOverlay.App.Widgets;
 /// blinks while active, matching a real dash telltale.</summary>
 public partial class AbsIndicatorPanel : UserControl
 {
-    private static readonly Brush IdleBorder = new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A));
-    private static readonly Brush IdleText = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
-    private static readonly Brush DimAmber = new SolidColorBrush(Color.FromRgb(0x80, 0x58, 0x00));
-    private static readonly Brush BrightAmber = new SolidColorBrush(Color.FromRgb(0xFF, 0xB0, 0x00));
+    // Idle is dim on purpose (it's the quiet state) but still legible: the old #3A/#55 pair sat
+    // near 2:1 against the panel and read as a smudge rather than as a labelled telltale.
+    private static readonly Brush IdleBorder = new SolidColorBrush(Color.FromRgb(0x4C, 0x51, 0x57));
+    private static readonly Brush IdleText = new SolidColorBrush(Color.FromRgb(0x77, 0x80, 0x88));
+    private static readonly Brush DimAmber = new SolidColorBrush(Color.FromRgb(0x8A, 0x60, 0x1E));
+    private static readonly Brush BrightAmber = new SolidColorBrush(Color.FromRgb(0xFF, 0xB2, 0x38));
 
     public AbsIndicatorPanel()
     {

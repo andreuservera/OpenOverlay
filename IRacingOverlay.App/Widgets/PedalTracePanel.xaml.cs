@@ -2,18 +2,19 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
 public partial class PedalTracePanel : UserControl
 {
-    private static readonly Brush BrakeStroke = Freeze(new SolidColorBrush(Color.FromRgb(0xFF, 0x4D, 0x4D)));
-    private static readonly Brush AbsStroke = Freeze(new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x2E)));
+    private static readonly Brush BrakeStroke = StatePalette.Critical;
+    private static readonly Brush AbsStroke = StatePalette.Accent;
 
     private readonly Polyline _throttleLine = new()
     {
-        Stroke = new SolidColorBrush(Color.FromRgb(0x3D, 0xDC, 0x7A)),
+        Stroke = StatePalette.Positive,
         StrokeThickness = 2,
     };
 
@@ -120,11 +121,5 @@ public partial class PedalTracePanel : UserControl
         }
 
         return points;
-    }
-
-    private static Brush Freeze(Brush brush)
-    {
-        brush.Freeze();
-        return brush;
     }
 }

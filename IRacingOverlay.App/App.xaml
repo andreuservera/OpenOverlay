@@ -4,24 +4,48 @@
              xmlns:local="clr-namespace:IRacingOverlay.App"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <!--
-          Default ("Classic") dashboard theme, application-wide. Floating widgets always resolve
-          these (they never merge a theme dictionary of their own), so they keep this look
-          regardless of what theme is picked for the Dashboard. DashboardWindow overrides these same
-          keys in its own Resources when a different theme is selected, which DynamicResource lookups
-          from inside that window find first.
-        -->
-        <RadialGradientBrush x:Key="Theme.WindowBackground" Center="0.5,0.4" RadiusX="0.9" RadiusY="0.9">
-            <GradientStop Color="#1A1010" Offset="0"/>
-            <GradientStop Color="#000000" Offset="1"/>
-        </RadialGradientBrush>
-        <SolidColorBrush x:Key="Theme.PanelBackground" Color="#E6141414"/>
-        <SolidColorBrush x:Key="Theme.PanelBorder" Color="#3A3A3A"/>
-        <Thickness x:Key="Theme.PanelBorderThickness">1</Thickness>
-        <CornerRadius x:Key="Theme.PanelCornerRadius">6</CornerRadius>
-        <SolidColorBrush x:Key="Theme.LabelForeground" Color="#888888"/>
-        <FontFamily x:Key="Theme.FontFamily">Segoe UI</FontFamily>
-        <!-- Just for the big gear numeral — bolder/more dramatic than the panel-label font. -->
-        <FontFamily x:Key="Theme.GearFontFamily">Impact</FontFamily>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Type scale, semantic state palette and the shared TextBlock styles. Merged here
+                     (not per-window) so floating widgets and the Dashboard resolve identical values.
+                     Theme dictionaries never override these — only the chrome keys below. -->
+                <ResourceDictionary Source="Themes/DesignTokens.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!--
+              Default ("Classic") dashboard theme, application-wide. Floating widgets always resolve
+              these (they never merge a theme dictionary of their own), so they keep this look
+              regardless of what theme is picked for the Dashboard. DashboardWindow overrides these same
+              keys in its own Resources when a different theme is selected, which DynamicResource lookups
+              from inside that window find first.
+            -->
+            <RadialGradientBrush x:Key="Theme.WindowBackground" Center="0.5,0.4" RadiusX="0.9" RadiusY="0.9">
+                <GradientStop Color="#1A1010" Offset="0"/>
+                <GradientStop Color="#000000" Offset="1"/>
+            </RadialGradientBrush>
+            <!-- Denser than the old #E6 alpha: at 90% opacity a bright sky or a white car behind the
+                 overlay still lifted the panel interior enough to eat the contrast of small text. -->
+            <SolidColorBrush x:Key="Theme.PanelBackground" Color="#F2121417"/>
+            <SolidColorBrush x:Key="Theme.PanelBorder" Color="#4C5157"/>
+            <Thickness x:Key="Theme.PanelBorderThickness">1</Thickness>
+            <CornerRadius x:Key="Theme.PanelCornerRadius">8</CornerRadius>
+            <SolidColorBrush x:Key="Theme.LabelForeground" Color="#A7B0B8"/>
+
+            <!--
+              Three font roles rather than one, so text is chosen by the job it does:
+                FontFamily        — labels, driver names, prose.
+                NumericFontFamily — the hero readouts (speed, RPM, delta, fuel, incidents).
+                DataFontFamily    — tabular columns (lap times, gaps) that must stay column-aligned.
+              Bahnschrift is the DIN 1451 industrial/instrument face bundled with Windows 10 1709+; its
+              condensed cuts fit more digits into a fixed column than Segoe UI or Consolas at the same
+              point size. Each list keeps a plain-Windows fallback so nothing ever renders in Times.
+            -->
+            <FontFamily x:Key="Theme.FontFamily">Bahnschrift, Segoe UI</FontFamily>
+            <FontFamily x:Key="Theme.NumericFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold, Consolas</FontFamily>
+            <FontFamily x:Key="Theme.DataFontFamily">Bahnschrift SemiCondensed, Bahnschrift, Consolas</FontFamily>
+            <!-- Just for the big gear numeral — the most condensed/heaviest cut available, so the
+                 single most-glanced-at character on the whole overlay is also the boldest. -->
+            <FontFamily x:Key="Theme.GearFontFamily">Bahnschrift SemiBold Condensed, Bahnschrift Condensed, Impact</FontFamily>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

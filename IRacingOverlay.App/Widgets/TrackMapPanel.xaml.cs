@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
@@ -18,9 +19,9 @@ public partial class TrackMapPanel : UserControl
     // spread across lanes. The player stays fully opaque so they're unmistakable at a glance.
     private const byte RegularCarAlpha = 0xA8;
 
-    private static readonly Brush PlayerBorder = Brushes.White;
-    private static readonly Brush PitBorder = new SolidColorBrush(Color.FromRgb(0xFF, 0x8C, 0x1A));
-    private static readonly Brush CarNumberText = Brushes.Black;
+    private static readonly Brush PlayerBorder = StatePalette.TextPrimary;
+    private static readonly Brush PitBorder = StatePalette.Warning;
+    private static readonly Brush CarNumberText = StatePalette.TextOnAccent;
 
     public TrackMapPanel()
     {
