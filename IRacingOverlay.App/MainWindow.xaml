@@ -59,6 +59,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Show" Style="{StaticResource ColumnHeaderText}" Margin="0,0,0,4"/>
@@ -130,6 +131,12 @@
                           Checked="TrackMapCheckBox_Changed" Unchecked="TrackMapCheckBox_Changed"/>
                 <CheckBox Grid.Row="11" Grid.Column="2" x:Name="TrackMapAutoHideCheckBox" Tag="TrackMap" Style="{StaticResource TableCheckBox}"
                           Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
+
+                <TextBlock Grid.Row="12" Grid.Column="0" Text="Fuel calculator" Foreground="White" VerticalAlignment="Center"/>
+                <CheckBox Grid.Row="12" Grid.Column="1" x:Name="FuelCalculatorCheckBox" Style="{StaticResource TableCheckBox}"
+                          Checked="FuelCalculatorCheckBox_Changed" Unchecked="FuelCalculatorCheckBox_Changed"/>
+                <CheckBox Grid.Row="12" Grid.Column="2" x:Name="FuelCalculatorAutoHideCheckBox" Tag="FuelCalculator" Style="{StaticResource TableCheckBox}"
+                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
             </Grid>
 
             <!-- Standings overlay: which columns show, in the floating widget only (the Dashboard's
@@ -152,6 +159,50 @@
                           Checked="StandingsBestLapCheckBox_Changed" Unchecked="StandingsBestLapCheckBox_Changed"/>
                 <CheckBox x:Name="StandingsGapCheckBox" Content="Gap" Foreground="White"
                           Checked="StandingsGapCheckBox_Changed" Unchecked="StandingsGapCheckBox_Changed"/>
+            </StackPanel>
+
+            <!-- Fuel Calculator: every block toggles independently, so the same widget can be a
+                 one-line "laps left" readout or a full strategy box. -->
+            <Border Style="{StaticResource SectionHeaderBorder}">
+                <TextBlock Text="FUEL CALCULATOR WIDGET" Style="{StaticResource SectionHeaderText}"/>
+            </Border>
+            <WrapPanel Margin="0,0,0,8">
+                <CheckBox x:Name="FuelCalcBarCheckBox" Tag="ShowFuelBar" Content="Fuel bar" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcRemainingCheckBox" Tag="ShowFuelRemaining" Content="Fuel remaining" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcLastLapCheckBox" Tag="ShowLastLap" Content="Last lap" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcAverageCheckBox" Tag="ShowAverage" Content="Average" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcMinimumCheckBox" Tag="ShowMinimum" Content="Minimum" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcMaximumCheckBox" Tag="ShowMaximum" Content="Maximum" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcLapsRemainingCheckBox" Tag="ShowLapsRemaining" Content="Laps remaining" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcToFinishCheckBox" Tag="ShowFuelToFinish" Content="Fuel to finish" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+                <CheckBox x:Name="FuelCalcRefuelCheckBox" Tag="ShowRefuel" Content="Refuel" Foreground="White" Margin="0,0,12,4"
+                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
+            </WrapPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Average over:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"
+                           ToolTip="Which completed laps feed the average consumption figure. A rolling window reacts faster once you start saving fuel; the whole session is steadier."/>
+                <ComboBox x:Name="FuelAverageSourceComboBox" Width="180" SelectionChanged="FuelAverageSourceComboBox_SelectionChanged">
+                    <ComboBoxItem Content="Whole session" IsSelected="True"/>
+                    <ComboBoxItem Content="Last 3 laps"/>
+                    <ComboBoxItem Content="Last 5 laps"/>
+                    <ComboBoxItem Content="Last 10 laps"/>
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <TextBlock Text="Safety margin:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"
+                           ToolTip="Reserve added on top of the computed need. Both apply together — margin laps scale with consumption, margin liters are a flat reserve."/>
+                <TextBox x:Name="FuelMarginLapsTextBox" Width="46" TextChanged="FuelMargin_TextChanged"/>
+                <TextBlock Text="laps" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="4,0,12,0"/>
+                <TextBox x:Name="FuelMarginLitersTextBox" Width="46" TextChanged="FuelMargin_TextChanged"/>
+                <TextBlock Text="L" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="4,0,0,0"/>
             </StackPanel>
 
             <!-- Session display: how telemetry-derived values are computed/read, not what's shown. -->

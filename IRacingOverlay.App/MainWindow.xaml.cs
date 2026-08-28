@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -27,6 +28,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _criticalTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly PedalTraceBuilder _pedalTraceBuilder = new();
     private readonly FuelBuilder _fuelBuilder = new();
+    private readonly FuelCalculatorBuilder _fuelCalculatorBuilder = new();
     private readonly SessionBestLapTracker _sessionBestLapTracker = new();
     private int _tickCount;
 
@@ -58,9 +60,11 @@ public partial class MainWindow : Window
     private IncidentWidget? _incidentWidget;
     private TrackInfoWidget? _trackInfoWidget;
     private TrackMapWidget? _trackMapWidget;
+    private FuelCalculatorWidget? _fuelCalculatorWidget;
     private DashboardWindow? _dashboard;
     private DeltaReference _deltaReference = DeltaReference.SessionBest;
     private readonly StandingsColumnVisibility _standingsColumnVisibility = new();
+    private readonly FuelCalculatorOptions _fuelCalculatorOptions = new();
 
     public MainWindow()
     {
@@ -73,6 +77,13 @@ public partial class MainWindow : Window
         // assignment further down fires SelectionChanged again and writes the real value back.
         var savedDashboardTheme = DashboardThemeStore.Get();
         var savedCriticalRefreshIndex = CriticalRefreshStore.Get();
+
+        // Same trap, one step worse: the fuel average-source ComboBox's handler persists the *whole*
+        // options object, so the startup event stamped the constructor defaults over every section
+        // toggle the user had saved — before RestoreFuelCalculatorOptions ever got to read them back.
+        // Loading into the object up front makes that write a no-op instead.
+        FuelCalculatorOptionsStore.ApplyTo(_fuelCalculatorOptions);
+        var savedFuelAverageSource = _fuelCalculatorOptions.AverageSource;
 
         InitializeComponent();
 
@@ -114,12 +125,14 @@ public partial class MainWindow : Window
             _incidentWidget?.Close();
             _trackInfoWidget?.Close();
             _trackMapWidget?.Close();
+            _fuelCalculatorWidget?.Close();
             _dashboard?.Close();
         };
 
         RestoreWidgetVisibility();
         RestoreAutoHideCheckboxes();
         RestoreStandingsColumnVisibility();
+        RestoreFuelCalculatorOptions(savedFuelAverageSource);
 
         _connection.Start();
     }
@@ -139,6 +152,32 @@ public partial class MainWindow : Window
         StandingsGapCheckBox.IsChecked = _standingsColumnVisibility.ShowGap;
     }
 
+    /// <summary>Pushes the already-loaded Fuel Calculator settings into the control-panel inputs.
+    /// The values were read in the constructor before InitializeComponent, so this only mirrors the
+    /// options object into the UI — the assignments re-fire their handlers, which write the same
+    /// values straight back, keeping restore and user-edit on one path. Average source is passed in
+    /// separately because InitializeComponent's own SelectionChanged has already reset it.</summary>
+    private void RestoreFuelCalculatorOptions(FuelAverageSource savedAverageSource)
+    {
+        FuelCalcBarCheckBox.IsChecked = _fuelCalculatorOptions.ShowFuelBar;
+        FuelCalcRemainingCheckBox.IsChecked = _fuelCalculatorOptions.ShowFuelRemaining;
+        FuelCalcLastLapCheckBox.IsChecked = _fuelCalculatorOptions.ShowLastLap;
+        FuelCalcAverageCheckBox.IsChecked = _fuelCalculatorOptions.ShowAverage;
+        FuelCalcMinimumCheckBox.IsChecked = _fuelCalculatorOptions.ShowMinimum;
+        FuelCalcMaximumCheckBox.IsChecked = _fuelCalculatorOptions.ShowMaximum;
+        FuelCalcLapsRemainingCheckBox.IsChecked = _fuelCalculatorOptions.ShowLapsRemaining;
+        FuelCalcToFinishCheckBox.IsChecked = _fuelCalculatorOptions.ShowFuelToFinish;
+        FuelCalcRefuelCheckBox.IsChecked = _fuelCalculatorOptions.ShowRefuel;
+
+        _fuelCalculatorOptions.AverageSource = savedAverageSource;
+        FuelAverageSourceComboBox.SelectedIndex = (int)savedAverageSource;
+
+        FuelMarginLapsTextBox.Text = _fuelCalculatorOptions.MarginLaps.ToString(CultureInfo.InvariantCulture);
+        FuelMarginLitersTextBox.Text = _fuelCalculatorOptions.MarginLiters.ToString(CultureInfo.InvariantCulture);
+
+        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
+    }
+
     /// <summary>Re-checks whichever overlay checkboxes were checked last run — each CheckBox's
     /// Checked event handler (already wired via XAML) does the actual widget-creation/Show() work,
     /// so setting IsChecked here is enough; unchanged (false->false) values don't re-fire it.</summary>
@@ -155,6 +194,7 @@ public partial class MainWindow : Window
         IncidentCheckBox.IsChecked = WidgetVisibilityStore.Get("Incident");
         TrackInfoCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackInfo");
         TrackMapCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackMap");
+        FuelCalculatorCheckBox.IsChecked = WidgetVisibilityStore.Get("FuelCalculator");
     }
 
     /// <summary>Re-checks whichever "hide outside car" checkboxes were checked last run — each one
@@ -173,6 +213,7 @@ public partial class MainWindow : Window
         IncidentAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Incident");
         TrackInfoAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TrackInfo");
         TrackMapAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TrackMap");
+        FuelCalculatorAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("FuelCalculator");
     }
 
     private void SetStatus(bool connected)
@@ -256,6 +297,11 @@ public partial class MainWindow : Window
             _dashboard?.UpdateFuel(fuelState);
         }
 
+        if (_fuelCalculatorWidget is not null)
+        {
+            _fuelCalculatorWidget.UpdateState(_fuelCalculatorBuilder.Build(telemetry, session, _fuelCalculatorOptions));
+        }
+
         if (_incidentWidget is not null || _dashboard is not null)
         {
             var incidentState = IncidentBuilder.Build(telemetry);
@@ -302,6 +348,7 @@ public partial class MainWindow : Window
         ApplyAutoHideVisibilityFor(_incidentWidget, IncidentCheckBox, IncidentAutoHideCheckBox, notDriving);
         ApplyAutoHideVisibilityFor(_trackInfoWidget, TrackInfoCheckBox, TrackInfoAutoHideCheckBox, notDriving);
         ApplyAutoHideVisibilityFor(_trackMapWidget, TrackMapCheckBox, TrackMapAutoHideCheckBox, notDriving);
+        ApplyAutoHideVisibilityFor(_fuelCalculatorWidget, FuelCalculatorCheckBox, FuelCalculatorAutoHideCheckBox, notDriving);
     }
 
     // Skipped entirely while a widget is in edit mode — fighting the user's own Show/Hide while
@@ -445,6 +492,76 @@ public partial class MainWindow : Window
         {
             HideOutsideCarStore.Save(widgetName, checkBox.IsChecked == true);
         }
+    }
+
+    private void FuelCalculatorCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        WidgetVisibilityStore.Save("FuelCalculator", FuelCalculatorCheckBox.IsChecked == true);
+        if (FuelCalculatorCheckBox.IsChecked == true)
+        {
+            if (_fuelCalculatorWidget is null)
+            {
+                _fuelCalculatorWidget = new FuelCalculatorWidget();
+                _fuelCalculatorWidget.SetOptions(_fuelCalculatorOptions);
+            }
+
+            _fuelCalculatorWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
+            _fuelCalculatorWidget.Show();
+        }
+        else
+        {
+            _fuelCalculatorWidget?.Hide();
+        }
+    }
+
+    /// <summary>Shared by every Fuel Calculator section checkbox — each carries the matching
+    /// FuelCalculatorOptions property name in its Tag, since the panel binds its section
+    /// visibilities straight to that object and the persist step is identical for all of them.</summary>
+    private void FuelCalcOption_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.CheckBox { Tag: string optionName } checkBox)
+        {
+            return;
+        }
+
+        var isChecked = checkBox.IsChecked == true;
+        switch (optionName)
+        {
+            case nameof(FuelCalculatorOptions.ShowFuelBar): _fuelCalculatorOptions.ShowFuelBar = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowFuelRemaining): _fuelCalculatorOptions.ShowFuelRemaining = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowLastLap): _fuelCalculatorOptions.ShowLastLap = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowAverage): _fuelCalculatorOptions.ShowAverage = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowMinimum): _fuelCalculatorOptions.ShowMinimum = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowMaximum): _fuelCalculatorOptions.ShowMaximum = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowLapsRemaining): _fuelCalculatorOptions.ShowLapsRemaining = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowFuelToFinish): _fuelCalculatorOptions.ShowFuelToFinish = isChecked; break;
+            case nameof(FuelCalculatorOptions.ShowRefuel): _fuelCalculatorOptions.ShowRefuel = isChecked; break;
+        }
+
+        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
+    }
+
+    private void FuelAverageSourceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        _fuelCalculatorOptions.AverageSource = (FuelAverageSource)Math.Max(0, FuelAverageSourceComboBox.SelectedIndex);
+        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
+    }
+
+    // Unparseable or negative input is ignored rather than reset to 0 — the user is mid-typing (an
+    // empty box, or just "1." on the way to "1.5") and blanking their entry under them is hostile.
+    private void FuelMargin_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (double.TryParse(FuelMarginLapsTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var laps) && laps >= 0)
+        {
+            _fuelCalculatorOptions.MarginLaps = laps;
+        }
+
+        if (double.TryParse(FuelMarginLitersTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var liters) && liters >= 0)
+        {
+            _fuelCalculatorOptions.MarginLiters = liters;
+        }
+
+        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
     }
 
     private void RelativeCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -737,6 +854,11 @@ public partial class MainWindow : Window
         if (_trackMapWidget is not null)
         {
             _trackMapWidget.IsEditMode = editMode;
+        }
+
+        if (_fuelCalculatorWidget is not null)
+        {
+            _fuelCalculatorWidget.IsEditMode = editMode;
         }
     }
 
