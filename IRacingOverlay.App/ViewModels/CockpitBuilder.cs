@@ -64,7 +64,6 @@ internal static class CockpitBuilder
         var rpm = telemetry.GetFloat(TelemetryVarNames.Rpm);
         var first = driverInfo.DriverCarSLFirstRPM;
         var shift = driverInfo.DriverCarSLShiftRPM;
-        var blinkRpm = driverInfo.DriverCarSLBlinkRPM;
 
         if (shift <= first)
         {
@@ -73,7 +72,13 @@ internal static class CockpitBuilder
 
         var fraction = Math.Clamp((rpm - first) / (shift - first), 0, 1);
         var litCount = (int)Math.Round(fraction * CockpitState.ShiftLightCount);
-        var blink = blinkRpm > 0 && rpm >= blinkRpm;
+
+        // Some cars report usable light thresholds but leave the blink one at 0, which silently
+        // meant "never blink" — fall back to the last-LED RPM, then to the shift point itself.
+        var blinkRpm = driverInfo.DriverCarSLBlinkRPM > 0 ? driverInfo.DriverCarSLBlinkRPM
+            : driverInfo.DriverCarSLLastRPM > 0 ? driverInfo.DriverCarSLLastRPM
+            : shift;
+        var blink = rpm >= blinkRpm;
         return (litCount, blink);
     }
 

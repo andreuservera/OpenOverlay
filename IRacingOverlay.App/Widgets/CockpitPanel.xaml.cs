@@ -7,11 +7,11 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class CockpitPanel : UserControl
 {
-    // Half-period of the shift-light/ABS blink, in milliseconds — a fixed wall-clock cadence rather
-    // than "flip once per update," so the blink rate stays the same regardless of how fast the
-    // critical refresh rate (Cockpit's own update timer) is set. Toggling once per tick used to look
-    // like a genuine blink at the old 10Hz default (100ms => a 5Hz blink) but turned into a
-    // ~30Hz flicker/stutter once the refresh rate was raised toward 60Hz.
+    // Half-period of the ABS blink, in milliseconds — a fixed wall-clock cadence rather than "flip
+    // once per update," so the blink rate stays the same regardless of how fast the critical refresh
+    // rate (Cockpit's own update timer) is set. Toggling once per tick used to look like a genuine
+    // blink at the old 10Hz default (100ms => a 5Hz blink) but turned into a ~30Hz flicker/stutter
+    // once the refresh rate was raised toward 60Hz.
     private const long BlinkHalfPeriodMs = 150;
 
     public CockpitPanel()
@@ -23,7 +23,9 @@ public partial class CockpitPanel : UserControl
     {
         var blinkPhase = (Environment.TickCount64 / BlinkHalfPeriodMs) % 2 == 0;
 
-        ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink, blinkPhase);
+        // The shift lights run their own animation clock instead of taking blinkPhase — see
+        // ShiftLightsPanel.
+        ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink);
         ShiftGear.SetGear(state.Gear);
         AbsIndicator.SetActive(state.AbsActive, blinkPhase);
         SpeedText.Text = state.SpeedKph > 0 ? state.SpeedKph.ToString("0", CultureInfo.InvariantCulture) : "—";
