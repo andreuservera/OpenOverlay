@@ -1,0 +1,100 @@
+<UserControl x:Class="IRacingOverlay.App.ControlPanel.PreviewBackdrop"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             IsHitTestVisible="False"
+             ClipToBounds="True">
+    <!--
+      The stage a widget is previewed on: Spa, graded down until it is scenery.
+
+      The grading is the whole job here. The source is a bright, high-contrast photograph with a
+      white sky and a saturated red-and-yellow kerb across the bottom — dropped in as-is it would win
+      every fight against the panel sitting on it, which is the one thing a preview backdrop must
+      never do. So it is cropped to the horizon band, desaturated, blurred, dimmed and vignetted, and
+      what is left reads as depth of field behind the widget.
+
+      The treatment stays in markup rather than baked into the file: every number below is a decision
+      someone may want to retune, and none of them are recoverable once flattened into a JPEG.
+    -->
+    <Grid>
+        <!-- Floor. The photo never reaches full opacity, so something has to be underneath it, and
+             it is the same near-black the preview pane itself uses. -->
+        <Rectangle Fill="#090C0F"/>
+
+        <!-- The photograph, blurred as one layer. The negative margin is load-bearing: a BlurEffect
+             samples past the element's own edges, so an un-oversized image would fade out into a
+             soft transparent border a few pixels inside the pane. Oversizing it and letting the
+             UserControl's ClipToBounds cut it back keeps the blur edge to edge. -->
+        <Grid Margin="-60" Opacity="0.62">
+            <Grid.Effect>
+                <BlurEffect Radius="17" KernelType="Gaussian" RenderingBias="Performance"/>
+            </Grid.Effect>
+
+            <!--
+              Desaturation without a pixel shader: a grayscale copy underneath, the colour original
+              at low opacity on top. The Gray8 conversion happens once at decode, so it costs nothing
+              per frame, and the split gives exact control over how much colour survives — enough
+              that the kerb and the grass still read as a race track, not enough for either to
+              compete with the overlay's own palette.
+
+              Viewbox trims to the horizon band first: it drops the empty top third of sky and the
+              nearest, loudest half of the kerb, keeping the treeline, the grandstands and the track
+              surface. Cropping here rather than leaving it to UniformToFill alone is what makes the
+              result look the same whether this pane ends up tall and narrow or short and wide.
+            -->
+            <Rectangle>
+                <Rectangle.Fill>
+                    <ImageBrush Stretch="UniformToFill" AlignmentY="Center"
+                                Viewbox="0,0.30,1,0.56" ViewboxUnits="RelativeToBoundingBox">
+                        <ImageBrush.ImageSource>
+                            <FormatConvertedBitmap DestinationFormat="Gray8">
+                                <FormatConvertedBitmap.Source>
+                                    <!-- Decoded well under native size: a 17px blur is about to throw
+                                         that detail away regardless, and this halves both the decode
+                                         cost and the working set it leaves behind. -->
+                                    <BitmapImage UriSource="/Assets/spa2.jpg" DecodePixelWidth="1280"/>
+                                </FormatConvertedBitmap.Source>
+                            </FormatConvertedBitmap>
+                        </ImageBrush.ImageSource>
+                    </ImageBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <Rectangle Opacity="0.34">
+                <Rectangle.Fill>
+                    <ImageBrush Stretch="UniformToFill" AlignmentY="Center"
+                                Viewbox="0,0.30,1,0.56" ViewboxUnits="RelativeToBoundingBox">
+                        <ImageBrush.ImageSource>
+                            <BitmapImage UriSource="/Assets/spa2.jpg" DecodePixelWidth="1280"/>
+                        </ImageBrush.ImageSource>
+                    </ImageBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+        </Grid>
+
+        <!-- Cool wash. Pulls what colour is left toward the blue-grey the control panel is built
+             from, so the backdrop belongs to the application rather than merely sitting in it. -->
+        <Rectangle Fill="#4C121A24"/>
+
+        <!-- Two scrims, doing different jobs. The vertical gradient darkens top and bottom, where
+             the sky and the kerb still push hardest; the vignette re-darkens the centre, where the
+             widget actually lands, so contrast is highest exactly where it is needed. -->
+        <Rectangle>
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#C4070A0D" Offset="0"/>
+                    <GradientStop Color="#8A0A0E12" Offset="0.42"/>
+                    <GradientStop Color="#C8070A0D" Offset="1"/>
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+        <Rectangle>
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.8" RadiusY="0.8">
+                    <GradientStop Color="#73060809" Offset="0"/>
+                    <GradientStop Color="#12060809" Offset="0.55"/>
+                    <GradientStop Color="#A6040506" Offset="1"/>
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
+    </Grid>
+</UserControl>

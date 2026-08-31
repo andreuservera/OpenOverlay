@@ -1,0 +1,48 @@
+<UserControl x:Class="IRacingOverlay.App.ControlPanel.WidgetPreview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
+             x:Name="Root">
+    <!--
+      The stage the real widget panel is placed on. Everything here is backdrop: the panel itself is
+      inserted into Stage at runtime, unmodified, so what is drawn is the widget and not a drawing of
+      the widget.
+    -->
+    <Grid>
+        <!-- A blurred circuit rather than a flat colour. Overlay panels are translucent by design
+             and now carry their own opacity, so judging them against a solid field is judging the
+             wrong thing: how they hold up over asphalt, kerbs and a bright horizon is exactly the
+             decision being made here. -->
+        <cp:PreviewBackdrop x:Name="Backdrop"/>
+
+        <ScrollViewer x:Name="Viewport" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      Padding="28" Focusable="False">
+            <!-- The panel is scaled by the same ladder factor the widget uses, laid out through a
+                 LayoutTransform so the surrounding space reflects the real footprint the widget will
+                 occupy on screen — not a shrunk-to-fit thumbnail.
+
+                 The spacer grid takes at least the viewport's size so a small widget sits centred,
+                 while anything larger still overflows into the scrollbars rather than being scaled
+                 down to fit and misrepresenting how much screen it will actually cover. -->
+            <Grid MinWidth="{Binding ViewportWidth, ElementName=Viewport}"
+                  MinHeight="{Binding ViewportHeight, ElementName=Viewport}">
+                <!-- Opacity sits on the stage, not on the panel, so it composites over the backdrop
+                     exactly the way the window's own opacity composites over iRacing. -->
+                <ContentPresenter x:Name="Stage" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  SizeChanged="Stage_SizeChanged">
+                    <ContentPresenter.LayoutTransform>
+                        <ScaleTransform x:Name="StageScale" ScaleX="1" ScaleY="1"/>
+                    </ContentPresenter.LayoutTransform>
+                </ContentPresenter>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Corner caption: says out loud that the numbers are invented, so nobody mistakes a
+             preview for a connection to iRacing. -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12"
+                Background="#99000000" CornerRadius="5" Padding="8,4">
+            <TextBlock Text="SAMPLE DATA" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="10.5"
+                       FontWeight="Bold" Foreground="#8A949E"/>
+        </Border>
+    </Grid>
+</UserControl>

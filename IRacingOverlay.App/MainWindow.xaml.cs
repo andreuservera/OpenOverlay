@@ -1,9 +1,7 @@
-using System.Globalization;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
+using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Dashboard;
-using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
 using IRacingOverlay.Sdk;
@@ -11,6 +9,16 @@ using Screen = System.Windows.Forms.Screen;
 
 namespace IRacingOverlay.App;
 
+/// <summary>
+/// The control panel window. Two jobs, kept apart on purpose:
+///
+///   • it hosts <see cref="ControlPanelViewModel"/>, which owns everything the user configures, and
+///   • it runs the telemetry loops that feed the widgets.
+///
+/// Nothing in this file reads a control back out any more. Every setting lives in the view model,
+/// every widget's lifecycle lives in its <c>WidgetSlot</c>, and the loops below reach widgets
+/// through those slots — so adding a widget adds nothing here except the line that pushes its state.
+/// </summary>
 public partial class MainWindow : Window
 {
     // Standings only needs to feel "live," not sub-second precise — recomputing every 100ms was
@@ -18,6 +26,8 @@ public partial class MainWindow : Window
     // underlying data barely changed within a lap either way, it *looked* like updates only landed
     // at lap boundaries). This throttles it to roughly once a second without a second timer.
     private const int StandingsUpdateEveryNTicks = 10;
+
+    private readonly ControlPanelViewModel _vm;
 
     private readonly IRacingConnection _connection = new();
     private readonly DispatcherTimer _uiTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
@@ -36,7 +46,7 @@ public partial class MainWindow : Window
     // with WPF's own layout/render passes, so a slow tick BODY (data-processing time) and a late tick
     // FIRING (the Dispatcher not getting around to it on schedule — e.g. because the other timer's
     // tick, or a GC pause, or the OS scheduler, is hogging that same thread) are two different
-    // possible causes and need to be told apart. Reset once a second in UpdateMemoryText.
+    // possible causes and need to be told apart. Reset once a second in UpdateDiagnostics.
     private readonly System.Diagnostics.Stopwatch _uiTickStopwatch = new();
     private double _uiTickMaxMs;
     private double _uiTickTotalMs;
@@ -49,64 +59,36 @@ public partial class MainWindow : Window
     private long _lastCriticalTickTimestampMs = -1;
     private double _criticalTickMaxGapMs;
 
-    private RelativeWidget? _relativeWidget;
-    private StandingsWidget? _standingsWidget;
-    private CockpitWidget? _cockpitWidget;
-    private FlagWidget? _flagWidget;
-    private TireInfoWidget? _tireInfoWidget;
-    private DeltaWidget? _deltaWidget;
-    private FuelWidget? _fuelWidget;
-    private PedalTraceWidget? _pedalTraceWidget;
-    private IncidentWidget? _incidentWidget;
-    private TrackInfoWidget? _trackInfoWidget;
-    private TrackMapWidget? _trackMapWidget;
-    private FuelCalculatorWidget? _fuelCalculatorWidget;
     private DashboardWindow? _dashboard;
-    private DeltaReference _deltaReference = DeltaReference.SessionBest;
-    private readonly DriverTableOptions _standingsOptions = new(DriverTable.Standings);
-    private readonly DriverTableOptions _relativeOptions = new(DriverTable.Relative);
 
     // Last computed running order, shared with Relative so both tables report the same position for
     // the same driver. Rebuilt on the standings tick, not every frame.
     private IReadOnlyList<StandingsRow> _latestStandings = [];
-    private readonly FuelCalculatorOptions _fuelCalculatorOptions = new();
 
     public MainWindow()
     {
-        // Read both stores *before* InitializeComponent(): every ComboBoxItem in MainWindow.xaml
-        // that has IsSelected="True" (the XAML-declared first-run default) fires that ComboBox's
-        // SelectionChanged handler the moment InitializeComponent() constructs it — and both
-        // handlers below immediately persist whatever's currently selected. Reading the previous
-        // launch's saved value first means we still have it in hand even though InitializeComponent
-        // is about to overwrite the file on disk with the XAML default; the actual restore
-        // assignment further down fires SelectionChanged again and writes the real value back.
-        var savedDashboardTheme = DashboardThemeStore.Get();
-        var savedCriticalRefreshIndex = CriticalRefreshStore.Get();
-
-        // Same trap, one step worse: the fuel average-source ComboBox's handler persists the *whole*
-        // options object, so the startup event stamped the constructor defaults over every section
-        // toggle the user had saved — before RestoreFuelCalculatorOptions ever got to read them back.
-        // Loading into the object up front makes that write a no-op instead.
-        FuelCalculatorOptionsStore.ApplyTo(_fuelCalculatorOptions);
-        var savedFuelAverageSource = _fuelCalculatorOptions.AverageSource;
+        // Built before InitializeComponent so every persisted value is already loaded when the first
+        // binding evaluates. The old panel had the opposite problem: XAML-declared defaults on the
+        // ComboBoxes fired their SelectionChanged handlers during construction and wrote those
+        // defaults straight over the user's saved settings. There are no XAML-declared values left
+        // to do that — every control's value comes from the view model, which read the stores first.
+        _vm = new ControlPanelViewModel();
 
         InitializeComponent();
 
-        MonitorComboBox.ItemsSource = Screen.AllScreens;
-        MonitorComboBox.DisplayMemberPath = "DeviceName";
-        MonitorComboBox.SelectedIndex = Screen.AllScreens.Length > 1 ? 1 : 0;
+        // Before DataContext, so the preview already knows which options objects to follow by the
+        // time the Slot binding hands it its first widget.
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions);
+        DataContext = _vm;
 
-        DashboardThemeComboBox.SelectedIndex = savedDashboardTheme switch
-        {
-            DashboardTheme.DigitalHud => 1,
-            DashboardTheme.RawDiy => 2,
-            _ => 0,
-        };
+        _criticalTimer.Interval = TimeSpan.FromMilliseconds(_vm.CriticalRefreshIntervalMs);
+        _vm.CriticalRefreshChanged += intervalMs => _criticalTimer.Interval = TimeSpan.FromMilliseconds(intervalMs);
+        _vm.DashboardThemeChanged += theme => _dashboard?.ApplyTheme(theme);
+        _vm.DashboardToggleRequested += ToggleDashboard;
+        _vm.TableHeaderChanged += PushTableHeader;
 
-        CriticalRefreshComboBox.SelectedIndex = savedCriticalRefreshIndex;
-
-        _connection.Connected += (_, _) => Dispatcher.BeginInvoke(() => SetStatus(connected: true));
-        _connection.Disconnected += (_, _) => Dispatcher.BeginInvoke(() => SetStatus(connected: false));
+        _connection.Connected += (_, _) => Dispatcher.BeginInvoke(() => _vm.IsConnected = true);
+        _connection.Disconnected += (_, _) => Dispatcher.BeginInvoke(() => _vm.IsConnected = false);
 
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
@@ -119,142 +101,31 @@ public partial class MainWindow : Window
             _uiTimer.Stop();
             _criticalTimer.Stop();
             _connection.Stop();
-            _relativeWidget?.Close();
-            _standingsWidget?.Close();
-            _cockpitWidget?.Close();
-            _flagWidget?.Close();
-            _tireInfoWidget?.Close();
-            _deltaWidget?.Close();
-            _fuelWidget?.Close();
-            _pedalTraceWidget?.Close();
-            _incidentWidget?.Close();
-            _trackInfoWidget?.Close();
-            _trackMapWidget?.Close();
-            _fuelCalculatorWidget?.Close();
+            _vm.CloseAllWidgets();
             _dashboard?.Close();
         };
 
-        RestoreWidgetVisibility();
-        RestoreAutoHideCheckboxes();
-        RestoreStandingsOptions();
-        RestoreRelativeOptions();
-        RestoreFuelCalculatorOptions(savedFuelAverageSource);
+        // Re-opens whichever widgets were on screen last run, in the layout mode currently selected.
+        _vm.RestoreVisibleWidgets();
 
         _connection.Start();
     }
 
-    /// <summary>Loads the persisted Standings settings into both the control-panel inputs and the
-    /// shared DriverTableOptions instance the overlay widget's panel binds to — the Dashboard's own
-    /// panel instance never sees this object, so it always shows the full field with every
-    /// column.</summary>
-    private void RestoreStandingsOptions()
-    {
-        DriverTableOptionsStore.ApplyTo(_standingsOptions);
-        StandingsPositionCheckBox.IsChecked = _standingsOptions.ShowPosition;
-        StandingsCarNumberCheckBox.IsChecked = _standingsOptions.ShowCarNumber;
-        StandingsDriverCheckBox.IsChecked = _standingsOptions.ShowDriver;
-        StandingsIRatingCheckBox.IsChecked = _standingsOptions.ShowIRating;
-        StandingsIRatingDeltaCheckBox.IsChecked = _standingsOptions.ShowIRatingDelta;
-        StandingsLicenseCheckBox.IsChecked = _standingsOptions.ShowLicense;
-        StandingsLapCheckBox.IsChecked = _standingsOptions.ShowLap;
-        StandingsLastLapCheckBox.IsChecked = _standingsOptions.ShowLastLap;
-        StandingsBestLapCheckBox.IsChecked = _standingsOptions.ShowBestLap;
-        StandingsGapCheckBox.IsChecked = _standingsOptions.ShowGap;
-        StandingsSessionIdCheckBox.IsChecked = _standingsOptions.ShowSessionId;
-        StandingsCarNameCheckBox.IsChecked = _standingsOptions.ShowCarName;
-        StandingsMulticlassCheckBox.IsChecked = _standingsOptions.ShowMulticlass;
-        StandingsFocusSizeTextBox.Text = _standingsOptions.FocusSize.ToString(CultureInfo.InvariantCulture);
-    }
-
-    /// <summary>Same as <see cref="RestoreStandingsOptions"/>, for the Relative widget's own
-    /// independent settings.</summary>
-    private void RestoreRelativeOptions()
-    {
-        DriverTableOptionsStore.ApplyTo(_relativeOptions);
-        RelativePositionCheckBox.IsChecked = _relativeOptions.ShowPosition;
-        RelativeCarNumberCheckBox.IsChecked = _relativeOptions.ShowCarNumber;
-        RelativeDriverCheckBox.IsChecked = _relativeOptions.ShowDriver;
-        RelativeIRatingCheckBox.IsChecked = _relativeOptions.ShowIRating;
-        RelativeIRatingDeltaCheckBox.IsChecked = _relativeOptions.ShowIRatingDelta;
-        RelativeLicenseCheckBox.IsChecked = _relativeOptions.ShowLicense;
-        RelativeLapCheckBox.IsChecked = _relativeOptions.ShowLap;
-        RelativeBestLapCheckBox.IsChecked = _relativeOptions.ShowBestLap;
-        RelativeLastLapCheckBox.IsChecked = _relativeOptions.ShowLastLap;
-        RelativeGapCheckBox.IsChecked = _relativeOptions.ShowGap;
-        RelativeSessionIdCheckBox.IsChecked = _relativeOptions.ShowSessionId;
-        RelativeCarNameCheckBox.IsChecked = _relativeOptions.ShowCarName;
-        RelativeFocusSizeTextBox.Text = _relativeOptions.FocusSize.ToString(CultureInfo.InvariantCulture);
-    }
-
-    /// <summary>Pushes the already-loaded Fuel Calculator settings into the control-panel inputs.
-    /// The values were read in the constructor before InitializeComponent, so this only mirrors the
-    /// options object into the UI — the assignments re-fire their handlers, which write the same
-    /// values straight back, keeping restore and user-edit on one path. Average source is passed in
-    /// separately because InitializeComponent's own SelectionChanged has already reset it.</summary>
-    private void RestoreFuelCalculatorOptions(FuelAverageSource savedAverageSource)
-    {
-        FuelCalcBarCheckBox.IsChecked = _fuelCalculatorOptions.ShowFuelBar;
-        FuelCalcRemainingCheckBox.IsChecked = _fuelCalculatorOptions.ShowFuelRemaining;
-        FuelCalcLastLapCheckBox.IsChecked = _fuelCalculatorOptions.ShowLastLap;
-        FuelCalcAverageCheckBox.IsChecked = _fuelCalculatorOptions.ShowAverage;
-        FuelCalcMinimumCheckBox.IsChecked = _fuelCalculatorOptions.ShowMinimum;
-        FuelCalcMaximumCheckBox.IsChecked = _fuelCalculatorOptions.ShowMaximum;
-        FuelCalcLapsRemainingCheckBox.IsChecked = _fuelCalculatorOptions.ShowLapsRemaining;
-        FuelCalcToFinishCheckBox.IsChecked = _fuelCalculatorOptions.ShowFuelToFinish;
-        FuelCalcRefuelCheckBox.IsChecked = _fuelCalculatorOptions.ShowRefuel;
-
-        _fuelCalculatorOptions.AverageSource = savedAverageSource;
-        FuelAverageSourceComboBox.SelectedIndex = (int)savedAverageSource;
-
-        FuelMarginLapsTextBox.Text = _fuelCalculatorOptions.MarginLaps.ToString(CultureInfo.InvariantCulture);
-        FuelMarginLitersTextBox.Text = _fuelCalculatorOptions.MarginLiters.ToString(CultureInfo.InvariantCulture);
-
-        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
-    }
-
-    /// <summary>Re-checks whichever overlay checkboxes were checked last run — each CheckBox's
-    /// Checked event handler (already wired via XAML) does the actual widget-creation/Show() work,
-    /// so setting IsChecked here is enough; unchanged (false->false) values don't re-fire it.</summary>
-    private void RestoreWidgetVisibility()
-    {
-        RelativeCheckBox.IsChecked = WidgetVisibilityStore.Get("Relative");
-        StandingsCheckBox.IsChecked = WidgetVisibilityStore.Get("Standings");
-        CockpitCheckBox.IsChecked = WidgetVisibilityStore.Get("Cockpit");
-        FlagCheckBox.IsChecked = WidgetVisibilityStore.Get("Flag");
-        TireInfoCheckBox.IsChecked = WidgetVisibilityStore.Get("TireInfo");
-        DeltaCheckBox.IsChecked = WidgetVisibilityStore.Get("Delta");
-        FuelCheckBox.IsChecked = WidgetVisibilityStore.Get("Fuel");
-        PedalTraceCheckBox.IsChecked = WidgetVisibilityStore.Get("PedalTrace");
-        IncidentCheckBox.IsChecked = WidgetVisibilityStore.Get("Incident");
-        TrackInfoCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackInfo");
-        TrackMapCheckBox.IsChecked = WidgetVisibilityStore.Get("TrackMap");
-        FuelCalculatorCheckBox.IsChecked = WidgetVisibilityStore.Get("FuelCalculator");
-    }
-
-    /// <summary>Re-checks whichever "hide outside car" checkboxes were checked last run — each one
-    /// shares the single AutoHideCheckBox_Changed handler (wired via XAML) keyed off its Tag, so
-    /// setting IsChecked here is enough to both restore and persist the same value.</summary>
-    private void RestoreAutoHideCheckboxes()
-    {
-        RelativeAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Relative");
-        StandingsAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Standings");
-        CockpitAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Cockpit");
-        FlagAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Flag");
-        TireInfoAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TireInfo");
-        DeltaAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Delta");
-        FuelAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Fuel");
-        PedalTraceAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("PedalTrace");
-        IncidentAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("Incident");
-        TrackInfoAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TrackInfo");
-        TrackMapAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("TrackMap");
-        FuelCalculatorAutoHideCheckBox.IsChecked = HideOutsideCarStore.Get("FuelCalculator");
-    }
-
-    private void SetStatus(bool connected)
-    {
-        StatusDot.Fill = connected ? Brushes.LimeGreen : Brushes.Red;
-        StatusText.Text = connected ? "Connected to iRacing" : "Waiting for iRacing…";
-    }
+    // Typed handles for the loops below. Each is a dictionary lookup and a cast against a slot that
+    // may not have created its window yet, so "widget is off" reads as null everywhere rather than
+    // as a separate flag to keep in step.
+    private RelativeWidget? Relative => _vm.WidgetOf<RelativeWidget>(WidgetCatalog.Relative);
+    private StandingsWidget? Standings => _vm.WidgetOf<StandingsWidget>(WidgetCatalog.Standings);
+    private CockpitWidget? Cockpit => _vm.WidgetOf<CockpitWidget>(WidgetCatalog.Cockpit);
+    private FlagWidget? Flags => _vm.WidgetOf<FlagWidget>(WidgetCatalog.Flag);
+    private TireInfoWidget? Tires => _vm.WidgetOf<TireInfoWidget>(WidgetCatalog.TireInfo);
+    private DeltaWidget? Delta => _vm.WidgetOf<DeltaWidget>(WidgetCatalog.Delta);
+    private FuelWidget? Fuel => _vm.WidgetOf<FuelWidget>(WidgetCatalog.Fuel);
+    private PedalTraceWidget? Pedals => _vm.WidgetOf<PedalTraceWidget>(WidgetCatalog.PedalTrace);
+    private IncidentWidget? Incidents => _vm.WidgetOf<IncidentWidget>(WidgetCatalog.Incident);
+    private TrackInfoWidget? TrackInfo => _vm.WidgetOf<TrackInfoWidget>(WidgetCatalog.TrackInfo);
+    private TrackMapWidget? TrackMap => _vm.WidgetOf<TrackMapWidget>(WidgetCatalog.TrackMap);
+    private FuelCalculatorWidget? FuelCalculator => _vm.WidgetOf<FuelCalculatorWidget>(WidgetCatalog.FuelCalculator);
 
     private void UiTimer_Tick(object? sender, EventArgs e)
     {
@@ -272,44 +143,45 @@ public partial class MainWindow : Window
     private void UiTimer_TickCore()
     {
         var telemetry = _connection.Latest;
+
+        // Evaluated before the no-telemetry bail-out, and from the connection as well as the
+        // snapshot. Both matter: this used to sit after the bail-out, so with iRacing closed the
+        // loop returned early and every widget stayed on screen forever — and IRacingConnection
+        // keeps the last snapshot it read after a disconnect, so the stale IsOnTrack in it would
+        // have answered "still driving" even once the sim was gone.
+        ApplyAutoHideVisibility(IsPlayerDriving(telemetry));
+
         if (telemetry is null)
         {
             return;
         }
 
-        UpdateDebugText(telemetry);
-
-        // IsOnTrack is false at the main menu, on a garage/setup screen, spectating, or watching a
-        // replay — true only once the player is actually in the car with physics running. A missing
-        // variable defaults to "driving" (don't hide anything) rather than risk hiding widgets from a
-        // false read.
-        var playerNotDriving = telemetry.HasVariable(TelemetryVarNames.IsOnTrack) && !telemetry.GetBool(TelemetryVarNames.IsOnTrack);
-        ApplyAutoHideVisibility(playerNotDriving);
+        UpdateTelemetryLine(telemetry);
 
         var session = _connection.Session;
         _tickCount++;
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
-        var needsStandings = _standingsWidget is not null || _dashboard is not null || _relativeWidget is not null;
+        var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
         if (needsStandings && _tickCount % StandingsUpdateEveryNTicks == 0)
         {
             _latestStandings = StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker);
 
             // Only the two widgets that display SOF pay for it — Relative pulls the running order
             // out of this block but has no use for the field strength.
-            var sof = _standingsWidget is not null || _dashboard is not null
+            var sof = Standings is not null || _dashboard is not null
                 ? StandingsBuilder.ComputeStrengthOfField(session)
                 : 0;
-            if (_standingsWidget is not null)
+            if (Standings is { } standings)
             {
                 // The floating widget gets the compact focused view (podium + a block around the
                 // player); the Dashboard has the room for the whole field, grouped by class.
-                _standingsWidget.UpdateRows(_standingsOptions.ShowMulticlass
-                    ? StandingsBuilder.BuildMulticlassView(_latestStandings, _standingsOptions.FocusSize)
-                    : StandingsBuilder.BuildFocusedView(_latestStandings, _standingsOptions.FocusSize));
-                _standingsWidget.SetSof(sof);
-                _standingsWidget.SetCarName(StandingsBuilder.SingleClassCarName(session));
-                _standingsWidget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
+                standings.UpdateRows(_vm.StandingsOptions.ShowMulticlass
+                    ? StandingsBuilder.BuildMulticlassView(_latestStandings, _vm.StandingsOptions.FocusSize)
+                    : StandingsBuilder.BuildFocusedView(_latestStandings, _vm.StandingsOptions.FocusSize));
+                standings.SetSof(sof);
+                standings.SetCarName(StandingsBuilder.SingleClassCarName(session));
+                standings.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
             }
 
             if (_dashboard is not null)
@@ -323,67 +195,67 @@ public partial class MainWindow : Window
 
         // Built every tick, unlike standings: Relative is about where cars are right now, and a
         // once-a-second refresh is visibly laggy when someone is alongside you.
-        var relativeRows = StandingsBuilder.BuildRelative(telemetry, session, _relativeOptions.FocusSize, _latestStandings);
-        if (_relativeWidget is not null)
+        var relativeRows = StandingsBuilder.BuildRelative(telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings);
+        if (Relative is { } relative)
         {
-            _relativeWidget.UpdateRows(relativeRows);
-            _relativeWidget.SetCarName(StandingsBuilder.SingleClassCarName(session));
-            _relativeWidget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
+            relative.UpdateRows(relativeRows);
+            relative.SetCarName(StandingsBuilder.SingleClassCarName(session));
+            relative.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
         }
 
         _dashboard?.UpdateRelativeRows(relativeRows);
 
-        if (_flagWidget is not null || _dashboard is not null)
+        if (Flags is not null || _dashboard is not null)
         {
             var flagStates = FlagBuilder.Build(telemetry);
-            _flagWidget?.UpdateState(flagStates);
+            Flags?.UpdateState(flagStates);
             _dashboard?.UpdateFlag(flagStates);
         }
 
-        if (_tireInfoWidget is not null || _dashboard is not null)
+        if (Tires is not null || _dashboard is not null)
         {
             var tireInfoState = TireInfoBuilder.Build(telemetry);
-            _tireInfoWidget?.UpdateState(tireInfoState);
+            Tires?.UpdateState(tireInfoState);
             _dashboard?.UpdateTireInfo(tireInfoState);
         }
 
-        if (_deltaWidget is not null || _dashboard is not null)
+        if (Delta is not null || _dashboard is not null)
         {
-            var deltaState = DeltaBuilder.Build(telemetry, _deltaReference);
-            _deltaWidget?.UpdateState(deltaState);
+            var deltaState = DeltaBuilder.Build(telemetry, _vm.DeltaReference);
+            Delta?.UpdateState(deltaState);
             _dashboard?.UpdateDelta(deltaState);
         }
 
-        if (_fuelWidget is not null || _dashboard is not null)
+        if (Fuel is not null || _dashboard is not null)
         {
             var fuelState = _fuelBuilder.Build(telemetry);
-            _fuelWidget?.UpdateState(fuelState);
+            Fuel?.UpdateState(fuelState);
             _dashboard?.UpdateFuel(fuelState);
         }
 
-        if (_fuelCalculatorWidget is not null)
+        if (FuelCalculator is { } fuelCalculator)
         {
-            _fuelCalculatorWidget.UpdateState(_fuelCalculatorBuilder.Build(telemetry, session, _fuelCalculatorOptions));
+            fuelCalculator.UpdateState(_fuelCalculatorBuilder.Build(telemetry, session, _vm.FuelCalculatorOptions));
         }
 
-        if (_incidentWidget is not null || _dashboard is not null)
+        if (Incidents is not null || _dashboard is not null)
         {
             var incidentState = IncidentBuilder.Build(telemetry);
-            _incidentWidget?.UpdateState(incidentState);
+            Incidents?.UpdateState(incidentState);
             _dashboard?.UpdateIncident(incidentState);
         }
 
-        if (_trackInfoWidget is not null || _dashboard is not null)
+        if (TrackInfo is not null || _dashboard is not null)
         {
             var trackInfoState = TrackInfoBuilder.Build(telemetry, session);
-            _trackInfoWidget?.UpdateState(trackInfoState);
+            TrackInfo?.UpdateState(trackInfoState);
             _dashboard?.UpdateTrackInfo(trackInfoState);
         }
 
-        if (_trackMapWidget is not null || _dashboard is not null)
+        if (TrackMap is not null || _dashboard is not null)
         {
             var trackMapMarkers = TrackMapBuilder.Build(telemetry, session);
-            _trackMapWidget?.UpdateState(trackMapMarkers);
+            TrackMap?.UpdateState(trackMapMarkers);
             _dashboard?.UpdateTrackMap(trackMapMarkers);
         }
 
@@ -391,52 +263,48 @@ public partial class MainWindow : Window
         // Standings rather than recomputing it on every 100ms tick.
         if (_tickCount % StandingsUpdateEveryNTicks == 0)
         {
-            UpdateMemoryText();
+            UpdateDiagnostics();
         }
     }
 
-    /// <summary>Hides (or reveals) every enabled widget whose "hide outside car" checkbox is on,
-    /// based on whether the player is currently actually driving — without touching the "enabled"
-    /// checkbox itself, so the widget picks back up exactly where it was the moment the player gets
-    /// back in the car.</summary>
-    private void ApplyAutoHideVisibility(bool notDriving)
+    /// <summary>
+    /// Whether the player is actually at the wheel right now — the single question "hide when I'm
+    /// not driving" turns on.
+    ///
+    /// Three conditions, and all three are load-bearing. No live connection means iRacing is closed
+    /// or has been exited, and the snapshot still held from before it went away must not be trusted.
+    /// No snapshot at all means nothing has been read yet. And IsOnTrack, per iRacing's own SDK
+    /// docs, is true "only when the player is running the physics for the car and is currently in
+    /// the car" — false at the main menu, in the garage, on a setup screen, while spectating and
+    /// during replays, which is the rest of what the option promises.
+    ///
+    /// A car that simply doesn't publish IsOnTrack falls back to "driving": failing open leaves a
+    /// widget visible when it could have hidden, while failing closed would blank someone's overlay
+    /// mid-race over a missing variable.
+    /// </summary>
+    private bool IsPlayerDriving(TelemetrySnapshot? telemetry)
     {
-        ApplyAutoHideVisibilityFor(_relativeWidget, RelativeCheckBox, RelativeAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_standingsWidget, StandingsCheckBox, StandingsAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_cockpitWidget, CockpitCheckBox, CockpitAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_flagWidget, FlagCheckBox, FlagAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_tireInfoWidget, TireInfoCheckBox, TireInfoAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_deltaWidget, DeltaCheckBox, DeltaAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_fuelWidget, FuelCheckBox, FuelAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_pedalTraceWidget, PedalTraceCheckBox, PedalTraceAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_incidentWidget, IncidentCheckBox, IncidentAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_trackInfoWidget, TrackInfoCheckBox, TrackInfoAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_trackMapWidget, TrackMapCheckBox, TrackMapAutoHideCheckBox, notDriving);
-        ApplyAutoHideVisibilityFor(_fuelCalculatorWidget, FuelCalculatorCheckBox, FuelCalculatorAutoHideCheckBox, notDriving);
+        if (!_connection.IsConnected || telemetry is null)
+        {
+            return false;
+        }
+
+        return !telemetry.HasVariable(TelemetryVarNames.IsOnTrack) || telemetry.GetBool(TelemetryVarNames.IsOnTrack);
     }
 
-    // Skipped entirely while a widget is in edit mode — fighting the user's own Show/Hide while
-    // they're actively dragging/resizing it would be actively annoying, and "hide outside car" is a
-    // driving-time convenience, not something anyone needs while laying out widgets from the menu.
-    private static void ApplyAutoHideVisibilityFor(
-        OverlayWindowBase? widget,
-        System.Windows.Controls.CheckBox enabledCheckBox,
-        System.Windows.Controls.CheckBox autoHideCheckBox,
-        bool notDriving)
+    /// <summary>
+    /// Hides (or reveals) every widget whose "hide outside car" option is on, without touching the
+    /// enabled state itself — so a widget picks back up exactly where it was the moment the player
+    /// gets back in the car.
+    ///
+    /// The decision lives in the slot, not here: showing a widget and then hiding it from a
+    /// different code path a tick later is what used to make one flash on screen at startup.
+    /// </summary>
+    private void ApplyAutoHideVisibility(bool isDriving)
     {
-        if (widget is null || enabledCheckBox.IsChecked != true || widget.IsEditMode)
+        foreach (var slot in _vm.Slots)
         {
-            return;
-        }
-
-        var shouldHide = autoHideCheckBox.IsChecked == true && notDriving;
-        if (shouldHide && widget.IsVisible)
-        {
-            widget.Hide();
-        }
-        else if (!shouldHide && !widget.IsVisible)
-        {
-            widget.Show();
+            slot.IsDriving = isDriving;
         }
     }
 
@@ -473,30 +341,30 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_cockpitWidget is not null || _dashboard is not null)
+        if (Cockpit is not null || _dashboard is not null)
         {
             var cockpitState = CockpitBuilder.Build(telemetry, _connection.Session);
-            _cockpitWidget?.UpdateState(cockpitState);
+            Cockpit?.UpdateState(cockpitState);
             _dashboard?.UpdateCockpit(cockpitState);
         }
 
-        if (_pedalTraceWidget is not null || _dashboard is not null)
+        if (Pedals is not null || _dashboard is not null)
         {
             var pedalTraceState = _pedalTraceBuilder.Build(telemetry, _criticalTimer.Interval.TotalMilliseconds);
-            _pedalTraceWidget?.UpdateState(pedalTraceState);
+            Pedals?.UpdateState(pedalTraceState);
             _dashboard?.UpdatePedalTrace(pedalTraceState);
         }
     }
 
-    private void UpdateDebugText(TelemetrySnapshot telemetry)
+    private void UpdateTelemetryLine(TelemetrySnapshot telemetry)
     {
         var speed = telemetry.HasVariable("Speed") ? telemetry.GetFloat("Speed") * 3.6 : 0; // m/s -> km/h
         var lap = telemetry.HasVariable("Lap") ? telemetry.GetInt("Lap") : 0;
         var gear = telemetry.HasVariable("Gear") ? telemetry.GetInt("Gear") : 0;
-        DebugText.Text = $"Speed: {speed:0} km/h   Lap: {lap}   Gear: {gear}";
+        _vm.TelemetryLine = $"Speed {speed:0} km/h    Lap {lap}    Gear {gear}";
     }
 
-    private void UpdateMemoryText()
+    private void UpdateDiagnostics()
     {
         using var process = System.Diagnostics.Process.GetCurrentProcess();
         var megabytes = process.WorkingSet64 / (1024.0 * 1024.0);
@@ -504,11 +372,10 @@ public partial class MainWindow : Window
         var criticalAvg = _criticalTickSamples > 0 ? _criticalTickTotalMs / _criticalTickSamples : 0;
         var criticalTargetMs = _criticalTimer.Interval.TotalMilliseconds;
 
-        MemoryText.Text =
-            $"Memory: {megabytes:0} MB | GC0/1/2: {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)}\n" +
-            $"UI tick: avg {uiAvg:0.0}ms max {_uiTickMaxMs:0.0}ms | " +
-            $"Critical tick (target {criticalTargetMs:0}ms): avg {criticalAvg:0.0}ms max {_criticalTickMaxMs:0.0}ms, " +
-            $"actual gap max {_criticalTickMaxGapMs:0}ms";
+        _vm.DiagnosticsLine =
+            $"{megabytes:0} MB · GC {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)} · " +
+            $"UI {uiAvg:0.0}/{_uiTickMaxMs:0.0} ms · " +
+            $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0})";
 
         // Rolling ~1s window (this is called once every StandingsUpdateEveryNTicks UI ticks) rather
         // than a since-launch average — a stutter from 10 minutes ago shouldn't still be dragging
@@ -532,463 +399,59 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CriticalRefreshComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    /// <summary>The driver tables' header fields are pushed on the standings tick, so a header
+    /// switched off has to be cleared now rather than leaving a stale value on screen for up to a
+    /// second.</summary>
+    private void PushTableHeader(DriverTable table)
     {
-        var ms = CriticalRefreshComboBox.SelectedIndex switch
-        {
-            0 => 16,
-            1 => 33,
-            3 => 100,
-            4 => 200,
-            _ => 67, // index 2, "Normal (15 Hz)"
-        };
-        _criticalTimer.Interval = TimeSpan.FromMilliseconds(ms);
-        CriticalRefreshStore.Save(CriticalRefreshComboBox.SelectedIndex);
-    }
+        var session = _connection.Session;
+        var carName = StandingsBuilder.SingleClassCarName(session);
+        var subSessionId = session?.WeekendInfo?.SubSessionID ?? 0;
 
-    /// <summary>Shared by every widget's "hide outside car" checkbox in MainWindow.xaml — each one
-    /// carries its widget's store key in its Tag, since the save logic is otherwise identical for all
-    /// of them. Actually hiding/showing the widget happens continuously in ApplyAutoHideVisibility,
-    /// driven by live IsOnTrack telemetry, not from this handler.</summary>
-    private void AutoHideCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (sender is System.Windows.Controls.CheckBox { Tag: string widgetName } checkBox)
+        if (table == DriverTable.Standings)
         {
-            HideOutsideCarStore.Save(widgetName, checkBox.IsChecked == true);
-        }
-    }
-
-    private void FuelCalculatorCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("FuelCalculator", FuelCalculatorCheckBox.IsChecked == true);
-        if (FuelCalculatorCheckBox.IsChecked == true)
-        {
-            if (_fuelCalculatorWidget is null)
-            {
-                _fuelCalculatorWidget = new FuelCalculatorWidget();
-                _fuelCalculatorWidget.SetOptions(_fuelCalculatorOptions);
-            }
-
-            _fuelCalculatorWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _fuelCalculatorWidget.Show();
+            Standings?.SetCarName(carName);
+            Standings?.SetSessionId(subSessionId);
         }
         else
         {
-            _fuelCalculatorWidget?.Hide();
+            Relative?.SetCarName(carName);
+            Relative?.SetSessionId(subSessionId);
         }
     }
 
-    /// <summary>Shared by every Fuel Calculator section checkbox — each carries the matching
-    /// FuelCalculatorOptions property name in its Tag, since the panel binds its section
-    /// visibilities straight to that object and the persist step is identical for all of them.</summary>
-    private void FuelCalcOption_Changed(object sender, RoutedEventArgs e)
-    {
-        if (sender is not System.Windows.Controls.CheckBox { Tag: string optionName } checkBox)
-        {
-            return;
-        }
-
-        var isChecked = checkBox.IsChecked == true;
-        switch (optionName)
-        {
-            case nameof(FuelCalculatorOptions.ShowFuelBar): _fuelCalculatorOptions.ShowFuelBar = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowFuelRemaining): _fuelCalculatorOptions.ShowFuelRemaining = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowLastLap): _fuelCalculatorOptions.ShowLastLap = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowAverage): _fuelCalculatorOptions.ShowAverage = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowMinimum): _fuelCalculatorOptions.ShowMinimum = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowMaximum): _fuelCalculatorOptions.ShowMaximum = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowLapsRemaining): _fuelCalculatorOptions.ShowLapsRemaining = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowFuelToFinish): _fuelCalculatorOptions.ShowFuelToFinish = isChecked; break;
-            case nameof(FuelCalculatorOptions.ShowRefuel): _fuelCalculatorOptions.ShowRefuel = isChecked; break;
-        }
-
-        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
-    }
-
-    private void FuelAverageSourceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        _fuelCalculatorOptions.AverageSource = (FuelAverageSource)Math.Max(0, FuelAverageSourceComboBox.SelectedIndex);
-        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
-    }
-
-    // Unparseable or negative input is ignored rather than reset to 0 — the user is mid-typing (an
-    // empty box, or just "1." on the way to "1.5") and blanking their entry under them is hostile.
-    private void FuelMargin_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-    {
-        if (double.TryParse(FuelMarginLapsTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var laps) && laps >= 0)
-        {
-            _fuelCalculatorOptions.MarginLaps = laps;
-        }
-
-        if (double.TryParse(FuelMarginLitersTextBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var liters) && liters >= 0)
-        {
-            _fuelCalculatorOptions.MarginLiters = liters;
-        }
-
-        FuelCalculatorOptionsStore.Save(_fuelCalculatorOptions);
-    }
-
-    private void RelativeCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Relative", RelativeCheckBox.IsChecked == true);
-        if (RelativeCheckBox.IsChecked == true)
-        {
-            if (_relativeWidget is null)
-            {
-                _relativeWidget = new RelativeWidget();
-                _relativeWidget.SetOptions(_relativeOptions);
-            }
-
-            _relativeWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _relativeWidget.Show();
-        }
-        else
-        {
-            _relativeWidget?.Hide();
-        }
-    }
-
-    private void StandingsCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Standings", StandingsCheckBox.IsChecked == true);
-        if (StandingsCheckBox.IsChecked == true)
-        {
-            if (_standingsWidget is null)
-            {
-                _standingsWidget = new StandingsWidget();
-                _standingsWidget.SetOptions(_standingsOptions);
-            }
-
-            _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _standingsWidget.Show();
-        }
-        else
-        {
-            _standingsWidget?.Hide();
-        }
-    }
-
-    private void CockpitCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Cockpit", CockpitCheckBox.IsChecked == true);
-        if (CockpitCheckBox.IsChecked == true)
-        {
-            _cockpitWidget ??= new CockpitWidget();
-            _cockpitWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _cockpitWidget.Show();
-        }
-        else
-        {
-            _cockpitWidget?.Hide();
-        }
-    }
-
-    private void FlagCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Flag", FlagCheckBox.IsChecked == true);
-        if (FlagCheckBox.IsChecked == true)
-        {
-            _flagWidget ??= new FlagWidget();
-            _flagWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _flagWidget.Show();
-        }
-        else
-        {
-            _flagWidget?.Hide();
-        }
-    }
-
-    private void TireInfoCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("TireInfo", TireInfoCheckBox.IsChecked == true);
-        if (TireInfoCheckBox.IsChecked == true)
-        {
-            _tireInfoWidget ??= new TireInfoWidget();
-            _tireInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _tireInfoWidget.Show();
-        }
-        else
-        {
-            _tireInfoWidget?.Hide();
-        }
-    }
-
-    private void DeltaCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Delta", DeltaCheckBox.IsChecked == true);
-        if (DeltaCheckBox.IsChecked == true)
-        {
-            _deltaWidget ??= new DeltaWidget();
-            _deltaWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _deltaWidget.Show();
-        }
-        else
-        {
-            _deltaWidget?.Hide();
-        }
-    }
-
-    private void FuelCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Fuel", FuelCheckBox.IsChecked == true);
-        if (FuelCheckBox.IsChecked == true)
-        {
-            _fuelWidget ??= new FuelWidget();
-            _fuelWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _fuelWidget.Show();
-        }
-        else
-        {
-            _fuelWidget?.Hide();
-        }
-    }
-
-    private void PedalTraceCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("PedalTrace", PedalTraceCheckBox.IsChecked == true);
-        if (PedalTraceCheckBox.IsChecked == true)
-        {
-            _pedalTraceWidget ??= new PedalTraceWidget();
-            _pedalTraceWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _pedalTraceWidget.Show();
-        }
-        else
-        {
-            _pedalTraceWidget?.Hide();
-        }
-    }
-
-    private void IncidentCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("Incident", IncidentCheckBox.IsChecked == true);
-        if (IncidentCheckBox.IsChecked == true)
-        {
-            _incidentWidget ??= new IncidentWidget();
-            _incidentWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _incidentWidget.Show();
-        }
-        else
-        {
-            _incidentWidget?.Hide();
-        }
-    }
-
-    private void TrackInfoCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("TrackInfo", TrackInfoCheckBox.IsChecked == true);
-        if (TrackInfoCheckBox.IsChecked == true)
-        {
-            _trackInfoWidget ??= new TrackInfoWidget();
-            _trackInfoWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _trackInfoWidget.Show();
-        }
-        else
-        {
-            _trackInfoWidget?.Hide();
-        }
-    }
-
-    private void TrackMapCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        WidgetVisibilityStore.Save("TrackMap", TrackMapCheckBox.IsChecked == true);
-        if (TrackMapCheckBox.IsChecked == true)
-        {
-            _trackMapWidget ??= new TrackMapWidget();
-            _trackMapWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
-            _trackMapWidget.Show();
-        }
-        else
-        {
-            _trackMapWidget?.Hide();
-        }
-    }
-
-    private void StandingsColumn_Changed(object sender, RoutedEventArgs e) =>
-        ApplyColumnToggle(sender, _standingsOptions);
-
-    private void RelativeColumn_Changed(object sender, RoutedEventArgs e) =>
-        ApplyColumnToggle(sender, _relativeOptions);
-
-    /// <summary>Shared by both tables' column checkboxes: the Tag is the DriverTableColumn the box
-    /// drives, so the column, its persistence key and the control can't drift apart.</summary>
-    private static void ApplyColumnToggle(object sender, DriverTableOptions options)
-    {
-        if (sender is not System.Windows.Controls.CheckBox { Tag: string tag } box ||
-            !Enum.TryParse<DriverTableColumn>(tag, out var column))
-        {
-            return;
-        }
-
-        var isVisible = box.IsChecked == true;
-        options.SetVisible(column, isVisible);
-        DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible);
-    }
-
-    private void StandingsSessionId_Changed(object sender, RoutedEventArgs e)
-    {
-        _standingsOptions.ShowSessionId = StandingsSessionIdCheckBox.IsChecked == true;
-        DriverTableOptionsStore.SaveSessionId(DriverTable.Standings, _standingsOptions.ShowSessionId);
-        // The header chip is pushed on the standings tick, so clear it immediately when switched off
-        // rather than leaving a stale value on screen until the next update.
-        _standingsWidget?.SetSessionId(_connection.Session?.WeekendInfo?.SubSessionID ?? 0);
-    }
-
-    private void RelativeSessionId_Changed(object sender, RoutedEventArgs e)
-    {
-        _relativeOptions.ShowSessionId = RelativeSessionIdCheckBox.IsChecked == true;
-        DriverTableOptionsStore.SaveSessionId(DriverTable.Relative, _relativeOptions.ShowSessionId);
-        _relativeWidget?.SetSessionId(_connection.Session?.WeekendInfo?.SubSessionID ?? 0);
-    }
-
-    private void StandingsCarName_Changed(object sender, RoutedEventArgs e)
-    {
-        _standingsOptions.ShowCarName = StandingsCarNameCheckBox.IsChecked == true;
-        DriverTableOptionsStore.SaveCarName(DriverTable.Standings, _standingsOptions.ShowCarName);
-        // Header fields are pushed on the standings tick, so clear it now rather than leaving a
-        // stale value on screen until the next update.
-        _standingsWidget?.SetCarName(StandingsBuilder.SingleClassCarName(_connection.Session));
-    }
-
-    private void RelativeCarName_Changed(object sender, RoutedEventArgs e)
-    {
-        _relativeOptions.ShowCarName = RelativeCarNameCheckBox.IsChecked == true;
-        DriverTableOptionsStore.SaveCarName(DriverTable.Relative, _relativeOptions.ShowCarName);
-        _relativeWidget?.SetCarName(StandingsBuilder.SingleClassCarName(_connection.Session));
-    }
-
-    private void StandingsMulticlass_Changed(object sender, RoutedEventArgs e)
-    {
-        _standingsOptions.ShowMulticlass = StandingsMulticlassCheckBox.IsChecked == true;
-        DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, _standingsOptions.ShowMulticlass);
-    }
-
-    // Unparseable or out-of-range input is ignored rather than snapped to a value, same as the fuel
-    // margin boxes: the user is mid-typing and rewriting their entry under them is hostile.
-    private void StandingsFocusSize_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
-        ApplyFocusSize(StandingsFocusSizeTextBox.Text, _standingsOptions);
-
-    private void RelativeFocusSize_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
-        ApplyFocusSize(RelativeFocusSizeTextBox.Text, _relativeOptions);
-
-    private static void ApplyFocusSize(string text, DriverTableOptions options)
-    {
-        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size) ||
-            size < DriverTableOptions.MinFocusSize)
-        {
-            return;
-        }
-
-        options.FocusSize = size;
-        DriverTableOptionsStore.SaveFocusSize(options.Table, options.FocusSize);
-    }
-
-    private void DeltaReferenceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        _deltaReference = DeltaReferenceComboBox.SelectedIndex switch
-        {
-            1 => DeltaReference.PersonalBestAllTime,
-            2 => DeltaReference.OptimalLap,
-            _ => DeltaReference.SessionBest,
-        };
-    }
-
-    private void DashboardThemeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        var theme = DashboardThemeComboBox.SelectedIndex switch
-        {
-            1 => DashboardTheme.DigitalHud,
-            2 => DashboardTheme.RawDiy,
-            _ => DashboardTheme.Classic,
-        };
-        DashboardThemeStore.Save(theme);
-        _dashboard?.ApplyTheme(theme);
-    }
-
-    private void EditModeCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        var editMode = EditModeCheckBox.IsChecked == true;
-        if (_relativeWidget is not null)
-        {
-            _relativeWidget.IsEditMode = editMode;
-        }
-
-        if (_standingsWidget is not null)
-        {
-            _standingsWidget.IsEditMode = editMode;
-        }
-
-        if (_cockpitWidget is not null)
-        {
-            _cockpitWidget.IsEditMode = editMode;
-        }
-
-        if (_flagWidget is not null)
-        {
-            _flagWidget.IsEditMode = editMode;
-        }
-
-        if (_tireInfoWidget is not null)
-        {
-            _tireInfoWidget.IsEditMode = editMode;
-        }
-
-        if (_deltaWidget is not null)
-        {
-            _deltaWidget.IsEditMode = editMode;
-        }
-
-        if (_fuelWidget is not null)
-        {
-            _fuelWidget.IsEditMode = editMode;
-        }
-
-        if (_pedalTraceWidget is not null)
-        {
-            _pedalTraceWidget.IsEditMode = editMode;
-        }
-
-        if (_incidentWidget is not null)
-        {
-            _incidentWidget.IsEditMode = editMode;
-        }
-
-        if (_trackInfoWidget is not null)
-        {
-            _trackInfoWidget.IsEditMode = editMode;
-        }
-
-        if (_trackMapWidget is not null)
-        {
-            _trackMapWidget.IsEditMode = editMode;
-        }
-
-        if (_fuelCalculatorWidget is not null)
-        {
-            _fuelCalculatorWidget.IsEditMode = editMode;
-        }
-    }
-
-    private void ShowDashboardButton_Click(object sender, RoutedEventArgs e)
+    private void ToggleDashboard()
     {
         if (_dashboard is { IsVisible: true })
         {
             _dashboard.Hide();
-            ShowDashboardButton.Content = "Show dashboard";
+            SetDashboardButtonCaption("Show dashboard");
             return;
         }
 
-        if (MonitorComboBox.SelectedItem is not Screen screen)
+        var screens = Screen.AllScreens;
+        if (screens.Length == 0)
         {
             return;
         }
 
-        if (_dashboard is null)
-        {
-            _dashboard = new DashboardWindow();
-            _dashboard.Closed += (_, _) => ShowDashboardButton.Content = "Show dashboard";
-        }
+        _dashboard ??= CreateDashboard();
+        _dashboard.MoveToScreen(screens[Math.Clamp(_vm.SelectedMonitorIndex, 0, screens.Length - 1)]);
+        SetDashboardButtonCaption("Hide dashboard");
+    }
 
-        _dashboard.MoveToScreen(screen);
-        ShowDashboardButton.Content = "Hide dashboard";
+    private DashboardWindow CreateDashboard()
+    {
+        var dashboard = new DashboardWindow();
+        dashboard.Closed += (_, _) => SetDashboardButtonCaption("Show dashboard");
+        return dashboard;
+    }
+
+    private void SetDashboardButtonCaption(string caption)
+    {
+        if (_vm.DashboardButton is { } button)
+        {
+            button.ButtonText = caption;
+        }
     }
 }
