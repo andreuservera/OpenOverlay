@@ -10,6 +10,11 @@
                      (not per-window) so floating widgets and the Dashboard resolve identical values.
                      Theme dictionaries never override these — only the chrome keys below. -->
                 <ResourceDictionary Source="Themes/DesignTokens.xaml"/>
+                <!-- The driver-table column ruler and row template, shared by Standings and
+                     Relative. Merged at application level, after the tokens it builds on: a
+                     dictionary can rely on StaticResource lookups into earlier entries of the same
+                     MergedDictionaries collection, which is what keeps the styles below resolvable. -->
+                <ResourceDictionary Source="Themes/DriverTable.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <!--

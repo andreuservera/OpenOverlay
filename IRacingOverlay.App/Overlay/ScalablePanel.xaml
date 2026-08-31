@@ -5,27 +5,57 @@
     <UserControl.Resources>
         <!-- The default WPF button chrome is a light-gray 3D bevel, which looks like a stray dialog
              control sitting on a dark overlay. Same size and behaviour, overlay-native finish. -->
-        <Style x:Key="ZoomButton" TargetType="Button">
-            <Setter Property="Width" Value="20"/>
-            <Setter Property="Height" Value="20"/>
+        <Style x:Key="ScaleStepButton" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Chrome" Background="#CC1C2026" BorderBrush="#5A6068" BorderThickness="1"
-                                CornerRadius="{StaticResource Radius.Chip}">
+                        <Border x:Name="Chrome" Background="#00000000" CornerRadius="11">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#E62E343C"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="#33FFFFFF"/>
                                 <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#E6454C56"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="#55FFFFFF"/>
+                            </Trigger>
+                            <!-- At XS/XL the corresponding button stays in place but inert: the
+                                 control never changes shape, and the greyed glyph says "end of the
+                                 ladder" instead of leaving a press looking broken. -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#55606A"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The level readout doubles as the reset affordance: one click returns the panel to M. -->
+        <Style x:Key="ScaleLevelChip" TargetType="Button">
+            <Setter Property="MinWidth" Value="26"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="#00000000" CornerRadius="11">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#33FFFFFF"/>
+                                <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -33,19 +63,42 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid Background="Transparent" MouseEnter="Root_MouseEnter" MouseLeave="Root_MouseLeave">
-        <ContentPresenter x:Name="InnerContent" Content="{Binding ScalableContent, ElementName=Root}">
+
+    <!-- Background="Transparent" so the panel's whole area (not just its painted pixels) raises the
+         hover that reveals the size control. -->
+    <Grid Background="Transparent" MouseEnter="Root_MouseEnter" MouseLeave="Root_MouseLeave"
+          PreviewMouseWheel="Root_PreviewMouseWheel">
+        <!-- ContentHost carries the design size and the transform that scales it. The design size is
+             bound to MinWidth/MinHeight rather than Width/Height on purpose: it guarantees a floor
+             (a stretch-to-fill panel can't collapse to its caption) while still letting content that
+             measures larger have the room it asks for, so this can never be what clips a panel.
+             LayoutTransform — not RenderTransform — is what makes this control report the *scaled*
+             size to its parent, which is the whole reason a SizeToContent widget window ends up
+             exactly as big as its content at every level, never smaller. -->
+        <ContentPresenter x:Name="ContentHost"
+                          Content="{Binding ScalableContent, ElementName=Root}"
+                          MinWidth="{Binding DesignWidth, ElementName=Root}"
+                          MinHeight="{Binding DesignHeight, ElementName=Root}">
             <ContentPresenter.LayoutTransform>
-                <ScaleTransform x:Name="ScaleTransform" ScaleX="1" ScaleY="1"/>
+                <ScaleTransform x:Name="ContentScale" ScaleX="1" ScaleY="1"/>
             </ContentPresenter.LayoutTransform>
         </ContentPresenter>
 
-        <StackPanel x:Name="ButtonsPanel" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                    Margin="0,0,20,4" Visibility="Collapsed">
-            <Button x:Name="MinusButton" Content="−" Style="{StaticResource ZoomButton}"
-                    Margin="0,0,4,0" Click="MinusButton_Click" ToolTip="Smaller text"/>
-            <Button x:Name="PlusButton" Content="+" Style="{StaticResource ZoomButton}"
-                    Click="PlusButton_Click" ToolTip="Bigger text"/>
-        </StackPanel>
+        <!-- Floats over the top-right corner rather than taking part in layout: reserving a row for
+             it would make every widget jump taller the moment the pointer touched it. Hover-only,
+             and hit-testable only while shown, so it can never swallow a click meant for the widget
+             (or for the game behind it). -->
+        <Border x:Name="ScaleChrome" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
+                Background="#E60F1216" BorderBrush="#5A6068" BorderThickness="1" CornerRadius="13"
+                Padding="3" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="MinusButton" Content="−" Style="{StaticResource ScaleStepButton}"
+                        Click="MinusButton_Click" ToolTip="Smaller (Ctrl + wheel down)"/>
+                <Button x:Name="LevelChip" Style="{StaticResource ScaleLevelChip}"
+                        Click="LevelChip_Click" ToolTip="Reset to M"/>
+                <Button x:Name="PlusButton" Content="+" Style="{StaticResource ScaleStepButton}"
+                        Click="PlusButton_Click" ToolTip="Bigger (Ctrl + wheel up)"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

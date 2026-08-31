@@ -60,14 +60,29 @@ public class StandingsRowTests
         Assert.Equal("—", Row(iRatingDelta: 12, iRating: 0).IRatingDeltaDisplay);
     }
 
-    [Fact]
-    public void IRatingDeltaForeground_PositiveIsGreen_NegativeIsRed_ZeroIsGray()
+    [Theory]
+    // A swing that rounds to nothing reads as a dash, not "+0": practice and qualifying produce no
+    // estimate at all, and "+0" there looks like a computed result rather than an absent one.
+    [InlineData(0, "—")]
+    [InlineData(0.4, "—")]
+    [InlineData(-0.4, "—")]
+    [InlineData(0.6, "+1")]
+    [InlineData(-0.6, "-1")]
+    public void IRatingDeltaDisplay_RoundsBeforeDecidingWhetherThereIsASwingAtAll(double delta, string expected)
     {
-        // These are the semantic State.Positive / State.Negative / Text.Muted values from
-        // Themes/DesignTokens.xaml — the ViewModel hands the UI a color string, so the two have to
-        // agree by hand.
+        Assert.Equal(expected, Row(iRatingDelta: delta).IRatingDeltaDisplay);
+    }
+
+    [Fact]
+    public void IRatingDeltaForeground_PositiveIsGreen_NegativeIsRed_NoSwingIsNeutral()
+    {
+        // The ViewModel hands the UI a colour string, so these have to agree with the palette by
+        // hand. The red is lighter than the app's standard critical red: measured on a row
+        // background, a saturated red doesn't clear 4.5:1 against the text beside it.
         Assert.Equal("#3DDC7A", Row(iRatingDelta: 5).IRatingDeltaForeground);
-        Assert.Equal("#FF5A5A", Row(iRatingDelta: -5).IRatingDeltaForeground);
-        Assert.Equal("#9BA5AE", Row(iRatingDelta: 0).IRatingDeltaForeground);
+        Assert.Equal("#FFB3B3", Row(iRatingDelta: -5).IRatingDeltaForeground);
+        Assert.Equal("#D2D8DE", Row(iRatingDelta: 0).IRatingDeltaForeground);
+        // Colour follows the rounded value too, so a dash is never tinted as a gain.
+        Assert.Equal("#D2D8DE", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
     }
 }

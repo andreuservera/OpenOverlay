@@ -63,7 +63,12 @@ public partial class MainWindow : Window
     private FuelCalculatorWidget? _fuelCalculatorWidget;
     private DashboardWindow? _dashboard;
     private DeltaReference _deltaReference = DeltaReference.SessionBest;
-    private readonly StandingsColumnVisibility _standingsColumnVisibility = new();
+    private readonly DriverTableOptions _standingsOptions = new(DriverTable.Standings);
+    private readonly DriverTableOptions _relativeOptions = new(DriverTable.Relative);
+
+    // Last computed running order, shared with Relative so both tables report the same position for
+    // the same driver. Rebuilt on the standings tick, not every frame.
+    private IReadOnlyList<StandingsRow> _latestStandings = [];
     private readonly FuelCalculatorOptions _fuelCalculatorOptions = new();
 
     public MainWindow()
@@ -131,25 +136,54 @@ public partial class MainWindow : Window
 
         RestoreWidgetVisibility();
         RestoreAutoHideCheckboxes();
-        RestoreStandingsColumnVisibility();
+        RestoreStandingsOptions();
+        RestoreRelativeOptions();
         RestoreFuelCalculatorOptions(savedFuelAverageSource);
 
         _connection.Start();
     }
 
-    /// <summary>Loads persisted Standings column toggles into both the checkboxes and the shared
-    /// StandingsColumnVisibility instance the overlay widget's panel binds to — the Dashboard's own
-    /// panel instance never sees this object, so it always shows every column.</summary>
-    private void RestoreStandingsColumnVisibility()
+    /// <summary>Loads the persisted Standings settings into both the control-panel inputs and the
+    /// shared DriverTableOptions instance the overlay widget's panel binds to — the Dashboard's own
+    /// panel instance never sees this object, so it always shows the full field with every
+    /// column.</summary>
+    private void RestoreStandingsOptions()
     {
-        StandingsColumnVisibilityStore.ApplyTo(_standingsColumnVisibility);
-        StandingsIRatingCheckBox.IsChecked = _standingsColumnVisibility.ShowIRating;
-        StandingsIRatingDeltaCheckBox.IsChecked = _standingsColumnVisibility.ShowIRatingDelta;
-        StandingsLicenseCheckBox.IsChecked = _standingsColumnVisibility.ShowLicense;
-        StandingsLapCheckBox.IsChecked = _standingsColumnVisibility.ShowLap;
-        StandingsLastLapCheckBox.IsChecked = _standingsColumnVisibility.ShowLastLap;
-        StandingsBestLapCheckBox.IsChecked = _standingsColumnVisibility.ShowBestLap;
-        StandingsGapCheckBox.IsChecked = _standingsColumnVisibility.ShowGap;
+        DriverTableOptionsStore.ApplyTo(_standingsOptions);
+        StandingsPositionCheckBox.IsChecked = _standingsOptions.ShowPosition;
+        StandingsCarNumberCheckBox.IsChecked = _standingsOptions.ShowCarNumber;
+        StandingsDriverCheckBox.IsChecked = _standingsOptions.ShowDriver;
+        StandingsIRatingCheckBox.IsChecked = _standingsOptions.ShowIRating;
+        StandingsIRatingDeltaCheckBox.IsChecked = _standingsOptions.ShowIRatingDelta;
+        StandingsLicenseCheckBox.IsChecked = _standingsOptions.ShowLicense;
+        StandingsLapCheckBox.IsChecked = _standingsOptions.ShowLap;
+        StandingsLastLapCheckBox.IsChecked = _standingsOptions.ShowLastLap;
+        StandingsBestLapCheckBox.IsChecked = _standingsOptions.ShowBestLap;
+        StandingsGapCheckBox.IsChecked = _standingsOptions.ShowGap;
+        StandingsSessionIdCheckBox.IsChecked = _standingsOptions.ShowSessionId;
+        StandingsCarNameCheckBox.IsChecked = _standingsOptions.ShowCarName;
+        StandingsMulticlassCheckBox.IsChecked = _standingsOptions.ShowMulticlass;
+        StandingsFocusSizeTextBox.Text = _standingsOptions.FocusSize.ToString(CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>Same as <see cref="RestoreStandingsOptions"/>, for the Relative widget's own
+    /// independent settings.</summary>
+    private void RestoreRelativeOptions()
+    {
+        DriverTableOptionsStore.ApplyTo(_relativeOptions);
+        RelativePositionCheckBox.IsChecked = _relativeOptions.ShowPosition;
+        RelativeCarNumberCheckBox.IsChecked = _relativeOptions.ShowCarNumber;
+        RelativeDriverCheckBox.IsChecked = _relativeOptions.ShowDriver;
+        RelativeIRatingCheckBox.IsChecked = _relativeOptions.ShowIRating;
+        RelativeIRatingDeltaCheckBox.IsChecked = _relativeOptions.ShowIRatingDelta;
+        RelativeLicenseCheckBox.IsChecked = _relativeOptions.ShowLicense;
+        RelativeLapCheckBox.IsChecked = _relativeOptions.ShowLap;
+        RelativeBestLapCheckBox.IsChecked = _relativeOptions.ShowBestLap;
+        RelativeLastLapCheckBox.IsChecked = _relativeOptions.ShowLastLap;
+        RelativeGapCheckBox.IsChecked = _relativeOptions.ShowGap;
+        RelativeSessionIdCheckBox.IsChecked = _relativeOptions.ShowSessionId;
+        RelativeCarNameCheckBox.IsChecked = _relativeOptions.ShowCarName;
+        RelativeFocusSizeTextBox.Text = _relativeOptions.FocusSize.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>Pushes the already-loaded Fuel Calculator settings into the control-panel inputs.
@@ -253,21 +287,51 @@ public partial class MainWindow : Window
         ApplyAutoHideVisibility(playerNotDriving);
 
         var session = _connection.Session;
-        var relativeRows = StandingsBuilder.BuildRelative(telemetry, session);
-        _relativeWidget?.UpdateRows(relativeRows);
-        _dashboard?.UpdateRelativeRows(relativeRows);
-
         _tickCount++;
-        if ((_standingsWidget is not null || _dashboard is not null) && _tickCount % StandingsUpdateEveryNTicks == 0)
+        // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
+        // whenever any of the three consumers is open — not just the two that display it directly.
+        var needsStandings = _standingsWidget is not null || _dashboard is not null || _relativeWidget is not null;
+        if (needsStandings && _tickCount % StandingsUpdateEveryNTicks == 0)
         {
-            var standingsRows = StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker);
-            var standingsDisplay = StandingsBuilder.GroupForDisplay(standingsRows);
-            var sof = StandingsBuilder.ComputeStrengthOfField(session);
-            _standingsWidget?.UpdateRows(standingsDisplay);
-            _standingsWidget?.SetSof(sof);
-            _dashboard?.UpdateStandingsRows(standingsDisplay);
-            _dashboard?.UpdateStandingsSof(sof);
+            _latestStandings = StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker);
+
+            // Only the two widgets that display SOF pay for it — Relative pulls the running order
+            // out of this block but has no use for the field strength.
+            var sof = _standingsWidget is not null || _dashboard is not null
+                ? StandingsBuilder.ComputeStrengthOfField(session)
+                : 0;
+            if (_standingsWidget is not null)
+            {
+                // The floating widget gets the compact focused view (podium + a block around the
+                // player); the Dashboard has the room for the whole field, grouped by class.
+                _standingsWidget.UpdateRows(_standingsOptions.ShowMulticlass
+                    ? StandingsBuilder.BuildMulticlassView(_latestStandings, _standingsOptions.FocusSize)
+                    : StandingsBuilder.BuildFocusedView(_latestStandings, _standingsOptions.FocusSize));
+                _standingsWidget.SetSof(sof);
+                _standingsWidget.SetCarName(StandingsBuilder.SingleClassCarName(session));
+                _standingsWidget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
+            }
+
+            if (_dashboard is not null)
+            {
+                var grouped = StandingsBuilder.GroupForDisplay(_latestStandings);
+                _dashboard.UpdateStandingsRows(grouped);
+                _dashboard.UpdateStandingsSof(sof);
+                _dashboard.UpdateStandingsCarName(StandingsBuilder.SingleClassCarName(session));
+            }
         }
+
+        // Built every tick, unlike standings: Relative is about where cars are right now, and a
+        // once-a-second refresh is visibly laggy when someone is alongside you.
+        var relativeRows = StandingsBuilder.BuildRelative(telemetry, session, _relativeOptions.FocusSize, _latestStandings);
+        if (_relativeWidget is not null)
+        {
+            _relativeWidget.UpdateRows(relativeRows);
+            _relativeWidget.SetCarName(StandingsBuilder.SingleClassCarName(session));
+            _relativeWidget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
+        }
+
+        _dashboard?.UpdateRelativeRows(relativeRows);
 
         if (_flagWidget is not null || _dashboard is not null)
         {
@@ -569,7 +633,12 @@ public partial class MainWindow : Window
         WidgetVisibilityStore.Save("Relative", RelativeCheckBox.IsChecked == true);
         if (RelativeCheckBox.IsChecked == true)
         {
-            _relativeWidget ??= new RelativeWidget();
+            if (_relativeWidget is null)
+            {
+                _relativeWidget = new RelativeWidget();
+                _relativeWidget.SetOptions(_relativeOptions);
+            }
+
             _relativeWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
             _relativeWidget.Show();
         }
@@ -587,7 +656,7 @@ public partial class MainWindow : Window
             if (_standingsWidget is null)
             {
                 _standingsWidget = new StandingsWidget();
-                _standingsWidget.SetColumnVisibility(_standingsColumnVisibility);
+                _standingsWidget.SetOptions(_standingsOptions);
             }
 
             _standingsWidget.IsEditMode = EditModeCheckBox.IsChecked == true;
@@ -734,46 +803,83 @@ public partial class MainWindow : Window
         }
     }
 
-    private void StandingsIRatingCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void StandingsColumn_Changed(object sender, RoutedEventArgs e) =>
+        ApplyColumnToggle(sender, _standingsOptions);
+
+    private void RelativeColumn_Changed(object sender, RoutedEventArgs e) =>
+        ApplyColumnToggle(sender, _relativeOptions);
+
+    /// <summary>Shared by both tables' column checkboxes: the Tag is the DriverTableColumn the box
+    /// drives, so the column, its persistence key and the control can't drift apart.</summary>
+    private static void ApplyColumnToggle(object sender, DriverTableOptions options)
     {
-        _standingsColumnVisibility.ShowIRating = StandingsIRatingCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowIRating), _standingsColumnVisibility.ShowIRating);
+        if (sender is not System.Windows.Controls.CheckBox { Tag: string tag } box ||
+            !Enum.TryParse<DriverTableColumn>(tag, out var column))
+        {
+            return;
+        }
+
+        var isVisible = box.IsChecked == true;
+        options.SetVisible(column, isVisible);
+        DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible);
     }
 
-    private void StandingsIRatingDeltaCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void StandingsSessionId_Changed(object sender, RoutedEventArgs e)
     {
-        _standingsColumnVisibility.ShowIRatingDelta = StandingsIRatingDeltaCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowIRatingDelta), _standingsColumnVisibility.ShowIRatingDelta);
+        _standingsOptions.ShowSessionId = StandingsSessionIdCheckBox.IsChecked == true;
+        DriverTableOptionsStore.SaveSessionId(DriverTable.Standings, _standingsOptions.ShowSessionId);
+        // The header chip is pushed on the standings tick, so clear it immediately when switched off
+        // rather than leaving a stale value on screen until the next update.
+        _standingsWidget?.SetSessionId(_connection.Session?.WeekendInfo?.SubSessionID ?? 0);
     }
 
-    private void StandingsLicenseCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void RelativeSessionId_Changed(object sender, RoutedEventArgs e)
     {
-        _standingsColumnVisibility.ShowLicense = StandingsLicenseCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowLicense), _standingsColumnVisibility.ShowLicense);
+        _relativeOptions.ShowSessionId = RelativeSessionIdCheckBox.IsChecked == true;
+        DriverTableOptionsStore.SaveSessionId(DriverTable.Relative, _relativeOptions.ShowSessionId);
+        _relativeWidget?.SetSessionId(_connection.Session?.WeekendInfo?.SubSessionID ?? 0);
     }
 
-    private void StandingsLapCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void StandingsCarName_Changed(object sender, RoutedEventArgs e)
     {
-        _standingsColumnVisibility.ShowLap = StandingsLapCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowLap), _standingsColumnVisibility.ShowLap);
+        _standingsOptions.ShowCarName = StandingsCarNameCheckBox.IsChecked == true;
+        DriverTableOptionsStore.SaveCarName(DriverTable.Standings, _standingsOptions.ShowCarName);
+        // Header fields are pushed on the standings tick, so clear it now rather than leaving a
+        // stale value on screen until the next update.
+        _standingsWidget?.SetCarName(StandingsBuilder.SingleClassCarName(_connection.Session));
     }
 
-    private void StandingsLastLapCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void RelativeCarName_Changed(object sender, RoutedEventArgs e)
     {
-        _standingsColumnVisibility.ShowLastLap = StandingsLastLapCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowLastLap), _standingsColumnVisibility.ShowLastLap);
+        _relativeOptions.ShowCarName = RelativeCarNameCheckBox.IsChecked == true;
+        DriverTableOptionsStore.SaveCarName(DriverTable.Relative, _relativeOptions.ShowCarName);
+        _relativeWidget?.SetCarName(StandingsBuilder.SingleClassCarName(_connection.Session));
     }
 
-    private void StandingsBestLapCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void StandingsMulticlass_Changed(object sender, RoutedEventArgs e)
     {
-        _standingsColumnVisibility.ShowBestLap = StandingsBestLapCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowBestLap), _standingsColumnVisibility.ShowBestLap);
+        _standingsOptions.ShowMulticlass = StandingsMulticlassCheckBox.IsChecked == true;
+        DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, _standingsOptions.ShowMulticlass);
     }
 
-    private void StandingsGapCheckBox_Changed(object sender, RoutedEventArgs e)
+    // Unparseable or out-of-range input is ignored rather than snapped to a value, same as the fuel
+    // margin boxes: the user is mid-typing and rewriting their entry under them is hostile.
+    private void StandingsFocusSize_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
+        ApplyFocusSize(StandingsFocusSizeTextBox.Text, _standingsOptions);
+
+    private void RelativeFocusSize_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
+        ApplyFocusSize(RelativeFocusSizeTextBox.Text, _relativeOptions);
+
+    private static void ApplyFocusSize(string text, DriverTableOptions options)
     {
-        _standingsColumnVisibility.ShowGap = StandingsGapCheckBox.IsChecked == true;
-        StandingsColumnVisibilityStore.Save(nameof(StandingsColumnVisibility.ShowGap), _standingsColumnVisibility.ShowGap);
+        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size) ||
+            size < DriverTableOptions.MinFocusSize)
+        {
+            return;
+        }
+
+        options.FocusSize = size;
+        DriverTableOptionsStore.SaveFocusSize(options.Table, options.FocusSize);
     }
 
     private void DeltaReferenceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

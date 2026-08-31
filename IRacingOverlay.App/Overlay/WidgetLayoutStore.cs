@@ -3,9 +3,13 @@ using System.Text.Json;
 
 namespace IRacingOverlay.App.Overlay;
 
-internal sealed record WidgetLayout(double Left, double Top, double Width, double Height);
+/// <summary>Where the user put a widget. Size is deliberately absent: a widget's size is derived
+/// from its content and its <see cref="ScaleLevel"/> (see <see cref="ScaleLevelStore"/>), never
+/// stored as a free-form width/height that could contradict what the content needs. Width/Height
+/// left over in an older layout.json are simply ignored on load.</summary>
+internal sealed record WidgetLayout(double Left, double Top);
 
-/// <summary>Persists each widget's position/size across app restarts, keyed by widget name.</summary>
+/// <summary>Persists each widget's position across app restarts, keyed by widget name.</summary>
 internal static class WidgetLayoutStore
 {
     private static readonly string FilePath = Path.Combine(

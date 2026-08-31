@@ -14,11 +14,11 @@
             <Polyline Grid.Column="0" Points="14,0 3,28 14,56" Stroke="{StaticResource State.Warning}" StrokeThickness="3"
                       VerticalAlignment="Center" Margin="0,0,8,0"/>
 
-            <!-- The CockpitPanel that hosts this is always wrapped in a Viewbox (both the floating
-                 widget and the Dashboard), so this FontSize only sets the *proportions* relative to
-                 Speed/RPM in the same cluster — the Viewbox re-normalizes the whole thing to fit
-                 whatever space is actually available, so it can never overflow/overlap regardless of
-                 zoom level or window size. -->
+            <!-- 56 is a proportion, not a size: the whole CockpitPanel this sits in is laid out once
+                 at its 310x150 design canvas and then scaled as a unit by ScalablePanel's
+                 LayoutTransform, so this only fixes how big the gear digit is *relative to*
+                 Speed/RPM in the same cluster. It scales with them at every level, so it can never
+                 overflow or overlap them no matter which size the user picks. -->
             <TextBlock x:Name="GearText" Grid.Column="1" Text="–" FontSize="56" FontWeight="Bold" Foreground="{StaticResource Text.Primary}"
                        HorizontalAlignment="Center" FontFamily="{DynamicResource Theme.GearFontFamily}"/>
 

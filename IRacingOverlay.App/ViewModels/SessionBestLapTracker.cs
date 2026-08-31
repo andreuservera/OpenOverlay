@@ -19,7 +19,7 @@ internal sealed class SessionBestLapTracker
     /// <paramref name="sessionNum"/> shows the session itself has changed, e.g. Practice ending and
     /// Qualifying beginning) and returns the up-to-date best time known for every car so far.
     /// </summary>
-    public IReadOnlyDictionary<int, double> Update(int sessionNum, IEnumerable<int> carIndexes, float[]? bestLaps, float[]? lastLaps)
+    public IReadOnlyDictionary<int, double> Update(int sessionNum, IEnumerable<int> carIndexes, LapTimeSource laps)
     {
         if (_sessionNum != sessionNum)
         {
@@ -29,7 +29,7 @@ internal sealed class SessionBestLapTracker
 
         foreach (var carIdx in carIndexes)
         {
-            var live = LiveBest(carIdx, bestLaps, lastLaps);
+            var live = laps.Best(carIdx);
             if (live > 0 && (!_bestByCarIdx.TryGetValue(carIdx, out var cached) || live < cached))
             {
                 _bestByCarIdx[carIdx] = live;
@@ -37,17 +37,5 @@ internal sealed class SessionBestLapTracker
         }
 
         return _bestByCarIdx;
-    }
-
-    private static double LiveBest(int carIdx, float[]? bestLaps, float[]? lastLaps)
-    {
-        var best = bestLaps is not null && carIdx >= 0 && carIdx < bestLaps.Length ? bestLaps[carIdx] : 0;
-        if (best > 0)
-        {
-            return best;
-        }
-
-        var last = lastLaps is not null && carIdx >= 0 && carIdx < lastLaps.Length ? lastLaps[carIdx] : 0;
-        return last > 0 ? last : 0;
     }
 }

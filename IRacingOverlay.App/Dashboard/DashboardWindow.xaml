@@ -22,7 +22,9 @@
 
         <!-- Track map: the one element that spans the *entire* screen width (over both proximity
              bar columns too), pinned at the very top — every other panel lives inside the center
-             column only. -->
+             column only. Left stretched rather than given a design width: under a LayoutTransform a
+             stretched child is measured against the inverse-scaled slot, so the bar keeps filling
+             the screen at every level and only its contents grow. -->
         <ov:ScalablePanel x:Name="TrackMapScaler" PersistenceKey="Dashboard.TrackMap"
                           Grid.Row="0" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Margin="0,0,0,14">
             <w:TrackMapPanel/>
@@ -30,8 +32,9 @@
 
         <!-- Center: tire info TR, flag+fuel+incidents BL, pedal trace BR, around the biggest
              elements — standings/relative in the middle, gear/delta bottom-center. Every panel is
-             wrapped in ScalablePanel so its +/- buttons can resize it independently of the others
-             (dashboard panels have no edit-mode/click-through concept, so buttons always show). -->
+             wrapped in ScalablePanel so its +/- control resizes it independently of the others
+             (dashboard panels have no edit-mode/click-through concept, so the control is always
+             reachable — it still only appears on hover). -->
         <Grid Grid.Row="1" Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -73,8 +76,8 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <ov:ScalablePanel x:Name="TireInfoScaler" PersistenceKey="Dashboard.TireInfo"
-                                      Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" MinWidth="300" Margin="0,0,0,12">
+                    <ov:ScalablePanel x:Name="TireInfoScaler" PersistenceKey="Dashboard.TireInfo" DesignWidth="300"
+                                      Grid.Row="0" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,12">
                         <w:TireInfoPanel/>
                     </ov:ScalablePanel>
                     <ov:ScalablePanel x:Name="RelativeScaler" PersistenceKey="Dashboard.Relative" Grid.Row="1">
@@ -83,31 +86,21 @@
                 </Grid>
             </Grid>
 
-            <ov:ScalablePanel x:Name="DeltaScaler" PersistenceKey="Dashboard.Delta"
-                              Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Bottom" MinWidth="260">
+            <ov:ScalablePanel x:Name="DeltaScaler" PersistenceKey="Dashboard.Delta" DesignWidth="260"
+                              Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Bottom">
                 <w:DeltaPanel/>
             </ov:ScalablePanel>
 
             <!-- Cockpit cluster (speed/gear/RPM/ABS/proximity, all in one bezel): lower-center,
                  closer to eye level since a second monitor is typically mounted above the main one.
-                 Same CockpitPanel the floating widget uses, so both stay visually identical by
-                 construction rather than by keeping two hand-written layouts in sync. Unlike the
-                 floating widget, the size belongs directly on the Viewbox here, NOT an inner Grid —
-                 a sizeless Viewbox wrapping a fixed-size inner Grid, combined with this
-                 ScalablePanel's LayoutTransform-based +/- zoom, badly mis-measures (a large,
-                 wrong size blowup that pushed Standings/Relative off and collided with Pedals),
-                 confirmed by reverting straight back to this simpler form and watching the bug
-                 disappear. The floating widget doesn't have this problem because it never applies a
-                 non-1:1 LayoutTransform (ShowButtons=False there), so its own sizeless-Viewbox fix
-                 for window-resizing stays exactly as-is. 310x150 is CockpitPanel's own measured
-                 natural size (tightly-fit fixed-width columns inside, no padded-out star ratios) —
-                 that's what actually eliminated the dead space between speed/gear/RPM, not the
-                 Viewbox structure. -->
-            <ov:ScalablePanel x:Name="CockpitScaler" PersistenceKey="Dashboard.Cockpit"
+                 Same CockpitPanel the floating widget uses, at the same 310x150 design size, so both
+                 stay visually identical by construction rather than by keeping two hand-written
+                 layouts in sync. 310x150 is CockpitPanel's own measured natural size (tightly-fit
+                 fixed-width columns inside, no padded-out star ratios) — that's what eliminated the
+                 dead space between speed/gear/RPM. -->
+            <ov:ScalablePanel x:Name="CockpitScaler" PersistenceKey="Dashboard.Cockpit" DesignWidth="310" DesignHeight="150"
                               Grid.Row="4" HorizontalAlignment="Center" Margin="0,14,0,0">
-                <Viewbox Stretch="Uniform" Width="310" Height="150">
-                    <w:CockpitPanel/>
-                </Viewbox>
+                <w:CockpitPanel/>
             </ov:ScalablePanel>
 
             <!-- Bottom-left corner: flag (enlarged, FlagPanel's own box size grew, so it reads at a
@@ -117,14 +110,14 @@
                  Standings/Relative to stretch into. Spans all rows so it can anchor to the true
                  bottom-left of the center area. -->
             <StackPanel Grid.Row="1" Grid.RowSpan="4" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom">
-                <ov:ScalablePanel x:Name="FlagScaler" PersistenceKey="Dashboard.Flag" MinWidth="280">
+                <ov:ScalablePanel x:Name="FlagScaler" PersistenceKey="Dashboard.Flag" DesignWidth="280">
                     <w:FlagPanel/>
                 </ov:ScalablePanel>
                 <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" Margin="12,0,0,0">
-                    <ov:ScalablePanel x:Name="FuelScaler" PersistenceKey="Dashboard.Fuel" Width="210" Margin="0,0,0,10">
+                    <ov:ScalablePanel x:Name="FuelScaler" PersistenceKey="Dashboard.Fuel" DesignWidth="320" Margin="0,0,0,10">
                         <w:FuelPanel/>
                     </ov:ScalablePanel>
-                    <ov:ScalablePanel x:Name="IncidentScaler" PersistenceKey="Dashboard.Incident" Width="210">
+                    <ov:ScalablePanel x:Name="IncidentScaler" PersistenceKey="Dashboard.Incident" DesignWidth="320">
                         <w:IncidentPanel/>
                     </ov:ScalablePanel>
                 </StackPanel>
@@ -132,9 +125,8 @@
 
             <!-- Pedal trace: bottom-right corner, mirroring the flag's bottom-left placement so the
                  four corners stay visually balanced. -->
-            <ov:ScalablePanel x:Name="PedalTraceScaler" PersistenceKey="Dashboard.PedalTrace"
-                              Grid.Row="3" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                              MinWidth="340" MinHeight="180">
+            <ov:ScalablePanel x:Name="PedalTraceScaler" PersistenceKey="Dashboard.PedalTrace" DesignWidth="340" DesignHeight="180"
+                              Grid.Row="3" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <w:PedalTracePanel/>
             </ov:ScalablePanel>
         </Grid>

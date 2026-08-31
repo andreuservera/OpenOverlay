@@ -5,7 +5,7 @@ namespace IRacingOverlay.App.Overlay;
 
 /// <summary>Persists which overlay checkboxes were checked in the control panel, so the app restores
 /// the same set of visible widgets on the next launch instead of starting with everything hidden.
-/// Same JSON-file-per-key pattern as WidgetLayoutStore/PanelScaleStore, kept separate since "was this
+/// Same JSON-file-per-key pattern as WidgetLayoutStore/ScaleLevelStore, kept separate since "was this
 /// checked" is conceptually distinct from position/size or font scale.</summary>
 internal static class WidgetVisibilityStore
 {

@@ -1,5 +1,4 @@
 using System.Windows;
-using System.Windows.Controls;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
@@ -44,11 +43,7 @@ public partial class DashboardWindow : Window
         _deltaPanel = (DeltaPanel)DeltaScaler.ScalableContent!;
         _flagPanel = (FlagPanel)FlagScaler.ScalableContent!;
         _pedalTracePanel = (PedalTracePanel)PedalTraceScaler.ScalableContent!;
-
-        // Structural lookup, not x:Name — naming elements nested inside a ScalablePanel's
-        // ContentProperty subtree hits WPF's MC3093 "already had a name registered" error.
-        var cockpitViewbox = (Viewbox)CockpitScaler.ScalableContent!;
-        _cockpitPanel = (CockpitPanel)cockpitViewbox.Child;
+        _cockpitPanel = (CockpitPanel)CockpitScaler.ScalableContent!;
 
         ApplyTheme(DashboardThemeStore.Get());
     }
@@ -100,7 +95,9 @@ public partial class DashboardWindow : Window
 
     public void UpdateStandingsSof(double sof) => _standingsPanel.SetSof(sof);
 
-    public void UpdateRelativeRows(IReadOnlyList<RelativeRow> relative) => _relativePanel.SetRows(relative);
+    public void UpdateStandingsCarName(string carName) => _standingsPanel.SetCarName(carName);
+
+    public void UpdateRelativeRows(IReadOnlyList<object> relative) => _relativePanel.SetRows(relative);
 
     public void UpdateCockpit(CockpitState state) => _cockpitPanel.UpdateState(state);
 

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Flag" Width="320" Height="260" MinWidth="220" MinHeight="100">
+        Title="Flag">
     <!-- Unlike every other widget's panel, FlagPanel paints nothing across most of its area when
          few/no flags are active — its Background is Transparent by design, so the game shows
          through. But a window with AllowsTransparency="True" only receives mouse clicks where

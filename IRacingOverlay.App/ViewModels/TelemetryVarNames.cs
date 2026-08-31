@@ -16,6 +16,9 @@ internal static class TelemetryVarNames
     public const string LapDistPct = "LapDistPct";
     public const string SessionTime = "SessionTime";
     public const string SessionState = "SessionState";
+    /// <summary>int — which of the weekend's sessions is running. The only reliable source: the
+    /// session YAML has no equivalent key (see <see cref="CurrentSession"/>).</summary>
+    public const string SessionNum = "SessionNum";
     /// <summary>bool — confirmed via iRacing's own SDK docs: "true only when the player is running
     /// the physics for the car and is currently in the car," i.e. false at the main menu, on a
     /// garage/setup screen, spectating, or watching a replay — even if a car is sitting out on

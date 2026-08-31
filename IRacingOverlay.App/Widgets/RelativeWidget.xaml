@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Relative" Width="260" Height="280" MinWidth="160" MinHeight="120">
+        Title="Relative">
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">
@@ -14,7 +14,11 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Relative">
+        <!-- Driver names are the widest thing here and the name column is a star, so left to measure
+             itself the panel collapses to whatever names happen to be on track right now. 300 keeps
+             the row rhythm steady and gives full names room instead of ellipsing them. -->
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Relative"
+                          DesignWidth="300">
             <w:RelativePanel/>
         </ov:ScalablePanel>
     </Border>
