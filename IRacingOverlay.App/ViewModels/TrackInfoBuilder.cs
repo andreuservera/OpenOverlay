@@ -29,16 +29,15 @@ internal static class TrackInfoBuilder
 
         var sessionLabel = "";
         var trackUsage = "";
-        if (session?.SessionInfo is { } sessionInfo)
+        if (CurrentSession.Entry(telemetry, session) is { } current)
         {
-            var current = sessionInfo.Sessions.FirstOrDefault(s => s.SessionNum == sessionInfo.CurrentSessionNum);
-            sessionLabel = current?.SessionName;
+            sessionLabel = current.SessionName;
             if (string.IsNullOrWhiteSpace(sessionLabel))
             {
-                sessionLabel = current?.SessionType ?? "";
+                sessionLabel = current.SessionType ?? "";
             }
 
-            trackUsage = current?.SessionTrackRubberState ?? "";
+            trackUsage = current.SessionTrackRubberState ?? "";
         }
 
         double? timeRemaining = null;

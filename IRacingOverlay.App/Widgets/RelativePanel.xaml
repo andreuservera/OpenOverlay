@@ -1,14 +1,62 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.RelativePanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
              x:Name="Root">
+    <!-- Same columns, cell styles and row template as StandingsPanel, from the shared
+         Themes/DriverTable.xaml. The two tables differ only in what their GAP column means and in
+         which rows the builder hands them. -->
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
             TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10,8">
         <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="RELATIVE" Style="{StaticResource PanelTitle}" Margin="0,0,0,6"/>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="RELATIVE" Style="{StaticResource PanelTitle}"/>
+                    <TextBlock x:Name="CarNameText" Text="" Style="{StaticResource ColumnHeader}"
+                               Margin="9,0,12,0" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock x:Name="SessionIdText" Text="" Style="{StaticResource ColumnHeader}"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid DockPanel.Dock="Top" Margin="{StaticResource RulerInset}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Pos}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Driver}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRating}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDelta}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.License}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Lap}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.BestLap}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.LastLap}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Gap}}"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="POS" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="1" Text="CAR" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="2" Text="DRIVER" Style="{StaticResource HeadText}"
+                           Visibility="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="3" Text="iR" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="4" Text="iRΔ" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="5" Text="SR" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="6" Text="LAP" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="7" Text="BEST" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="8" Text="LAST" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="9" Text="GAP" Style="{StaticResource HeadNumeric}"
+                           Visibility="{Binding Options.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+            </Grid>
+
             <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.Divider}" Margin="0,0,0,4"/>
+
             <Grid>
                 <TextBlock Text="Waiting for iRacing telemetry…">
                     <TextBlock.Style>
@@ -22,30 +70,7 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <ItemsControl ItemsSource="{Binding Rows, ElementName=Root}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:RelativeRow}">
-                            <Border Background="{Binding RowBackground}" Margin="0,1" Padding="5,2"
-                                    CornerRadius="{StaticResource Radius.Row}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="34"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="54"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{Binding ClassColor}" CornerRadius="{StaticResource Radius.Chip}" Margin="0,0,6,0">
-                                        <TextBlock Text="{Binding CarNumber}" Foreground="{StaticResource Text.OnAccent}" FontWeight="Bold"
-                                                   HorizontalAlignment="Center" FontSize="{StaticResource Type.Body}"/>
-                                    </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource DataCell}"
-                                               Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding GapDisplay}" Style="{StaticResource DataCellNumeric}"
-                                               Foreground="{StaticResource State.Accent}" FontWeight="Bold"/>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Rows, ElementName=Root}"/>
             </Grid>
         </DockPanel>
     </Border>

@@ -18,5 +18,9 @@ public partial class StandingsWidget : OverlayWindowBase
 
     public void SetSof(double sof) => _panel.SetSof(sof);
 
-    public void SetColumnVisibility(StandingsColumnVisibility visibility) => _panel.ColumnVisibility = visibility;
+    public void SetCarName(string carName) => _panel.SetCarName(carName);
+
+    public void SetSessionId(int subSessionId) => _panel.SetSessionId(subSessionId);
+
+    public void SetOptions(DriverTableOptions options) => _panel.Options = options;
 }

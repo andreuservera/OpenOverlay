@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Pedals" Width="340" Height="150" MinWidth="260" MinHeight="120">
+        Title="Pedals">
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">
@@ -14,7 +14,10 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.PedalTrace">
+        <!-- The trace plot fills whatever space it is given, so the panel needs a design size to
+             measure against: without one the chart would collapse to its caption. -->
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.PedalTrace"
+                          DesignWidth="340" DesignHeight="150">
             <w:PedalTracePanel/>
         </ov:ScalablePanel>
     </Border>

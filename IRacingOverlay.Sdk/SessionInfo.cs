@@ -26,6 +26,11 @@ public sealed class WeekendInfoSection
     public string? TrackDisplayName { get; set; }
     public string? TrackDisplayShortName { get; set; }
     public string? TrackLength { get; set; }
+
+    /// <summary>Identifies the specific room the driver is in. iRacing's telemetry YAML carries no
+    /// split *index* ("split 2 of 7" only exists in the web API), so this id is the closest thing
+    /// the SDK offers to "which of the splits am I in".</summary>
+    public int SubSessionID { get; set; }
 }
 
 public sealed class DriverInfoSection
@@ -68,6 +73,10 @@ public sealed class DriverEntry
 
 public sealed class SessionInfoSection
 {
+    /// <summary>Never populated by iRacing: its own SDK docs state SessionInfo has a single child
+    /// parameter, Sessions. Which session is running comes from the <c>SessionNum</c> telemetry
+    /// variable instead. Kept only so callers have something to fall back to when no telemetry is
+    /// available.</summary>
     public int CurrentSessionNum { get; set; }
     public List<SessionEntry> Sessions { get; set; } = [];
 }
@@ -80,4 +89,25 @@ public sealed class SessionEntry
     public string SessionLaps { get; set; } = "";
     public string SessionTime { get; set; } = "";
     public string SessionTrackRubberState { get; set; } = "";
+
+    /// <summary>The server's own scoring table for this session. Unlike the CarIdx* telemetry
+    /// arrays, which only carry what this client has observed since it connected, this is the
+    /// authoritative history and is already complete the moment the overlay attaches.</summary>
+    public List<SessionResultPosition> ResultsPositions { get; set; } = [];
+}
+
+/// <summary>One car's line in a session's scoring table.</summary>
+public sealed class SessionResultPosition
+{
+    public int CarIdx { get; set; }
+    public int Position { get; set; }
+    public int ClassPosition { get; set; }
+    public int Lap { get; set; }
+    public int LapsComplete { get; set; }
+
+    /// <summary>Best lap time in seconds, or -1 when the car has never set one.</summary>
+    public double FastestTime { get; set; }
+
+    /// <summary>Last lap time in seconds, or -1 when the car has never completed one.</summary>
+    public double LastTime { get; set; }
 }

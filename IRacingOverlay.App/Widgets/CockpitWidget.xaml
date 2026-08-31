@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Cockpit" Width="310" Height="150" MinWidth="155" MinHeight="75">
+        Title="Cockpit">
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">
@@ -14,26 +14,15 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <!-- The Viewbox itself must NOT have an explicit Width/Height — that would fix its own
-             rendered size regardless of how big the window becomes, which is exactly what made the
-             window resize while the visible content stayed pinned at a constant size (the resize
-             grip correctly followed the window corner; the content just never grew to meet it). The
-             fixed 310x150 size instead belongs to the Grid *inside* the Viewbox, which only exists to
-             give Stretch="Uniform" a reference aspect ratio — it's CockpitPanel's own measured
-             natural size (Auto-sized columns, no slack — see CockpitPanel.xaml), not a guessed
-             constant, so there's no leftover dead space baked into the canvas itself. The Viewbox
-             itself is left to stretch and fill whatever space ScalablePanel/the window actually
-             gives it, so resizing the window (grip aspect-locked to the same ratio via
-             OverlayWindowBase.FixedAspectRatio) correctly rescales the whole cluster with it, with
-             no letterboxing gap. No +/- zoom buttons (ShowButtons=False, no PersistenceKey) —
-             resizing the window itself is the one way to make this bigger/smaller, unlike other
-             widgets. -->
-        <ov:ScalablePanel x:Name="Scaler" ShowButtons="False">
-            <Viewbox Stretch="Uniform">
-                <Grid Width="310" Height="150">
-                    <w:CockpitPanel/>
-                </Grid>
-            </Viewbox>
+        <!-- 310x150 is CockpitPanel's own measured natural size (Auto-sized columns, no slack — see
+             CockpitPanel.xaml), so there is no dead space baked into the design canvas. Declaring it
+             here rather than wrapping the panel in a Viewbox means the cluster is laid out once and
+             then scaled by the level's LayoutTransform: type stays crisply hinted at every level
+             instead of being a stretched bitmap, and the aspect ratio is fixed by construction —
+             there is no longer any way for the user to stretch it out of proportion. -->
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Cockpit"
+                          DesignWidth="310" DesignHeight="150">
+            <w:CockpitPanel/>
         </ov:ScalablePanel>
     </Border>
 </ov:OverlayWindowBase>

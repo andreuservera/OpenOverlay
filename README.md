@@ -55,7 +55,8 @@ throttle/brake trace:
 - **Track info / Track map** — session/weather info bar and a schematic track map with live car
   markers.
 - **Three dashboard themes** — Classic, Digital HUD, and Raw DIY.
-- Every widget/panel is independently movable, resizable, and zoomable (in the dashboard).
+- Every widget and dashboard panel is independently movable and scalable through five preset sizes
+  (XS · S · M · L · XL).
 
 ## Requirements
 
@@ -83,19 +84,24 @@ throttle/brake trace:
 4. Load into an iRacing session. The status dot turns green and every widget you've enabled starts
    showing live data automatically.
 
-### Positioning widgets
+### Positioning and sizing widgets
 
-- Check **"Edit layout (drag/resize widgets)"** in the Control Panel to unlock dragging/resizing.
-  While unchecked, widgets are locked and click-through (mouse clicks pass straight to iRacing
+- Check **"Edit layout (move & resize widgets)"** in the Control Panel to unlock them. While
+  unchecked, widgets are locked and click-through (mouse clicks pass straight to iRacing
   underneath — this is the mode you race in).
-- Drag a widget by its body to move it; drag the bottom-right corner to resize it.
-- Positions and sizes are saved automatically and restored next launch.
+- Drag a widget by its body to move it.
+- Widgets are **not** free-form resizable. Hover one to reveal its **−  M  +** size control in the
+  top-right corner and step through the five preset levels: **XS · S · M · L · XL**. `Ctrl` +
+  mouse wheel does the same thing, and clicking the level badge resets that widget to **M**.
+- The whole widget scales as one — type, padding, gaps and bars all keep the same proportions — and
+  the frame always resizes itself to fit, so nothing is ever cropped, overlapped or squashed.
+- Positions and size levels are saved automatically and restored next launch.
 
 ### Fullscreen dashboard (second monitor)
 
 - Pick a monitor from the **"Dashboard monitor"** dropdown and click **"Show dashboard"**.
-- Each panel on the dashboard has its own **+ / −** zoom controls (hover over a panel to reveal
-  them).
+- Every dashboard panel has the same **−  M  +** size control (hover over a panel to reveal it), so
+  you can rebalance the layout without any panel ever clipping its own content.
 - Pick a **Dashboard theme** from the Control Panel to restyle the whole dashboard at once.
 
 ## Building from source

@@ -150,27 +150,102 @@
                           Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
             </Grid>
 
-            <!-- Standings overlay: which columns show, in the floating widget only (the Dashboard's
-                 own Standings panel always shows every column). -->
+            <!-- Standings overlay: the floating widget only (the Dashboard's own Standings panel
+                 always shows the full field with every column). Every checkbox shares one handler
+                 keyed off its Tag, which is the StandingsColumn enum member it drives — so the
+                 column, its persistence key and this control can't drift apart. -->
             <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="STANDINGS WIDGET COLUMNS" Style="{StaticResource SectionHeaderText}"/>
+                <TextBlock Text="STANDINGS WIDGET" Style="{StaticResource SectionHeaderText}"/>
             </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <CheckBox x:Name="StandingsIRatingCheckBox" Content="iR" Foreground="White" Margin="0,0,12,0"
-                          Checked="StandingsIRatingCheckBox_Changed" Unchecked="StandingsIRatingCheckBox_Changed"/>
-                <CheckBox x:Name="StandingsIRatingDeltaCheckBox" Content="iRΔ" Foreground="White" Margin="0,0,12,0"
-                          Checked="StandingsIRatingDeltaCheckBox_Changed" Unchecked="StandingsIRatingDeltaCheckBox_Changed"/>
-                <CheckBox x:Name="StandingsLicenseCheckBox" Content="License" Foreground="White" Margin="0,0,12,0"
-                          Checked="StandingsLicenseCheckBox_Changed" Unchecked="StandingsLicenseCheckBox_Changed"/>
-                <CheckBox x:Name="StandingsLapCheckBox" Content="Lap" Foreground="White" Margin="0,0,12,0"
-                          Checked="StandingsLapCheckBox_Changed" Unchecked="StandingsLapCheckBox_Changed"/>
-                <CheckBox x:Name="StandingsLastLapCheckBox" Content="Last" Foreground="White" Margin="0,0,12,0"
-                          Checked="StandingsLastLapCheckBox_Changed" Unchecked="StandingsLastLapCheckBox_Changed"/>
-                <CheckBox x:Name="StandingsBestLapCheckBox" Content="Best" Foreground="White" Margin="0,0,12,0"
-                          Checked="StandingsBestLapCheckBox_Changed" Unchecked="StandingsBestLapCheckBox_Changed"/>
-                <CheckBox x:Name="StandingsGapCheckBox" Content="Gap" Foreground="White"
-                          Checked="StandingsGapCheckBox_Changed" Unchecked="StandingsGapCheckBox_Changed"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Drivers around me:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="StandingsFocusSizeTextBox" Width="46" TextChanged="StandingsFocusSize_TextChanged"
+                         ToolTip="How many cars show around your position, on top of the always-visible top 3. Any number; more than the session holds simply shows everyone."/>
             </StackPanel>
+            <WrapPanel Margin="0,0,0,12">
+                <WrapPanel.Resources>
+                    <Style TargetType="CheckBox">
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="Margin" Value="0,0,14,6"/>
+                    </Style>
+                </WrapPanel.Resources>
+                <CheckBox x:Name="StandingsPositionCheckBox" Tag="Position" Content="Pos"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsCarNumberCheckBox" Tag="CarNumber" Content="Car #"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsDriverCheckBox" Tag="Driver" Content="Driver"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsIRatingCheckBox" Tag="IRating" Content="iR"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsIRatingDeltaCheckBox" Tag="IRatingDelta" Content="iRΔ"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsLicenseCheckBox" Tag="License" Content="SR"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsLapCheckBox" Tag="Lap" Content="Lap"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsBestLapCheckBox" Tag="BestLap" Content="Best"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsLastLapCheckBox" Tag="LastLap" Content="Last"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsGapCheckBox" Tag="Gap" Content="Gap"
+                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
+                <CheckBox x:Name="StandingsSessionIdCheckBox" Content="Session #"
+                          ToolTip="Shows the subsession id in the widget header. iRacing's telemetry exposes no split number, so this is the id of the room you're in."
+                          Checked="StandingsSessionId_Changed" Unchecked="StandingsSessionId_Changed"/>
+                <CheckBox x:Name="StandingsCarNameCheckBox" Content="Car name"
+                          ToolTip="Shows the car you're racing next to the widget title. Single-class sessions only — in multiclass the class headers already name each block's car."
+                          Checked="StandingsCarName_Changed" Unchecked="StandingsCarName_Changed"/>
+                <CheckBox x:Name="StandingsMulticlassCheckBox" Content="Multiclass"
+                          ToolTip="On: one block per car class, each with its own header and top 3, plus the cars around you in your class. Off: your class only, with no headers. No effect in a single-class session."
+                          Checked="StandingsMulticlass_Changed" Unchecked="StandingsMulticlass_Changed"/>
+            </WrapPanel>
+
+            <!-- Relative overlay: the same column set and the same handlers as Standings above,
+                 keyed off the same DriverTableColumn Tags. No multiclass option — Relative is a
+                 picture of the track around you, and splitting it by class would hide exactly the
+                 traffic it exists to show. -->
+            <Border Style="{StaticResource SectionHeaderBorder}">
+                <TextBlock Text="RELATIVE WIDGET" Style="{StaticResource SectionHeaderText}"/>
+            </Border>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Drivers each side:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="RelativeFocusSizeTextBox" Width="46" TextChanged="RelativeFocusSize_TextChanged"
+                         ToolTip="Cars shown ahead of you and behind you. 5 gives 5 ahead + you + 5 behind. The widget holds that many rows so its height stops changing mid-race."/>
+            </StackPanel>
+            <WrapPanel Margin="0,0,0,12">
+                <WrapPanel.Resources>
+                    <Style TargetType="CheckBox">
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="Margin" Value="0,0,14,6"/>
+                    </Style>
+                </WrapPanel.Resources>
+                <CheckBox x:Name="RelativePositionCheckBox" Tag="Position" Content="Pos"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeCarNumberCheckBox" Tag="CarNumber" Content="Car #"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeDriverCheckBox" Tag="Driver" Content="Driver"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeIRatingCheckBox" Tag="IRating" Content="iR"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeIRatingDeltaCheckBox" Tag="IRatingDelta" Content="iRΔ"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeLicenseCheckBox" Tag="License" Content="SR"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeLapCheckBox" Tag="Lap" Content="Lap"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeBestLapCheckBox" Tag="BestLap" Content="Best"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeLastLapCheckBox" Tag="LastLap" Content="Last"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeGapCheckBox" Tag="Gap" Content="Gap"
+                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
+                <CheckBox x:Name="RelativeSessionIdCheckBox" Content="Session #"
+                          ToolTip="Shows the subsession id in the widget header. iRacing's telemetry exposes no split number, so this is the id of the room you're in."
+                          Checked="RelativeSessionId_Changed" Unchecked="RelativeSessionId_Changed"/>
+                <CheckBox x:Name="RelativeCarNameCheckBox" Content="Car name"
+                          ToolTip="Shows the car you're racing next to the widget title. Single-class sessions only."
+                          Checked="RelativeCarName_Changed" Unchecked="RelativeCarName_Changed"/>
+            </WrapPanel>
 
             <!-- Fuel Calculator: every block toggles independently, so the same widget can be a
                  one-line "laps left" readout or a full strategy box. -->
@@ -240,12 +315,14 @@
                 </ComboBox>
             </StackPanel>
 
-            <!-- Layout: whether widgets can currently be dragged/resized. -->
+            <!-- Layout: whether widgets can currently be moved and resized via their +/- control.
+                 Widgets are never free-form resizable — size is always one of five preset levels. -->
             <Border Style="{StaticResource SectionHeaderBorder}">
                 <TextBlock Text="LAYOUT" Style="{StaticResource SectionHeaderText}"/>
             </Border>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <CheckBox x:Name="EditModeCheckBox" Content="Edit layout (drag/resize widgets)" Foreground="White"
+                <CheckBox x:Name="EditModeCheckBox" Content="Edit layout (move &amp; resize widgets)" Foreground="White"
+                          ToolTip="Drag a widget to move it. Hover it to reveal the − M + size control (or hold Ctrl and scroll)."
                           Checked="EditModeCheckBox_Changed" Unchecked="EditModeCheckBox_Changed"/>
             </StackPanel>
 

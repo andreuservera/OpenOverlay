@@ -17,9 +17,9 @@
                  dead air between speed/gear/RPM). These specific numbers were derived from measuring
                  this panel's own natural (Auto-sized) width in isolation, NOT re-declared as Auto
                  here — Auto columns measured correctly standalone but badly miscomputed (a large,
-                 wrong blowup) once nested under the Dashboard's LayoutTransform-based +/- zoom, a
-                 known-troublesome WPF combination (LayoutTransform + Auto/content-driven sizing can
-                 mis-iterate). Fixed pixel widths give the exact same tight fit without that risk. -->
+                 wrong blowup) once nested under ScalablePanel's LayoutTransform, a known-troublesome
+                 WPF combination (LayoutTransform + Auto/content-driven sizing can mis-iterate).
+                 Fixed pixel widths give the exact same tight fit without that risk. -->
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="20"/>
                 <ColumnDefinition Width="84"/>

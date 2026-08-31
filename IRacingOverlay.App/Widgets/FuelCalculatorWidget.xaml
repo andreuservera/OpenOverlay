@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Fuel Calculator" Width="260" Height="260" MinWidth="200" MinHeight="90">
+        Title="Fuel Calculator">
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">

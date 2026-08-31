@@ -4,100 +4,117 @@
              x:Name="Root">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <!-- Two ranks of readout: the four compact usage columns (secondary, you scan them), and
-             the strategy rows underneath (primary, you act on them). -->
-        <Style x:Key="StatLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
+        <!-- One cell shape for every readout: caption above, value below, with a minimum width and a
+             gutter to its right. A horizontal StackPanel of these can't overlap the way the old
+             label-left/value-right Grid rows did, where both TextBlocks shared a single cell and ran
+             straight into each other as soon as the panel was narrower than label + value. -->
+        <Style x:Key="StatCell" TargetType="StackPanel">
+            <Setter Property="MinWidth" Value="62"/>
+            <Setter Property="Margin" Value="0,0,18,0"/>
         </Style>
-        <Style x:Key="StatValue" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="TextAlignment" Value="Center"/>
+        <!-- Wider, because "LAPS LEFT"/"TO FINISH" are longer captions over a bigger number. -->
+        <Style x:Key="StrategyCell" TargetType="StackPanel" BasedOn="{StaticResource StatCell}">
+            <Setter Property="MinWidth" Value="80"/>
         </Style>
-        <Style x:Key="RowLabel" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}"/>
-        <Style x:Key="RowValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
-            <Setter Property="HorizontalAlignment" Value="Right"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
+        <Style x:Key="CellLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style x:Key="StrategyValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
     </UserControl.Resources>
 
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="12,8">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="14,10">
         <StackPanel>
-            <TextBlock Text="FUEL CALC" Style="{StaticResource PanelTitle}" Margin="0,0,0,3"/>
+            <TextBlock Text="FUEL CALC" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
 
-            <!-- Fuel remaining: the headline number, big enough to read at a glance mid-corner. -->
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                        Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource DisplayValue}"/>
-                <TextBlock Text="L" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+            <!-- Landscape, not portrait: the headline sits beside the numbers instead of on top of
+                 them, so the eight readouts get a full row each rather than being stacked into a
+                 tall column that squeezes every one of them. -->
+            <StackPanel Orientation="Horizontal">
+                <!-- Fuel remaining: the headline number, big enough to read at a glance mid-corner,
+                     with the level bar tracking its width underneath. -->
+                <StackPanel VerticalAlignment="Center" MinWidth="104" Margin="0,0,16,0">
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource DisplayValue}"/>
+                        <TextBlock Text="L" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+                    </StackPanel>
+
+                    <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
+                            Height="8" Margin="0,6,0,0"
+                            Visibility="{Binding Options.ShowFuelBar, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
+                                   RadiusX="3" RadiusY="3"/>
+                    </Border>
+                </StackPanel>
+
+                <Rectangle Width="1" Fill="{StaticResource Surface.Divider}" Margin="0,2,16,2"/>
+
+                <!-- Negative right margin cancels the trailing cell's gutter, so the panel's right
+                     padding matches its left instead of carrying 18px of dead air. -->
+                <StackPanel VerticalAlignment="Center" Margin="0,0,-18,0">
+                    <!-- Per-lap usage: up to four compact cells, each independently toggleable. -->
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Style="{StaticResource StatCell}"
+                                    Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="LAST" Style="{StaticResource CellLabel}"/>
+                            <TextBlock x:Name="LastLapText" Text="—" Style="{StaticResource CellValue}"/>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource StatCell}"
+                                    Visibility="{Binding Options.ShowAverage, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock x:Name="AverageLabel" Text="AVG" Style="{StaticResource CellLabel}"/>
+                            <!-- The average is the figure the strategy row below is actually derived
+                                 from, so it's the one of the four that reads at full strength. -->
+                            <TextBlock x:Name="AverageText" Text="—" Style="{StaticResource CellValue}"
+                                       Foreground="{StaticResource Text.Primary}" FontWeight="Bold"/>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource StatCell}"
+                                    Visibility="{Binding Options.ShowMinimum, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="MIN" Style="{StaticResource CellLabel}"/>
+                            <TextBlock x:Name="MinText" Text="—" Style="{StaticResource CellValue}"/>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource StatCell}"
+                                    Visibility="{Binding Options.ShowMaximum, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="MAX" Style="{StaticResource CellLabel}"/>
+                            <TextBlock x:Name="MaxText" Text="—" Style="{StaticResource CellValue}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Rectangle Height="1" Fill="{StaticResource Surface.Divider}" Margin="0,8,18,8"
+                               Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
+
+                    <!-- Strategy: what you act on, so a size step up from the usage cells above. -->
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel Style="{StaticResource StrategyCell}"
+                                    Visibility="{Binding Options.ShowLapsRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="LAPS LEFT" Style="{StaticResource CellLabel}"/>
+                            <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource StrategyValue}"/>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource StrategyCell}"
+                                    Visibility="{Binding Options.ShowFuelToFinish, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="TO FINISH" Style="{StaticResource CellLabel}"/>
+                            <TextBlock x:Name="FuelDeltaText" Text="—" Style="{StaticResource StrategyValue}"/>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource StrategyCell}"
+                                    Visibility="{Binding Options.ShowRefuel, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="REFUEL" Style="{StaticResource CellLabel}"/>
+                            <TextBlock x:Name="RefuelText" Text="—" Style="{StaticResource StrategyValue}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
             </StackPanel>
-
-            <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                    Height="8" Margin="0,7,0,5"
-                    Visibility="{Binding Options.ShowFuelBar, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
-                           RadiusX="3" RadiusY="3"/>
-            </Border>
-
-            <!-- Per-lap usage: up to four compact columns, each independently toggleable. -->
-            <Grid Margin="0,5,0,0"
-                  Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0"
-                            Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="LAST" Style="{StaticResource StatLabel}"/>
-                    <TextBlock x:Name="LastLapText" Text="—" Style="{StaticResource StatValue}"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1"
-                            Visibility="{Binding Options.ShowAverage, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock x:Name="AverageLabel" Text="AVG" Style="{StaticResource StatLabel}"/>
-                    <!-- The average is the figure the strategy rows below are actually derived from,
-                         so it's the one of the four that reads at full strength. -->
-                    <TextBlock x:Name="AverageText" Text="—" Style="{StaticResource StatValue}"
-                               Foreground="{StaticResource Text.Primary}" FontWeight="Bold"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2"
-                            Visibility="{Binding Options.ShowMinimum, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="MIN" Style="{StaticResource StatLabel}"/>
-                    <TextBlock x:Name="MinText" Text="—" Style="{StaticResource StatValue}"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="3"
-                            Visibility="{Binding Options.ShowMaximum, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="MAX" Style="{StaticResource StatLabel}"/>
-                    <TextBlock x:Name="MaxText" Text="—" Style="{StaticResource StatValue}"/>
-                </StackPanel>
-            </Grid>
-
-            <Rectangle Height="1" Fill="{StaticResource Surface.Divider}" Margin="0,9,0,7"
-                       Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-
-            <Grid Margin="0,0,0,3"
-                  Visibility="{Binding Options.ShowLapsRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="LAPS LEFT" Style="{StaticResource RowLabel}"/>
-                <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource RowValue}"/>
-            </Grid>
-
-            <Grid Margin="0,0,0,3"
-                  Visibility="{Binding Options.ShowFuelToFinish, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="TO FINISH" Style="{StaticResource RowLabel}"/>
-                <TextBlock x:Name="FuelDeltaText" Text="—" Style="{StaticResource RowValue}"/>
-            </Grid>
-
-            <Grid Margin="0,0,0,3"
-                  Visibility="{Binding Options.ShowRefuel, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="REFUEL" Style="{StaticResource RowLabel}"/>
-                <TextBlock x:Name="RefuelText" Text="—" Style="{StaticResource RowValue}"/>
-            </Grid>
         </StackPanel>
     </Border>
 </UserControl>

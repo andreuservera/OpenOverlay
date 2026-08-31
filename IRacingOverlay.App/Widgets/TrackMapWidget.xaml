@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-        Title="Track Map" Width="700" Height="70" MinWidth="400" MinHeight="60">
+        Title="Track Map">
     <Border BorderBrush="Orange" BorderThickness="0">
         <Border.Style>
             <Style TargetType="Border">
@@ -14,7 +14,11 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.TrackMap">
+        <!-- The map bar has no natural width of its own — it is a stretched track line, so left to
+             measure itself it would collapse to the width of the "TRACK MAP" caption. 700 is its
+             design width at level M; every other level is that times the level's factor. -->
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.TrackMap"
+                          DesignWidth="700">
             <w:TrackMapPanel/>
         </ov:ScalablePanel>
     </Border>

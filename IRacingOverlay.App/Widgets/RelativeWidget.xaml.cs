@@ -14,5 +14,11 @@ public partial class RelativeWidget : OverlayWindowBase
         _panel = (RelativePanel)Scaler.ScalableContent!;
     }
 
-    public void UpdateRows(IReadOnlyList<RelativeRow> rows) => _panel.SetRows(rows);
+    public void UpdateRows(IReadOnlyList<object> rows) => _panel.SetRows(rows);
+
+    public void SetCarName(string carName) => _panel.SetCarName(carName);
+
+    public void SetSessionId(int subSessionId) => _panel.SetSessionId(subSessionId);
+
+    public void SetOptions(DriverTableOptions options) => _panel.Options = options;
 }

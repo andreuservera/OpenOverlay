@@ -2,28 +2,54 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
+    <UserControl.Resources>
+        <!-- Same cell shape as FuelCalculatorPanel, so the two fuel readouts read as one family. -->
+        <Style x:Key="StatCell" TargetType="StackPanel">
+            <Setter Property="MinWidth" Value="64"/>
+            <Setter Property="Margin" Value="0,0,18,0"/>
+        </Style>
+        <Style x:Key="CellLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+    </UserControl.Resources>
+
     <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
             BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="12,8">
+            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="14,10">
         <StackPanel>
-            <TextBlock Text="FUEL" Style="{StaticResource PanelTitle}" Margin="0,0,0,3"/>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock x:Name="LapsOfFuelText" Text="—" Style="{StaticResource DisplayValue}"/>
-                <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+            <TextBlock Text="FUEL" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
+            <StackPanel Orientation="Horizontal">
+                <StackPanel VerticalAlignment="Center" MinWidth="112" Margin="0,0,16,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="LapsOfFuelText" Text="—" Style="{StaticResource DisplayValue}"/>
+                        <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+                    </StackPanel>
+                    <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
+                            Height="8" Margin="0,6,0,0">
+                        <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
+                                   RadiusX="3" RadiusY="3"/>
+                    </Border>
+                </StackPanel>
+
+                <Rectangle Width="1" Fill="{StaticResource Surface.Divider}" Margin="0,2,16,2"/>
+
+                <!-- Captioned cells rather than two bare numbers sharing a two-column grid: the old
+                     pair had no labels and nothing keeping them apart as the panel narrowed. The
+                     negative right margin cancels the trailing cell's gutter. -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,-18,0">
+                    <StackPanel Style="{StaticResource StatCell}">
+                        <TextBlock Text="LEVEL" Style="{StaticResource CellLabel}"/>
+                        <TextBlock x:Name="LevelText" Text="— L" Style="{StaticResource CellValue}"/>
+                    </StackPanel>
+                    <StackPanel Style="{StaticResource StatCell}">
+                        <TextBlock Text="PER LAP" Style="{StaticResource CellLabel}"/>
+                        <TextBlock x:Name="PerLapText" Text="—" Style="{StaticResource CellValue}"/>
+                    </StackPanel>
+                </StackPanel>
             </StackPanel>
-            <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                    Height="8" Margin="0,7,0,5">
-                <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
-                           RadiusX="3" RadiusY="3"/>
-            </Border>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="LevelText" Grid.Column="0" Text="— L" Style="{StaticResource DataCellNumeric}" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="PerLapText" Grid.Column="1" Text="—" Style="{StaticResource DataCellNumeric}"/>
-            </Grid>
         </StackPanel>
     </Border>
 </UserControl>

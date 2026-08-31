@@ -2,28 +2,25 @@ using System.Globalization;
 
 namespace IRacingOverlay.App.ViewModels;
 
-public sealed class RelativeRow
+/// <summary>A line in the Relative table: everything <see cref="DriverRow"/> renders, with the gap
+/// measured to the player rather than to a leader — negative ahead, positive behind.</summary>
+public sealed class RelativeRow : DriverRow
 {
-    public required int CarIdx { get; init; }
-    public required string Name { get; init; }
-    public required string CarNumber { get; init; }
-    public required bool IsPlayer { get; init; }
-    public required double GapSeconds { get; init; } // negative = ahead of player, positive = behind
-    public required bool OnPitRoad { get; init; }
-    public string ClassColor { get; init; } = "#FFFFFF";
+    public required double GapSeconds { get; init; }
 
-    // InvariantCulture: this machine's locale uses a comma decimal separator, which silently turned
-    // "+0.0" into "+0,0" in the live UI — a real display bug, not just a cosmetic preference.
-    public string GapDisplay => IsPlayer
+    // Formatted with InvariantCulture: this machine's locale uses a comma decimal separator, which
+    // silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
+    public override string GapDisplay => IsPlayer
         ? "—"
         : (GapSeconds <= 0
             ? $"-{Math.Abs(GapSeconds).ToString("0.0", CultureInfo.InvariantCulture)}"
             : $"+{GapSeconds.ToString("0.0", CultureInfo.InvariantCulture)}");
-
-    // Player keeps the brighter blue "find yourself" highlight; every other row is tinted by its
-    // own class color so classes read apart at a glance without drowning the text. iRacing's class
-    // colors ARE genuinely distinct hues (confirmed live: e.g. 0x33ceff vs 0xffda59) — the original
-    // ~16% alpha ("#2A") was just too subtle against a near-black panel to let the hue read; both
-    // ended up looking like similarly-dim gray. Bumped to ~33% ("#55") so the actual hue shows.
-    public string RowBackground => IsPlayer ? "#4433AAFF" : $"#55{ClassColor.TrimStart('#')}";
 }
+
+/// <summary>
+/// A reserved, empty line. Relative's row count would otherwise breathe in and out constantly as
+/// cars drift past the edges of the window, resizing the widget mid-corner; holding the configured
+/// number of slots keeps its height fixed. Only used once the session actually has enough drivers to
+/// fill them, so a small or solo session still renders compact rather than mostly blank.
+/// </summary>
+public sealed class RelativePlaceholderRow;

@@ -1,0 +1,135 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
+                    xmlns:conv="clr-namespace:IRacingOverlay.App.Converters">
+    <!--
+      The column ruler and row rendering for both driver tables (Standings and Relative), declared
+      once. Sharing this is what guarantees the two widgets stay identical: a width changed here
+      moves the header and the data in both tables at the same time, and there is no second copy to
+      forget.
+
+      Bindings reach the panel's Options through RelativeSource rather than ElementName, since a
+      shared dictionary has no element to name. The nearest UserControl ancestor of any row is
+      always the panel hosting it, and both panels expose an Options property of the same type.
+    -->
+
+    <conv:ColumnVisibilityConverter x:Key="ColumnVisibilityConverter"/>
+    <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+    <!-- Each width is a string because it is fed to ColumnVisibilityConverter as the width to use
+         *when visible*; a hidden column converts to zero width instead, leaving no gap behind. -->
+    <sys:String x:Key="W.Pos">36</sys:String>
+    <sys:String x:Key="W.Car">40</sys:String>
+    <sys:String x:Key="W.Driver">128</sys:String>
+    <sys:String x:Key="W.IRating">48</sys:String>
+    <sys:String x:Key="W.IRatingDelta">44</sys:String>
+    <sys:String x:Key="W.License">44</sys:String>
+    <sys:String x:Key="W.Lap">34</sys:String>
+    <sys:String x:Key="W.BestLap">64</sys:String>
+    <sys:String x:Key="W.LastLap">64</sys:String>
+    <sys:String x:Key="W.Gap">58</sys:String>
+
+    <!-- Header and data cells share one horizontal inset, which is what actually keeps the two
+         grids in line. The left 8 leaves room for the player row's accent bar without any row's
+         content shifting when it appears. -->
+    <Thickness x:Key="RulerInset">8,0,4,5</Thickness>
+    <Thickness x:Key="CellInset">8,2,4,2</Thickness>
+
+    <!-- Every numeric column is right-aligned, header included, so digits line up vertically and
+         can be compared down the table without reading them. -->
+    <Style x:Key="HeadNumeric" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+    </Style>
+    <Style x:Key="HeadText" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+    </Style>
+    <Style x:Key="HeadCentered" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+    </Style>
+    <Style x:Key="NumCell" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
+        <Setter Property="Margin" Value="0,0,8,0"/>
+    </Style>
+
+    <!-- Height matches a data row exactly (see the row template's paddings), so a reserved slot
+         holds its place without the table visibly stuttering as cars move in and out of it. -->
+    <DataTemplate DataType="{x:Type vm:RelativePlaceholderRow}">
+        <Border Height="21" Margin="0,1" Background="#0AFFFFFF" CornerRadius="{StaticResource Radius.Row}"/>
+    </DataTemplate>
+
+    <!-- Declared against the base row type: WPF's implicit template lookup walks up the type
+         hierarchy, so this one template renders both StandingsRow and RelativeRow. The GAP column
+         is the only thing the two disagree on, and each supplies its own GapDisplay. -->
+    <DataTemplate DataType="{x:Type vm:DriverRow}">
+        <Border Background="{Binding RowBackground}" Margin="0,1"
+                CornerRadius="{StaticResource Radius.Row}">
+            <Grid>
+                <!-- Accent bar overlays the row's left edge rather than taking a column of its own,
+                     so the columns sit at the same x whether or not this is the player's row. -->
+                <Border Width="3" HorizontalAlignment="Left" Background="{Binding RowAccent}"
+                        CornerRadius="2,0,0,2"/>
+                <Grid Margin="{StaticResource CellInset}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="{Binding Options.ShowPosition, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Pos}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Driver}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRating}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDelta}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.License}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Lap}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowBestLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.BestLap}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.LastLap}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Gap}}"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="{Binding PositionDisplay}" Style="{StaticResource NumCell}"
+                               Foreground="{Binding PositionForeground}" FontWeight="Bold"
+                               Visibility="{Binding Options.ShowPosition, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <Border Grid.Column="1" Background="{Binding ClassColor}" CornerRadius="{StaticResource Radius.Chip}"
+                            Margin="0,0,6,0"
+                            Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                        <TextBlock Text="{Binding CarNumberDisplay}" Foreground="{StaticResource Text.OnAccent}" FontWeight="Bold"
+                                   HorizontalAlignment="Center" FontSize="{StaticResource Type.Body}"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="2" Text="{Binding NameDisplay}" Style="{StaticResource DataCell}"
+                               Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"
+                               Margin="0,0,8,0"
+                               Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <TextBlock Grid.Column="3" Text="{Binding IRatingDisplay}" Style="{StaticResource NumCell}"
+                               Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <TextBlock Grid.Column="4" Text="{Binding IRatingDeltaDisplay}" Style="{StaticResource NumCell}"
+                               Foreground="{Binding IRatingDeltaForeground}"
+                               Visibility="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <Border Grid.Column="5" Background="{Binding LicenseColor}" CornerRadius="{StaticResource Radius.Chip}"
+                            Margin="0,1,6,1"
+                            Visibility="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                        <TextBlock Text="{Binding LicStringDisplay}" Foreground="{StaticResource Text.Primary}" FontWeight="Bold"
+                                   FontSize="{StaticResource Type.Micro}" Padding="4,1" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Column="6" Text="{Binding LapDisplay}" Style="{StaticResource NumCell}"
+                               Visibility="{Binding Options.ShowLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <TextBlock Grid.Column="7" Text="{Binding BestLapDisplay}" Style="{StaticResource NumCell}"
+                               Foreground="{Binding BestLapForeground}"
+                               Visibility="{Binding Options.ShowBestLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <TextBlock Grid.Column="8" Text="{Binding LastLapDisplay}" Style="{StaticResource NumCell}"
+                               Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <TextBlock Grid.Column="9" Text="{Binding GapDisplay}" Style="{StaticResource NumCell}"
+                               Foreground="{StaticResource State.Accent}" FontWeight="Bold"
+                               Visibility="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </DataTemplate>
+</ResourceDictionary>
