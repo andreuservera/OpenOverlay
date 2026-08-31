@@ -44,14 +44,41 @@ internal sealed class LapTimeSource
             : _results.TryGetValue(carIdx, out var result) && result.LastTime > 0 ? result.LastTime : 0;
     }
 
-    /// <summary>Fastest lap set by anyone, or 0 if nobody has one. The reference "how long is a lap
-    /// here" figure, and the benchmark the fastest-lap highlight is measured against.</summary>
+    /// <summary>Fastest lap set by anyone, or 0 if nobody has one. The benchmark the fastest-lap
+    /// highlight is measured against, so it counts only genuine best laps.</summary>
     public double FastestOf(IEnumerable<int> carIndexes)
     {
         var fastest = 0.0;
         foreach (var carIdx in carIndexes)
         {
             fastest = Faster(fastest, Best(carIdx));
+        }
+
+        return fastest;
+    }
+
+    /// <summary>
+    /// A stand-in "how long is a lap here" for when the player has none of their own — used to fold
+    /// relative gaps into a half-lap window and to price a lap-down gap in seconds.
+    ///
+    /// Falls back to last laps when no best lap exists anywhere. Early in a session iRacing can have
+    /// populated CarIdxLastLapTime while CarIdxBestLapTime is still empty, and returning 0 there is
+    /// not harmless: Relative drops every car that isn't on the player's exact lap number, which
+    /// shows up as the widget picking up nobody at all on the first lap.
+    /// </summary>
+    public double ReferenceLapOf(IEnumerable<int> carIndexes)
+    {
+        var cars = carIndexes as IReadOnlyCollection<int> ?? carIndexes.ToList();
+
+        var fastest = FastestOf(cars);
+        if (fastest > 0)
+        {
+            return fastest;
+        }
+
+        foreach (var carIdx in cars)
+        {
+            fastest = Faster(fastest, Last(carIdx));
         }
 
         return fastest;

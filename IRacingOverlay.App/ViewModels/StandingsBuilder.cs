@@ -69,7 +69,7 @@ internal static class StandingsBuilder
 
         if (refLapTime <= 0)
         {
-            refLapTime = laps.FastestOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.CarIdx));
+            refLapTime = laps.ReferenceLapOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.CarIdx));
         }
 
         double GapTo(int carIdx)
@@ -332,7 +332,7 @@ internal static class StandingsBuilder
         var refLapTime = laps.Best(playerCarIdx);
         if (refLapTime <= 0)
         {
-            refLapTime = laps.FastestOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.CarIdx));
+            refLapTime = laps.ReferenceLapOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.CarIdx));
         }
 
         int LapOf(int carIdx) => carIdx < currentLaps.Length ? currentLaps[carIdx] : 0;
