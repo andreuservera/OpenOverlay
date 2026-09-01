@@ -1,359 +1,233 @@
 <Window x:Class="IRacingOverlay.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OpenOverlay — Control Panel" Height="820" Width="480"
+        xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
+        Title="OpenOverlay — Control Panel"
+        Height="880" Width="1400" MinHeight="620" MinWidth="1080"
         Icon="Assets/icon.ico"
-        Background="#14171A"
+        Background="{DynamicResource Cp.Window}"
         FontFamily="{DynamicResource Theme.FontFamily}"
-        FontSize="13">
+        FontSize="13"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal">
+    <!--
+      Three panes, left to right, in the order the decision is actually made:
+
+        pick a widget  ->  change its options  ->  see the result
+
+      The rail is the only navigation; the configuration pane shows one widget at a time and nothing
+      else; the preview is always visible, so no change is ever made blind. Only the two panes that
+      can genuinely overflow scroll, so the shell itself never moves under the pointer.
+
+      The control panel's design system lives in ControlPanel/ControlPanelTheme.xaml and is merged
+      here rather than into App.xaml on purpose: the preview hosts real widget panels, and an
+      application-wide style from this window would restyle them — the one thing that would make the
+      preview lie about what the user is going to get.
+    -->
     <Window.Resources>
-        <Style x:Key="SectionHeaderBorder" TargetType="Border">
-            <Setter Property="BorderBrush" Value="{StaticResource Surface.Divider}"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="Margin" Value="0,6,0,10"/>
-            <Setter Property="Padding" Value="0,0,0,5"/>
-        </Style>
-        <Style x:Key="SectionHeaderText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource State.Warning}"/>
-            <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-        </Style>
-        <Style x:Key="ColumnHeaderText" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-        </Style>
-        <Style x:Key="TableCheckBox" TargetType="CheckBox">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="0,4"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ControlPanel/ControlPanelTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="16" Orientation="Vertical">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                <Ellipse x:Name="StatusDot" Width="12" Height="12" Fill="Red" Margin="0,0,10,0"/>
-                <TextBlock x:Name="StatusText" Text="Waiting for iRacing…" Foreground="{StaticResource Text.Primary}"
-                           FontSize="{StaticResource Type.Value}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            </StackPanel>
+        <!-- ===== Toolbar ===== -->
+        <Border Grid.Row="0" Height="58" Background="{StaticResource Cp.Rail}"
+                BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
+            <Grid Margin="18,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="28" Height="28" CornerRadius="8" Background="{StaticResource Cp.Accent}">
+                        <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="7"
+                              Stroke="#101316" StrokeThickness="2.4"
+                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    </Border>
+                    <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Title}" Margin="11,0,0,0"
+                               VerticalAlignment="Center"/>
+                    <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="13,0"/>
+                    <TextBlock Text="CONTROL PANEL" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
+                </StackPanel>
 
-            <!-- Widgets: which are enabled, and which should duck out of view whenever the player
-                 isn't actually in the car driving (main menu, garage/setup, spectating, replay). -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="WIDGETS" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <Grid Margin="0,0,0,12">
-                <!-- Implicit style, so it reaches the twelve widget-name labels without touching the
-                     two column headers above them (those carry an explicit Style of their own). -->
-                <Grid.Resources>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
-                        <Setter Property="VerticalAlignment" Value="Center"/>
-                        <Setter Property="Margin" Value="0,4"/>
-                    </Style>
-                </Grid.Resources>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="150"/>
-                    <ColumnDefinition Width="55"/>
-                    <ColumnDefinition Width="120"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.Border}"
+                            BorderThickness="1" CornerRadius="15" Height="30" Padding="12,0" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Idle}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding ConnectionLabel}" Style="{StaticResource Cp.Eyebrow}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
 
-                <TextBlock Grid.Row="0" Grid.Column="1" Text="Show" Style="{StaticResource ColumnHeaderText}" Margin="0,0,0,4"/>
-                <TextBlock Grid.Row="0" Grid.Column="2" Text="Hide outside car" Style="{StaticResource ColumnHeaderText}" Margin="0,0,0,4" TextWrapping="Wrap"
-                           ToolTip="Automatically hides this widget whenever you're not actually in the car driving — main menu, garage/setup screens, spectating, or watching a replay — without unchecking it. Reappears the instant you're back in the car, even while still on pit road."/>
-
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Relative" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="1" Grid.Column="1" x:Name="RelativeCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="RelativeCheckBox_Changed" Unchecked="RelativeCheckBox_Changed"/>
-                <CheckBox Grid.Row="1" Grid.Column="2" x:Name="RelativeAutoHideCheckBox" Tag="Relative" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Standings" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="2" Grid.Column="1" x:Name="StandingsCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="StandingsCheckBox_Changed" Unchecked="StandingsCheckBox_Changed"/>
-                <CheckBox Grid.Row="2" Grid.Column="2" x:Name="StandingsAutoHideCheckBox" Tag="Standings" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Cockpit" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="3" Grid.Column="1" x:Name="CockpitCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="CockpitCheckBox_Changed" Unchecked="CockpitCheckBox_Changed"/>
-                <CheckBox Grid.Row="3" Grid.Column="2" x:Name="CockpitAutoHideCheckBox" Tag="Cockpit" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Flag" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="4" Grid.Column="1" x:Name="FlagCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="FlagCheckBox_Changed" Unchecked="FlagCheckBox_Changed"/>
-                <CheckBox Grid.Row="4" Grid.Column="2" x:Name="FlagAutoHideCheckBox" Tag="Flag" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="Tire info" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="5" Grid.Column="1" x:Name="TireInfoCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="TireInfoCheckBox_Changed" Unchecked="TireInfoCheckBox_Changed"/>
-                <CheckBox Grid.Row="5" Grid.Column="2" x:Name="TireInfoAutoHideCheckBox" Tag="TireInfo" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="Delta" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="6" Grid.Column="1" x:Name="DeltaCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="DeltaCheckBox_Changed" Unchecked="DeltaCheckBox_Changed"/>
-                <CheckBox Grid.Row="6" Grid.Column="2" x:Name="DeltaAutoHideCheckBox" Tag="Delta" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="7" Grid.Column="0" Text="Fuel" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="7" Grid.Column="1" x:Name="FuelCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="FuelCheckBox_Changed" Unchecked="FuelCheckBox_Changed"/>
-                <CheckBox Grid.Row="7" Grid.Column="2" x:Name="FuelAutoHideCheckBox" Tag="Fuel" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="8" Grid.Column="0" Text="Pedal trace" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="8" Grid.Column="1" x:Name="PedalTraceCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="PedalTraceCheckBox_Changed" Unchecked="PedalTraceCheckBox_Changed"/>
-                <CheckBox Grid.Row="8" Grid.Column="2" x:Name="PedalTraceAutoHideCheckBox" Tag="PedalTrace" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="9" Grid.Column="0" Text="Incident" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="9" Grid.Column="1" x:Name="IncidentCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="IncidentCheckBox_Changed" Unchecked="IncidentCheckBox_Changed"/>
-                <CheckBox Grid.Row="9" Grid.Column="2" x:Name="IncidentAutoHideCheckBox" Tag="Incident" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="10" Grid.Column="0" Text="Track info" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="10" Grid.Column="1" x:Name="TrackInfoCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="TrackInfoCheckBox_Changed" Unchecked="TrackInfoCheckBox_Changed"/>
-                <CheckBox Grid.Row="10" Grid.Column="2" x:Name="TrackInfoAutoHideCheckBox" Tag="TrackInfo" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="11" Grid.Column="0" Text="Track map" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="11" Grid.Column="1" x:Name="TrackMapCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="TrackMapCheckBox_Changed" Unchecked="TrackMapCheckBox_Changed"/>
-                <CheckBox Grid.Row="11" Grid.Column="2" x:Name="TrackMapAutoHideCheckBox" Tag="TrackMap" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
-
-                <TextBlock Grid.Row="12" Grid.Column="0" Text="Fuel calculator" Foreground="White" VerticalAlignment="Center"/>
-                <CheckBox Grid.Row="12" Grid.Column="1" x:Name="FuelCalculatorCheckBox" Style="{StaticResource TableCheckBox}"
-                          Checked="FuelCalculatorCheckBox_Changed" Unchecked="FuelCalculatorCheckBox_Changed"/>
-                <CheckBox Grid.Row="12" Grid.Column="2" x:Name="FuelCalculatorAutoHideCheckBox" Tag="FuelCalculator" Style="{StaticResource TableCheckBox}"
-                          Checked="AutoHideCheckBox_Changed" Unchecked="AutoHideCheckBox_Changed"/>
+                    <ToggleButton Style="{StaticResource Cp.ToggleButton}" Content="{Binding EditModeLabel}"
+                                  IsChecked="{Binding IsEditMode, Mode=TwoWay}"
+                                  ToolTip="Drag a widget to move it. Hover it for the − M + size control, or hold Ctrl and scroll."/>
+                </StackPanel>
             </Grid>
+        </Border>
 
-            <!-- Standings overlay: the floating widget only (the Dashboard's own Standings panel
-                 always shows the full field with every column). Every checkbox shares one handler
-                 keyed off its Tag, which is the StandingsColumn enum member it drives — so the
-                 column, its persistence key and this control can't drift apart. -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="STANDINGS WIDGET" Style="{StaticResource SectionHeaderText}"/>
+        <!-- ===== Body ===== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="278"/>
+                <ColumnDefinition Width="1.05*" MinWidth="360"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="1.35*" MinWidth="340"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ===== Rail ===== -->
+            <Border Grid.Column="0" Background="{StaticResource Cp.Rail}"
+                    BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Margin="14,14,14,2" Height="32" CornerRadius="7"
+                            Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}"
+                            BorderThickness="1">
+                        <Grid>
+                            <Path Data="M10,10 A5,5 0 1 0 10.01,10 M14,14 L18,18" Width="14" Height="14"
+                                  Stretch="Uniform" HorizontalAlignment="Left" Margin="10,0,0,0"
+                                  Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.8"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,10,0"
+                                     FontFamily="{DynamicResource Theme.FontFamily}"
+                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="Search widgets" IsHitTestVisible="False" Margin="33,0,0,0"
+                                       VerticalAlignment="Center" Foreground="{StaticResource Cp.TextFaint}"
+                                       FontSize="{StaticResource Cp.Size.Body}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+
+                    <!-- Grouped on NavItem.Group, so a new section in the rail is a new string in the
+                         view model and never a change here. -->
+                    <ListBox Style="{StaticResource Cp.NavList}" ItemsSource="{Binding NavView}"
+                             SelectedItem="{Binding Selected, Mode=TwoWay}"
+                             ItemTemplate="{StaticResource Cp.NavItemTemplate}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle ContainerStyle="{StaticResource Cp.NavGroupStyle}"/>
+                        </ListBox.GroupStyle>
+                    </ListBox>
+                </DockPanel>
             </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Drivers around me:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox x:Name="StandingsFocusSizeTextBox" Width="46" TextChanged="StandingsFocusSize_TextChanged"
-                         ToolTip="How many cars show around your position, on top of the always-visible top 3. Any number; more than the session holds simply shows everyone."/>
-            </StackPanel>
-            <WrapPanel Margin="0,0,0,12">
-                <WrapPanel.Resources>
-                    <Style TargetType="CheckBox">
-                        <Setter Property="Foreground" Value="White"/>
-                        <Setter Property="Margin" Value="0,0,14,6"/>
-                    </Style>
-                </WrapPanel.Resources>
-                <CheckBox x:Name="StandingsPositionCheckBox" Tag="Position" Content="Pos"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsCarNumberCheckBox" Tag="CarNumber" Content="Car #"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsDriverCheckBox" Tag="Driver" Content="Driver"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsIRatingCheckBox" Tag="IRating" Content="iR"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsIRatingDeltaCheckBox" Tag="IRatingDelta" Content="iRΔ"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsLicenseCheckBox" Tag="License" Content="SR"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsLapCheckBox" Tag="Lap" Content="Lap"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsBestLapCheckBox" Tag="BestLap" Content="Best"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsLastLapCheckBox" Tag="LastLap" Content="Last"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsGapCheckBox" Tag="Gap" Content="Gap"
-                          Checked="StandingsColumn_Changed" Unchecked="StandingsColumn_Changed"/>
-                <CheckBox x:Name="StandingsSessionIdCheckBox" Content="Session #"
-                          ToolTip="Shows the subsession id in the widget header. iRacing's telemetry exposes no split number, so this is the id of the room you're in."
-                          Checked="StandingsSessionId_Changed" Unchecked="StandingsSessionId_Changed"/>
-                <CheckBox x:Name="StandingsCarNameCheckBox" Content="Car name"
-                          ToolTip="Shows the car you're racing next to the widget title. Single-class sessions only — in multiclass the class headers already name each block's car."
-                          Checked="StandingsCarName_Changed" Unchecked="StandingsCarName_Changed"/>
-                <CheckBox x:Name="StandingsMulticlassCheckBox" Content="Multiclass"
-                          ToolTip="On: one block per car class, each with its own header and top 3, plus the cars around you in your class. Off: your class only, with no headers. No effect in a single-class session."
-                          Checked="StandingsMulticlass_Changed" Unchecked="StandingsMulticlass_Changed"/>
-            </WrapPanel>
 
-            <!-- Relative overlay: the same column set and the same handlers as Standings above,
-                 keyed off the same DriverTableColumn Tags. No multiclass option — Relative is a
-                 picture of the track around you, and splitting it by class would hide exactly the
-                 traffic it exists to show. -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="RELATIVE WIDGET" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Drivers each side:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox x:Name="RelativeFocusSizeTextBox" Width="46" TextChanged="RelativeFocusSize_TextChanged"
-                         ToolTip="Cars shown ahead of you and behind you. 5 gives 5 ahead + you + 5 behind. The widget holds that many rows so its height stops changing mid-race."/>
-            </StackPanel>
-            <WrapPanel Margin="0,0,0,12">
-                <WrapPanel.Resources>
-                    <Style TargetType="CheckBox">
-                        <Setter Property="Foreground" Value="White"/>
-                        <Setter Property="Margin" Value="0,0,14,6"/>
-                    </Style>
-                </WrapPanel.Resources>
-                <CheckBox x:Name="RelativePositionCheckBox" Tag="Position" Content="Pos"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeCarNumberCheckBox" Tag="CarNumber" Content="Car #"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeDriverCheckBox" Tag="Driver" Content="Driver"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeIRatingCheckBox" Tag="IRating" Content="iR"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeIRatingDeltaCheckBox" Tag="IRatingDelta" Content="iRΔ"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeLicenseCheckBox" Tag="License" Content="SR"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeLapCheckBox" Tag="Lap" Content="Lap"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeBestLapCheckBox" Tag="BestLap" Content="Best"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeLastLapCheckBox" Tag="LastLap" Content="Last"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeGapCheckBox" Tag="Gap" Content="Gap"
-                          Checked="RelativeColumn_Changed" Unchecked="RelativeColumn_Changed"/>
-                <CheckBox x:Name="RelativeSessionIdCheckBox" Content="Session #"
-                          ToolTip="Shows the subsession id in the widget header. iRacing's telemetry exposes no split number, so this is the id of the room you're in."
-                          Checked="RelativeSessionId_Changed" Unchecked="RelativeSessionId_Changed"/>
-                <CheckBox x:Name="RelativeCarNameCheckBox" Content="Car name"
-                          ToolTip="Shows the car you're racing next to the widget title. Single-class sessions only."
-                          Checked="RelativeCarName_Changed" Unchecked="RelativeCarName_Changed"/>
-            </WrapPanel>
+            <!-- ===== Configuration ===== -->
+            <DockPanel Grid.Column="1">
+                <Border DockPanel.Dock="Top" Padding="24,18,22,17"
+                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-            <!-- Fuel Calculator: every block toggles independently, so the same widget can be a
-                 one-line "laps left" readout or a full strategy box. -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="FUEL CALCULATOR WIDGET" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <WrapPanel Margin="0,0,0,8">
-                <CheckBox x:Name="FuelCalcBarCheckBox" Tag="ShowFuelBar" Content="Fuel bar" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcRemainingCheckBox" Tag="ShowFuelRemaining" Content="Fuel remaining" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcLastLapCheckBox" Tag="ShowLastLap" Content="Last lap" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcAverageCheckBox" Tag="ShowAverage" Content="Average" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcMinimumCheckBox" Tag="ShowMinimum" Content="Minimum" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcMaximumCheckBox" Tag="ShowMaximum" Content="Maximum" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcLapsRemainingCheckBox" Tag="ShowLapsRemaining" Content="Laps remaining" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcToFinishCheckBox" Tag="ShowFuelToFinish" Content="Fuel to finish" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-                <CheckBox x:Name="FuelCalcRefuelCheckBox" Tag="ShowRefuel" Content="Refuel" Foreground="White" Margin="0,0,12,4"
-                          Checked="FuelCalcOption_Changed" Unchecked="FuelCalcOption_Changed"/>
-            </WrapPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Average over:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"
-                           ToolTip="Which completed laps feed the average consumption figure. A rolling window reacts faster once you start saving fuel; the whole session is steadier."/>
-                <ComboBox x:Name="FuelAverageSourceComboBox" Width="180" SelectionChanged="FuelAverageSourceComboBox_SelectionChanged">
-                    <ComboBoxItem Content="Whole session" IsSelected="True"/>
-                    <ComboBoxItem Content="Last 3 laps"/>
-                    <ComboBoxItem Content="Last 5 laps"/>
-                    <ComboBoxItem Content="Last 10 laps"/>
-                </ComboBox>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <TextBlock Text="Safety margin:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"
-                           ToolTip="Reserve added on top of the computed need. Both apply together — margin laps scale with consumption, margin liters are a flat reserve."/>
-                <TextBox x:Name="FuelMarginLapsTextBox" Width="46" TextChanged="FuelMargin_TextChanged"/>
-                <TextBlock Text="laps" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="4,0,12,0"/>
-                <TextBox x:Name="FuelMarginLitersTextBox" Width="46" TextChanged="FuelMargin_TextChanged"/>
-                <TextBlock Text="L" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="4,0,0,0"/>
-            </StackPanel>
+                        <Border Grid.Column="0" Width="38" Height="38" CornerRadius="10"
+                                Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.Border}"
+                                BorderThickness="1" VerticalAlignment="Top">
+                            <Path Width="19" Height="19" Stretch="Uniform" Data="{Binding Selected.IconData}"
+                                  Stroke="{StaticResource Cp.Accent}" StrokeThickness="1.7"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Border>
 
-            <!-- Session display: how telemetry-derived values are computed/read, not what's shown. -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="SESSION DISPLAY" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Delta reference:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"/>
-                <ComboBox x:Name="DeltaReferenceComboBox" Width="180" SelectionChanged="DeltaReferenceComboBox_SelectionChanged">
-                    <ComboBoxItem Content="Session best lap" IsSelected="True"/>
-                    <ComboBoxItem Content="Personal best (all-time)"/>
-                    <ComboBoxItem Content="Optimal lap"/>
-                </ComboBox>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <TextBlock Text="Critical refresh rate:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"
-                           ToolTip="How often the proximity/ABS bars and pedal trace re-read telemetry — independent of everything else."/>
-                <ComboBox x:Name="CriticalRefreshComboBox" Width="180" SelectionChanged="CriticalRefreshComboBox_SelectionChanged">
-                    <ComboBoxItem Content="Fastest (~60 Hz)"/>
-                    <ComboBoxItem Content="Fast (30 Hz)"/>
-                    <ComboBoxItem Content="Normal (15 Hz)" IsSelected="True"/>
-                    <ComboBoxItem Content="Slow (10 Hz)"/>
-                    <ComboBoxItem Content="Slowest (5 Hz)"/>
-                </ComboBox>
-            </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="14,0,16,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Selected.Title}" Style="{StaticResource Cp.Display}"/>
+                            <TextBlock Text="{Binding Selected.Blurb}" Style="{StaticResource Cp.Hint}"
+                                       FontSize="{StaticResource Cp.Size.Body}" Margin="0,2,0,0"/>
+                        </StackPanel>
 
-            <!-- Layout: whether widgets can currently be moved and resized via their +/- control.
-                 Widgets are never free-form resizable — size is always one of five preset levels. -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="LAYOUT" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <CheckBox x:Name="EditModeCheckBox" Content="Edit layout (move &amp; resize widgets)" Foreground="White"
-                          ToolTip="Drag a widget to move it. Hover it to reveal the − M + size control (or hold Ctrl and scroll)."
-                          Checked="EditModeCheckBox_Changed" Unchecked="EditModeCheckBox_Changed"/>
-            </StackPanel>
+                        <!-- The master switch sits with the widget's own title and binds straight to
+                             the same slot the rail's switch drives: one piece of state, two places
+                             to reach it, no synchronisation code between them. -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
+                            <TextBlock Text="{Binding SelectedWidget.StateLabel}" Style="{StaticResource Cp.Eyebrow}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <CheckBox Style="{StaticResource Cp.Switch}"
+                                      IsChecked="{Binding SelectedWidget.IsEnabled, Mode=TwoWay}"
+                                      ToolTip="Show this widget on screen"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-            <!-- Dashboard: the fullscreen second-monitor layout, separate from the floating widgets above. -->
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="DASHBOARD (SECOND MONITOR)" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="Monitor:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"/>
-                <ComboBox x:Name="MonitorComboBox" Width="140" Margin="0,0,8,0"/>
-                <Button x:Name="ShowDashboardButton" Content="Show dashboard" Click="ShowDashboardButton_Click"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                <TextBlock Text="Theme:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0" Width="140"/>
-                <ComboBox x:Name="DashboardThemeComboBox" Width="180" SelectionChanged="DashboardThemeComboBox_SelectionChanged">
-                    <ComboBoxItem Content="Classic" IsSelected="True"/>
-                    <ComboBoxItem Content="Digital HUD"/>
-                    <ComboBoxItem Content="Raw DIY"/>
-                </ComboBox>
-            </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
+                </ScrollViewer>
+            </DockPanel>
 
-            <Border Style="{StaticResource SectionHeaderBorder}">
-                <TextBlock Text="DEBUG" Style="{StaticResource SectionHeaderText}"/>
-            </Border>
-            <StackPanel Margin="0,0,0,8">
-                <TextBlock x:Name="DebugText" Text="Speed: —   Lap: —   Gear: —" Foreground="{StaticResource Text.Muted}"
-                           FontFamily="{DynamicResource Theme.DataFontFamily}" FontSize="{StaticResource Type.Body}"/>
-                <TextBlock x:Name="MemoryText" Text="Memory: — MB" Foreground="{StaticResource Text.Muted}"
-                           FontFamily="{DynamicResource Theme.DataFontFamily}" FontSize="{StaticResource Type.Body}" Margin="0,3,0,0"/>
-            </StackPanel>
+            <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
+                          BorderBrush="{StaticResource Cp.Border}" BorderThickness="1,0,0,0"
+                          ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
 
-        </StackPanel>
-    </ScrollViewer>
+            <!-- ===== Preview ===== -->
+            <DockPanel Grid.Column="3" Background="#090C0F">
+                <Border DockPanel.Dock="Top" Height="42" Padding="18,0"
+                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="{StaticResource Cp.Live}" Margin="0,0,8,0"
+                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="LIVE PREVIEW" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   Style="{StaticResource Cp.Eyebrow}"
+                                   Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
+                            <Run Text="SIZE "/><Run Text="{Binding SelectedWidget.Scale, Mode=OneWay}"/>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <Grid>
+                    <cp:WidgetPreview x:Name="Preview" Slot="{Binding SelectedWidget}"
+                                      Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}"/>
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="280"
+                                Visibility="{Binding HasPreview, Converter={StaticResource Cp.NotBoolToVis}}">
+                        <TextBlock Text="Nothing to preview" Style="{StaticResource Cp.Title}"
+                                   Foreground="{StaticResource Cp.TextMuted}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="This page configures the application rather than a single widget."
+                                   Style="{StaticResource Cp.Hint}" TextAlignment="Center" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+        </Grid>
+
+        <!-- ===== Status bar =====
+             Diagnostics belong here rather than on a page: they describe the running application, so
+             they should stay true wherever you happen to be looking. -->
+        <Border Grid.Row="2" Height="28" Background="{StaticResource Cp.Rail}"
+                BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0" Padding="18,0">
+            <Grid>
+                <TextBlock Text="{Binding TelemetryLine}" Style="{StaticResource Cp.Mono}"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
+                           Foreground="{StaticResource Cp.TextFaint}" HorizontalAlignment="Right"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>

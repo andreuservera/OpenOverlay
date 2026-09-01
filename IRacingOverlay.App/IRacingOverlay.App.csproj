@@ -29,6 +29,9 @@
 
   <ItemGroup>
     <Resource Include="Assets\icon.ico" />
+    <!-- Backdrop the control panel previews widgets against. Embedded rather than shipped loose so
+         it can't go missing from an install and leave the preview pane empty. -->
+    <Resource Include="Assets\spa2.jpg" />
     <!-- Must not be an ApplicationDefinition (which auto-generates its own Main) now that
          App.xaml.cs provides one explicitly for Velopack's sake. -->
     <ApplicationDefinition Remove="App.xaml" />

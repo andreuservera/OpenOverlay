@@ -1,0 +1,906 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel">
+    <!--
+      The control panel's own design system. Deliberately self-contained: it is merged into
+      MainWindow's resources rather than the application's, so nothing in here can reach a floating
+      widget or the Dashboard and change how they look. That separation is the whole point — the
+      overlay's tokens (Themes/DesignTokens.xaml) describe what a driver reads at 200 km/h, these
+      describe a desktop configuration tool, and the two must be free to move independently.
+
+      Only the font families are pulled from the application (DynamicResource), so the control panel
+      still speaks with the same voice as the widgets it configures.
+
+      Everything here is keyed except the ScrollBar style: the control panel hosts *live widget
+      panels* inside its preview, and an implicit TextBlock/Border/CheckBox style would silently
+      restyle them and destroy the fidelity the preview exists to provide.
+    -->
+
+    <cp:EmptyToCollapsedConverter x:Key="Cp.EmptyToCollapsed"/>
+    <cp:BoolToVisibilityConverter x:Key="Cp.BoolToVis"/>
+    <cp:BoolToVisibilityConverter x:Key="Cp.NotBoolToVis" Invert="True"/>
+
+    <!-- ===== Palette =====
+         A four-step surface ramp (window / rail / card / field) is what lets three panes sit side by
+         side without a single border being needed to tell them apart. Accent is the overlay's own
+         amber, so the tool and the product it configures read as one thing. -->
+    <SolidColorBrush x:Key="Cp.Window" Color="#0D1013"/>
+    <SolidColorBrush x:Key="Cp.Rail" Color="#111519"/>
+    <SolidColorBrush x:Key="Cp.Surface" Color="#161B21"/>
+    <SolidColorBrush x:Key="Cp.SurfaceAlt" Color="#1B2129"/>
+    <SolidColorBrush x:Key="Cp.Field" Color="#0F1317"/>
+    <SolidColorBrush x:Key="Cp.Hover" Color="#212932"/>
+    <SolidColorBrush x:Key="Cp.Border" Color="#242C34"/>
+    <SolidColorBrush x:Key="Cp.BorderStrong" Color="#36404A"/>
+
+    <SolidColorBrush x:Key="Cp.Text" Color="#F2F5F7"/>
+    <SolidColorBrush x:Key="Cp.TextSoft" Color="#C6CED5"/>
+    <SolidColorBrush x:Key="Cp.TextMuted" Color="#7F8A94"/>
+    <SolidColorBrush x:Key="Cp.TextFaint" Color="#5A646D"/>
+
+    <Color x:Key="Cp.AccentColor">#FFD24D</Color>
+    <SolidColorBrush x:Key="Cp.Accent" Color="{StaticResource Cp.AccentColor}"/>
+    <SolidColorBrush x:Key="Cp.AccentWash" Color="#1FFFD24D"/>
+    <SolidColorBrush x:Key="Cp.Live" Color="#3DDC7A"/>
+    <SolidColorBrush x:Key="Cp.Idle" Color="#4A545E"/>
+    <SolidColorBrush x:Key="Cp.Danger" Color="#FF5A5A"/>
+
+    <sys:Double x:Key="Cp.Size.Micro">10.5</sys:Double>
+    <sys:Double x:Key="Cp.Size.Small">11.5</sys:Double>
+    <sys:Double x:Key="Cp.Size.Body">13</sys:Double>
+    <sys:Double x:Key="Cp.Size.Title">15</sys:Double>
+    <sys:Double x:Key="Cp.Size.Display">20</sys:Double>
+
+    <!-- ===== Text roles ===== -->
+    <Style x:Key="Cp.Display" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Display}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+    </Style>
+
+    <Style x:Key="Cp.Title" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Title}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+    </Style>
+
+    <Style x:Key="Cp.Body" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Body}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="Cp.Hint" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,3,0,0"/>
+    </Style>
+
+    <!-- Group/section captions. Letter-spaced caps read as structure rather than as content, which
+         is what keeps a dense settings pane scannable without drawing boxes around everything. -->
+    <Style x:Key="Cp.Eyebrow" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Micro}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextFaint}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
+    </Style>
+
+    <Style x:Key="Cp.Mono" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+
+    <!-- ===== Scroll bars =====
+         The one implicit style in this dictionary. Safe because it can only reach controls that
+         actually contain a ScrollViewer, and no widget panel does — they size to their content by
+         design, which is what the whole scale ladder exists to guarantee. -->
+    <Style x:Key="Cp.ScrollThumb" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="Bar" Background="#33424C" CornerRadius="3" Margin="2"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Background" Value="#4B5761"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Bar" Property="Background" Value="#63707B"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.ScrollPage" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <ControlTemplate x:Key="Cp.ScrollBar.Vertical" TargetType="ScrollBar">
+        <Grid Background="Transparent">
+            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageUpCommand" Style="{StaticResource Cp.ScrollPage}"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource Cp.ScrollThumb}"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageDownCommand" Style="{StaticResource Cp.ScrollPage}"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+
+    <ControlTemplate x:Key="Cp.ScrollBar.Horizontal" TargetType="ScrollBar">
+        <Grid Background="Transparent">
+            <Track x:Name="PART_Track">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageLeftCommand" Style="{StaticResource Cp.ScrollPage}"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource Cp.ScrollThumb}"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton Command="ScrollBar.PageRightCommand" Style="{StaticResource Cp.ScrollPage}"/>
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="MinWidth" Value="10"/>
+        <Setter Property="Template" Value="{StaticResource Cp.ScrollBar.Vertical}"/>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="Height" Value="10"/>
+                <Setter Property="MinHeight" Value="10"/>
+                <Setter Property="Template" Value="{StaticResource Cp.ScrollBar.Horizontal}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- ===== Buttons ===== -->
+    <Style x:Key="Cp.Button" TargetType="ButtonBase">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Body}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.SurfaceAlt}"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#2A333D"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{StaticResource Cp.TextFaint}"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.PrimaryButton" TargetType="ButtonBase" BasedOn="{StaticResource Cp.Button}">
+        <Setter Property="Foreground" Value="#101316"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.Accent}" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#FFDD73"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#E5B93C"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Toolbar toggle: same chrome as a button, but it has to say whether the mode is currently on
+         from across the room, since leaving edit mode on is the one mistake that makes the overlay
+         feel broken while racing. -->
+    <Style x:Key="Cp.ToggleButton" TargetType="ToggleButton" BasedOn="{StaticResource Cp.Button}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.SurfaceAlt}"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="Lamp" Width="7" Height="7" Fill="{StaticResource Cp.Idle}"
+                                     VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#66FFD24D"/>
+                            <Setter TargetName="Lamp" Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Square, borderless, icon-sized. Used by the numeric stepper and the preview toolbar. -->
+    <Style x:Key="Cp.StepButton" TargetType="ButtonBase">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Width" Value="26"/>
+        <Setter Property="Height" Value="26"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="5">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#2A333D"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="#3A434C"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Toggle switch =====
+         A switch, not a checkbox: it says "this thing is on right now", which is what every boolean
+         in this tool actually means. The knob slides rather than snapping so the state change is
+         legible even when the pointer is already moving on to the next row. -->
+    <Style x:Key="Cp.Switch" TargetType="CheckBox">
+        <Setter Property="Width" Value="38"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Grid Background="Transparent">
+                        <Border x:Name="Track" CornerRadius="11" Background="{StaticResource Cp.Field}"
+                                BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"/>
+                        <Border x:Name="Knob" Width="16" Height="16" CornerRadius="8" Background="#6C7681"
+                                HorizontalAlignment="Left" Margin="3,0,0,0">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="KnobShift" X="0"/>
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Knob" Property="Background" Value="#111417"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="KnobShift" Storyboard.TargetProperty="X"
+                                                         To="16" Duration="0:0:0.14">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="KnobShift" Storyboard.TargetProperty="X"
+                                                         To="0" Duration="0:0:0.14">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True"/>
+                                <Condition Property="IsChecked" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Knob" Property="Background" Value="#8B959F"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Chip =====
+         For sets where the options are peers and the label is a word or two — table columns, panel
+         blocks. A grid of chips shows the whole set at once, which a column of switches cannot. -->
+    <Style x:Key="Cp.Chip" TargetType="ToggleButton">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Padding" Value="11,0"/>
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.Field}" CornerRadius="14"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#66FFD24D"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Segmented selector =====
+         One press, one value, whole range visible. Used for the size ladder, where seeing that XS
+         and XL exist is half the information. -->
+    <Style x:Key="Cp.SegmentItem" TargetType="ListBoxItem">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="5" MinWidth="38" Height="26" Margin="1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#232C35"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Accent}"/>
+                            <Setter Property="Foreground" Value="#101316"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.Segmented" TargetType="ListBox">
+        <Setter Property="Background" Value="{StaticResource Cp.Field}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Cp.Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="2"/>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource Cp.SegmentItem}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <ItemsPresenter/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Text field ===== -->
+    <Style x:Key="Cp.TextBox" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Body}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+        <Setter Property="CaretBrush" Value="{StaticResource Cp.Accent}"/>
+        <Setter Property="SelectionBrush" Value="{StaticResource Cp.Accent}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                  VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Hidden"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Dropdown ===== -->
+    <Style x:Key="Cp.ComboBoxItem" TargetType="ComboBoxItem">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Body}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.ComboBox" TargetType="ComboBox">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Body}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="MinWidth" Value="150"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource Cp.ComboBoxItem}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton x:Name="Toggle" Focusable="False" ClickMode="Press"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="Chrome" Background="{StaticResource Cp.Field}"
+                                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                                            CornerRadius="6" SnapsToDevicePixels="True">
+                                        <Path Data="M0,0 L4,4 L8,0" Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.5"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                              HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,11,0"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+
+                        <ContentPresenter IsHitTestVisible="False" Margin="11,0,28,0"
+                                          VerticalAlignment="Center" HorizontalAlignment="Left"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          TextElement.Foreground="{StaticResource Cp.Text}"/>
+
+                        <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                               Focusable="False" PopupAnimation="Fade"
+                               IsOpen="{TemplateBinding IsDropDownOpen}">
+                            <Border Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.BorderStrong}"
+                                    BorderThickness="1" CornerRadius="7" Padding="4" Margin="0,4,0,8"
+                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                    MaxHeight="{Binding MaxDropDownHeight, RelativeSource={RelativeSource TemplatedParent}}">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.55" Color="#000000"/>
+                                </Border.Effect>
+                                <ScrollViewer>
+                                    <ItemsPresenter/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Slider =====
+         The filled half is the DecreaseRepeatButton, which is how a WPF Track already splits itself —
+         no second bar to keep in sync with the thumb. -->
+    <Style x:Key="Cp.SliderFill" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                            Background="{StaticResource Cp.Accent}"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.SliderRest" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.SliderThumb" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Width="16" Height="16">
+                        <Ellipse x:Name="Halo" Fill="#33FFD24D" Opacity="0"/>
+                        <Ellipse x:Name="Knob" Width="13" Height="13" Fill="{StaticResource Cp.Accent}"
+                                 Stroke="#101316" StrokeThickness="1.5"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Halo" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Halo" Property="Opacity" Value="1"/>
+                            <Setter TargetName="Knob" Property="Width" Value="15"/>
+                            <Setter TargetName="Knob" Property="Height" Value="15"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.Slider" TargetType="Slider">
+        <!-- Click anywhere on the track jumps there: for a value judged by eye, making the user
+             drag from wherever the thumb happens to be is pure friction. -->
+        <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Height="20" Background="Transparent">
+                        <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                                Background="{StaticResource Cp.Field}"
+                                BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"/>
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource Cp.SliderFill}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource Cp.SliderThumb}"/>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource Cp.SliderRest}"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Navigation rail ===== -->
+    <Style x:Key="Cp.NavItem" TargetType="ListBoxItem">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="8,1,8,1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="7" SnapsToDevicePixels="True">
+                        <Grid>
+                            <!-- The selected marker is an inset bar rather than a filled row: it
+                                 survives the eye scanning the list vertically, and leaves the row's
+                                 own background free to carry hover. -->
+                            <Border x:Name="Marker" Width="3" Height="18" CornerRadius="2"
+                                    HorizontalAlignment="Left" Margin="-8,0,0,0"
+                                    Background="{StaticResource Cp.Accent}" Visibility="Collapsed"/>
+                            <ContentPresenter/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#1A2028"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#212A33"/>
+                            <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.NavList" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0,4,0,12"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource Cp.NavItem}"/>
+    </Style>
+
+    <!-- Row rendered for every entry in the rail. One template for widgets and for the general
+         pages: the widget-only affordances (state pill, on/off switch) collapse themselves, so a
+         new entry of either kind is a data change and never a layout change. -->
+    <DataTemplate x:Key="Cp.NavItemTemplate" DataType="{x:Type cp:NavItem}">
+        <Grid Height="42" Margin="10,0,8,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Path Grid.Column="0" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"
+                  Data="{Binding IconData}" Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.7"
+                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="11,0,8,0">
+                <TextBlock Text="{Binding Title}" FontFamily="{DynamicResource Theme.FontFamily}"
+                           FontSize="{StaticResource Cp.Size.Body}" FontWeight="SemiBold"
+                           Foreground="{StaticResource Cp.TextSoft}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="StatePill" Text="{Binding Widget.StateLabel}"
+                           FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Micro}"
+                           FontWeight="Bold" Foreground="{StaticResource Cp.TextFaint}" Margin="0,1,0,0"
+                           TextTrimming="CharacterEllipsis"
+                           Visibility="{Binding IsWidget, Converter={StaticResource Cp.BoolToVis}}"/>
+            </StackPanel>
+
+            <CheckBox Grid.Column="2" Style="{StaticResource Cp.Switch}"
+                      IsChecked="{Binding Widget.IsEnabled, Mode=TwoWay}"
+                      ToolTip="Show this widget on screen"
+                      Visibility="{Binding IsWidget, Converter={StaticResource Cp.BoolToVis}}"/>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Widget.IsOnScreen}" Value="True">
+                <Setter TargetName="StatePill" Property="Foreground" Value="{StaticResource Cp.Live}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <Style x:Key="Cp.NavGroupStyle" TargetType="GroupItem">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GroupItem">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Name}" Style="{StaticResource Cp.Eyebrow}"
+                                   Margin="19,16,0,6"/>
+                        <ItemsPresenter/>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Settings surface ===== -->
+    <Style x:Key="Cp.Card" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Cp.Surface}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Cp.Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="16,4,16,10"/>
+        <Setter Property="Margin" Value="0,0,0,12"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <!--
+      One row shape for every setting, whatever control sits on the right: label and hint on the
+      left, control right-aligned, hairline underneath. That single rule is what makes twelve
+      different widgets feel like one product, and it means a new option type only has to supply its
+      control — never its own idea of what a settings row looks like.
+    -->
+    <ControlTemplate x:Key="Cp.SettingRow" TargetType="ContentControl">
+        <Grid Margin="0,10,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}"
+                           Foreground="{StaticResource Cp.Text}"/>
+                <TextBlock Text="{Binding Hint}" Style="{StaticResource Cp.Hint}"
+                           Visibility="{Binding Hint, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+            </StackPanel>
+            <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+        </Grid>
+    </ControlTemplate>
+
+    <!-- Stacked variant: the control is a grid of chips, which needs the full width. -->
+    <ControlTemplate x:Key="Cp.SettingStack" TargetType="ContentControl">
+        <StackPanel Margin="0,10,0,4">
+            <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}"
+                       Foreground="{StaticResource Cp.Text}"/>
+            <TextBlock Text="{Binding Hint}" Style="{StaticResource Cp.Hint}"
+                       Visibility="{Binding Hint, Converter={StaticResource Cp.EmptyToCollapsed}}"
+                       Margin="0,3,0,0"/>
+            <ContentPresenter Margin="0,10,0,0"/>
+        </StackPanel>
+    </ControlTemplate>
+
+    <!-- ===== Setting item templates =====
+         Implicit by type. Adding a new kind of control to the whole application is: one class
+         deriving from SettingItem, one DataTemplate here. Nothing else changes, in any widget. -->
+
+    <DataTemplate DataType="{x:Type cp:ToggleSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <CheckBox Style="{StaticResource Cp.Switch}" IsChecked="{Binding Value, Mode=TwoWay}"/>
+        </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:ChoiceSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <ComboBox Style="{StaticResource Cp.ComboBox}" ItemsSource="{Binding Options}"
+                      SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"/>
+        </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:NumberSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}"
+                    BorderThickness="1" CornerRadius="6" Height="32" SnapsToDevicePixels="True">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="−" Style="{StaticResource Cp.StepButton}" Margin="1,0,0,0"
+                            Command="{Binding DecrementCommand}"/>
+                    <TextBox Style="{StaticResource Cp.TextBox}" Width="44" TextAlignment="Center"
+                             Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Text="{Binding Unit}" Style="{StaticResource Cp.Mono}" VerticalAlignment="Center"
+                               Margin="0,0,4,0" Visibility="{Binding Unit, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                    <Button Content="+" Style="{StaticResource Cp.StepButton}" Margin="0,0,1,0"
+                            Command="{Binding IncrementCommand}"/>
+                </StackPanel>
+            </Border>
+        </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:SegmentedSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <ListBox Style="{StaticResource Cp.Segmented}" ItemsSource="{Binding Options}"
+                     SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"/>
+        </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:SliderSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center"
+                        Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
+                        SmallChange="{Binding Step}" LargeChange="{Binding Step}"
+                        Value="{Binding Value, Mode=TwoWay}"/>
+                <TextBlock Text="{Binding Display}" Style="{StaticResource Cp.Mono}" Width="42"
+                           TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"
+                           Foreground="{StaticResource Cp.Text}"/>
+            </StackPanel>
+        </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:ActionSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <Button Style="{StaticResource Cp.Button}" Content="{Binding ButtonText}"
+                    Command="{Binding InvokeCommand}"/>
+        </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:ChipGroupSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingStack}">
+            <ItemsControl ItemsSource="{Binding Chips}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ToggleButton Style="{StaticResource Cp.Chip}" Content="{Binding Label}"
+                                      ToolTip="{Binding Hint}" IsChecked="{Binding Value, Mode=TwoWay}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ContentControl>
+    </DataTemplate>
+
+    <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. -->
+    <DataTemplate DataType="{x:Type cp:SettingsGroup}">
+        <Border Style="{StaticResource Cp.Card}">
+            <StackPanel>
+                <StackPanel Margin="0,12,0,2">
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
+                               Foreground="{StaticResource Cp.Accent}"/>
+                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Cp.Hint}"
+                               Visibility="{Binding Subtitle, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Margin" Value="0"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+</ResourceDictionary>

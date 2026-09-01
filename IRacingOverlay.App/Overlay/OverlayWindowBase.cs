@@ -23,6 +23,8 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
 
     private readonly string _widgetName;
     private bool _isEditMode;
+    private ScalablePanel? _scaler;
+    private double _widgetOpacity;
 
     protected OverlayWindowBase(string widgetName, double defaultLeft = 100, double defaultTop = 100)
     {
@@ -34,10 +36,15 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         ShowInTaskbar = false;
         Topmost = true;
         ResizeMode = ResizeMode.NoResize;
+        // Reappearing after "hide outside car" must never pull focus off iRacing: a widget coming
+        // back as the green flag drops would otherwise steal the keyboard mid-lap.
+        ShowActivated = false;
         // The widget is exactly as big as its content, at every scale level and in both modes. No
         // derived XAML sets Width/Height any more, so there is no saved size to restore, nothing to
         // drift, and no way for a stored size to disagree with what the content actually needs.
         SizeToContent = SizeToContent.WidthAndHeight;
+
+        _widgetOpacity = WidgetOpacityStore.Get(_widgetName);
 
         WindowStartupLocation = WindowStartupLocation.Manual;
         var saved = WidgetLayoutStore.Get(_widgetName);
@@ -72,10 +79,87 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         // both unreadable and impossible to grab again.
         SizeChanged += (_, _) => ConstrainToScreen();
         Closing += (_, _) => SaveLayout();
+
+        ApplyOpacity();
     }
+
+    /// <summary>How visible a widget is allowed to get while the layout is being edited. A widget
+    /// left at 0% is invisible by design once racing, but it still has to be findable and draggable
+    /// on the screen where it lives — otherwise the only way back is the control panel, and the user
+    /// has no idea where the thing they are moving actually is.</summary>
+    private const double EditModeMinimumOpacity = 0.4;
 
     /// <summary>True once this widget has a persisted position from a previous run.</summary>
     public bool HasSavedLayout { get; private set; }
+
+    /// <summary>
+    /// The widget's own opacity, 0 to 1. Applied to the window rather than to any one brush, so it
+    /// reaches everything the widget draws — panel background, borders, text, chips, bars and icons
+    /// alike — in one place, and keeps working for widgets added later without them having to know
+    /// the feature exists.
+    /// </summary>
+    public double WidgetOpacity
+    {
+        get => _widgetOpacity;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 1);
+            if (_widgetOpacity.Equals(clamped))
+            {
+                return;
+            }
+
+            _widgetOpacity = clamped;
+            WidgetOpacityStore.Save(_widgetName, clamped);
+            ApplyOpacity();
+            OnPropertyChanged();
+        }
+    }
+
+    private void ApplyOpacity() =>
+        Opacity = _isEditMode ? Math.Max(_widgetOpacity, EditModeMinimumOpacity) : _widgetOpacity;
+
+    /// <summary>
+    /// The widget's step on the shared size ladder, reached through whichever <see cref="ScalablePanel"/>
+    /// the derived XAML wraps its content in. Exposed here so the control panel can drive size for
+    /// every widget through one property instead of each widget having to surface its own scaler —
+    /// the +/- control on the widget itself writes the same value.
+    ///
+    /// Assigning before the panel has loaded is a deliberate no-op: <see cref="ScalablePanel"/>
+    /// restores its level from <see cref="ScaleLevelStore"/> on load, so callers persist there first
+    /// and this only has to catch panels that are already on screen.
+    /// </summary>
+    public ScaleLevel ScaleLevel
+    {
+        get => Scaler?.Level ?? ScaleLevels.Default;
+        set
+        {
+            if (Scaler is { } scaler)
+            {
+                scaler.Level = value;
+            }
+        }
+    }
+
+    private ScalablePanel? Scaler => _scaler ??= FindScalablePanel(this);
+
+    private static ScalablePanel? FindScalablePanel(DependencyObject root)
+    {
+        if (root is ScalablePanel panel)
+        {
+            return panel;
+        }
+
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is DependencyObject node && FindScalablePanel(node) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
 
     public bool IsEditMode
     {
@@ -89,6 +173,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
 
             _isEditMode = value;
             ApplyClickThrough();
+            ApplyOpacity();
             if (!value)
             {
                 SaveLayout();
