@@ -26,6 +26,8 @@ public partial class WidgetPreview : UserControl
     private DriverTableOptions? _standingsOptions;
     private DriverTableOptions? _relativeOptions;
     private FuelCalculatorOptions? _fuelCalculatorOptions;
+    private FlagOptions? _flagOptions;
+    private FlagPreviewScenario? _flagPreview;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -53,15 +55,21 @@ public partial class WidgetPreview : UserControl
     public void Bind(
         DriverTableOptions standingsOptions,
         DriverTableOptions relativeOptions,
-        FuelCalculatorOptions fuelCalculatorOptions)
+        FuelCalculatorOptions fuelCalculatorOptions,
+        FlagOptions flagOptions,
+        FlagPreviewScenario flagPreview)
     {
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
         _fuelCalculatorOptions = fuelCalculatorOptions;
+        _flagOptions = flagOptions;
+        _flagPreview = flagPreview;
 
         standingsOptions.PropertyChanged += OnOptionsChanged;
         relativeOptions.PropertyChanged += OnOptionsChanged;
         fuelCalculatorOptions.PropertyChanged += OnOptionsChanged;
+        flagOptions.PropertyChanged += OnOptionsChanged;
+        flagPreview.PropertyChanged += OnOptionsChanged;
     }
 
     private static void OnSlotChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -137,7 +145,7 @@ public partial class WidgetPreview : UserControl
         WidgetCatalog.Relative => new RelativePanel { Options = _relativeOptions ?? new DriverTableOptions(DriverTable.Relative) },
         WidgetCatalog.Standings => new StandingsPanel { Options = _standingsOptions ?? new DriverTableOptions(DriverTable.Standings) },
         WidgetCatalog.Cockpit => new CockpitPanel(),
-        WidgetCatalog.Flag => new FlagPanel(),
+        WidgetCatalog.Flag => new FlagPanel { Options = _flagOptions ?? new FlagOptions() },
         WidgetCatalog.TireInfo => new TireInfoPanel(),
         WidgetCatalog.Delta => new DeltaPanel(),
         WidgetCatalog.Fuel => new FuelPanel(),
@@ -203,8 +211,15 @@ public partial class WidgetPreview : UserControl
                 cockpit.UpdateState(PreviewData.Cockpit());
                 break;
             case FlagPanel flag:
-                flag.UpdateState(PreviewData.Flags());
-                break;
+                {
+                    // Same selection the live widget makes; a disabled flag shows the placeholder,
+                    // which is the honest answer to "what will I see".
+                    var flags = FlagPresenter.Compose(
+                        _flagPreview?.Flags ?? PreviewData.FlagScenarios[0].Flags,
+                        _flagOptions ?? new FlagOptions());
+                    flag.UpdateState(flags.Count > 0 ? flags : [FlagState.None]);
+                    break;
+                }
             case TireInfoPanel tires:
                 tires.UpdateState(PreviewData.Tires());
                 break;

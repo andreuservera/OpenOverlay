@@ -46,6 +46,7 @@ public sealed partial class ControlPanelViewModel
             WidgetCatalog.Relative => [RelativeColumns(), RelativeTable(), Placement(slot)],
             WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(), FuelCalculatorMath(), Placement(slot)],
             WidgetCatalog.Delta => [DeltaReferenceGroup(), Placement(slot)],
+            WidgetCatalog.Flag => [FlagPreviewGroup(), FlagTypes(), FlagContent(), FlagLayoutGroup(), Placement(slot)],
             WidgetCatalog.Cockpit or WidgetCatalog.PedalTrace => [HighRateNote(), Placement(slot)],
             _ => [Placement(slot)],
         };
@@ -252,6 +253,104 @@ public sealed partial class ControlPanelViewModel
             ["Session best lap", "Personal best (all-time)", "Optimal lap"],
             (int)_deltaReference,
             index => _deltaReference = (DeltaReference)index));
+
+    // ===== Flags =====
+
+    private static readonly (FlagGroup Group, string Label, string Hint)[] FlagGroupLabels =
+    [
+        (FlagGroup.Track, "Track status", "One at a time — the most serious wins."),
+        (FlagGroup.Driver, "Aimed at you", "Penalties and warnings for your car. One at a time."),
+        (FlagGroup.Race, "Race progress", "Laps-to-go boards, halfway, last lap, finish. One at a time."),
+        (FlagGroup.Advisory, "Advisories", "Shown alongside everything else."),
+    ];
+
+    private SettingsGroup FlagPreviewGroup() => new SettingsGroup("PREVIEW")
+        .With(new ChoiceSetting(
+            "Simulate",
+            "Preview only — shows any flag exactly as the overlay draws it, no iRacing needed.",
+            PreviewData.FlagScenarios.Select(s => s.Label).ToList(),
+            FlagPreview.Index,
+            index => FlagPreview.Index = index));
+
+    private SettingsGroup FlagTypes()
+    {
+        var group = new SettingsGroup(
+            "FLAG TYPES",
+            "A flag switched off never appears — on the widget or on the dashboard.");
+
+        foreach (var (flagGroup, label, hint) in FlagGroupLabels)
+        {
+            group.Items.Add(new ChipGroupSetting(
+                label,
+                hint,
+                FlagCatalog.All
+                    .Where(definition => definition.Group == flagGroup)
+                    .Select(definition => new ChipSetting(
+                        definition.Label,
+                        definition.Description,
+                        FlagOptions.IsEnabled(definition.Kind),
+                        enabled => SaveFlags(() => FlagOptions.SetEnabled(definition.Kind, enabled))))
+                    .ToList()));
+        }
+
+        return group;
+    }
+
+    private SettingsGroup FlagContent() => new SettingsGroup("CONTENT")
+        .With(
+            new ChoiceSetting(
+                "Show",
+                "Icon only is the most compact: the flag graphic and its colour bar, nothing else.",
+                ["Icon and text", "Icon only"],
+                (int)FlagOptions.DisplayMode,
+                index => SaveFlags(() => FlagOptions.DisplayMode = (FlagDisplayMode)index)),
+            new ToggleSetting(
+                "Flag name",
+                null,
+                FlagOptions.ShowName,
+                value => SaveFlags(() => FlagOptions.ShowName = value)),
+            new ToggleSetting(
+                "Event description",
+                "One line under the name saying what the flag asks of you.",
+                FlagOptions.ShowDescription,
+                value => SaveFlags(() => FlagOptions.ShowDescription = value)),
+            new NumberSetting(
+                "Flags at once",
+                "Most important first, and the first one a size up.",
+                FlagOptions.MaxFlags,
+                1,
+                FlagOptions.MaxFlagsLimit,
+                1,
+                "0",
+                null,
+                value => SaveFlags(() => FlagOptions.MaxFlags = (int)Math.Round(value))),
+            new ChoiceSetting(
+                "Info flags stay up",
+                "Green, halfway, laps-to-go boards and waving flags. Safety flags always stay up while they're out.",
+                FlagOptions.HoldChoices.Select(s => s == 0 ? "While active" : $"{s} seconds").ToList(),
+                Math.Max(0, FlagOptions.HoldChoices.ToList().IndexOf(FlagOptions.InfoFlagSeconds)),
+                index => SaveFlags(() => FlagOptions.InfoFlagSeconds = FlagOptions.HoldChoices[index])));
+
+    private SettingsGroup FlagLayoutGroup() => new SettingsGroup("LAYOUT")
+        .With(
+            new ChoiceSetting(
+                "Stack flags",
+                null,
+                ["Vertically", "Side by side"],
+                (int)FlagOptions.Layout,
+                index => SaveFlags(() => FlagOptions.Layout = (FlagLayout)index)),
+            new ChoiceSetting(
+                "Icon position",
+                null,
+                ["Left of the text", "Above the text"],
+                (int)FlagOptions.IconPlacement,
+                index => SaveFlags(() => FlagOptions.IconPlacement = (FlagIconPlacement)index)));
+
+    private void SaveFlags(Action change)
+    {
+        change();
+        FlagOptionsStore.Save(FlagOptions);
+    }
 
     // ===== Application pages =====
 

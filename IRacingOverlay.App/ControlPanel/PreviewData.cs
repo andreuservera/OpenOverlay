@@ -174,23 +174,32 @@ public static class PreviewData
         ReferenceLabel = "SESSION BEST",
     };
 
-    public static IReadOnlyList<FlagState> Flags() =>
-    [
-        new FlagState
+    public sealed record FlagScenario(string Label, IReadOnlyList<ActiveFlag> Flags);
+
+    /// <summary>What the flag preview can simulate: a busy moment first (a primary flag with two
+    /// advisories, so the stacking and the size hierarchy both show), then every flag and variant in
+    /// the catalog — generated from it, so a newly added flag is previewable with no change here.</summary>
+    public static IReadOnlyList<FlagScenario> FlagScenarios { get; } = BuildFlagScenarios();
+
+    private static List<FlagScenario> BuildFlagScenarios()
+    {
+        var scenarios = new List<FlagScenario>
         {
-            Name = "YELLOW",
-            BackgroundColor = "#FFD24D",
-            ForegroundColor = "#0B0B0B",
-            Style = FlagVisualStyle.Solid,
-        },
-        new FlagState
+            new("Race moment — waving yellow, debris, blue",
+                [new(FlagKind.Yellow, FlagVariant.Waving), new(FlagKind.Debris), new(FlagKind.Blue)]),
+        };
+
+        foreach (var definition in FlagCatalog.All)
         {
-            Name = "BLUE",
-            BackgroundColor = "#2F6FE0",
-            ForegroundColor = "#FFFFFF",
-            Style = FlagVisualStyle.BlueWithOrangeStripe,
-        },
-    ];
+            scenarios.Add(new(definition.Label, [new(definition.Kind)]));
+            foreach (var variant in definition.Variants)
+            {
+                scenarios.Add(new($"{definition.Label} — {variant.Label}", [new(definition.Kind, variant.Variant)]));
+            }
+        }
+
+        return scenarios;
+    }
 
     public static FuelState Fuel() => new()
     {

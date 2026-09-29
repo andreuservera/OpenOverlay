@@ -65,6 +65,8 @@ public partial class MainWindow : Window
     // the same driver. Rebuilt on the standings tick, not every frame.
     private IReadOnlyList<StandingsRow> _latestStandings = [];
 
+    private readonly FlagPresenter _flagPresenter = new();
+
     public MainWindow()
     {
         // Built before InitializeComponent so every persisted value is already loaded when the first
@@ -78,7 +80,7 @@ public partial class MainWindow : Window
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview);
         DataContext = _vm;
 
         _criticalTimer.Interval = TimeSpan.FromMilliseconds(_vm.CriticalRefreshIntervalMs);
@@ -207,7 +209,8 @@ public partial class MainWindow : Window
 
         if (Flags is not null || _dashboard is not null)
         {
-            var flagStates = FlagBuilder.Build(telemetry);
+            var flagStates = _flagPresenter.Present(
+                FlagBuilder.Decode(telemetry), _vm.FlagOptions, TimeSpan.FromMilliseconds(Environment.TickCount64));
             Flags?.UpdateState(flagStates);
             _dashboard?.UpdateFlag(flagStates);
         }
@@ -443,6 +446,7 @@ public partial class MainWindow : Window
     private DashboardWindow CreateDashboard()
     {
         var dashboard = new DashboardWindow();
+        dashboard.SetFlagOptions(_vm.FlagOptions);
         dashboard.Closed += (_, _) => SetDashboardButtonCaption("Show dashboard");
         return dashboard;
     }

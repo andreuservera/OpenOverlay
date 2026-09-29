@@ -6,182 +6,46 @@ namespace IRacingOverlay.App.Tests;
 
 public class FlagBuilderTests
 {
-    private static SyntheticMemoryBuilder FlagVars(out SyntheticMemoryBuilder builder)
-    {
-        builder = new SyntheticMemoryBuilder();
-        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
-        return builder;
-    }
+    private const uint Checkered = 0x00000001;
+    private const uint White = 0x00000002;
+    private const uint Green = 0x00000004;
+    private const uint Yellow = 0x00000008;
+    private const uint Red = 0x00000010;
+    private const uint Blue = 0x00000020;
+    private const uint Debris = 0x00000040;
+    private const uint Crossed = 0x00000080;
+    private const uint YellowWaving = 0x00000100;
+    private const uint OneLapToGreen = 0x00000200;
+    private const uint GreenHeld = 0x00000400;
+    private const uint TenToGo = 0x00000800;
+    private const uint FiveToGo = 0x00001000;
+    private const uint RandomWaving = 0x00002000;
+    private const uint Caution = 0x00004000;
+    private const uint CautionWaving = 0x00008000;
+    private const uint Black = 0x00010000;
+    private const uint Disqualify = 0x00020000;
+    private const uint Servicible = 0x00040000;
+    private const uint Furled = 0x00080000;
+    private const uint Repair = 0x00100000;
+    private const uint DqScoringInvalid = 0x00200000;
+    private const uint StartHidden = 0x10000000;
+    private const uint StartReady = 0x20000000;
+    private const uint StartSet = 0x40000000;
+    private const uint StartGo = 0x80000000;
 
     private static IRacingOverlay.Sdk.TelemetrySnapshot BuildWithFlags(uint flags)
     {
-        FlagVars(out var builder);
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
         return TestSnapshotFactory.Build(builder, w => w.SetBitField("SessionFlags", flags));
     }
+
+    private static IReadOnlyList<FlagState> Shown(uint flags) => FlagBuilder.Build(BuildWithFlags(flags));
 
     [Fact]
     public void NoFlagsSet_ReturnsEmpty()
     {
-        var flags = FlagBuilder.Build(BuildWithFlags(0));
-
-        Assert.Empty(flags);
-    }
-
-    [Fact]
-    public void GreenBit_ReturnsGreen()
-    {
-        var flags = FlagBuilder.Build(BuildWithFlags(0x00000004)); // irsdk_green
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("GREEN", flag.Name);
-        Assert.Equal(FlagVisualStyle.Solid, flag.Style);
-    }
-
-    [Fact]
-    public void OneLapToGreenBit_Alone_DoesNotShowGreen()
-    {
-        // Regression test: OneLapToGreen means "still on the formation/pace lap, green is one lap
-        // away" — not "green is out." Reported live as a confusing false-positive green flag showing
-        // before the race had actually started.
-        var flags = FlagBuilder.Build(BuildWithFlags(0x00000200)); // irsdk_oneLapToGreen
-
-        Assert.DoesNotContain(flags, f => f.Name == "GREEN");
-    }
-
-    [Fact]
-    public void OneLapToGreenAndYellow_StillShowsYellowNotGreen()
-    {
-        // Formation laps commonly carry a caution/yellow alongside OneLapToGreen right up until the
-        // green actually drops — must not flip to green early just because OneLapToGreen is set.
-        const uint yellow = 0x00000008;
-        const uint oneLapToGreen = 0x00000200;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(yellow | oneLapToGreen));
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("LOCAL YELLOW", flag.Name);
-    }
-
-    [Fact]
-    public void RepairBit_ReturnsMeatball()
-    {
-        var flags = FlagBuilder.Build(BuildWithFlags(0x00100000)); // irsdk_repair
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("SERVICE", flag.Name);
-        Assert.Equal(FlagVisualStyle.Meatball, flag.Style);
-    }
-
-    [Fact]
-    public void ServicibleBit_IsNotAFlag_GreenStillWins()
-    {
-        // Regression test: irsdk_servicible ("car is allowed service") is not a flag at all per the
-        // official SDK comment, but was previously mistaken for the meatball flag. It can legitimately
-        // be set at the same time as green (e.g. around a rolling start) and must never override it.
-        const uint green = 0x00000004;
-        const uint servicible = 0x00040000;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(green | servicible));
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("GREEN", flag.Name);
-    }
-
-    [Fact]
-    public void CheckeredBit_ReturnsCheckered()
-    {
-        var flags = FlagBuilder.Build(BuildWithFlags(0x00000001)); // irsdk_checkered
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("CHECKERED", flag.Name);
-        Assert.Equal(FlagVisualStyle.Checkered, flag.Style);
-    }
-
-    [Fact]
-    public void BlackAndYellowTogether_BlackTakesPriority()
-    {
-        const uint black = 0x00010000;
-        const uint yellow = 0x00000008;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(black | yellow));
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("BLACK FLAG", flag.Name);
-    }
-
-    [Fact]
-    public void CautionWavingAndCaution_ReportsCaution()
-    {
-        const uint caution = 0x00004000;
-        const uint cautionWaving = 0x00008000;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(caution | cautionWaving));
-
-        var flag = Assert.Single(flags);
-        Assert.Equal("CAUTION", flag.Name);
-    }
-
-    [Fact]
-    public void DebrisAndYellowTogether_BothAppear()
-    {
-        // Debris is a supplementary flag, not part of the primary priority chain, so it should show
-        // alongside whatever the primary track-state flag is instead of being hidden by it.
-        const uint yellow = 0x00000008;
-        const uint debris = 0x00000040;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(yellow | debris));
-
-        Assert.Contains(flags, f => f.Name == "LOCAL YELLOW");
-        Assert.Contains(flags, f => f.Name == "DEBRIS");
-        Assert.Equal(2, flags.Count);
-    }
-
-    [Fact]
-    public void BlueFlagDuringGreenRacing_BothAppear()
-    {
-        // Blue ("faster car behind") is a personal call that can happen during ordinary green-flag
-        // racing, not just cautions — it must show alongside Green, not be suppressed by it.
-        const uint green = 0x00000004;
-        const uint blue = 0x00000020;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(green | blue));
-
-        Assert.Contains(flags, f => f.Name == "GREEN");
-        Assert.Contains(flags, f => f.Name == "BLUE — CAR BEHIND");
-        Assert.Equal(2, flags.Count);
-    }
-
-    [Fact]
-    public void DebrisYellowAndBlue_AllThreeAppear()
-    {
-        const uint yellow = 0x00000008;
-        const uint debris = 0x00000040;
-        const uint blue = 0x00000020;
-
-        var flags = FlagBuilder.Build(BuildWithFlags(yellow | debris | blue));
-
-        Assert.Equal(3, flags.Count);
-        Assert.Contains(flags, f => f.Name == "LOCAL YELLOW");
-        Assert.Contains(flags, f => f.Name == "DEBRIS");
-        Assert.Contains(flags, f => f.Name == "BLUE — CAR BEHIND");
-    }
-
-    [Fact]
-    public void DebrisFlag_UsesStripedStyle()
-    {
-        var flags = FlagBuilder.Build(BuildWithFlags(0x00000040)); // irsdk_debris
-
-        var flag = Assert.Single(flags);
-        Assert.Equal(FlagVisualStyle.DebrisStripes, flag.Style);
-    }
-
-    [Fact]
-    public void BlueFlag_UsesOrangeStripeStyle()
-    {
-        var flags = FlagBuilder.Build(BuildWithFlags(0x00000020)); // irsdk_blue
-
-        var flag = Assert.Single(flags);
-        Assert.Equal(FlagVisualStyle.BlueWithOrangeStripe, flag.Style);
+        Assert.Empty(Shown(0));
     }
 
     [Fact]
@@ -191,8 +55,138 @@ public class FlagBuilderTests
         builder.AddVar("Speed", IrsdkVarType.Float);
         var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("Speed", 10));
 
-        var flags = FlagBuilder.Build(snapshot);
+        Assert.Empty(FlagBuilder.Build(snapshot));
+    }
 
-        Assert.Empty(flags);
+    [Theory]
+    [InlineData(Checkered, FlagKind.Checkered)]
+    [InlineData(White, FlagKind.White)]
+    [InlineData(Green, FlagKind.Green)]
+    [InlineData(GreenHeld, FlagKind.Green)]
+    [InlineData(StartGo, FlagKind.Green)]
+    [InlineData(Yellow, FlagKind.Yellow)]
+    [InlineData(Red, FlagKind.Red)]
+    [InlineData(Blue, FlagKind.Blue)]
+    [InlineData(Debris, FlagKind.Debris)]
+    [InlineData(Crossed, FlagKind.Crossed)]
+    [InlineData(OneLapToGreen, FlagKind.OneLapToGreen)]
+    [InlineData(TenToGo, FlagKind.TenToGo)]
+    [InlineData(FiveToGo, FlagKind.FiveToGo)]
+    [InlineData(RandomWaving, FlagKind.RandomWaving)]
+    [InlineData(Caution, FlagKind.Caution)]
+    [InlineData(Black, FlagKind.Black)]
+    [InlineData(Disqualify, FlagKind.Disqualified)]
+    [InlineData(Furled, FlagKind.Furled)]
+    [InlineData(Repair, FlagKind.Meatball)]
+    [InlineData(StartReady, FlagKind.StartLights)]
+    public void EverySdkFlagBit_DecodesToItsKind(uint bit, FlagKind expected)
+    {
+        var flag = Assert.Single(FlagBuilder.Decode(bit));
+        Assert.Equal(expected, flag.Kind);
+    }
+
+    [Fact]
+    public void EveryDecodableKind_HasACatalogEntry()
+    {
+        var all = FlagBuilder.Decode(uint.MaxValue & ~StartHidden & ~StartGo & ~Green & ~GreenHeld);
+        foreach (var flag in all)
+        {
+            Assert.Equal(flag.Kind, FlagCatalog.Get(flag.Kind).Kind);
+        }
+    }
+
+    [Fact]
+    public void ServicibleBit_IsNotAFlag()
+    {
+        // Regression: irsdk_servicible ("car is allowed service") was once mistaken for the meatball.
+        Assert.Empty(FlagBuilder.Decode(Servicible));
+        Assert.Equal(FlagKind.Green, Assert.Single(Shown(Green | Servicible)).Kind);
+    }
+
+    [Fact]
+    public void OneLapToGreen_NeverShowsGreen()
+    {
+        // Regression: it means "still on the pace lap", and once put a green flag up before the start.
+        Assert.DoesNotContain(FlagBuilder.Decode(OneLapToGreen), f => f.Kind == FlagKind.Green);
+    }
+
+    [Fact]
+    public void WavingBits_BecomeWavingVariants()
+    {
+        Assert.Equal(new ActiveFlag(FlagKind.Yellow, FlagVariant.Waving), Assert.Single(FlagBuilder.Decode(Yellow | YellowWaving)));
+        Assert.Equal(new ActiveFlag(FlagKind.Caution, FlagVariant.Waving), Assert.Single(FlagBuilder.Decode(Caution | CautionWaving)));
+        Assert.Equal("WAVING YELLOW", Assert.Single(Shown(YellowWaving)).Name);
+    }
+
+    [Fact]
+    public void DqScoringInvalid_IsTheScoreVoidedDisqualification()
+    {
+        var flag = Assert.Single(FlagBuilder.Decode(Disqualify | DqScoringInvalid));
+        Assert.Equal(new ActiveFlag(FlagKind.Disqualified, FlagVariant.ScoreVoided), flag);
+    }
+
+    [Fact]
+    public void StartLights_FollowTheSequenceAndHideWhenTheyAreGone()
+    {
+        Assert.Equal(new ActiveFlag(FlagKind.StartLights, FlagVariant.LightsSet), Assert.Single(FlagBuilder.Decode(StartReady | StartSet)));
+        Assert.Empty(FlagBuilder.Decode(StartReady | StartHidden));
+        Assert.Equal(FlagKind.Green, Assert.Single(FlagBuilder.Decode(StartReady | StartSet | StartGo)).Kind);
+    }
+
+    [Fact]
+    public void FiveToGo_ReplacesTenToGo()
+    {
+        Assert.Equal(FlagKind.FiveToGo, Assert.Single(FlagBuilder.Decode(TenToGo | FiveToGo)).Kind);
+    }
+
+    [Fact]
+    public void DriverAndTrackFlags_ShowTogether_MostSeriousFirst()
+    {
+        // A penalty doesn't make the yellow ahead any less relevant.
+        var flags = Shown(Black | Yellow);
+
+        Assert.Equal([FlagKind.Black, FlagKind.Yellow], flags.Select(f => f.Kind));
+        Assert.True(flags[0].IsPrimary);
+        Assert.False(flags[1].IsPrimary);
+    }
+
+    [Fact]
+    public void TrackFlags_OnlyTheMostSeriousShows()
+    {
+        Assert.Equal(FlagKind.Red, Assert.Single(Shown(Red | Yellow | Green)).Kind);
+        Assert.Equal(FlagKind.Caution, Assert.Single(Shown(Caution | Yellow)).Kind);
+    }
+
+    [Fact]
+    public void YellowOnThePaceLap_ShowsYellowAndTheOneToGreenBoard()
+    {
+        var flags = Shown(Yellow | OneLapToGreen);
+
+        Assert.Equal([FlagKind.Yellow, FlagKind.OneLapToGreen], flags.Select(f => f.Kind));
+    }
+
+    [Fact]
+    public void Advisories_StackAlongsideTheTrackFlag()
+    {
+        var flags = Shown(Yellow | Debris | Blue);
+
+        Assert.Equal([FlagKind.Yellow, FlagKind.Debris, FlagKind.Blue], flags.Select(f => f.Kind));
+    }
+
+    [Fact]
+    public void BlueDuringGreenRacing_BothAppear()
+    {
+        Assert.Equal([FlagKind.Blue, FlagKind.Green], Shown(Green | Blue).Select(f => f.Kind));
+    }
+
+    [Fact]
+    public void FlagStyles_MatchTheRealFlags()
+    {
+        Assert.Equal(FlagVisualStyle.Checkered, Assert.Single(Shown(Checkered)).Style);
+        Assert.Equal(FlagVisualStyle.Meatball, Assert.Single(Shown(Repair)).Style);
+        Assert.Equal(FlagVisualStyle.DebrisStripes, Assert.Single(Shown(Debris)).Style);
+        Assert.Equal(FlagVisualStyle.BlueWithOrangeStripe, Assert.Single(Shown(Blue)).Style);
+        Assert.Equal(FlagVisualStyle.BlackWithCross, Assert.Single(Shown(Disqualify)).Style);
+        Assert.Equal(FlagVisualStyle.DiagonalSplit, Assert.Single(Shown(Furled)).Style);
     }
 }
