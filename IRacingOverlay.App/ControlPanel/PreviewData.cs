@@ -164,6 +164,12 @@ public static class PreviewData
         // state of the proximity bars in a single frame.
         LeftProximity = new ProximitySide(0.55, 0.18, 0.73),
         RightProximity = ProximitySide.None,
+        FuelLiters = 31.4,
+        FuelPct = 0.46,
+        Throttle = 0.82,
+        Brake = 0,
+        WaterTempC = 88,
+        OilTempC = 104,
     };
 
     public static DeltaState Delta() => new()

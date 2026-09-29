@@ -1,37 +1,67 @@
-using System;
-using System.Globalization;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.App.Widgets.Cockpit;
 
 namespace IRacingOverlay.App.Widgets;
 
+/// <summary>The cockpit, in whichever theme <see cref="Options"/> selects. Same API for the floating
+/// widget, the dashboard and the control-panel preview, so all three always show the same theme.</summary>
 public partial class CockpitPanel : UserControl
 {
-    // Half-period of the ABS blink, in milliseconds — a fixed wall-clock cadence rather than "flip
-    // once per update," so the blink rate stays the same regardless of how fast the critical refresh
-    // rate (Cockpit's own update timer) is set. Toggling once per tick used to look like a genuine
-    // blink at the old 10Hz default (100ms => a 5Hz blink) but turned into a ~30Hz flicker/stutter
-    // once the refresh rate was raised toward 60Hz.
-    private const long BlinkHalfPeriodMs = 150;
+    public static readonly DependencyProperty OptionsProperty = DependencyProperty.Register(
+        nameof(Options), typeof(CockpitOptions), typeof(CockpitPanel),
+        new PropertyMetadata(new CockpitOptions()));
+
+    public static readonly DependencyProperty ThemeProperty = DependencyProperty.Register(
+        nameof(Theme), typeof(CockpitTheme), typeof(CockpitPanel),
+        new PropertyMetadata(CockpitTheme.Default, (d, _) => ((CockpitPanel)d).ShowTheme()));
+
+    private CockpitDashboard _dashboard = null!;
+    private CockpitState _last = CockpitState.Empty;
 
     public CockpitPanel()
     {
         InitializeComponent();
+        ShowTheme();
+        // Bound rather than subscribed: the binding listens weakly, so a preview panel that is
+        // thrown away isn't kept alive by the long-lived shared options object.
+        SetBinding(ThemeProperty, new Binding($"{nameof(Options)}.{nameof(CockpitOptions.Theme)}") { Source = this });
+    }
+
+    public CockpitOptions Options
+    {
+        get => (CockpitOptions)GetValue(OptionsProperty);
+        set => SetValue(OptionsProperty, value);
+    }
+
+    public CockpitTheme Theme
+    {
+        get => (CockpitTheme)GetValue(ThemeProperty);
+        set => SetValue(ThemeProperty, value);
     }
 
     public void UpdateState(CockpitState state)
     {
-        var blinkPhase = (Environment.TickCount64 / BlinkHalfPeriodMs) % 2 == 0;
+        _last = state;
+        _dashboard.Update(state);
+    }
 
-        // The shift lights run their own animation clock instead of taking blinkPhase — see
-        // ShiftLightsPanel.
-        ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink);
-        ShiftGear.SetGear(state.Gear);
-        ShiftGear.SetShiftPoint(state.ShiftBlink);
-        AbsIndicator.SetActive(state.AbsActive, blinkPhase);
-        SpeedText.Text = state.SpeedKph > 0 ? state.SpeedKph.ToString("0", CultureInfo.InvariantCulture) : "—";
-        RpmText.Text = state.Rpm > 0 ? state.Rpm.ToString("0", CultureInfo.InvariantCulture) : "—";
-        LeftProximity.SetBand(state.LeftProximity.BandStart, state.LeftProximity.BandEnd);
-        RightProximity.SetBand(state.RightProximity.BandStart, state.RightProximity.BandEnd);
+    private void ShowTheme()
+    {
+        _dashboard = Theme switch
+        {
+            CockpitTheme.GtSports => new GtSportsCockpit(),
+            CockpitTheme.Casual => new CasualCockpit(),
+            CockpitTheme.Hypercar => new HypercarCockpit(),
+            CockpitTheme.PitWall => new PitWallCockpit(),
+            CockpitTheme.ClassicCar => new ClassicCarCockpit(),
+            CockpitTheme.Invisible => new InvisibleCockpit(),
+            _ => new DefaultCockpit(),
+        };
+
+        _dashboard.Update(_last);
+        Host.Child = _dashboard;
     }
 }

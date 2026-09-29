@@ -59,8 +59,7 @@ public static class WidgetCatalog
             "M3,20 H21 M6,20 V13 H10 V20 M10,20 V8 H14 V20 M14,20 V15 H18 V20"),
 
         new(Cockpit, "Cockpit", "Shift lights, gear, speed and the cars alongside you.",
-            "M3,18 A9,9 0 0 1 21,18 M12,18 L16.5,11 M12,18 H12.01",
-            PreviewWidth: 310, PreviewHeight: 150),
+            "M3,18 A9,9 0 0 1 21,18 M12,18 L16.5,11 M12,18 H12.01"),
 
         new(Flag, "Flags", "Every flag currently being shown to you.",
             "M5,3 V21 M5,4 H18 L15.5,8.5 L18,13 H5"),

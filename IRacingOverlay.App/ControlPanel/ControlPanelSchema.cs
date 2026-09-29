@@ -47,7 +47,8 @@ public sealed partial class ControlPanelViewModel
             WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(), FuelCalculatorMath(), Placement(slot)],
             WidgetCatalog.Delta => [DeltaReferenceGroup(), Placement(slot)],
             WidgetCatalog.Flag => [FlagPreviewGroup(), FlagTypes(), FlagContent(), FlagLayoutGroup(), Placement(slot)],
-            WidgetCatalog.Cockpit or WidgetCatalog.PedalTrace => [HighRateNote(), Placement(slot)],
+            WidgetCatalog.Cockpit => [CockpitThemeGroup(), HighRateNote(), Placement(slot)],
+            WidgetCatalog.PedalTrace => [HighRateNote(), Placement(slot)],
             _ => [Placement(slot)],
         };
     }
@@ -253,6 +254,28 @@ public sealed partial class ControlPanelViewModel
             ["Session best lap", "Personal best (all-time)", "Optimal lap"],
             (int)_deltaReference,
             index => _deltaReference = (DeltaReference)index));
+
+    // ===== Cockpit =====
+
+    // Index order matches CockpitTheme.
+    private static readonly string[] CockpitThemeNames =
+    [
+        "Default", "GT Sports", "Casual", "Hypercar", "Pit Wall", "Classic Car", "Invisible",
+    ];
+
+    private SettingsGroup CockpitThemeGroup() => new SettingsGroup(
+        "THEME",
+        "Each theme is a different dashboard — its own layout, shape and size.")
+        .With(new ChoiceSetting(
+            "Cockpit theme",
+            null,
+            CockpitThemeNames,
+            (int)CockpitOptions.Theme,
+            index =>
+            {
+                CockpitOptions.Theme = (CockpitTheme)index;
+                CockpitThemeStore.Save(CockpitOptions.Theme);
+            }));
 
     // ===== Flags =====
 

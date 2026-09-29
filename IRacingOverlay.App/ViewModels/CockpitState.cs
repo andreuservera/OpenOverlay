@@ -30,6 +30,14 @@ public sealed class CockpitState
     public required ProximitySide LeftProximity { get; init; }
     public required ProximitySide RightProximity { get; init; }
 
+    // Secondary readouts some themes show (GT Sports, Pit Wall). Null when the car doesn't report them.
+    public double? FuelLiters { get; init; }
+    public double? FuelPct { get; init; }
+    public double Throttle { get; init; }
+    public double Brake { get; init; }
+    public double? WaterTempC { get; init; }
+    public double? OilTempC { get; init; }
+
     public static CockpitState Empty { get; } = new()
     {
         Gear = "–",

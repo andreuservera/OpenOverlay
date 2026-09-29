@@ -28,6 +28,7 @@ public partial class WidgetPreview : UserControl
     private FuelCalculatorOptions? _fuelCalculatorOptions;
     private FlagOptions? _flagOptions;
     private FlagPreviewScenario? _flagPreview;
+    private CockpitOptions? _cockpitOptions;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -57,13 +58,15 @@ public partial class WidgetPreview : UserControl
         DriverTableOptions relativeOptions,
         FuelCalculatorOptions fuelCalculatorOptions,
         FlagOptions flagOptions,
-        FlagPreviewScenario flagPreview)
+        FlagPreviewScenario flagPreview,
+        CockpitOptions cockpitOptions)
     {
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
         _fuelCalculatorOptions = fuelCalculatorOptions;
         _flagOptions = flagOptions;
         _flagPreview = flagPreview;
+        _cockpitOptions = cockpitOptions;
 
         standingsOptions.PropertyChanged += OnOptionsChanged;
         relativeOptions.PropertyChanged += OnOptionsChanged;
@@ -144,7 +147,7 @@ public partial class WidgetPreview : UserControl
     {
         WidgetCatalog.Relative => new RelativePanel { Options = _relativeOptions ?? new DriverTableOptions(DriverTable.Relative) },
         WidgetCatalog.Standings => new StandingsPanel { Options = _standingsOptions ?? new DriverTableOptions(DriverTable.Standings) },
-        WidgetCatalog.Cockpit => new CockpitPanel(),
+        WidgetCatalog.Cockpit => new CockpitPanel { Options = _cockpitOptions ?? new CockpitOptions() },
         WidgetCatalog.Flag => new FlagPanel { Options = _flagOptions ?? new FlagOptions() },
         WidgetCatalog.TireInfo => new TireInfoPanel(),
         WidgetCatalog.Delta => new DeltaPanel(),

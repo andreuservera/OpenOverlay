@@ -5,14 +5,9 @@
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
         Title="Cockpit">
     <Grid>
-        <!-- 310x150 is CockpitPanel's own measured natural size (Auto-sized columns, no slack — see
-             CockpitPanel.xaml), so there is no dead space baked into the design canvas. Declaring it
-             here rather than wrapping the panel in a Viewbox means the cluster is laid out once and
-             then scaled by the level's LayoutTransform: type stays crisply hinted at every level
-             instead of being a stretched bitmap, and the aspect ratio is fixed by construction —
-             there is no longer any way for the user to stretch it out of proportion. -->
-        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Cockpit"
-                          DesignWidth="310" DesignHeight="150">
+        <!-- No design size: every cockpit theme has its own fixed footprint and silhouette, and the
+             window takes the active theme's size at every scale level. -->
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Cockpit">
             <w:CockpitPanel/>
         </ov:ScalablePanel>
         <Border Style="{StaticResource EditFrame}"/>

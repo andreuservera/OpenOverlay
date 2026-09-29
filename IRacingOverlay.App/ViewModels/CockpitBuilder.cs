@@ -35,8 +35,17 @@ internal static class CockpitBuilder
             Rpm = rpm,
             LeftProximity = left,
             RightProximity = right,
+            FuelLiters = Optional(telemetry, TelemetryVarNames.FuelLevel),
+            FuelPct = Optional(telemetry, TelemetryVarNames.FuelLevelPct),
+            Throttle = Optional(telemetry, TelemetryVarNames.Throttle) ?? 0,
+            Brake = Optional(telemetry, TelemetryVarNames.Brake) ?? 0,
+            WaterTempC = Optional(telemetry, TelemetryVarNames.WaterTemp),
+            OilTempC = Optional(telemetry, TelemetryVarNames.OilTemp),
         };
     }
+
+    private static double? Optional(TelemetrySnapshot telemetry, string name) =>
+        telemetry.HasVariable(name) ? telemetry.GetFloat(name) : null;
 
     private static string BuildGearText(TelemetrySnapshot telemetry)
     {

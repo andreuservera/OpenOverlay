@@ -43,6 +43,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         DriverTableOptionsStore.ApplyTo(RelativeOptions);
         FuelCalculatorOptionsStore.ApplyTo(FuelCalculatorOptions);
         FlagOptionsStore.ApplyTo(FlagOptions);
+        CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
 
@@ -82,6 +83,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public DriverTableOptions RelativeOptions { get; } = new(DriverTable.Relative);
     public FuelCalculatorOptions FuelCalculatorOptions { get; } = new();
     public FlagOptions FlagOptions { get; } = new();
+    public CockpitOptions CockpitOptions { get; } = new();
 
     /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
     /// seen by the live widget.</summary>
@@ -277,7 +279,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     {
         WidgetCatalog.Relative => Configured(new RelativeWidget(), w => w.SetOptions(RelativeOptions)),
         WidgetCatalog.Standings => Configured(new StandingsWidget(), w => w.SetOptions(StandingsOptions)),
-        WidgetCatalog.Cockpit => new CockpitWidget(),
+        WidgetCatalog.Cockpit => Configured(new CockpitWidget(), w => w.SetOptions(CockpitOptions)),
         WidgetCatalog.Flag => Configured(new FlagWidget(), w => w.SetOptions(FlagOptions)),
         WidgetCatalog.TireInfo => new TireInfoWidget(),
         WidgetCatalog.Delta => new DeltaWidget(),

@@ -80,7 +80,7 @@ public partial class MainWindow : Window
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions);
         DataContext = _vm;
 
         _criticalTimer.Interval = TimeSpan.FromMilliseconds(_vm.CriticalRefreshIntervalMs);
@@ -447,6 +447,7 @@ public partial class MainWindow : Window
     {
         var dashboard = new DashboardWindow();
         dashboard.SetFlagOptions(_vm.FlagOptions);
+        dashboard.SetCockpitOptions(_vm.CockpitOptions);
         dashboard.Closed += (_, _) => SetDashboardButtonCaption("Show dashboard");
         return dashboard;
     }

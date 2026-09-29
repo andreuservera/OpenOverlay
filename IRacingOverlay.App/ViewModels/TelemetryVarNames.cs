@@ -108,6 +108,9 @@ internal static class TelemetryVarNames
 
     public const string FuelLevel = "FuelLevel";
     public const string FuelLevelPct = "FuelLevelPct";
+    /// <summary>Engine coolant and oil temperature, degrees C.</summary>
+    public const string WaterTemp = "WaterTemp";
+    public const string OilTemp = "OilTemp";
     /// <summary>iRacing's own live consumption-rate estimate, in liters/hour — no need to derive it
     /// from a fuel-level delta ourselves.</summary>
     public const string FuelUsePerHour = "FuelUsePerHour";
