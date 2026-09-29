@@ -37,10 +37,8 @@
                            Visibility="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="2" Text="DRIVER" Style="{StaticResource HeadText}"
                            Visibility="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="3" Text="iR" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="3" Grid.ColumnSpan="2" Text="iR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="4" Text="iRΔ" Style="{StaticResource HeadNumeric}"
-                           Visibility="{Binding Options.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="5" Text="SR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="6" Text="LAP" Style="{StaticResource HeadNumeric}"

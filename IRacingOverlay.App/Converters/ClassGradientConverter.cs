@@ -40,9 +40,9 @@ public sealed class ClassGradientConverter : IValueConverter
     {
         var brush = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
         brush.GradientStops.Add(Stop(color, strength, 0));
-        brush.GradientStops.Add(Stop(color, strength * 0.45, 0.16));
-        brush.GradientStops.Add(Stop(color, strength * 0.14, 0.38));
-        brush.GradientStops.Add(Stop(color, 0, 0.62));
+        brush.GradientStops.Add(Stop(color, strength * 0.5, 0.12));
+        brush.GradientStops.Add(Stop(color, strength * 0.15, 0.3));
+        brush.GradientStops.Add(Stop(color, 0, 0.5));
         brush.Freeze();
         return brush;
     }

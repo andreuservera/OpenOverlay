@@ -27,7 +27,7 @@ public static class PreviewData
     [
         ("GT3 CLASS", "#33CEFF"),
         ("GT4 CLASS", "#FFB238"),
-        ("TCR CLASS", "#C88BFF"),
+        ("TCR CLASS", "#FF4F8B"),
     ];
 
     // Names are invented but shaped like the real thing — a mix of lengths, including two long
@@ -88,7 +88,10 @@ public static class PreviewData
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
                 CurrentLap = i < 3 ? 18 : 17,
-                LastLapTime = BaseLapTime + (entry.Pace * 0.07) + ((i % 4) * 0.093),
+                // Car 8 has just set a personal best, so the green last-lap state shows too.
+                LastLapTime = i == 7
+                    ? BaseLapTime + (entry.Pace * 0.05)
+                    : BaseLapTime + (entry.Pace * 0.07) + ((i % 4) * 0.093),
                 BestLapTime = BaseLapTime + (entry.Pace * 0.05),
                 IsMultiClass = multiClass,
                 IRating = entry.IRating,

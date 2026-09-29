@@ -4,7 +4,9 @@ namespace IRacingOverlay.App.Tests;
 
 public class StandingsRowTests
 {
-    private static StandingsRow Row(string licString = "", double iRatingDelta = 0, int iRating = 1000) => new()
+    private static StandingsRow Row(
+        string licString = "", double iRatingDelta = 0, int iRating = 1000,
+        double lastLap = 0, double bestLap = 0, bool sessionFastest = false) => new()
     {
         CarIdx = 0,
         Position = 1,
@@ -15,14 +17,24 @@ public class StandingsRowTests
         OnPitRoad = false,
         CurrentLap = 1,
         GapToLeaderSeconds = 0,
-        LastLapTime = 0,
-        BestLapTime = 0,
+        LastLapTime = lastLap,
+        BestLapTime = bestLap,
         IsMultiClass = false,
         IRating = iRating,
         LicString = licString,
         IRatingDelta = iRatingDelta,
-        IsSessionFastestLap = false,
+        IsSessionFastestLap = sessionFastest,
     };
+
+    [Theory]
+    [InlineData(91.2, 90.5, false, "#C4CCD4")] // slower than their best: plain
+    [InlineData(90.5, 90.5, false, "#34D399")] // personal best: green
+    [InlineData(90.5, 90.5, true, "#B58CFF")]  // personal best that is also the session's fastest: purple
+    [InlineData(0, 0, false, "#C4CCD4")]       // no lap yet
+    public void LastLapForeground_MarksPersonalAndSessionBests(double last, double best, bool fastest, string expected)
+    {
+        Assert.Equal(expected, Row(lastLap: last, bestLap: best, sessionFastest: fastest).LastLapForeground);
+    }
 
     [Theory]
     [InlineData("R 1.5", "#E0413D")]
@@ -43,44 +55,49 @@ public class StandingsRowTests
     }
 
     [Fact]
-    public void IRatingDeltaDisplay_PositiveDelta_ShowsPlusSign()
+    public void IRatingDelta_Gain_ShowsMagnitudeWithUpwardTrend()
     {
-        Assert.Equal("+12", Row(iRatingDelta: 12.4).IRatingDeltaDisplay);
+        var row = Row(iRatingDelta: 12.4);
+        Assert.Equal("12", row.IRatingDeltaDisplay);
+        Assert.Equal(1, row.IRatingTrend);
     }
 
     [Fact]
-    public void IRatingDeltaDisplay_NegativeDelta_ShowsMinusSign()
+    public void IRatingDelta_Loss_ShowsMagnitudeWithDownwardTrend()
     {
-        Assert.Equal("-8", Row(iRatingDelta: -7.6).IRatingDeltaDisplay);
+        var row = Row(iRatingDelta: -7.6);
+        Assert.Equal("8", row.IRatingDeltaDisplay);
+        Assert.Equal(-1, row.IRatingTrend);
     }
 
     [Fact]
     public void IRatingDeltaDisplay_NoRating_ShowsDash()
     {
-        Assert.Equal("—", Row(iRatingDelta: 12, iRating: 0).IRatingDeltaDisplay);
+        var row = Row(iRatingDelta: 12, iRating: 0);
+        Assert.Equal("—", row.IRatingDeltaDisplay);
+        Assert.Equal(0, row.IRatingTrend);
     }
 
     [Theory]
-    // A swing that rounds to nothing reads as a dash, not "+0": practice and qualifying produce no
-    // estimate at all, and "+0" there looks like a computed result rather than an absent one.
-    [InlineData(0, "—")]
-    [InlineData(0.4, "—")]
-    [InlineData(-0.4, "—")]
-    [InlineData(0.6, "+1")]
-    [InlineData(-0.6, "-1")]
-    public void IRatingDeltaDisplay_RoundsBeforeDecidingWhetherThereIsASwingAtAll(double delta, string expected)
+    // A swing that rounds to nothing reads as a dash, not "0": practice and qualifying produce no
+    // estimate at all, and "0" there looks like a computed result rather than an absent one.
+    [InlineData(0, "—", 0)]
+    [InlineData(0.4, "—", 0)]
+    [InlineData(-0.4, "—", 0)]
+    [InlineData(0.6, "1", 1)]
+    [InlineData(-0.6, "1", -1)]
+    public void IRatingDelta_RoundsBeforeDecidingWhetherThereIsASwingAtAll(double delta, string expected, int trend)
     {
         Assert.Equal(expected, Row(iRatingDelta: delta).IRatingDeltaDisplay);
+        Assert.Equal(trend, Row(iRatingDelta: delta).IRatingTrend);
     }
 
     [Fact]
     public void IRatingDeltaForeground_PositiveIsGreen_NegativeIsRed_NoSwingIsNeutral()
     {
-        // The ViewModel hands the UI a colour string, so these have to agree with the palette by
-        // hand. The red is lighter than the app's standard critical red: measured on a row
-        // background, a saturated red doesn't clear 4.5:1 against the text beside it.
+        // The ViewModel hands the UI a colour string, so these have to agree with the palette by hand.
         Assert.Equal("#34D399", Row(iRatingDelta: 5).IRatingDeltaForeground);
-        Assert.Equal("#FFA3A3", Row(iRatingDelta: -5).IRatingDeltaForeground);
+        Assert.Equal("#FF6B6B", Row(iRatingDelta: -5).IRatingDeltaForeground);
         Assert.Equal("#8E99A5", Row(iRatingDelta: 0).IRatingDeltaForeground);
         // Colour follows the rounded value too, so a dash is never tinted as a gain.
         Assert.Equal("#8E99A5", Row(iRatingDelta: 0.4).IRatingDeltaForeground);

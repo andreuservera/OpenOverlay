@@ -27,7 +27,7 @@ public partial class TrackMapPanel : UserControl
 
     // The same self-blue as the player's row in the timing tables, so "you" looks the same everywhere.
     private static DropShadowEffect PlayerGlow() =>
-        new() { Color = StatePalette.SelfColor, BlurRadius = 12, ShadowDepth = 0, Opacity = 0.85 };
+        new() { Color = StatePalette.SelfColor, BlurRadius = 8, ShadowDepth = 0, Opacity = 0.55 };
 
     public TrackMapPanel()
     {

@@ -62,6 +62,15 @@ public abstract class DriverRow
     // time worth colouring. Every other best lap is just secondary data.
     public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#C4CCD4";
 
+    // Broadcast convention: green when the lap just completed is the driver's personal best, purple
+    // when that personal best is also the fastest lap of the session.
+    public string LastLapForeground => !IsLastLapPersonalBest
+        ? "#C4CCD4"
+        : IsSessionFastestLap ? "#B58CFF" : "#34D399";
+
+    private bool IsLastLapPersonalBest =>
+        LastLapTime > 0 && BestLapTime > 0 && Math.Abs(LastLapTime - BestLapTime) < 0.0005;
+
     public string IRatingDisplay => IRating > 0
         ? (IRating >= 1000 ? $"{(IRating / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)}k" : IRating.ToString(CultureInfo.InvariantCulture))
         : "—";
@@ -84,21 +93,19 @@ public abstract class DriverRow
     // Estimated points swing for the current race — StandingsBuilder's pairwise-duel approximation
     // of iRacing's undisclosed iRating formula. Direction and rough magnitude only; iRacing has
     // never published the exact constant, so this won't necessarily match the real post-race number.
-    // A swing that rounds to nothing reads as a dash, not "+0": practice and qualifying produce no
-    // estimate at all, and "+0" there looks like a computed result rather than an absent one.
+    // A swing that rounds to nothing reads as a dash, not "0": practice and qualifying produce no
+    // estimate at all, and "0" there looks like a computed result rather than an absent one.
+    // The magnitude only: the direction is drawn as an arrow (see IRatingTrend).
     public string IRatingDeltaDisplay => HasIRatingDelta
-        ? (RoundedIRatingDelta > 0 ? $"+{RoundedIRatingDelta:0}" : RoundedIRatingDelta.ToString("0", CultureInfo.InvariantCulture))
+        ? Math.Abs(RoundedIRatingDelta).ToString("0", CultureInfo.InvariantCulture)
         : "—";
+
+    /// <summary>+1 gaining, -1 losing, 0 no estimate — picks the arrow in the iRating badge.</summary>
+    public int IRatingTrend => HasIRatingDelta ? Math.Sign(RoundedIRatingDelta) : 0;
 
     public string IRatingDeltaForeground => !HasIRatingDelta
         ? "#8E99A5"
-        : RoundedIRatingDelta > 0
-            ? "#34D399"
-            // Lighter than the app's standard negative red: measured on a row background, a
-            // saturated red carries too little luminance to clear 4.5:1 — it needed lifting this far
-            // to stay readable on the player's own row. Still unmistakably the warm half of the pair
-            // against the green above it.
-            : "#FFA3A3";
+        : RoundedIRatingDelta > 0 ? "#34D399" : "#FF6B6B";
 
     // Rounded before the zero test, so a swing of 0.4 shows a dash rather than "+0".
     private double RoundedIRatingDelta => Math.Round(IRatingDelta);

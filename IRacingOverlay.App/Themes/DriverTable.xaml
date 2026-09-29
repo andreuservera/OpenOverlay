@@ -24,6 +24,8 @@
     <sys:String x:Key="W.Driver">128</sys:String>
     <sys:String x:Key="W.IRating">48</sys:String>
     <sys:String x:Key="W.IRatingDelta">44</sys:String>
+    <!-- The delta's segment inside the iRating badge: its column minus the badge's inset. -->
+    <sys:String x:Key="W.IRatingDeltaSegment">36</sys:String>
     <sys:String x:Key="W.License">44</sys:String>
     <sys:String x:Key="W.Lap">34</sys:String>
     <sys:String x:Key="W.BestLap">64</sys:String>
@@ -75,6 +77,23 @@
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
 
+    <!-- Same plate as the car-number chip, so every badge on the row belongs to one family. -->
+    <Style x:Key="RatingBadge" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Surface.Chip}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Surface.ChipBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
+        <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
+    </Style>
+    <Geometry x:Key="Geometry.ArrowUp">M3.5,0 L7,4 L4.6,4 L4.6,9 L2.4,9 L2.4,4 L0,4 Z</Geometry>
+    <Geometry x:Key="Geometry.ArrowDown">M3.5,9 L7,5 L4.6,5 L4.6,0 L2.4,0 L2.4,5 L0,5 Z</Geometry>
+    <Style x:Key="TrendArrow" TargetType="Path">
+        <Setter Property="Width" Value="7"/>
+        <Setter Property="Height" Value="9"/>
+        <Setter Property="Margin" Value="0,0,3,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
     <!-- Same height as a data row, so a reserved slot holds its place without the table visibly
          stuttering as cars move in and out of it. -->
     <DataTemplate DataType="{x:Type vm:RelativePlaceholderRow}">
@@ -95,7 +114,7 @@
                      the panel by the time it reaches the timing columns. Recognisable at a glance,
                      never louder than the data on top of it. -->
                 <Border x:Name="ClassWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"
-                        Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.26}"/>
+                        Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.22}"/>
                 <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Row}" BorderThickness="1"/>
                 <Border x:Name="EdgeBar" Width="3" HorizontalAlignment="Left" CornerRadius="{StaticResource Radius.RowEdge}"/>
                 <Grid x:Name="Cells" Margin="{StaticResource CellInset}">
@@ -124,18 +143,42 @@
                         <TextBlock Text="{Binding CarNumberDisplay}" Style="{StaticResource ChipText}"/>
                     </Border>
 
-                    <TextBlock x:Name="NameText" Grid.Column="2" Text="{Binding NameDisplay}" Style="{StaticResource DataCell}"
-                               FontFamily="{DynamicResource Theme.NumericFontFamily}"
-                               Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"
-                               Margin="0,0,8,0"
-                               Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                    <!-- The PIT badge takes its room out of the name, never out of another column. -->
+                    <DockPanel Grid.Column="2" Margin="0,0,8,0"
+                               Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                        <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
+                                Visibility="{Binding OnPitRoad, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="PIT" Style="{StaticResource StatusBadgeText}"/>
+                        </Border>
+                        <TextBlock x:Name="NameText" Text="{Binding NameDisplay}" Style="{StaticResource DataCell}"
+                                   FontFamily="{DynamicResource Theme.NumericFontFamily}"
+                                   Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
 
-                    <TextBlock Grid.Column="3" Text="{Binding IRatingDisplay}" Style="{StaticResource MetaCell}"
-                               Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
-
-                    <TextBlock Grid.Column="4" Text="{Binding IRatingDeltaDisplay}" Style="{StaticResource NumCell}"
-                               Foreground="{Binding IRatingDeltaForeground}"
-                               Visibility="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                    <!-- iRating badge: spans the iR and iRΔ columns, so hiding the delta hands its
+                         width back exactly as the separate column used to. The delta is a tinted
+                         segment on the right carrying an arrow and the magnitude. -->
+                    <Border x:Name="RatingBadge" Grid.Column="3" Grid.ColumnSpan="2" Style="{StaticResource RatingBadge}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDeltaSegment}}"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding IRatingDisplay}" Style="{StaticResource ChipText}"
+                                       Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                            <Border Grid.Column="1" CornerRadius="0,2,2,0"
+                                    Background="{Binding IRatingDeltaForeground, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.16}"
+                                    Visibility="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Path x:Name="TrendArrow" Style="{StaticResource TrendArrow}" Data="{StaticResource Geometry.ArrowUp}"
+                                          Fill="{Binding IRatingDeltaForeground}"/>
+                                    <TextBlock Text="{Binding IRatingDeltaDisplay}" Style="{StaticResource ChipText}"
+                                               FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"
+                                               Foreground="{Binding IRatingDeltaForeground}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
 
                     <!-- Tinted, outlined chip: the licence colour still says R/D/C/B/A at a glance, but
                          as a tint it no longer out-shouts the driver's name next to it. -->
@@ -155,6 +198,7 @@
                                Visibility="{Binding Options.ShowBestLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <TextBlock Grid.Column="8" Text="{Binding LastLapDisplay}" Style="{StaticResource NumCell}"
+                               Foreground="{Binding LastLapForeground}"
                                Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <TextBlock Grid.Column="9" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
@@ -188,6 +232,19 @@
                     <Condition Binding="{Binding IsMultiClass}" Value="False"/>
                 </MultiDataTrigger.Conditions>
                 <Setter TargetName="EdgeBar" Property="Background" Value="{StaticResource State.Self}"/>
+            </MultiDataTrigger>
+            <DataTrigger Binding="{Binding IRatingTrend}" Value="-1">
+                <Setter TargetName="TrendArrow" Property="Data" Value="{StaticResource Geometry.ArrowDown}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IRatingTrend}" Value="0">
+                <Setter TargetName="TrendArrow" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                    <Condition Binding="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="RatingBadge" Property="Visibility" Value="Collapsed"/>
             </MultiDataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
