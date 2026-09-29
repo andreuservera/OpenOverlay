@@ -66,6 +66,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
 
         NavItems.Add(NavItem.ForPage(
+            GeneralPageKey, "General", "How the app runs: closing, the tray and where settings live.",
+            "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9"));
+
+        NavItems.Add(NavItem.ForPage(
             DashboardPageKey, "Dashboard", "The fullscreen layout for a second monitor.",
             "M3,4 H21 V16 H3 Z M9,20 H15 M12,16 V20"));
 
@@ -93,6 +97,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     }
 
     private const string DashboardPageKey = "app.dashboard";
+    private const string GeneralPageKey = "app.general";
     private const string PerformancePageKey = "app.performance";
     private const string UnitsPageKey = "app.units";
 

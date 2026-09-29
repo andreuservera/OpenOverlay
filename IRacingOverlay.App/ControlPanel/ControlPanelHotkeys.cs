@@ -77,6 +77,19 @@ public sealed partial class ControlPanelViewModel
             case HotkeyActions.ResetLayout:
                 ResetLayout();
                 break;
+            case HotkeyActions.RestartOverlays:
+                RestartOverlays();
+                break;
+        }
+    }
+
+    /// <summary>Closes and recreates every open widget window — a fresh window clears any rendering
+    /// glitch without restarting the app. Positions, sizes and options all carry over.</summary>
+    public void RestartOverlays()
+    {
+        foreach (var slot in _slots.Values)
+        {
+            slot.Restart();
         }
     }
 
@@ -111,6 +124,7 @@ public sealed partial class ControlPanelViewModel
             HotkeyActions.ToggleOverlays => "Show / hide all overlays",
             HotkeyActions.ToggleEditMode => "Toggle edit layout",
             HotkeyActions.ToggleControlPanel => "Show / hide Control Panel",
+            HotkeyActions.RestartOverlays => "Restart overlays",
             _ => "Reset overlay positions",
         };
     }
@@ -119,6 +133,7 @@ public sealed partial class ControlPanelViewModel
     {
         HotkeyActions.ToggleOverlays => "Floating widgets only. Edit layout still shows them.",
         HotkeyActions.ToggleControlPanel => "Brings this window back from anywhere, even with iRacing focused.",
+        HotkeyActions.RestartOverlays => "Recreates every open widget window, to clear a rendering glitch.",
         HotkeyActions.ResetLayout => "Moves every widget back to where it first appeared. Off by default.",
         _ => null,
     };
@@ -163,7 +178,7 @@ public sealed partial class ControlPanelViewModel
                 .With(
                     new ActionSetting(
                         "Default shortcuts",
-                        "Ctrl + Shift + F9 to F12, reset positions switched off, and no widget shortcuts.",
+                        "Ctrl + Shift + F8 to F12, reset positions switched off, and no widget shortcuts.",
                         "Restore defaults",
                         RestoreDefaultHotkeys),
                     new ActionSetting(

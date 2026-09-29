@@ -22,6 +22,10 @@ public sealed class IRacingConnection : IDisposable
     private int _lastSessionInfoUpdate = -1;
 
     public bool IsConnected { get; private set; }
+
+    /// <summary>The last unexpected failure reading telemetry; cleared once a tick reads cleanly.</summary>
+    public string? LastError { get; private set; }
+
     public TelemetrySnapshot? Latest { get; private set; }
     public IracingSessionInfo? Session { get; private set; }
 
@@ -89,6 +93,12 @@ public sealed class IRacingConnection : IDisposable
             catch (IOException)
             {
                 // sim closed mid-read; loop will retry the disconnected-poll path
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                // Anything else would end the loop for good; report it and retry instead.
+                LastError = e.Message;
+                token.WaitHandle.WaitOne(DisconnectedPollMs);
             }
             finally
             {
@@ -190,6 +200,7 @@ public sealed class IRacingConnection : IDisposable
 
     private void SetConnected()
     {
+        LastError = null;
         if (!IsConnected)
         {
             IsConnected = true;

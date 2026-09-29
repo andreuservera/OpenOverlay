@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.IO;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
@@ -35,6 +37,7 @@ public sealed partial class ControlPanelViewModel
             return item.Key switch
             {
                 DashboardPageKey => DashboardPage(),
+                GeneralPageKey => GeneralPage(),
                 PerformancePageKey => PerformancePage(),
                 UnitsPageKey => UnitsPage(),
                 HotkeysPageKey => HotkeysPage(),
@@ -446,6 +449,32 @@ public sealed partial class ControlPanelViewModel
     private SettingsGroup HighRateNote() => new SettingsGroup(
         "UPDATE RATE",
         "This widget reads telemetry on its own timer — set it on the Performance page.");
+
+    private IEnumerable<SettingsGroup> GeneralPage() =>
+    [
+        new SettingsGroup(
+            "WINDOW",
+            "Overlays and telemetry keep running while this window is in the tray. Exit from the tray icon's menu.")
+            .With(
+                new ChoiceSetting(
+                    "Close button behavior",
+                    "What the X on this window does.",
+                    ["Minimize to system tray (recommended)", "Exit application"],
+                    (int)TrayPreferencesStore.CloseBehavior,
+                    index => TrayPreferencesStore.SaveCloseBehavior((CloseBehavior)index)),
+                new ActionSetting(
+                    "Configuration folder",
+                    "Where layouts, options and hotkeys are saved.",
+                    "Open folder",
+                    OpenConfigFolder)),
+    ];
+
+    /// <summary>Opens the settings folder in Explorer, creating it first on a fresh install.</summary>
+    public static void OpenConfigFolder()
+    {
+        Directory.CreateDirectory(TrayPreferencesStore.ConfigFolder);
+        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{TrayPreferencesStore.ConfigFolder}\"") { UseShellExecute = true });
+    }
 
     private IEnumerable<SettingsGroup> UnitsPage() =>
     [

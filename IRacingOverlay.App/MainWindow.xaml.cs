@@ -44,18 +44,83 @@ public partial class MainWindow : Window
     private double _criticalIntervalMs = 100;
     private double _nextCriticalMs;
     private GlobalHotkeyManager? _hotkeys;
+    private TrayIcon? _tray;
+    private WindowState _restoreState = WindowState.Normal;
+
+    // Set only by a real exit (tray menu, Exit close behavior, Windows shutdown), so the X button
+    // can otherwise send the window to the tray.
+    private bool _exiting;
 
     private void ToggleControlPanel()
     {
         if (IsVisible && WindowState != WindowState.Minimized)
         {
-            Hide();
+            HideToTray();
             return;
         }
 
+        RestoreFromTray();
+    }
+
+    private void HideToTray() => Hide();
+
+    /// <summary>Back to the state it was in before it went away, and in front of whatever has focus.</summary>
+    private void RestoreFromTray()
+    {
         Show();
-        WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = _restoreState;
+        }
+
+        // Windows refuses to hand focus to a background app outright; a topmost flip gets it in front.
         Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
+    }
+
+    private void ExitApplication()
+    {
+        _exiting = true;
+        Close();
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_exiting || TrayPreferencesStore.CloseBehavior == CloseBehavior.Exit)
+        {
+            _exiting = true;
+            return;
+        }
+
+        e.Cancel = true;
+        HideToTray();
+        if (!TrayPreferencesStore.TrayNoticeShown)
+        {
+            _tray?.ShowNotice(
+                "OpenOverlay is still running",
+                "OpenOverlay will continue running in the background. You can access it from the system tray icon.");
+            TrayPreferencesStore.MarkTrayNoticeShown();
+        }
+    }
+
+    private void UpdateTray()
+    {
+        if (_tray is null)
+        {
+            return;
+        }
+
+        var (status, text) = _connection.LastError is { } error
+            ? (TrayStatus.Error, $"Telemetry error: {error}")
+            : !_connection.IsConnected
+                ? (TrayStatus.NoSession, "Waiting for iRacing")
+                : _vm.OverlaysHidden
+                    ? (TrayStatus.OverlaysHidden, "Connected · overlays hidden")
+                    : (TrayStatus.Running, "Connected · overlays on");
+        _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
     }
     private readonly PedalTraceBuilder _pedalTraceBuilder = new();
     private readonly FuelBuilder _fuelBuilder = new();
@@ -146,11 +211,32 @@ public partial class MainWindow : Window
         };
         _vm.ControlPanelToggleRequested += ToggleControlPanel;
 
+        _tray = new TrayIcon();
+        _tray.OpenRequested += RestoreFromTray;
+        _tray.ToggleOverlaysRequested += () => _vm.OverlaysHidden = !_vm.OverlaysHidden;
+        _tray.RestartOverlaysRequested += _vm.RestartOverlays;
+        _tray.OpenConfigFolderRequested += ControlPanelViewModel.OpenConfigFolder;
+        _tray.ExitRequested += ExitApplication;
+        UpdateTray();
+
+        StateChanged += (_, _) =>
+        {
+            if (WindowState != WindowState.Minimized)
+            {
+                _restoreState = WindowState;
+            }
+        };
+        Closing += OnClosing;
+        // Signing out or shutting down must never be held up by the close-to-tray behavior.
+        System.Windows.Application.Current.SessionEnding += (_, _) => _exiting = true;
+
         Closed += (_, _) =>
         {
             _uiTimer.Stop();
             CompositionTarget.Rendering -= OnFrame;
             _hotkeys?.Dispose();
+            _tray?.Dispose();
+            _tray = null;
             _connection.Stop();
             _vm.CloseAllWidgets();
             _dashboard?.Close();
@@ -189,6 +275,7 @@ public partial class MainWindow : Window
         finally
         {
             RecordTickDuration(_uiTickStopwatch.Elapsed.TotalMilliseconds, ref _uiTickTotalMs, ref _uiTickMaxMs, ref _uiTickSamples);
+            UpdateTray();
         }
     }
 

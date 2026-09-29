@@ -258,6 +258,20 @@ public sealed class WidgetSlot : INotifyPropertyChanged
 
     public void Close() => _window?.Close();
 
+    /// <summary>Throws the window away and, if it should be on screen, builds a fresh one. Closing
+    /// saves its position, so the new window opens exactly where the old one was.</summary>
+    public void Restart()
+    {
+        if (_window is null)
+        {
+            return;
+        }
+
+        _window.Close();
+        _window = null;
+        Apply();
+    }
+
     /// <summary>Back to the default position — now if the widget exists, on first show if not.</summary>
     public void ResetPosition()
     {

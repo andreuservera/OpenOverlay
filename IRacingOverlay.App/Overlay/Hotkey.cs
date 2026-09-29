@@ -12,10 +12,12 @@ public static class HotkeyActions
     public const string ToggleEditMode = "ToggleEditMode";
     public const string ToggleControlPanel = "ToggleControlPanel";
     public const string ResetLayout = "ResetLayout";
+    public const string RestartOverlays = "RestartOverlays";
 
     private const string WidgetPrefix = "ToggleWidget.";
 
-    public static IReadOnlyList<string> Global { get; } = [ToggleOverlays, ToggleEditMode, ToggleControlPanel, ResetLayout];
+    public static IReadOnlyList<string> Global { get; } =
+        [ToggleOverlays, ToggleEditMode, ToggleControlPanel, RestartOverlays, ResetLayout];
 
     public static string ToggleWidget(string widgetKey) => WidgetPrefix + widgetKey;
 
@@ -104,6 +106,8 @@ public static class HotkeyDefaults
         [HotkeyActions.ToggleOverlays] = (new Hotkey(ModifierKeys.Control | ModifierKeys.Shift, Key.F9), true),
         [HotkeyActions.ToggleEditMode] = (new Hotkey(ModifierKeys.Control | ModifierKeys.Shift, Key.F10), true),
         [HotkeyActions.ToggleControlPanel] = (new Hotkey(ModifierKeys.Control | ModifierKeys.Shift, Key.F11), true),
+        // F8 rather than R: Ctrl+Shift+R is every browser's hard refresh, and a global hotkey would take it.
+        [HotkeyActions.RestartOverlays] = (new Hotkey(ModifierKeys.Control | ModifierKeys.Shift, Key.F8), true),
         // Off by default: one stray press would undo every widget placement.
         [HotkeyActions.ResetLayout] = (new Hotkey(ModifierKeys.Control | ModifierKeys.Shift, Key.F12), false),
     };
