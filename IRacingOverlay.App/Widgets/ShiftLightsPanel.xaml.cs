@@ -3,23 +3,20 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
 
-/// <summary>Row of glowing dots — 5 green, 5 yellow, 4 red (14 total), matching the reference
-/// dashboard design. Separate from ShiftGearPanel (the gear digit itself) because this row spans
-/// wider than the gear digit alone in that design, sitting above the whole speed/gear/RPM cluster
-/// rather than just above the gear number.</summary>
+/// <summary>LED strip of 14 segments — 5 green, 5 yellow, 4 red. Separate from ShiftGearPanel (the
+/// gear digit itself) because the strip spans the whole speed/gear/RPM cluster.</summary>
 public partial class ShiftLightsPanel : UserControl
 {
     private const int GreenCount = 5;
     private const int YellowCount = 5;
     private const int BlinkHalfPeriodMs = 90;
 
-    private static readonly Brush Off = StatePalette.TrackEmpty;
+    private static readonly Brush Off = StatePalette.LampOff;
     private static readonly Brush Green = StatePalette.Positive;
     private static readonly Brush Yellow = StatePalette.Accent;
     private static readonly Brush Red = StatePalette.Critical;
@@ -30,26 +27,26 @@ public partial class ShiftLightsPanel : UserControl
     // pattern. An animation runs at render frequency, so the cadence is the same at any refresh rate.
     private static readonly DoubleAnimationUsingKeyFrames BlinkAnimation = CreateBlinkAnimation();
 
-    private readonly Ellipse[] _dots = new Ellipse[CockpitState.ShiftLightCount];
+    private readonly Border[] _segments = new Border[CockpitState.ShiftLightCount];
     private bool _blinking;
 
     public ShiftLightsPanel()
     {
         InitializeComponent();
 
-        for (var i = 0; i < _dots.Length; i++)
+        for (var i = 0; i < _segments.Length; i++)
         {
-            var dot = new Ellipse { Width = 14, Height = 14, Fill = Off, Margin = new Thickness(2) };
-            LightsStack.Children.Add(dot);
-            _dots[i] = dot;
+            var segment = new Border { Width = 15, Height = 7, CornerRadius = new CornerRadius(2), Background = Off, Margin = new Thickness(1, 0, 1, 0) };
+            LightsStack.Children.Add(segment);
+            _segments[i] = segment;
         }
     }
 
     public void SetLit(int litCount, bool blink)
     {
-        for (var i = 0; i < _dots.Length; i++)
+        for (var i = 0; i < _segments.Length; i++)
         {
-            _dots[i].Fill = i >= litCount
+            _segments[i].Background = i >= litCount
                 ? Off
                 : i < GreenCount ? Green : i < GreenCount + YellowCount ? Yellow : Red;
         }

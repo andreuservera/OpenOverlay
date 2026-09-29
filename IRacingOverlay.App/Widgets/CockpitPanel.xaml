@@ -31,27 +31,25 @@
             </Grid.RowDefinitions>
 
             <!-- Proximity bars run the full height of the panel, flanking everything else. -->
-            <w:ProximityBarPanel x:Name="LeftProximity" Grid.Column="0" Grid.RowSpan="2" Margin="0,2"/>
-            <w:ProximityBarPanel x:Name="RightProximity" Grid.Column="4" Grid.RowSpan="2" Margin="0,2"/>
+            <w:ProximityBarPanel x:Name="LeftProximity" Grid.Column="0" Grid.RowSpan="2" Margin="0,1" HorizontalAlignment="Left"/>
+            <w:ProximityBarPanel x:Name="RightProximity" Grid.Column="4" Grid.RowSpan="2" Margin="0,1" HorizontalAlignment="Right"/>
 
             <!-- Shift lights span the speed/gear/RPM columns, not just the gear digit. -->
-            <w:ShiftLightsPanel x:Name="ShiftLights" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,0,0,6"/>
+            <w:ShiftLightsPanel x:Name="ShiftLights" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,1,0,8"/>
 
-            <!-- Speed and RPM share one layout — value, hairline rule, unit — so the eye learns a
-                 single pattern and the two units line up horizontally instead of one label sitting
-                 above its number and the other below. -->
+            <!-- Three tiers: speed is the hero, RPM supporting data, units and ABS the quietest.
+                 Speed and RPM share one shape — value over unit — so the eye learns a single pattern. -->
             <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock x:Name="SpeedText" Text="—" Style="{StaticResource DisplayValueLarge}" HorizontalAlignment="Center"/>
-                <Border Background="{StaticResource Surface.Divider}" Height="1" Margin="4,3,4,4"/>
-                <TextBlock Text="KM/H" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center"/>
+                <TextBlock Text="KM/H" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
             </StackPanel>
 
             <w:ShiftGearPanel x:Name="ShiftGear" Grid.Row="1" Grid.Column="2"/>
 
             <StackPanel Grid.Row="1" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock x:Name="RpmText" Text="—" Style="{StaticResource DisplayValueSmall}" HorizontalAlignment="Center"/>
-                <Border Background="{StaticResource Surface.Divider}" Height="1" Margin="4,3,4,4"/>
-                <TextBlock Text="RPM" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                <TextBlock x:Name="RpmText" Text="—" Style="{StaticResource DisplayValueSmall}"
+                           Foreground="{StaticResource Text.Secondary}" HorizontalAlignment="Center"/>
+                <TextBlock Text="RPM" Style="{StaticResource ColumnHeader}" HorizontalAlignment="Center" Margin="0,2,0,10"/>
                 <w:AbsIndicatorPanel x:Name="AbsIndicator" HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>

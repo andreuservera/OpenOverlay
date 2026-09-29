@@ -27,6 +27,7 @@ public partial class CockpitPanel : UserControl
         // ShiftLightsPanel.
         ShiftLights.SetLit(state.ShiftLightsLit, state.ShiftBlink);
         ShiftGear.SetGear(state.Gear);
+        ShiftGear.SetShiftPoint(state.ShiftBlink);
         AbsIndicator.SetActive(state.AbsActive, blinkPhase);
         SpeedText.Text = state.SpeedKph > 0 ? state.SpeedKph.ToString("0", CultureInfo.InvariantCulture) : "—";
         RpmText.Text = state.Rpm > 0 ? state.Rpm.ToString("0", CultureInfo.InvariantCulture) : "—";

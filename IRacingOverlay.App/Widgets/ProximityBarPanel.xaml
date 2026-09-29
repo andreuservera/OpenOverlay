@@ -5,5 +5,7 @@
     <!-- Segments are added in code-behind, one per SegmentCount, so the count only needs to change
          in one place. Row 0 is the TOP (our front bumper), last row is the BOTTOM (our rear
          bumper) — matching ProximitySide's BandStart=0/BandEnd=1 convention. -->
-    <Grid x:Name="Track"/>
+    <Border Background="{StaticResource Surface.Inset}" CornerRadius="4" Padding="2,1" Width="12" HorizontalAlignment="Center">
+        <Grid x:Name="Track"/>
+    </Border>
 </UserControl>

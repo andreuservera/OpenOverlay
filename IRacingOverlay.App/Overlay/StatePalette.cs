@@ -25,12 +25,12 @@ internal static class StatePalette
     /// <summary>Unfilled half of a gauge track, and the "off" state of an indicator segment.</summary>
     public static readonly Brush TrackEmpty = Frozen(0x23, 0x29, 0x31);
 
-    /// <summary>Same role as <see cref="TrackEmpty"/> but warmed toward the amber it lights up in,
-    /// so an idle proximity/shift segment reads as "this lamp is off" rather than as a gray dot.</summary>
-    public static readonly Brush TrackEmptyWarm = Frozen(0x2E, 0x28, 0x1E);
+    /// <summary>An unlit LED segment (shift lights, proximity bars): present, but plainly off.</summary>
+    public static readonly Brush LampOff = Frozen(0x1F, 0xFF, 0xFF, 0xFF);
 
-    /// <summary>Idle outline of a telltale (ABS) — present, legible, but plainly "off".</summary>
-    public static readonly Brush Outline = Frozen(0x3E, 0x46, 0x50);
+    /// <summary>Same as Surface.Chip / Surface.ChipBorder in DesignTokens.xaml, for badges drawn in code.</summary>
+    public static readonly Brush ChipFill = Frozen(0x1C, 0xFF, 0xFF, 0xFF);
+    public static readonly Brush ChipEdge = Frozen(0x14, 0xFF, 0xFF, 0xFF);
 
     public static readonly Color PositiveColor = Color.FromRgb(0x34, 0xD3, 0x99);
     public static readonly Color NegativeColor = Color.FromRgb(0xFF, 0x6B, 0x6B);
@@ -38,9 +38,11 @@ internal static class StatePalette
     /// <summary>"This is you" — same as State.SelfColor, the player's row in the tables.</summary>
     public static readonly Color SelfColor = Color.FromRgb(0x4C, 0x9A, 0xFF);
 
-    private static Brush Frozen(byte r, byte g, byte b)
+    private static Brush Frozen(byte r, byte g, byte b) => Frozen(0xFF, r, g, b);
+
+    private static Brush Frozen(byte a, byte r, byte g, byte b)
     {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
         brush.Freeze();
         return brush;
     }

@@ -14,7 +14,7 @@ public partial class ProximityBarPanel : UserControl
     private const int SegmentCount = 12;
 
     private static readonly Brush Lit = StatePalette.Warning;
-    private static readonly Brush Off = StatePalette.TrackEmptyWarm;
+    private static readonly Brush Off = StatePalette.LampOff;
 
     private readonly Border[] _segments = new Border[SegmentCount];
 
@@ -26,7 +26,7 @@ public partial class ProximityBarPanel : UserControl
         {
             Track.RowDefinitions.Add(new RowDefinition());
 
-            var segment = new Border { Background = Off, CornerRadius = new CornerRadius(1), Margin = new Thickness(0, 1, 0, 1) };
+            var segment = new Border { Background = Off, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 1, 0, 1) };
             Grid.SetRow(segment, i);
             Track.Children.Add(segment);
             _segments[i] = segment;

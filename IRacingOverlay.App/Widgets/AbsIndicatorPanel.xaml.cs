@@ -4,13 +4,12 @@ using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.Widgets;
 
-/// <summary>An outlined "ABS" telltale pill — dim gray outline/text normally, glows amber and
-/// blinks while active, matching a real dash telltale.</summary>
+/// <summary>The "ABS" telltale badge — a neutral chip normally, amber and blinking while active,
+/// like a real dash lamp.</summary>
 public partial class AbsIndicatorPanel : UserControl
 {
-    // Idle is quiet on purpose but still legible as a labelled telltale. Active lights the outline
-    // and text amber over a faint amber wash, the way a real dash lamp glows through its lens.
-    private static readonly Brush IdleBorder = StatePalette.Outline;
+    private static readonly Brush IdleFill = StatePalette.ChipFill;
+    private static readonly Brush IdleBorder = StatePalette.ChipEdge;
     private static readonly Brush IdleText = StatePalette.TextMuted;
     private static readonly Brush DimAmber = Frozen(Color.FromRgb(0x8A, 0x5D, 0x18));
     private static readonly Brush BrightAmber = StatePalette.Warning;
@@ -19,8 +18,6 @@ public partial class AbsIndicatorPanel : UserControl
     public AbsIndicatorPanel()
     {
         InitializeComponent();
-        Light.BorderBrush = IdleBorder;
-        Label.Foreground = IdleText;
     }
 
     /// <summary>blinkPhase is supplied by the caller (toggled once per tick) so this stays in sync
@@ -30,7 +27,7 @@ public partial class AbsIndicatorPanel : UserControl
         if (!active)
         {
             Light.BorderBrush = IdleBorder;
-            Light.Background = Brushes.Transparent;
+            Light.Background = IdleFill;
             Label.Foreground = IdleText;
             return;
         }
