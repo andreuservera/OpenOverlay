@@ -10,6 +10,7 @@ public enum DriverTableColumn
     Position,
     CarNumber,
     Driver,
+    LastPitStop,
     IRating,
     IRatingDelta,
     License,
@@ -44,6 +45,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showPosition = true;
     private bool _showCarNumber = true;
     private bool _showDriver = true;
+    private bool _showLastPitStop;
     private bool _showIRating = true;
     private bool _showIRatingDelta = true;
     private bool _showLicense = true;
@@ -82,6 +84,13 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showDriver;
         set => SetField(ref _showDriver, value);
+    }
+
+    /// <summary>Lap and pit-lane time of the driver's most recent stop. Off by default.</summary>
+    public bool ShowLastPitStop
+    {
+        get => _showLastPitStop;
+        set => SetField(ref _showLastPitStop, value);
     }
 
     public bool ShowIRating
@@ -179,6 +188,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
             case DriverTableColumn.Position: ShowPosition = visible; break;
             case DriverTableColumn.CarNumber: ShowCarNumber = visible; break;
             case DriverTableColumn.Driver: ShowDriver = visible; break;
+            case DriverTableColumn.LastPitStop: ShowLastPitStop = visible; break;
             case DriverTableColumn.IRating: ShowIRating = visible; break;
             case DriverTableColumn.IRatingDelta: ShowIRatingDelta = visible; break;
             case DriverTableColumn.License: ShowLicense = visible; break;

@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private readonly FuelBuilder _fuelBuilder = new();
     private readonly FuelCalculatorBuilder _fuelCalculatorBuilder = new();
     private readonly SessionBestLapTracker _sessionBestLapTracker = new();
+    private readonly PitStopTracker _pitStopTracker = new();
     private int _tickCount;
 
     // Perf diagnostics for the reported "stutter, even at low Hz" — both timers share one UI thread
@@ -162,12 +163,14 @@ public partial class MainWindow : Window
 
         var session = _connection.Session;
         _tickCount++;
+        // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
+        _pitStopTracker.Update(telemetry, session);
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
         if (needsStandings && _tickCount % StandingsUpdateEveryNTicks == 0)
         {
-            _latestStandings = StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker);
+            _latestStandings = StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops);
 
             // Only the two widgets that display SOF pay for it — Relative pulls the running order
             // out of this block but has no use for the field strength.
@@ -197,7 +200,8 @@ public partial class MainWindow : Window
 
         // Built every tick, unlike standings: Relative is about where cars are right now, and a
         // once-a-second refresh is visibly laggy when someone is alongside you.
-        var relativeRows = StandingsBuilder.BuildRelative(telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings);
+        var relativeRows = StandingsBuilder.BuildRelative(
+            telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops);
         if (Relative is { } relative)
         {
             relative.UpdateRows(relativeRows);

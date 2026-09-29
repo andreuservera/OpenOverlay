@@ -100,6 +100,7 @@ public sealed partial class ControlPanelViewModel
             Column("Pos", DriverTableColumn.Position, options.ShowPosition, options),
             Column("Car #", DriverTableColumn.CarNumber, options.ShowCarNumber, options),
             Column("Driver", DriverTableColumn.Driver, options.ShowDriver, options),
+            Column("Last pit", DriverTableColumn.LastPitStop, options.ShowLastPitStop, options),
             Column("iR", DriverTableColumn.IRating, options.ShowIRating, options),
             Column("iRΔ", DriverTableColumn.IRatingDelta, options.ShowIRatingDelta, options),
             Column("SR", DriverTableColumn.License, options.ShowLicense, options),

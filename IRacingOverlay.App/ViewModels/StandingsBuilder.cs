@@ -28,7 +28,8 @@ internal static class StandingsBuilder
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
         int maxEachSide = DriverTableOptions.DefaultRelativeFocusSize,
-        IReadOnlyList<StandingsRow>? standings = null)
+        IReadOnlyList<StandingsRow>? standings = null,
+        IReadOnlyDictionary<int, PitStop>? lastPitStops = null)
     {
         if (session?.DriverInfo is not { } driverInfo)
         {
@@ -203,6 +204,7 @@ internal static class StandingsBuilder
                 IsPlayer = isPlayer,
                 GapSeconds = GapTo(driver.CarIdx),
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
                 BestLapTime = laps.Best(driver.CarIdx),
@@ -265,7 +267,11 @@ internal static class StandingsBuilder
     /// every lap run before I joined" looks like on screen. Laps and track position answer the
     /// question on their own.
     /// </summary>
-    public static List<StandingsRow> BuildStandings(TelemetrySnapshot telemetry, IracingSessionInfo? session, SessionBestLapTracker? bestLapTracker = null)
+    public static List<StandingsRow> BuildStandings(
+        TelemetrySnapshot telemetry,
+        IracingSessionInfo? session,
+        SessionBestLapTracker? bestLapTracker = null,
+        IReadOnlyDictionary<int, PitStop>? lastPitStops = null)
     {
         if (session?.DriverInfo is not { } driverInfo)
         {
@@ -323,7 +329,8 @@ internal static class StandingsBuilder
             return BuildFastestLapStandings(
                 driverInfo, LapCountOf, laps, onPitRoad, playerCarIdx, isMultiClass,
                 bestLapTracker ?? new SessionBestLapTracker(),
-                CurrentSession.Number(telemetry, session));
+                CurrentSession.Number(telemetry, session),
+                lastPitStops);
         }
 
         // Only the gap *display* needs a lap length, to turn "a lap down" into seconds. The running
@@ -435,6 +442,7 @@ internal static class StandingsBuilder
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = classLeaderTimePosition[driver.CarClassID] - TimePosition(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
@@ -797,7 +805,8 @@ internal static class StandingsBuilder
         int playerCarIdx,
         bool isMultiClass,
         SessionBestLapTracker bestLapTracker,
-        int sessionNum)
+        int sessionNum,
+        IReadOnlyDictionary<int, PitStop>? lastPitStops)
     {
         var drivers = driverInfo.Drivers.Where(d => !d.IsPaceCar && d.CarIdx >= 0).ToList();
         var cachedBest = bestLapTracker.Update(sessionNum, drivers.Select(d => d.CarIdx), laps);
@@ -850,6 +859,7 @@ internal static class StandingsBuilder
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = lapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = thisTime < double.MaxValue && poleTime < double.MaxValue ? thisTime - poleTime : 0,
                 LastLapTime = laps.Last(driver.CarIdx),
@@ -868,6 +878,9 @@ internal static class StandingsBuilder
 
         return rows;
     }
+
+    private static PitStop? LastPitStopOf(IReadOnlyDictionary<int, PitStop>? lastPitStops, int carIdx) =>
+        lastPitStops is not null && lastPitStops.TryGetValue(carIdx, out var stop) ? stop : null;
 
     private static bool[]? TryGetBoolArray(TelemetrySnapshot telemetry, string name) =>
         telemetry.HasVariable(name) ? telemetry.GetBoolArray(name) : null;

@@ -32,6 +32,9 @@ public abstract class DriverRow
     public int CarClassID { get; init; }
     public string CarClassName { get; init; } = "";
 
+    /// <summary>Most recent completed pit stop this session; null until the car has made one.</summary>
+    public PitStop? LastPitStop { get; init; }
+
     /// <summary>What the GAP column shows. The one thing the two tables genuinely disagree on:
     /// Standings measures to the class leader, Relative to the player.</summary>
     public abstract string GapDisplay { get; }
@@ -55,6 +58,20 @@ public abstract class DriverRow
     public string NameDisplay => ShortenName(Name);
 
     public string LastLapDisplay => FormatLapTime(LastLapTime);
+
+    public bool HasLastPitStop => LastPitStop is not null;
+
+    public string LastPitLapDisplay => LastPitStop is { } stop ? $"L{stop.Lap.ToString(CultureInfo.InvariantCulture)}" : "";
+
+    public string LastPitDurationDisplay => LastPitStop is { } stop
+        ? FormatMinutesSeconds(stop.Seconds)
+        : "";
+
+    private static string FormatMinutesSeconds(double seconds)
+    {
+        var total = (int)Math.Round(Math.Max(0, seconds));
+        return string.Create(CultureInfo.InvariantCulture, $"{total / 60:00}:{total % 60:00}");
+    }
 
     public string BestLapDisplay => FormatLapTime(BestLapTime);
 

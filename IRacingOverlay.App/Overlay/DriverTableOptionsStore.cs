@@ -41,7 +41,8 @@ internal static class DriverTableOptionsStore
         Load();
         foreach (var column in Enum.GetValues<DriverTableColumn>())
         {
-            options.SetVisible(column, Get(options.Table, column.ToString(), 1) != 0);
+            var defaultVisible = column == DriverTableColumn.LastPitStop ? 0 : 1;
+            options.SetVisible(column, Get(options.Table, column.ToString(), defaultVisible) != 0);
         }
 
         options.ShowSessionId = Get(options.Table, ShowSessionIdKey, 0) != 0;

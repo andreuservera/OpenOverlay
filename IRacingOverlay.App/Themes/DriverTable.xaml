@@ -22,6 +22,7 @@
     <sys:String x:Key="W.Pos">36</sys:String>
     <sys:String x:Key="W.Car">40</sys:String>
     <sys:String x:Key="W.Driver">128</sys:String>
+    <sys:String x:Key="W.LastPit">76</sys:String>
     <sys:String x:Key="W.IRating">48</sys:String>
     <sys:String x:Key="W.IRatingDelta">44</sys:String>
     <!-- The delta's segment inside the iRating badge: its column minus the badge's inset. -->
@@ -94,6 +95,20 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
+    <!-- Last pit stop: the PIT badge's tinted amber, split into lap | time segments. -->
+    <Style x:Key="PitStopChip" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Badge.WarningFill}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Badge.WarningEdge}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
+        <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
+    </Style>
+    <Style x:Key="PitStopText" TargetType="TextBlock" BasedOn="{StaticResource ChipText}">
+        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
     <!-- Same height as a data row, so a reserved slot holds its place without the table visibly
          stuttering as cars move in and out of it. -->
     <DataTemplate DataType="{x:Type vm:RelativePlaceholderRow}">
@@ -122,6 +137,7 @@
                         <ColumnDefinition Width="{Binding Options.ShowPosition, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Pos}}"/>
                         <ColumnDefinition Width="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>
                         <ColumnDefinition Width="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Driver}}"/>
+                        <ColumnDefinition Width="{Binding Options.ShowLastPitStop, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.LastPit}}"/>
                         <ColumnDefinition Width="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRating}}"/>
                         <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDelta}}"/>
                         <ColumnDefinition Width="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.License}}"/>
@@ -155,10 +171,31 @@
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
 
+                    <!-- Independent of the PIT badge: appears after the first completed stop and
+                         stays, so both can show at once while the car is back in the lane. -->
+                    <Grid Grid.Column="3"
+                          Visibility="{Binding Options.ShowLastPitStop, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                        <Border Style="{StaticResource PitStopChip}"
+                                Visibility="{Binding HasLastPitStop, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="1"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding LastPitLapDisplay}" Style="{StaticResource PitStopText}"
+                                           Margin="5,0" Foreground="{StaticResource State.Warning}"/>
+                                <Border Grid.Column="1" Background="{StaticResource Badge.WarningEdge}" Margin="0,3"/>
+                                <TextBlock Grid.Column="2" Text="{Binding LastPitDurationDisplay}" Style="{StaticResource PitStopText}"
+                                           Foreground="#F2E3C6"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
                     <!-- iRating badge: spans the iR and iRΔ columns, so hiding the delta hands its
                          width back exactly as the separate column used to. The delta is a tinted
                          segment on the right carrying an arrow and the magnitude. -->
-                    <Border x:Name="RatingBadge" Grid.Column="3" Grid.ColumnSpan="2" Style="{StaticResource RatingBadge}">
+                    <Border x:Name="RatingBadge" Grid.Column="4" Grid.ColumnSpan="2" Style="{StaticResource RatingBadge}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -182,7 +219,7 @@
 
                     <!-- Tinted, outlined chip: the licence colour still says R/D/C/B/A at a glance, but
                          as a tint it no longer out-shouts the driver's name next to it. -->
-                    <Border Grid.Column="5" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}" BorderThickness="1"
+                    <Border Grid.Column="6" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}" BorderThickness="1"
                             Background="{Binding LicenseColor, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.24}"
                             BorderBrush="{Binding LicenseColor, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.75}"
                             Visibility="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
@@ -190,18 +227,18 @@
                                    FontSize="{StaticResource Type.Micro}" LineHeight="{StaticResource Line.Micro}"/>
                     </Border>
 
-                    <TextBlock Grid.Column="6" Text="{Binding LapDisplay}" Style="{StaticResource MetaCell}"
+                    <TextBlock Grid.Column="7" Text="{Binding LapDisplay}" Style="{StaticResource MetaCell}"
                                Visibility="{Binding Options.ShowLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="7" Text="{Binding BestLapDisplay}" Style="{StaticResource NumCell}"
+                    <TextBlock Grid.Column="8" Text="{Binding BestLapDisplay}" Style="{StaticResource NumCell}"
                                Foreground="{Binding BestLapForeground}"
                                Visibility="{Binding Options.ShowBestLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="8" Text="{Binding LastLapDisplay}" Style="{StaticResource NumCell}"
+                    <TextBlock Grid.Column="9" Text="{Binding LastLapDisplay}" Style="{StaticResource NumCell}"
                                Foreground="{Binding LastLapForeground}"
                                Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="9" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
+                    <TextBlock Grid.Column="10" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
                                Foreground="{Binding GapForeground}"
                                Visibility="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 </Grid>

@@ -87,6 +87,8 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
+                // Every third car has stopped, plus the one in the lane now, so both pit states show.
+                LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 CurrentLap = i < 3 ? 18 : 17,
                 // Car 8 has just set a personal best, so the green last-lap state shows too.
                 LastLapTime = i == 7
@@ -132,6 +134,7 @@ public static class PreviewData
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
+                LastPitStop = source.LastPitStop,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,

@@ -23,6 +23,7 @@
                     <ColumnDefinition Width="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Pos}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Driver}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowLastPitStop, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.LastPit}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRating}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDelta}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.License}}"/>
@@ -37,17 +38,19 @@
                            Visibility="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="2" Text="DRIVER" Style="{StaticResource HeadText}"
                            Visibility="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="3" Grid.ColumnSpan="2" Text="iR" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="3" Text="LAST PIT" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowLastPitStop, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="4" Grid.ColumnSpan="2" Text="iR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="5" Text="SR" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="6" Text="SR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="6" Text="LAP" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="7" Text="LAP" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="7" Text="BEST" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="8" Text="BEST" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="8" Text="LAST" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="9" Text="LAST" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="9" Text="GAP" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="10" Text="GAP" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
             </Grid>
 
