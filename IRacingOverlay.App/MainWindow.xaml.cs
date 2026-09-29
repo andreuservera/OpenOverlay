@@ -177,7 +177,11 @@ public partial class MainWindow : Window
         _vm.TableHeaderChanged += PushTableHeader;
 
         _connection.Connected += (_, _) => Dispatcher.BeginInvoke(() => _vm.IsConnected = true);
-        _connection.Disconnected += (_, _) => Dispatcher.BeginInvoke(() => _vm.IsConnected = false);
+        _connection.Disconnected += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            _vm.IsConnected = false;
+            ClearWidgets();
+        });
 
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
@@ -264,6 +268,48 @@ public partial class MainWindow : Window
     private WeatherWidget? Weather => _vm.WidgetOf<WeatherWidget>(WidgetCatalog.Weather);
     private TrackMapWidget? TrackMap => _vm.WidgetOf<TrackMapWidget>(WidgetCatalog.TrackMap);
     private FuelCalculatorWidget? FuelCalculator => _vm.WidgetOf<FuelCalculatorWidget>(WidgetCatalog.FuelCalculator);
+
+    /// <summary>
+    /// Puts every widget and the dashboard back to its no-data state when iRacing goes away. The
+    /// update loop stops pushing once there's no telemetry, so without this the last session's
+    /// numbers would stay on screen looking live. The tables show "Waiting for iRacing telemetry…".
+    /// </summary>
+    private void ClearWidgets()
+    {
+        _latestStandings = [];
+        _vm.TelemetryLine = "Waiting for iRacing";
+
+        Relative?.UpdateRows([]);
+        Standings?.UpdateRows([]);
+        Standings?.SetSof(0);
+        Cockpit?.UpdateState(CockpitState.Empty);
+        Flags?.UpdateState([FlagState.None]);
+        Tires?.UpdateState(TireInfoState.Empty);
+        Delta?.UpdateState(DeltaState.Empty);
+        Fuel?.UpdateState(FuelState.Empty);
+        Pedals?.UpdateState(PedalTraceState.Empty);
+        Incidents?.UpdateState(IncidentState.Empty);
+        TrackInfo?.UpdateState(TrackInfoState.Empty);
+        Weather?.UpdateState(WeatherState.Empty);
+        TrackMap?.UpdateState([]);
+        FuelCalculator?.UpdateState(FuelCalculatorState.Empty);
+
+        if (_dashboard is { } dashboard)
+        {
+            dashboard.UpdateStandingsRows([]);
+            dashboard.UpdateStandingsSof(0);
+            dashboard.UpdateRelativeRows([]);
+            dashboard.UpdateCockpit(CockpitState.Empty);
+            dashboard.UpdateFlag([FlagState.None]);
+            dashboard.UpdateTireInfo(TireInfoState.Empty);
+            dashboard.UpdateDelta(DeltaState.Empty);
+            dashboard.UpdateFuel(FuelState.Empty);
+            dashboard.UpdatePedalTrace(PedalTraceState.Empty);
+            dashboard.UpdateIncident(IncidentState.Empty);
+            dashboard.UpdateTrackInfo(TrackInfoState.Empty);
+            dashboard.UpdateTrackMap([]);
+        }
+    }
 
     private void UiTimer_Tick(object? sender, EventArgs e)
     {

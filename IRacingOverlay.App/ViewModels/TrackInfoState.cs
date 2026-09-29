@@ -19,6 +19,9 @@ public sealed class TrackInfoState
 
     public UnitSystem UnitSystem { get; init; }
 
+    /// <summary>False for <see cref="Empty"/>, so readings show as dashes instead of a believable 0.</summary>
+    public bool HasData { get; init; } = true;
+
     public static TrackInfoState Empty => new()
     {
         TrackName = "",
@@ -31,6 +34,7 @@ public sealed class TrackInfoState
         HumidityPct = 0,
         TimeRemainingSeconds = null,
         LapsRemaining = null,
+        HasData = false,
     };
 
     public string TrackNameDisplay => string.IsNullOrWhiteSpace(TrackName) ? "—" : TrackName;
@@ -85,11 +89,13 @@ public sealed class TrackInfoState
 
     public string TrackTempDisplay => FormatTemperature(TrackTempC);
 
-    public string WindDisplay =>
-        $"{Units.SpeedFromMs(WindSpeedMs, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)} {Units.SpeedUnit(UnitSystem)} {WindDirectionDisplay}";
+    public string WindDisplay => !HasData
+        ? "—"
+        : $"{Units.SpeedFromMs(WindSpeedMs, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)} {Units.SpeedUnit(UnitSystem)} {WindDirectionDisplay}";
 
-    private string FormatTemperature(double celsius) =>
-        $"{Units.Temperature(celsius, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)}{Units.TemperatureUnit(UnitSystem)}";
+    private string FormatTemperature(double celsius) => !HasData
+        ? "—"
+        : $"{Units.Temperature(celsius, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)}{Units.TemperatureUnit(UnitSystem)}";
 
     public string WindDirectionDisplay => CompassPoints[(int)Math.Round(NormalizedWindDegrees / 22.5) % CompassPoints.Length];
 
@@ -105,7 +111,7 @@ public sealed class TrackInfoState
     private static readonly string[] CompassPoints =
         ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
-    public string HumidityDisplay => $"{HumidityPct.ToString("0", CultureInfo.InvariantCulture)}%";
+    public string HumidityDisplay => HasData ? $"{HumidityPct.ToString("0", CultureInfo.InvariantCulture)}%" : "—";
 
     public string TimeRemainingDisplay => TimeRemainingSeconds is { } seconds ? FormatCountdown(seconds) : "—";
 

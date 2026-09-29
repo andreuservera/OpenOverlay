@@ -44,4 +44,27 @@ public sealed class TireInfoState
     public required TireCornerInfo RF { get; init; }
     public required TireCornerInfo LR { get; init; }
     public required TireCornerInfo RR { get; init; }
+
+    public static TireInfoState Empty { get; } = new()
+    {
+        LF = EmptyCorner("LF"),
+        RF = EmptyCorner("RF"),
+        LR = EmptyCorner("LR"),
+        RR = EmptyCorner("RR"),
+    };
+
+    private static TireCornerInfo EmptyCorner(string label) => new()
+    {
+        Label = label,
+        PressureKPa = 0,
+        ColdPressureKPa = 0,
+        TempLeft = 0,
+        TempMiddle = 0,
+        TempRight = 0,
+        IsSurfaceTemp = false,
+        WearLeft = 1,
+        WearMiddle = 1,
+        WearRight = 1,
+        HasWearData = false,
+    };
 }

@@ -13,6 +13,14 @@ public sealed class DeltaState
     public required bool IsValid { get; init; }
     public required string ReferenceLabel { get; init; }
 
+    public static DeltaState Empty { get; } = new()
+    {
+        DeltaSeconds = 0,
+        RateOfChange = 0,
+        IsValid = false,
+        ReferenceLabel = "",
+    };
+
     public string Display => IsValid
         ? (DeltaSeconds <= 0
             ? $"-{Math.Abs(DeltaSeconds).ToString("0.000", CultureInfo.InvariantCulture)}"

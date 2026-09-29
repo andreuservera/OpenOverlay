@@ -210,6 +210,10 @@ public sealed class IRacingConnection : IDisposable
 
     private void SetDisconnected()
     {
+        // Nothing read before the sim went away describes the next session, so none of it is kept.
+        Latest = null;
+        Session = null;
+        _lastSessionInfoUpdate = -1;
         if (IsConnected)
         {
             IsConnected = false;
