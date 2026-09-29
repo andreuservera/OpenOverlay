@@ -1,4 +1,5 @@
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.Sdk;
 using IRacingOverlay.Sdk.Interop;
 using IRacingOverlay.Sdk.Tests;
 
@@ -15,67 +16,45 @@ public class PedalTraceBuilderTests
         return builder;
     }
 
+    private static TelemetrySnapshot Pedals(SyntheticMemoryBuilder builder, int tick, float throttle, float brake = 0, float clutch = 0) =>
+        TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetFloat("Throttle", throttle);
+            w.SetFloat("Brake", brake);
+            w.SetFloat("Clutch", clutch);
+        }, tick);
+
     [Fact]
     public void Build_ReadsCurrentPedalValues()
     {
-        var builder = PedalVars();
-        var snapshot = TestSnapshotFactory.Build(builder, w =>
-        {
-            w.SetFloat("Throttle", 0.8f);
-            w.SetFloat("Brake", 0.1f);
-            w.SetFloat("Clutch", 0f); // raw 0 = fully disengaged (pedal to the floor)
-        });
-
-        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0.8f, 0.1f, 0f));
 
         Assert.Equal(0.8, state.Throttle, precision: 3);
         Assert.Equal(0.1, state.Brake, precision: 3);
-        Assert.Equal(1, state.Clutch, precision: 3); // inverted: fully pressed
+        Assert.Equal(1, state.Clutch, precision: 3); // raw 0 = pedal to the floor
     }
 
     [Fact]
     public void Build_ClutchReleased_ReadsAsNotPressed()
     {
-        // iRacing reports raw Clutch=1 when the pedal is released (e.g. autoclutch idling) —
-        // must display as 0% pressed, not 100%.
-        var builder = PedalVars();
-        var snapshot = TestSnapshotFactory.Build(builder, w =>
-        {
-            w.SetFloat("Throttle", 0f);
-            w.SetFloat("Brake", 0f);
-            w.SetFloat("Clutch", 1f);
-        });
-
-        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
+        // iRacing reports raw Clutch=1 when the pedal is released (e.g. autoclutch idling).
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0f, 0f, 1f));
 
         Assert.Equal(0, state.Clutch, precision: 3);
     }
 
     [Fact]
-    public void Build_AccumulatesHistoryAcrossCalls()
+    public void Build_AddsOneSamplePerSimTick()
     {
         var builder = PedalVars();
-        var pedalTraceBuilder = new PedalTraceBuilder();
+        var trace = new PedalTraceBuilder();
 
-        for (var i = 0; i < 5; i++)
+        for (var tick = 1; tick <= 5; tick++)
         {
-            var value = i / 10.0f;
-            var snapshot = TestSnapshotFactory.Build(builder, w =>
-            {
-                w.SetFloat("Throttle", value);
-                w.SetFloat("Brake", 0f);
-                w.SetFloat("Clutch", 0f);
-            });
-            pedalTraceBuilder.Build(snapshot, tickIntervalMs: 100);
+            trace.Build(Pedals(builder, tick, (tick - 1) / 10f));
         }
 
-        var final = TestSnapshotFactory.Build(builder, w =>
-        {
-            w.SetFloat("Throttle", 0.9f);
-            w.SetFloat("Brake", 0f);
-            w.SetFloat("Clutch", 0f);
-        });
-        var state = pedalTraceBuilder.Build(final, tickIntervalMs: 100);
+        var state = trace.Build(Pedals(builder, 6, 0.9f));
 
         Assert.Equal(6, state.ThrottleHistory.Count);
         Assert.Equal(0.9, state.ThrottleHistory[^1], precision: 3);
@@ -83,50 +62,49 @@ public class PedalTraceBuilderTests
     }
 
     [Fact]
-    public void Build_HistoryCapsAtFixedLength()
+    public void Build_SameSimTick_AddsNothing()
     {
+        // The UI can run faster than the sim publishes; repeating a tick must not stretch the trace.
         var builder = PedalVars();
-        var pedalTraceBuilder = new PedalTraceBuilder();
-        PedalTraceState state = PedalTraceState.Empty;
+        var trace = new PedalTraceBuilder();
 
-        for (var i = 0; i < 100; i++)
-        {
-            var snapshot = TestSnapshotFactory.Build(builder, w =>
-            {
-                w.SetFloat("Throttle", 0.5f);
-                w.SetFloat("Brake", 0f);
-                w.SetFloat("Clutch", 0f);
-            });
-            state = pedalTraceBuilder.Build(snapshot, tickIntervalMs: 100);
-        }
+        var first = trace.Build(Pedals(builder, 10, 0.5f));
+        var again = trace.Build(Pedals(builder, 10, 0.5f));
 
-        Assert.True(state.ThrottleHistory.Count <= 50);
+        Assert.Same(first, again);
+        Assert.Single(again.ThrottleHistory);
     }
 
     [Fact]
-    public void Build_FasterTickInterval_KeepsSameTimeWindowWithMoreSamples()
+    public void Build_KeepsFiveSecondsOfSimTicks_PositionedByTick()
     {
-        // At a faster refresh rate, the trace must still span ~5 real seconds — capping at a fixed
-        // sample COUNT regardless of tick rate would compress that window (this was the actual bug:
-        // 50 samples at a 16ms/60Hz tick is under a second of history, not 5s, which read as the
-        // trace stuttering/lurching every tick).
         var builder = PedalVars();
-        var pedalTraceBuilder = new PedalTraceBuilder();
-        PedalTraceState state = PedalTraceState.Empty;
+        var trace = new PedalTraceBuilder();
+        var state = PedalTraceState.Empty;
 
-        for (var i = 0; i < 400; i++)
+        // Every other tick missing, as when the UI lags: positions still follow the sim clock.
+        for (var tick = 0; tick <= 1000; tick += 2)
         {
-            var snapshot = TestSnapshotFactory.Build(builder, w =>
-            {
-                w.SetFloat("Throttle", 0.5f);
-                w.SetFloat("Brake", 0f);
-                w.SetFloat("Clutch", 0f);
-            });
-            state = pedalTraceBuilder.Build(snapshot, tickIntervalMs: 16);
+            state = trace.Build(Pedals(builder, tick, 0.5f));
         }
 
-        // ~5000ms / 16ms ≈ 312 samples — comfortably more than the old fixed 50-sample cap.
-        Assert.True(state.ThrottleHistory.Count > 50);
+        Assert.Equal(151, state.ThrottleHistory.Count); // 300 ticks (5 s) / 2 + the newest
+        Assert.Equal(1.0, state.Positions[^1], precision: 6);
+        Assert.Equal(0.0, state.Positions[0], precision: 6);
+        Assert.Equal(1.0 - (2 / 300.0), state.Positions[^2], precision: 6);
+    }
+
+    [Fact]
+    public void Build_TickGoesBackwards_StartsAFreshTrace()
+    {
+        var builder = PedalVars();
+        var trace = new PedalTraceBuilder();
+        trace.Build(Pedals(builder, 500, 0.5f));
+        trace.Build(Pedals(builder, 501, 0.5f));
+
+        var state = trace.Build(Pedals(builder, 3, 0.2f));
+
+        Assert.Single(state.ThrottleHistory);
     }
 
     [Fact]
@@ -136,7 +114,7 @@ public class PedalTraceBuilderTests
         builder.AddVar("Speed", IrsdkVarType.Float);
         var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("Speed", 10));
 
-        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
+        var state = new PedalTraceBuilder().Build(snapshot);
 
         Assert.Equal(0, state.Throttle);
         Assert.Equal(0, state.Brake);
@@ -148,39 +126,30 @@ public class PedalTraceBuilderTests
     {
         var builder = PedalVars();
         builder.AddVar("BrakeABSactive", IrsdkVarType.Bool);
-        var pedalTraceBuilder = new PedalTraceBuilder();
-        PedalTraceState state = PedalTraceState.Empty;
+        var trace = new PedalTraceBuilder();
+        var state = PedalTraceState.Empty;
 
-        // ABS only intervenes on the middle sample of three — the trace must recolor that stretch
-        // alone, so the flag has to be recorded per sample rather than as one panel-wide state.
+        // ABS only intervenes on the middle sample of three — only that stretch is recoloured.
+        var tick = 0;
         foreach (var absActive in new[] { false, true, false })
         {
             var snapshot = TestSnapshotFactory.Build(builder, w =>
             {
-                w.SetFloat("Throttle", 0f);
                 w.SetFloat("Brake", 0.9f);
-                w.SetFloat("Clutch", 0f);
                 w.SetBool("BrakeABSactive", absActive);
-            });
-            state = pedalTraceBuilder.Build(snapshot, tickIntervalMs: 100);
+            }, ++tick);
+            state = trace.Build(snapshot);
         }
 
         Assert.Equal(state.BrakeHistory.Count, state.AbsHistory.Count);
+        Assert.Equal(state.BrakeHistory.Count, state.ClutchHistory.Count);
         Assert.Equal(new[] { false, true, false }, state.AbsHistory);
     }
 
     [Fact]
     public void Build_NoAbsVariable_ReportsAbsInactive()
     {
-        var builder = PedalVars(); // no BrakeABSactive — e.g. a car without ABS
-        var snapshot = TestSnapshotFactory.Build(builder, w =>
-        {
-            w.SetFloat("Throttle", 0f);
-            w.SetFloat("Brake", 1f);
-            w.SetFloat("Clutch", 0f);
-        });
-
-        var state = new PedalTraceBuilder().Build(snapshot, tickIntervalMs: 100);
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0f, 1f));
 
         Assert.All(state.AbsHistory, abs => Assert.False(abs));
     }

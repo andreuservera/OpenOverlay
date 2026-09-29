@@ -250,11 +250,14 @@ public static class PreviewData
         const int samples = 160;
         var throttle = new double[samples];
         var brake = new double[samples];
+        var clutch = new double[samples];
         var abs = new bool[samples];
 
         for (var i = 0; i < samples; i++)
         {
             var t = i / (double)(samples - 1);
+            // Two quick clutch dabs: the downshifts under braking.
+            clutch[i] = Math.Max(0, 1 - (Math.Min(Math.Abs(t - 0.47), Math.Abs(t - 0.55)) / 0.018));
             if (t < 0.34)
             {
                 throttle[i] = 1.0;
@@ -282,7 +285,9 @@ public static class PreviewData
             Clutch = 0,
             ThrottleHistory = throttle,
             BrakeHistory = brake,
+            ClutchHistory = clutch,
             AbsHistory = abs,
+            Positions = Enumerable.Range(0, samples).Select(i => i / (double)(samples - 1)).ToArray(),
         };
     }
 

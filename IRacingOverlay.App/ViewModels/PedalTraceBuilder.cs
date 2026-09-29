@@ -13,47 +13,77 @@ internal sealed class PedalTraceBuilder
 {
     private const double HistorySeconds = 5.0;
 
-    private readonly Queue<double> _throttleHistory = new();
-    private readonly Queue<double> _brakeHistory = new();
-    private readonly Queue<bool> _absHistory = new();
+    // iRacing publishes telemetry at a fixed 60 ticks per second.
+    private const int TicksPerSecond = 60;
+    private const int WindowTicks = (int)(HistorySeconds * TicksPerSecond);
 
-    // Sample count needed for a HistorySeconds-wide trace scales with however fast this Builder is
-    // actually being ticked (the "critical refresh rate" combo) — fixing this at a sample COUNT
-    // (as before, tuned for the old 100ms/10Hz default) silently shrank the visible time window to a
-    // fraction of a second once the refresh rate was raised toward 60Hz, which is what read as
-    // "stutter": the same 50 samples then only covered ~0.8s, so every new tick visibly lurched the
-    // whole trace instead of scrolling it smoothly.
-    public PedalTraceState Build(TelemetrySnapshot telemetry, double tickIntervalMs)
+    private readonly Queue<(int Tick, double Throttle, double Brake, double Clutch, bool Abs)> _samples = new();
+    private PedalTraceState? _last;
+    private int _lastTick;
+
+    // One sample per sim tick, positioned by that tick: sampling on UI timer ticks (the old way)
+    // spaced the trace by however evenly the timer happened to fire, which read as stutter.
+    public PedalTraceState Build(TelemetrySnapshot telemetry)
     {
-        var maxSamples = Math.Max(2, (int)Math.Round(HistorySeconds * 1000.0 / Math.Max(1.0, tickIntervalMs)));
-
         var throttle = ReadPedal(telemetry, TelemetryVarNames.Throttle);
         var brake = ReadPedal(telemetry, TelemetryVarNames.Brake);
         var clutch = ReadClutch(telemetry);
         var abs = telemetry.HasVariable(TelemetryVarNames.BrakeAbsActive) && telemetry.GetBool(TelemetryVarNames.BrakeAbsActive);
+        var tick = telemetry.TickCount;
 
-        Push(_throttleHistory, throttle, maxSamples);
-        Push(_brakeHistory, brake, maxSamples);
-        Push(_absHistory, abs, maxSamples);
+        if (_last is not null)
+        {
+            if (tick == _lastTick)
+            {
+                return _last; // same sim tick, same data: nothing to add or redraw
+            }
+
+            if (tick < _lastTick)
+            {
+                _samples.Clear(); // sim restarted or a replay jumped back
+            }
+        }
+
+        _samples.Enqueue((tick, throttle, brake, clutch, abs));
+        while (_samples.Peek().Tick < tick - WindowTicks)
+        {
+            _samples.Dequeue();
+        }
+
+        _lastTick = tick;
+        return _last = Snapshot(throttle, brake, clutch, tick);
+    }
+
+    private PedalTraceState Snapshot(double throttle, double brake, double clutch, int now)
+    {
+        var count = _samples.Count;
+        var throttleHistory = new double[count];
+        var brakeHistory = new double[count];
+        var clutchHistory = new double[count];
+        var absHistory = new bool[count];
+        var positions = new double[count];
+        var i = 0;
+        foreach (var sample in _samples)
+        {
+            throttleHistory[i] = sample.Throttle;
+            brakeHistory[i] = sample.Brake;
+            clutchHistory[i] = sample.Clutch;
+            absHistory[i] = sample.Abs;
+            positions[i] = 1 - ((now - sample.Tick) / (double)WindowTicks);
+            i++;
+        }
 
         return new PedalTraceState
         {
             Throttle = throttle,
             Brake = brake,
             Clutch = clutch,
-            ThrottleHistory = _throttleHistory.ToArray(),
-            BrakeHistory = _brakeHistory.ToArray(),
-            AbsHistory = _absHistory.ToArray(),
+            ThrottleHistory = throttleHistory,
+            BrakeHistory = brakeHistory,
+            ClutchHistory = clutchHistory,
+            AbsHistory = absHistory,
+            Positions = positions,
         };
-    }
-
-    private static void Push<T>(Queue<T> history, T value, int maxSamples)
-    {
-        history.Enqueue(value);
-        while (history.Count > maxSamples)
-        {
-            history.Dequeue();
-        }
     }
 
     private static double ReadPedal(TelemetrySnapshot telemetry, string name) =>

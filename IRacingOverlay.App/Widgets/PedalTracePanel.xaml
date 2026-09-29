@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.PedalTracePanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <Border Style="{StaticResource OverlayPanel}" Padding="12,10">
         <Grid>
@@ -15,7 +16,9 @@
                     <StackPanel Width="20" Margin="0,0,5,0">
                         <Border x:Name="ThrottleTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}" Height="90">
                             <Grid VerticalAlignment="Stretch">
-                                <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" VerticalAlignment="Bottom" Height="0"/>
+                                <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" RenderTransformOrigin="0.5,1">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                                </Rectangle>
                             </Grid>
                         </Border>
                         <TextBlock Text="T" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Positive}"
@@ -24,7 +27,9 @@
                     <StackPanel Width="20" Margin="0,0,5,0">
                         <Border x:Name="BrakeTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}" Height="90">
                             <Grid VerticalAlignment="Stretch">
-                                <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" VerticalAlignment="Bottom" Height="0"/>
+                                <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" RenderTransformOrigin="0.5,1">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                                </Rectangle>
                             </Grid>
                         </Border>
                         <TextBlock Text="B" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Critical}"
@@ -33,7 +38,9 @@
                     <StackPanel Width="20">
                         <Border x:Name="ClutchTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}" Height="90">
                             <Grid VerticalAlignment="Stretch">
-                                <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" VerticalAlignment="Bottom" Height="0"/>
+                                <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" RenderTransformOrigin="0.5,1">
+                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                                </Rectangle>
                             </Grid>
                         </Border>
                         <TextBlock Text="C" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Info}"
@@ -47,7 +54,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="THROTTLE / BRAKE TRACE" Style="{StaticResource PanelTitle}" Margin="0,0,0,6"/>
+                <TextBlock Grid.Row="0" Text="PEDAL TRACE" Style="{StaticResource PanelTitle}" Margin="0,0,0,6"/>
                 <!-- The plot sits on its own inset well rather than directly on the panel: the darker
                      rounded field makes the traces read as a chart, and matches the rounded gauge
                      tracks beside it instead of being the one square-cornered element in the panel. -->
@@ -55,7 +62,8 @@
                     <Grid>
                         <!-- Half-travel guide: the one reference line worth drawing, and faint. -->
                         <Rectangle Height="1" VerticalAlignment="Center" Fill="{StaticResource Surface.DividerFade}" Opacity="0.6"/>
-                        <Canvas x:Name="TraceCanvas" ClipToBounds="True"/>
+                        <w:PedalTraceGraph x:Name="Trace" ThrottleBrush="{StaticResource State.Positive}" ClutchBrush="{StaticResource State.Info}"
+                                           BrakeBrush="{StaticResource State.Critical}" AbsBrush="{StaticResource State.Accent}"/>
                     </Grid>
                 </Border>
             </Grid>

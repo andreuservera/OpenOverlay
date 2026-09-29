@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Dashboard;
@@ -35,7 +36,12 @@ public partial class MainWindow : Window
     // itself the whole point — they're read on their own timer, decoupled from the general 100ms
     // tick, so the user can push them faster (lower latency, more CPU) or slower independently of
     // everything else.
-    private readonly DispatcherTimer _criticalTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    // Frame-synchronised rather than a DispatcherTimer: at 16 ms a DispatcherTimer lands on the
+    // Windows timer grid (15.6/31.2 ms) at background priority, so the pedal trace sampled unevenly
+    // and visibly stuttered. CompositionTarget.Rendering fires once per displayed frame.
+    private readonly System.Diagnostics.Stopwatch _criticalClock = System.Diagnostics.Stopwatch.StartNew();
+    private double _criticalIntervalMs = 100;
+    private double _nextCriticalMs;
     private readonly PedalTraceBuilder _pedalTraceBuilder = new();
     private readonly FuelBuilder _fuelBuilder = new();
     private readonly FuelCalculatorBuilder _fuelCalculatorBuilder = new();
@@ -84,8 +90,8 @@ public partial class MainWindow : Window
         Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions);
         DataContext = _vm;
 
-        _criticalTimer.Interval = TimeSpan.FromMilliseconds(_vm.CriticalRefreshIntervalMs);
-        _vm.CriticalRefreshChanged += intervalMs => _criticalTimer.Interval = TimeSpan.FromMilliseconds(intervalMs);
+        _criticalIntervalMs = _vm.CriticalRefreshIntervalMs;
+        _vm.CriticalRefreshChanged += intervalMs => _criticalIntervalMs = intervalMs;
         _vm.DashboardThemeChanged += theme => _dashboard?.ApplyTheme(theme);
         _vm.DashboardToggleRequested += ToggleDashboard;
         _vm.TableHeaderChanged += PushTableHeader;
@@ -96,13 +102,12 @@ public partial class MainWindow : Window
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
 
-        _criticalTimer.Tick += CriticalTimer_Tick;
-        _criticalTimer.Start();
+        CompositionTarget.Rendering += OnFrame;
 
         Closed += (_, _) =>
         {
             _uiTimer.Stop();
-            _criticalTimer.Stop();
+            CompositionTarget.Rendering -= OnFrame;
             _connection.Stop();
             _vm.CloseAllWidgets();
             _dashboard?.Close();
@@ -319,6 +324,19 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnFrame(object? sender, EventArgs e)
+    {
+        // A few ms of slack, so a 16 ms target runs on every 60 Hz frame (16.7 ms apart).
+        var now = _criticalClock.Elapsed.TotalMilliseconds;
+        if (now < _nextCriticalMs - 3)
+        {
+            return;
+        }
+
+        _nextCriticalMs = now + _criticalIntervalMs;
+        CriticalTimer_Tick(sender, e);
+    }
+
     private void CriticalTimer_Tick(object? sender, EventArgs e)
     {
         var nowMs = Environment.TickCount64;
@@ -361,7 +379,7 @@ public partial class MainWindow : Window
 
         if (Pedals is not null || _dashboard is not null)
         {
-            var pedalTraceState = _pedalTraceBuilder.Build(telemetry, _criticalTimer.Interval.TotalMilliseconds);
+            var pedalTraceState = _pedalTraceBuilder.Build(telemetry);
             Pedals?.UpdateState(pedalTraceState);
             _dashboard?.UpdatePedalTrace(pedalTraceState);
         }
@@ -381,7 +399,7 @@ public partial class MainWindow : Window
         var megabytes = process.WorkingSet64 / (1024.0 * 1024.0);
         var uiAvg = _uiTickSamples > 0 ? _uiTickTotalMs / _uiTickSamples : 0;
         var criticalAvg = _criticalTickSamples > 0 ? _criticalTickTotalMs / _criticalTickSamples : 0;
-        var criticalTargetMs = _criticalTimer.Interval.TotalMilliseconds;
+        var criticalTargetMs = _criticalIntervalMs;
 
         _vm.DiagnosticsLine =
             $"{megabytes:0} MB · GC {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)} · " +
