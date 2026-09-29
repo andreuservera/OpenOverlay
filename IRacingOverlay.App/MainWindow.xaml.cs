@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Dashboard;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
 using IRacingOverlay.Sdk;
@@ -42,6 +43,20 @@ public partial class MainWindow : Window
     private readonly System.Diagnostics.Stopwatch _criticalClock = System.Diagnostics.Stopwatch.StartNew();
     private double _criticalIntervalMs = 100;
     private double _nextCriticalMs;
+    private GlobalHotkeyManager? _hotkeys;
+
+    private void ToggleControlPanel()
+    {
+        if (IsVisible && WindowState != WindowState.Minimized)
+        {
+            Hide();
+            return;
+        }
+
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
     private readonly PedalTraceBuilder _pedalTraceBuilder = new();
     private readonly FuelBuilder _fuelBuilder = new();
     private readonly FuelCalculatorBuilder _fuelCalculatorBuilder = new();
@@ -104,10 +119,38 @@ public partial class MainWindow : Window
 
         CompositionTarget.Rendering += OnFrame;
 
+        // Registered against this window's handle, which stays alive while the window is hidden.
+        SourceInitialized += (_, _) =>
+        {
+            _hotkeys = new GlobalHotkeyManager(this);
+            _hotkeys.Pressed += _vm.Execute;
+            _vm.ReportHotkeyFailures(_hotkeys.Apply(_vm.Hotkeys));
+        };
+        _vm.HotkeysChanged += () =>
+        {
+            if (_hotkeys is not null)
+            {
+                _vm.ReportHotkeyFailures(_hotkeys.Apply(_vm.Hotkeys));
+            }
+        };
+        _vm.HotkeyRecordingChanged += recording =>
+        {
+            if (recording)
+            {
+                _hotkeys?.Suspend();
+            }
+            else if (_hotkeys is not null)
+            {
+                _vm.ReportHotkeyFailures(_hotkeys.Resume());
+            }
+        };
+        _vm.ControlPanelToggleRequested += ToggleControlPanel;
+
         Closed += (_, _) =>
         {
             _uiTimer.Stop();
             CompositionTarget.Rendering -= OnFrame;
+            _hotkeys?.Dispose();
             _connection.Stop();
             _vm.CloseAllWidgets();
             _dashboard?.Close();

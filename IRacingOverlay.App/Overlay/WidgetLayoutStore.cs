@@ -28,6 +28,21 @@ internal static class WidgetLayoutStore
     {
         Load();
         _cache![widgetName] = layout;
+        Write();
+    }
+
+    /// <summary>Forgets a widget's position, so it opens at its default next time.</summary>
+    public static void Remove(string widgetName)
+    {
+        Load();
+        if (_cache!.Remove(widgetName))
+        {
+            Write();
+        }
+    }
+
+    private static void Write()
+    {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         File.WriteAllText(FilePath, JsonSerializer.Serialize(_cache));
     }

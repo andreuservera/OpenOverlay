@@ -37,6 +37,7 @@ public sealed partial class ControlPanelViewModel
                 DashboardPageKey => DashboardPage(),
                 PerformancePageKey => PerformancePage(),
                 UnitsPageKey => UnitsPage(),
+                HotkeysPageKey => HotkeysPage(),
                 _ => [],
             };
         }

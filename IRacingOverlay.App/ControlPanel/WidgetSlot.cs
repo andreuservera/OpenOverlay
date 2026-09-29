@@ -27,6 +27,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     private double _opacity;
     private bool _isEditMode;
     private bool _isDriving;
+    private bool _isSuppressed;
 
     public WidgetSlot(WidgetDescriptor descriptor, Func<OverlayWindowBase> factory)
     {
@@ -187,16 +188,34 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     /// report as a bug.</summary>
     public string StateLabel => !_isEnabled
         ? "HIDDEN"
+        : _isSuppressed && !_isEditMode ? "HIDDEN BY HOTKEY"
         : ShouldBeOnScreen ? "VISIBLE" : "WAITING FOR CAR";
 
     /// <summary>True when the widget is actually on screen right now, as opposed to merely switched
     /// on. Drives the rail's live dot.</summary>
     public bool IsOnScreen => ShouldBeOnScreen;
 
+    /// <summary>The global "hide all overlays" switch. Edit mode still shows the widget — you
+    /// cannot place something you cannot see.</summary>
+    public bool IsSuppressed
+    {
+        get => _isSuppressed;
+        set
+        {
+            if (_isSuppressed == value)
+            {
+                return;
+            }
+
+            _isSuppressed = value;
+            Apply();
+        }
+    }
+
     /// <summary>Auto-hide is suspended while the layout is being edited: it is a driving-time
     /// convenience, and nobody laying widgets out from the menus wants them vanishing.</summary>
     private bool ShouldBeOnScreen =>
-        _isEnabled && (_isDriving || _isEditMode || !_hideOutsideCar);
+        _isEnabled && (_isEditMode || (!_isSuppressed && (_isDriving || !_hideOutsideCar)));
 
     /// <summary>The single place that decides whether this widget is on screen, and the only one
     /// that creates its window. Creation is deferred until it would actually be shown, so switching
@@ -238,6 +257,19 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     }
 
     public void Close() => _window?.Close();
+
+    /// <summary>Back to the default position — now if the widget exists, on first show if not.</summary>
+    public void ResetPosition()
+    {
+        if (_window is not null)
+        {
+            _window.ResetPosition();
+        }
+        else
+        {
+            WidgetLayoutStore.Remove(Key);
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

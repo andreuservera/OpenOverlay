@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -379,6 +380,147 @@ public sealed class ActionSetting : SettingItem
             _buttonText = value;
             OnPropertyChanged();
         }
+    }
+}
+
+/// <summary>
+/// A global shortcut: the current combination as a click-to-record field, an enable switch and a
+/// clear button. Validation and duplicate checks happen in the callback, which returns the reason a
+/// combination was refused; the reason is shown on the row instead of silently ignoring the press.
+/// </summary>
+public sealed class HotkeySetting : SettingItem
+{
+    private readonly Func<Hotkey?, string?> _assign;
+    private readonly Action<bool> _setEnabled;
+    private readonly Action<bool> _recordingChanged;
+    private Hotkey? _hotkey;
+    private bool _enabled;
+    private bool _isRecording;
+    private ModifierKeys _heldModifiers;
+    private string? _error;
+    private string? _status;
+
+    public HotkeySetting(
+        string label,
+        string? hint,
+        Hotkey? hotkey,
+        bool enabled,
+        Func<Hotkey?, string?> assign,
+        Action<bool> setEnabled,
+        Action<bool> recordingChanged)
+        : base(label, hint)
+    {
+        _hotkey = hotkey;
+        _enabled = enabled;
+        _assign = assign;
+        _setEnabled = setEnabled;
+        _recordingChanged = recordingChanged;
+        ClearCommand = new RelayCommand(Clear);
+    }
+
+    public ICommand ClearCommand { get; }
+
+    public bool Enabled
+    {
+        get => _enabled;
+        set
+        {
+            if (_enabled == value)
+            {
+                return;
+            }
+
+            _enabled = value;
+            OnPropertyChanged();
+            _setEnabled(value);
+        }
+    }
+
+    public bool IsRecording
+    {
+        get => _isRecording;
+        private set
+        {
+            if (_isRecording == value)
+            {
+                return;
+            }
+
+            _isRecording = value;
+            _heldModifiers = ModifierKeys.None;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(Display));
+            _recordingChanged(value);
+        }
+    }
+
+    public bool HasHotkey => _hotkey is not null;
+
+    /// <summary>What the field shows: the live combination while recording, the saved one otherwise.</summary>
+    public string Display => _isRecording
+        ? _heldModifiers == ModifierKeys.None ? "Press a shortcut…" : Hotkey.Describe(_heldModifiers, "…")
+        : _hotkey?.Display ?? "Not set";
+
+    /// <summary>Why the last recorded combination was refused, or why Windows wouldn't register it.</summary>
+    public string? Message => _error ?? _status;
+
+    public bool HasError => Message is not null;
+
+    public void BeginRecording()
+    {
+        SetError(null);
+        IsRecording = true;
+    }
+
+    public void CancelRecording() => IsRecording = false;
+
+    public void PreviewModifiers(ModifierKeys modifiers)
+    {
+        _heldModifiers = modifiers;
+        OnPropertyChanged(nameof(Display));
+    }
+
+    public void Record(ModifierKeys modifiers, Key key)
+    {
+        var candidate = new Hotkey(modifiers, key);
+        var problem = candidate.Problem ?? _assign(candidate);
+        IsRecording = false;
+        if (problem is not null)
+        {
+            SetError(problem);
+            return;
+        }
+
+        SetHotkey(candidate);
+    }
+
+    /// <summary>Set by the owner after registering with Windows: null when it went through.</summary>
+    public void SetStatus(string? status)
+    {
+        _status = status;
+        OnPropertyChanged(nameof(Message));
+        OnPropertyChanged(nameof(HasError));
+    }
+
+    private void Clear()
+    {
+        _assign(null);
+        SetError(null);
+        SetHotkey(null);
+    }
+
+    private void SetHotkey(Hotkey? hotkey)
+    {
+        _hotkey = hotkey;
+        OnPropertyChanged(nameof(Display));
+        OnPropertyChanged(nameof(HasHotkey));
+    }
+
+    private void SetError(string? error)
+    {
+        _error = error;
+        OnPropertyChanged(nameof(Message));
+        OnPropertyChanged(nameof(HasError));
     }
 }
 

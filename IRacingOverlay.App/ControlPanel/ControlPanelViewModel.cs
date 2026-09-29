@@ -77,6 +77,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             UnitsPageKey, "Units", "Metric or imperial, for every overlay at once.",
             "M3,17 L17,3 L21,7 L7,21 Z M7,13 L9,15 M10,10 L12,12 M13,7 L15,9"));
 
+        NavItems.Add(NavItem.ForPage(
+            HotkeysPageKey, "Hotkeys", "Control the overlay from inside iRacing, without Alt+Tab.",
+            "M3,6 H21 V18 H3 Z M6,9 H7 M9.5,9 H10.5 M13,9 H14 M16.5,9 H17.5 M6,12 H7 M17,12 H18 M8,15 H16"));
+
         MonitorNames = Screen.AllScreens.Select(DescribeScreen).ToList();
         // Second monitor by default: a dashboard on the same screen as the sim is in the way, which
         // is the one thing it must never be.

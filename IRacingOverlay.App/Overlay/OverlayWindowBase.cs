@@ -22,6 +22,8 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     private const int WmLButtonDown = 0x0201;
 
     private readonly string _widgetName;
+    private readonly double _defaultLeft;
+    private readonly double _defaultTop;
     private bool _isEditMode;
     private ScalablePanel? _scaler;
     private double _widgetOpacity;
@@ -29,6 +31,8 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     protected OverlayWindowBase(string widgetName, double defaultLeft = 100, double defaultTop = 100)
     {
         _widgetName = widgetName;
+        _defaultLeft = defaultLeft;
+        _defaultTop = defaultTop;
 
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
@@ -283,6 +287,15 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         {
             NativeMethods.SetClickThrough(hwndSource.Handle, clickThrough: !_isEditMode);
         }
+    }
+
+    /// <summary>Moves the widget back to where it first appeared, and remembers that.</summary>
+    public void ResetPosition()
+    {
+        Left = _defaultLeft;
+        Top = _defaultTop;
+        ConstrainToScreen();
+        SaveLayout();
     }
 
     private void SaveLayout()
