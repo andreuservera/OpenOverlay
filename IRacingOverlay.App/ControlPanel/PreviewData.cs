@@ -106,10 +106,11 @@ public static class PreviewData
     }
 
     /// <summary>The Relative table's own rows: the player in the middle, the requested number of
-    /// cars each side, gaps measured to the player and signed accordingly.</summary>
+    /// cars each side, gaps measured to the player and signed accordingly. Always mixed-class
+    /// traffic, since that is where Relative earns its keep — and it shows the class bars.</summary>
     public static List<object> RelativeRows(int eachSide)
     {
-        var field = StandingsField(multiClass: false);
+        var field = StandingsField(multiClass: true);
         var playerIndex = PlayerPosition - 1;
         var first = Math.Max(0, playerIndex - eachSide);
         var last = Math.Min(field.Count - 1, playerIndex + eachSide);
@@ -131,7 +132,7 @@ public static class PreviewData
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,
-                IsMultiClass = false,
+                IsMultiClass = true,
                 IRating = source.IRating,
                 LicString = source.LicString,
                 IRatingDelta = source.IRatingDelta,

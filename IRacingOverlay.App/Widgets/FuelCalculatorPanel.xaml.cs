@@ -11,7 +11,9 @@ public partial class FuelCalculatorPanel : UserControl
     private static readonly Brush Ample = StatePalette.Positive;
     private static readonly Brush Short = StatePalette.Critical;
     private static readonly Brush Neutral = StatePalette.TextPrimary;
-    private static readonly Brush BarAmple = StatePalette.Warning;
+    // Informational blue while the tank is fine: amber is reserved for "warning", and a bar that is
+    // amber all race long teaches the eye to ignore it.
+    private static readonly Brush BarAmple = StatePalette.Info;
 
     // Same reasoning as StandingsPanel.ColumnVisibilityProperty: XAML visibility bindings latch onto
     // whatever object this returns during InitializeComponent, so swapping in MainWindow's persisted

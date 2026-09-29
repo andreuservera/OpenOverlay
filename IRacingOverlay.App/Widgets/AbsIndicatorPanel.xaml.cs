@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.Widgets;
 
@@ -7,12 +8,13 @@ namespace IRacingOverlay.App.Widgets;
 /// blinks while active, matching a real dash telltale.</summary>
 public partial class AbsIndicatorPanel : UserControl
 {
-    // Idle is dim on purpose (it's the quiet state) but still legible: the old #3A/#55 pair sat
-    // near 2:1 against the panel and read as a smudge rather than as a labelled telltale.
-    private static readonly Brush IdleBorder = new SolidColorBrush(Color.FromRgb(0x4C, 0x51, 0x57));
-    private static readonly Brush IdleText = new SolidColorBrush(Color.FromRgb(0x77, 0x80, 0x88));
-    private static readonly Brush DimAmber = new SolidColorBrush(Color.FromRgb(0x8A, 0x60, 0x1E));
-    private static readonly Brush BrightAmber = new SolidColorBrush(Color.FromRgb(0xFF, 0xB2, 0x38));
+    // Idle is quiet on purpose but still legible as a labelled telltale. Active lights the outline
+    // and text amber over a faint amber wash, the way a real dash lamp glows through its lens.
+    private static readonly Brush IdleBorder = StatePalette.Outline;
+    private static readonly Brush IdleText = StatePalette.TextMuted;
+    private static readonly Brush DimAmber = Frozen(Color.FromRgb(0x8A, 0x5D, 0x18));
+    private static readonly Brush BrightAmber = StatePalette.Warning;
+    private static readonly Brush AmberWash = Frozen(Color.FromArgb(0x2E, 0xF5, 0xA5, 0x24));
 
     public AbsIndicatorPanel()
     {
@@ -28,12 +30,21 @@ public partial class AbsIndicatorPanel : UserControl
         if (!active)
         {
             Light.BorderBrush = IdleBorder;
+            Light.Background = Brushes.Transparent;
             Label.Foreground = IdleText;
             return;
         }
 
         var color = blinkPhase ? BrightAmber : DimAmber;
         Light.BorderBrush = color;
+        Light.Background = AmberWash;
         Label.Foreground = color;
+    }
+
+    private static Brush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 }

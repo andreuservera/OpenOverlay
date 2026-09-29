@@ -1,46 +1,72 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:conv="clr-namespace:IRacingOverlay.App.Converters">
     <!--
-      Shared design tokens: the type scale, the semantic state palette and the handful of TextBlock
+      Shared design tokens: type scale, line grid, semantic palette, surfaces and the handful of
       styles every panel builds its rows out of. Merged application-wide from App.xaml so the
-      floating widgets and the Dashboard resolve exactly the same values.
+      floating widgets, the Dashboard and the control-panel preview resolve exactly the same values.
 
-      These are deliberately NOT theme keys: the three Dashboard themes (Classic/Digital HUD/Raw DIY)
-      keep overriding chrome (Theme.PanelBackground/Border/CornerRadius/FontFamily/LabelForeground),
-      but sizes and state colors stay constant so "amber = warning, red = critical" never changes
-      meaning between themes. The styles below reference the theme keys with DynamicResource, so a
-      panel styled here still repaints correctly when a theme is merged into DashboardWindow.
+      These are deliberately NOT theme keys: the Dashboard themes keep overriding chrome
+      (Theme.PanelBackground/Border/CornerRadius/fonts/LabelForeground), but sizes and state colors
+      stay constant so "amber = warning, red = critical" never changes meaning between themes.
     -->
 
+    <conv:ClassGradientConverter x:Key="ClassGradientConverter"/>
+    <conv:ColorAlphaConverter x:Key="ColorAlphaConverter"/>
+
     <!-- ===== Type scale =====
-         Six steps only. Anything smaller than 11 is unreadable at a glance on a second monitor, and
-         the jumps are large enough (≈1.3x) that value/label rank is obvious without reading. -->
-    <sys:Double x:Key="Type.Micro">11</sys:Double>
-    <sys:Double x:Key="Type.Label">12</sys:Double>
-    <sys:Double x:Key="Type.Body">13</sys:Double>
-    <sys:Double x:Key="Type.Value">17</sys:Double>
-    <sys:Double x:Key="Type.DisplaySmall">27</sys:Double>
-    <sys:Double x:Key="Type.Display">34</sys:Double>
-    <sys:Double x:Key="Type.DisplayLarge">42</sys:Double>
+         One step up from the previous scale across the board. The growth is absorbed by the
+         condensed Bahnschrift cuts (≈0.85x the width of the regular cut) for labels and data, and
+         by the fixed line grid below for height, so no panel, row or column changes size. -->
+    <sys:Double x:Key="Type.Micro">12</sys:Double>
+    <sys:Double x:Key="Type.Label">13</sys:Double>
+    <sys:Double x:Key="Type.Body">14</sys:Double>
+    <sys:Double x:Key="Type.Value">18</sys:Double>
+    <sys:Double x:Key="Type.DisplaySmall">29</sys:Double>
+    <sys:Double x:Key="Type.Display">36</sys:Double>
+    <sys:Double x:Key="Type.DisplayLarge">45</sys:Double>
+    <sys:Double x:Key="Type.Gear">60</sys:Double>
+
+    <!-- ===== Line grid =====
+         Fixed line boxes, one per type step, applied with LineStackingStrategy=BlockLineHeight.
+         They are the exact heights the layout was designed around — the original sizes times
+         Bahnschrift's own line spacing (1.2002) — which is what lets type grow without any row or
+         panel getting taller. -->
+    <sys:Double x:Key="Line.Micro">13.2022</sys:Double>
+    <sys:Double x:Key="Line.Label">14.4024</sys:Double>
+    <sys:Double x:Key="Line.Body">15.6026</sys:Double>
+    <sys:Double x:Key="Line.Value">20.4034</sys:Double>
+    <sys:Double x:Key="Line.DisplaySmall">32.4054</sys:Double>
+    <sys:Double x:Key="Line.Display">40.8068</sys:Double>
+    <sys:Double x:Key="Line.DisplayLarge">50.4084</sys:Double>
+    <sys:Double x:Key="Line.Gear">67.2112</sys:Double>
+
+    <!-- Driver-table row: 21 high plus a 1px gap above and below. The gap is the row separator —
+         no hairlines between rows. -->
+    <sys:Double x:Key="Size.Row">21</sys:Double>
 
     <!-- ===== Neutral text ramp =====
-         Every level clears 7:1 against the panel background, so nothing "greys out" over a bright
-         track. The old #666/#777/#888 greys sat near 3:1 and were the main legibility problem. -->
-    <SolidColorBrush x:Key="Text.Primary" Color="#FFFFFF"/>
-    <SolidColorBrush x:Key="Text.Secondary" Color="#D2D8DE"/>
-    <SolidColorBrush x:Key="Text.Muted" Color="#9BA5AE"/>
-    <SolidColorBrush x:Key="Text.OnAccent" Color="#0B0B0B"/>
+         Slightly cool off-whites: pure #FFF halates on a dark panel and reads harsher than it is.
+         Muted still clears 6.5:1 against the panel so nothing greys out over a bright track. -->
+    <Color x:Key="Text.PrimaryColor">#F2F5F8</Color>
+    <SolidColorBrush x:Key="Text.Primary" Color="{StaticResource Text.PrimaryColor}"/>
+    <SolidColorBrush x:Key="Text.Secondary" Color="#C4CCD4"/>
+    <SolidColorBrush x:Key="Text.Muted" Color="#8E99A5"/>
+    <SolidColorBrush x:Key="Text.OnAccent" Color="#0A0C0F"/>
 
     <!-- ===== Semantic state palette =====
-         One color per meaning, reused by every widget and by the code-behind constants. -->
-    <Color x:Key="State.PositiveColor">#3DDC7A</Color>
-    <Color x:Key="State.NegativeColor">#FF5A5A</Color>
-    <Color x:Key="State.WarningColor">#FFB238</Color>
-    <Color x:Key="State.CriticalColor">#FF3B30</Color>
+         One color per meaning, reused by every widget and by Overlay/StatePalette.cs. Slightly
+         deeper than pure primaries so a lit value glows without looking like a warning light. -->
+    <Color x:Key="State.PositiveColor">#34D399</Color>
+    <Color x:Key="State.NegativeColor">#FF6B6B</Color>
+    <Color x:Key="State.WarningColor">#F5A524</Color>
+    <Color x:Key="State.CriticalColor">#F04438</Color>
     <Color x:Key="State.AccentColor">#FFD24D</Color>
-    <Color x:Key="State.InfoColor">#8FD3FF</Color>
-    <Color x:Key="State.SpecialColor">#C88BFF</Color>
+    <Color x:Key="State.InfoColor">#6CB8FF</Color>
+    <Color x:Key="State.SpecialColor">#B58CFF</Color>
+    <!-- "This is you." The player's row, marker and chip; never used for anything else. -->
+    <Color x:Key="State.SelfColor">#4C9AFF</Color>
 
     <SolidColorBrush x:Key="State.Positive" Color="{StaticResource State.PositiveColor}"/>
     <SolidColorBrush x:Key="State.Negative" Color="{StaticResource State.NegativeColor}"/>
@@ -49,91 +75,190 @@
     <SolidColorBrush x:Key="State.Accent" Color="{StaticResource State.AccentColor}"/>
     <SolidColorBrush x:Key="State.Info" Color="{StaticResource State.InfoColor}"/>
     <SolidColorBrush x:Key="State.Special" Color="{StaticResource State.SpecialColor}"/>
+    <SolidColorBrush x:Key="State.Self" Color="{StaticResource State.SelfColor}"/>
 
-    <!-- Empty half of any gauge/meter track (fuel level, tire wear, pedal bars). Slightly lighter
-         than the old #2A2A2A so the *unfilled* portion still reads as a track, not a hole. -->
-    <SolidColorBrush x:Key="Surface.Track" Color="#33383D"/>
-    <!-- Hairline divider inside a panel — dimmer than the panel border, never a full-strength line. -->
-    <SolidColorBrush x:Key="Surface.Divider" Color="#4A5158"/>
+    <!-- ===== Surfaces ===== -->
+    <!-- Empty half of any gauge/meter track (fuel level, tire wear, pedal bars). -->
+    <SolidColorBrush x:Key="Surface.Track" Color="#232931"/>
+    <!-- Hairline inside a panel. Translucent so it takes on whatever panel it sits in. -->
+    <SolidColorBrush x:Key="Surface.Divider" Color="#24FFFFFF"/>
+    <!-- Same hairline, feathered out at both ends, for rules that shouldn't end in a hard edge. -->
+    <LinearGradientBrush x:Key="Surface.DividerFade" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#00FFFFFF" Offset="0"/>
+        <GradientStop Color="#2EFFFFFF" Offset="0.12"/>
+        <GradientStop Color="#2EFFFFFF" Offset="0.88"/>
+        <GradientStop Color="#00FFFFFF" Offset="1"/>
+    </LinearGradientBrush>
+    <!-- The two halves of the same rule, for when something sits in the middle of it. -->
+    <LinearGradientBrush x:Key="Surface.DividerFadeIn" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#00FFFFFF" Offset="0"/>
+        <GradientStop Color="#2EFFFFFF" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Surface.DividerFadeOut" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#2EFFFFFF" Offset="0"/>
+        <GradientStop Color="#00FFFFFF" Offset="1"/>
+    </LinearGradientBrush>
+    <!-- Recessed well for plots, so a chart reads as sunk into the panel. -->
+    <SolidColorBrush x:Key="Surface.Inset" Color="#B3070A0D"/>
+    <!-- Neutral chip (car number, telltale idle). -->
+    <SolidColorBrush x:Key="Surface.Chip" Color="#1CFFFFFF"/>
+    <SolidColorBrush x:Key="Surface.ChipBorder" Color="#14FFFFFF"/>
+    <!-- Idle stroke of an outlined indicator (gear brackets, ABS telltale). -->
+    <SolidColorBrush x:Key="Surface.Outline" Color="#3DFFFFFF"/>
+
+    <!-- ===== Driver-table rows =====
+         Rows are soft bands a few percent lighter than the panel, separated by the 2px gap between
+         them rather than by lines. State is carried by the band, not by extra ink on top of it. -->
+    <SolidColorBrush x:Key="Row.Base" Color="#0DFFFFFF"/>
+    <SolidColorBrush x:Key="Row.Placeholder" Color="#06FFFFFF"/>
+    <!-- The one row you must find without reading: a self-blue wash that fades across the row,
+         with a crisp outline so it survives a bright track behind a translucent overlay. -->
+    <LinearGradientBrush x:Key="Row.Player" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#664C9AFF" Offset="0"/>
+        <GradientStop Color="#2E4C9AFF" Offset="0.6"/>
+        <GradientStop Color="#1F4C9AFF" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="Row.PlayerOutline" Color="#A64C9AFF"/>
+    <!-- In the pits: a warm band, and the row's content recedes (see the row template). -->
+    <SolidColorBrush x:Key="Row.Pit" Color="#1FF5A524"/>
+    <sys:Double x:Key="Row.PitOpacity">0.62</sys:Double>
 
     <!-- ===== Radii ===== -->
     <CornerRadius x:Key="Radius.Chip">3</CornerRadius>
     <CornerRadius x:Key="Radius.Row">4</CornerRadius>
+    <CornerRadius x:Key="Radius.RowEdge">4,0,0,4</CornerRadius>
+
+    <!-- ===== Panel chrome =====
+         The frame every widget sits in. Everything here is a theme key, so the Dashboard themes
+         still repaint it. -->
+    <Style x:Key="OverlayPanel" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Theme.PanelBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Theme.PanelBorder}"/>
+        <Setter Property="BorderThickness" Value="{DynamicResource Theme.PanelBorderThickness}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource Theme.PanelCornerRadius}"/>
+        <Setter Property="TextElement.FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+    </Style>
+
+    <!-- Edit-mode frame on every floating widget. Accent gold, the same color the control panel
+         uses for its edit-mode toggle, so the two read as the same state. Laid over the panel's
+         edge rather than around it and never hit-testable, so entering edit mode neither resizes
+         the window nor steals a drag. -->
+    <Style x:Key="EditFrame" TargetType="Border">
+        <Setter Property="BorderBrush" Value="{StaticResource State.Accent}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource Theme.PanelCornerRadius}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Visibility" Value="Collapsed"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                <Setter Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
 
     <!-- ===== Text styles =====
-         Panel title, column header, value, unit. Everything a widget draws should be one of these
-         (optionally with a Foreground override for a state color) rather than a hand-set FontSize. -->
+         Every text a widget draws is one of these (optionally with a Foreground override for a state
+         color) rather than a hand-set FontSize, so the scale and the line grid always travel
+         together. Three tiers: primary (the value), secondary (supporting data), meta (labels). -->
 
-    <!-- Widget name, e.g. "STANDINGS". Deliberately the theme's label color and not white: it is
-         chrome, and must never compete with the numbers underneath it. -->
-    <Style x:Key="PanelTitle" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
-        <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="Foreground" Value="{DynamicResource Theme.LabelForeground}"/>
+    <Style x:Key="GridText" TargetType="TextBlock">
+        <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
     </Style>
 
-    <!-- Table column header, e.g. "POS" / "BEST". One step below the panel title. -->
-    <Style x:Key="ColumnHeader" TargetType="TextBlock">
+    <!-- Widget name, e.g. "STANDINGS". The theme's label color, not white: it is chrome, and must
+         never compete with the numbers underneath it. -->
+    <Style x:Key="PanelTitle" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
+        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.LabelFontFamily}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource Theme.LabelForeground}"/>
+    </Style>
+
+    <!-- Table column header, e.g. "POS" / "BEST". Quietest text on the panel. -->
+    <Style x:Key="ColumnHeader" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
         <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Micro}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.LabelFontFamily}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <!-- Inline caption sitting next to a value, e.g. "AIR" before the temperature. -->
-    <Style x:Key="FieldLabel" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
+    <!-- Inline caption next to a value, e.g. "AIR" before the temperature. -->
+    <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
         <Setter Property="Foreground" Value="{DynamicResource Theme.LabelForeground}"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
     <!-- Unit suffix ("laps", "kPa"): present but never competing with the number it trails. -->
-    <Style x:Key="UnitLabel" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
+    <Style x:Key="UnitLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
     </Style>
 
     <!-- A cell inside a data table (driver name, lap count). Tabular numerals so digits stay in
          their columns while the value changes instead of shuffling sideways every update. -->
-    <Style x:Key="DataCell" TargetType="TextBlock">
+    <Style x:Key="DataCell" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
         <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Body}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
 
-    <!-- Numeric table cell: same size as DataCell but in the tabular font, for lap times/gaps. -->
+    <!-- Numeric table cell: lap times, gaps. Right-aligned so digits compare down the column. -->
     <Style x:Key="DataCellNumeric" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
-        <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
     </Style>
 
-    <!-- Mid-size readout inside a multi-value panel (tire pressures). -->
-    <Style x:Key="ValueText" TargetType="TextBlock">
+    <!-- Mid-size readout inside a multi-value panel (tire pressures, strategy figures). -->
+    <Style x:Key="ValueText" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
         <Setter Property="FontSize" Value="{StaticResource Type.Value}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Value}"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
 
-    <!-- The one number a panel exists to show (speed, gear, delta, laps of fuel). -->
-    <Style x:Key="DisplayValue" TargetType="TextBlock">
+    <!-- A body-size value that is still the important one on its line (time/laps left). -->
+    <Style x:Key="ValueTextSmall" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+        <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Body}"/>
+    </Style>
+
+    <!-- The one number a panel exists to show (delta, laps of fuel). -->
+    <Style x:Key="DisplayValue" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
         <Setter Property="FontSize" Value="{StaticResource Type.Display}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Display}"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
         <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+
+    <Style x:Key="DisplayValueSmall" TargetType="TextBlock" BasedOn="{StaticResource DisplayValue}">
+        <Setter Property="FontSize" Value="{StaticResource Type.DisplaySmall}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.DisplaySmall}"/>
+    </Style>
+
+    <Style x:Key="DisplayValueLarge" TargetType="TextBlock" BasedOn="{StaticResource DisplayValue}">
+        <Setter Property="FontSize" Value="{StaticResource Type.DisplayLarge}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.DisplayLarge}"/>
     </Style>
 
     <!-- Placeholder shown while there is no telemetry yet. -->
-    <Style x:Key="PlaceholderText" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+    <Style x:Key="PlaceholderText" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
         <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- ===== Meters =====
+         Gauge track + fill, shared by the fuel level and tire wear bars. -->
+    <Style x:Key="MeterTrack" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Surface.Track}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
+        <Setter Property="ClipToBounds" Value="True"/>
     </Style>
 </ResourceDictionary>

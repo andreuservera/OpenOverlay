@@ -21,6 +21,10 @@ public partial class FlagPanel : UserControl
     private static readonly Color DebrisYellow = Color.FromRgb(0xE8, 0xC0, 0x00);
     private static readonly Color DebrisRed = Color.FromRgb(0xCC, 0x14, 0x14);
 
+    // Bigger type on the original 28px line box: the flag name grows without the box getting taller.
+    private const double LabelFontSize = 30;
+    private const double LabelLineHeight = 33.6056;
+
     // Cache the last set of flag names so we skip the expensive visual rebuild when nothing changed.
     private string _lastFlagKey = "";
 
@@ -111,7 +115,9 @@ public partial class FlagPanel : UserControl
         var text = new TextBlock
         {
             Text = state.Name,
-            FontSize = 28,
+            FontSize = LabelFontSize,
+            LineHeight = LabelLineHeight,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             FontWeight = FontWeights.Bold,
             Foreground = ParseBrush(state.ForegroundColor),
             TextWrapping = TextWrapping.Wrap,
@@ -119,6 +125,7 @@ public partial class FlagPanel : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        text.SetResourceReference(TextBlock.FontFamilyProperty, "Theme.LabelFontFamily");
 
         if (state.Style == FlagVisualStyle.DebrisStripes)
         {

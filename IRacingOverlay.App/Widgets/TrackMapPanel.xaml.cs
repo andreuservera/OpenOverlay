@@ -13,6 +13,8 @@ public partial class TrackMapPanel : UserControl
     private const double MarkerHeight = 15;
     private const double PlayerMarkerWidth = 34;
     private const double PlayerMarkerHeight = 22;
+    private const double MarkerFontSize = 10;
+    private const double PlayerMarkerFontSize = 13;
 
     // Regular cars are semi-transparent so overlapping badges blend rather than fully hide each
     // other — the whole point of a single-line bar where cars are left to overlap instead of being
@@ -22,6 +24,10 @@ public partial class TrackMapPanel : UserControl
     private static readonly Brush PlayerBorder = StatePalette.TextPrimary;
     private static readonly Brush PitBorder = StatePalette.Warning;
     private static readonly Brush CarNumberText = StatePalette.TextOnAccent;
+
+    // The same self-blue as the player's row in the timing tables, so "you" looks the same everywhere.
+    private static DropShadowEffect PlayerGlow() =>
+        new() { Color = StatePalette.SelfColor, BlurRadius = 12, ShadowDepth = 0, Opacity = 0.85 };
 
     public TrackMapPanel()
     {
@@ -88,13 +94,13 @@ public partial class TrackMapPanel : UserControl
         badge.BorderBrush = marker.IsPlayer ? PlayerBorder : marker.OnPitRoad ? PitBorder : Brushes.Transparent;
 
         if (marker.IsPlayer && badge.Effect is not DropShadowEffect)
-            badge.Effect = new DropShadowEffect { Color = Colors.White, BlurRadius = 10, ShadowDepth = 0, Opacity = 0.9 };
+            badge.Effect = PlayerGlow();
         else if (!marker.IsPlayer && badge.Effect is not null)
             badge.Effect = null;
 
         var text = (TextBlock)badge.Child;
         text.Text = marker.CarNumber;
-        text.FontSize = marker.IsPlayer ? 12 : 9;
+        text.FontSize = marker.IsPlayer ? PlayerMarkerFontSize : MarkerFontSize;
     }
 
     private static Border BuildBadge(TrackMapMarker marker)
@@ -103,7 +109,7 @@ public partial class TrackMapPanel : UserControl
         var alpha = marker.IsPlayer ? (byte)0xFF : RegularCarAlpha;
         var background = new SolidColorBrush(Color.FromArgb(alpha, baseColor.R, baseColor.G, baseColor.B));
 
-        return new Border
+        var badge = new Border
         {
             Width = marker.IsPlayer ? PlayerMarkerWidth : MarkerWidth,
             Height = marker.IsPlayer ? PlayerMarkerHeight : MarkerHeight,
@@ -111,16 +117,20 @@ public partial class TrackMapPanel : UserControl
             Background = background,
             BorderThickness = new Thickness(marker.IsPlayer ? 2.5 : marker.OnPitRoad ? 1.5 : 0),
             BorderBrush = marker.IsPlayer ? PlayerBorder : marker.OnPitRoad ? PitBorder : Brushes.Transparent,
-            Effect = marker.IsPlayer ? new DropShadowEffect { Color = Colors.White, BlurRadius = 10, ShadowDepth = 0, Opacity = 0.9 } : null,
+            Effect = marker.IsPlayer ? PlayerGlow() : null,
             Child = new TextBlock
             {
                 Text = marker.CarNumber,
-                FontSize = marker.IsPlayer ? 12 : 9,
+                FontSize = marker.IsPlayer ? PlayerMarkerFontSize : MarkerFontSize,
                 FontWeight = FontWeights.Bold,
                 Foreground = CarNumberText,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
             },
         };
+
+        // Condensed numerals fit a two-digit number into the small badge at the larger size.
+        ((TextBlock)badge.Child).SetResourceReference(TextBlock.FontFamilyProperty, "Theme.NumericFontFamily");
+        return badge;
     }
 }

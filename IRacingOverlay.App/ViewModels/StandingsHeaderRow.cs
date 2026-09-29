@@ -10,8 +10,4 @@ public sealed class StandingsHeaderRow
 {
     public required string ClassName { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
-
-    // Stronger tint than a regular row's background so the title bar reads as a separator, not just
-    // another row.
-    public string HeaderBackground => $"#55{ClassColor.TrimStart('#')}";
 }

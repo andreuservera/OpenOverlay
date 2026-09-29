@@ -4,16 +4,7 @@
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
         Title="Cockpit">
-    <Border BorderBrush="Orange" BorderThickness="0">
-        <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsEditMode}" Value="True">
-                        <Setter Property="BorderThickness" Value="2"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </Border.Style>
+    <Grid>
         <!-- 310x150 is CockpitPanel's own measured natural size (Auto-sized columns, no slack — see
              CockpitPanel.xaml), so there is no dead space baked into the design canvas. Declaring it
              here rather than wrapping the panel in a Viewbox means the cluster is laid out once and
@@ -24,5 +15,6 @@
                           DesignWidth="310" DesignHeight="150">
             <w:CockpitPanel/>
         </ov:ScalablePanel>
-    </Border>
+        <Border Style="{StaticResource EditFrame}"/>
+    </Grid>
 </ov:OverlayWindowBase>

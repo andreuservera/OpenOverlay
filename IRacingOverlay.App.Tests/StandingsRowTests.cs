@@ -79,10 +79,10 @@ public class StandingsRowTests
         // The ViewModel hands the UI a colour string, so these have to agree with the palette by
         // hand. The red is lighter than the app's standard critical red: measured on a row
         // background, a saturated red doesn't clear 4.5:1 against the text beside it.
-        Assert.Equal("#3DDC7A", Row(iRatingDelta: 5).IRatingDeltaForeground);
-        Assert.Equal("#FFB3B3", Row(iRatingDelta: -5).IRatingDeltaForeground);
-        Assert.Equal("#D2D8DE", Row(iRatingDelta: 0).IRatingDeltaForeground);
+        Assert.Equal("#34D399", Row(iRatingDelta: 5).IRatingDeltaForeground);
+        Assert.Equal("#FFA3A3", Row(iRatingDelta: -5).IRatingDeltaForeground);
+        Assert.Equal("#8E99A5", Row(iRatingDelta: 0).IRatingDeltaForeground);
         // Colour follows the rounded value too, so a dash is never tinted as a gain.
-        Assert.Equal("#D2D8DE", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
+        Assert.Equal("#8E99A5", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
     }
 }

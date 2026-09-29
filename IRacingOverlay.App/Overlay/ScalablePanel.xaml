@@ -4,33 +4,50 @@
              x:Name="Root">
     <UserControl.Resources>
         <!-- The default WPF button chrome is a light-gray 3D bevel, which looks like a stray dialog
-             control sitting on a dark overlay. Same size and behaviour, overlay-native finish. -->
-        <Style x:Key="ScaleStepButton" TargetType="Button">
-            <Setter Property="Width" Value="22"/>
-            <Setter Property="Height" Value="22"/>
+             control sitting on a dark overlay. Same size and behaviour, overlay-native finish, with
+             the hover wash easing in and out rather than snapping. -->
+        <Style x:Key="ChromeButton" TargetType="Button">
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="{DynamicResource Theme.LabelFontFamily}"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Chrome" Background="#00000000" CornerRadius="11">
+                        <Border x:Name="Chrome" CornerRadius="11" Padding="{TemplateBinding Padding}">
+                            <Border.Background>
+                                <SolidColorBrush x:Name="ChromeFill" Color="#00FFFFFF"/>
+                            </Border.Background>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#33FFFFFF"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="ChromeFill" Storyboard.TargetProperty="Color"
+                                                            To="#29FFFFFF" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="ChromeFill" Storyboard.TargetProperty="Color"
+                                                            To="#00FFFFFF" Duration="0:0:0.18"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                                 <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#55FFFFFF"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="#47FFFFFF"/>
                             </Trigger>
                             <!-- At XS/XL the corresponding button stays in place but inert: the
                                  control never changes shape, and the greyed glyph says "end of the
                                  ladder" instead of leaving a press looking broken. -->
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="#55606A"/>
+                                <Setter Property="Foreground" Value="#4A535D"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -38,29 +55,19 @@
             </Setter>
         </Style>
 
+        <Style x:Key="ScaleStepButton" TargetType="Button" BasedOn="{StaticResource ChromeButton}">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="FontSize" Value="15"/>
+        </Style>
+
         <!-- The level readout doubles as the reset affordance: one click returns the panel to M. -->
-        <Style x:Key="ScaleLevelChip" TargetType="Button">
+        <Style x:Key="ScaleLevelChip" TargetType="Button" BasedOn="{StaticResource ChromeButton}">
             <Setter Property="MinWidth" Value="26"/>
             <Setter Property="Height" Value="22"/>
             <Setter Property="Padding" Value="4,0"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Chrome" Background="#00000000" CornerRadius="11">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#33FFFFFF"/>
-                                <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource State.Accent}"/>
         </Style>
     </UserControl.Resources>
 
@@ -89,7 +96,7 @@
              and hit-testable only while shown, so it can never swallow a click meant for the widget
              (or for the game behind it). -->
         <Border x:Name="ScaleChrome" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
-                Background="#E60F1216" BorderBrush="#5A6068" BorderThickness="1" CornerRadius="13"
+                Background="#F2141920" BorderBrush="#33FFFFFF" BorderThickness="1" CornerRadius="13"
                 Padding="3" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="MinusButton" Content="−" Style="{StaticResource ScaleStepButton}"

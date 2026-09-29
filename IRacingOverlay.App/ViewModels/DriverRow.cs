@@ -58,9 +58,9 @@ public abstract class DriverRow
 
     public string BestLapDisplay => FormatLapTime(BestLapTime);
 
-    // The single fastest lap set by anyone in the session, across all cars — matches how RaceLab-
-    // style overlays call out the session's benchmark lap.
-    public string BestLapForeground => IsSessionFastestLap ? "#C88BFF" : "#8FD3FF";
+    // Purple is reserved for the single fastest lap of the session, across all cars — the one lap
+    // time worth colouring. Every other best lap is just secondary data.
+    public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#C4CCD4";
 
     public string IRatingDisplay => IRating > 0
         ? (IRating >= 1000 ? $"{(IRating / 1000.0).ToString("0.0", CultureInfo.InvariantCulture)}k" : IRating.ToString(CultureInfo.InvariantCulture))
@@ -91,30 +91,28 @@ public abstract class DriverRow
         : "—";
 
     public string IRatingDeltaForeground => !HasIRatingDelta
-        ? "#D2D8DE"
+        ? "#8E99A5"
         : RoundedIRatingDelta > 0
-            ? "#3DDC7A"
-            // Lighter than the app's standard critical red: measured on a row background, a
+            ? "#34D399"
+            // Lighter than the app's standard negative red: measured on a row background, a
             // saturated red carries too little luminance to clear 4.5:1 — it needed lifting this far
-            // to stay readable on the player's own row and on a bright class colour. Still
-            // unmistakably the warm half of the pair against the green above it.
-            : "#FFB3B3";
+            // to stay readable on the player's own row. Still unmistakably the warm half of the pair
+            // against the green above it.
+            : "#FFA3A3";
 
     // Rounded before the zero test, so a swing of 0.4 shows a dash rather than "+0".
     private double RoundedIRatingDelta => Math.Round(IRatingDelta);
 
     private bool HasIRatingDelta => IRating > 0 && RoundedIRatingDelta != 0;
 
-    public string RowBackground => RowTint.For(IsPlayer, OnPitRoad, IsMultiClass, ClassColor);
-
     /// <summary>The leader of the race — or of the class, in multiclass — gets the accent colour on
-    /// their position number. Marking them there rather than with a fourth row background keeps the
-    /// table calm while still calling them out.</summary>
-    public string PositionForeground => RankInOwnRace == 1 ? "#FFD24D" : "#FFFFFF";
+    /// their position number. Marking them there rather than with another row background keeps the
+    /// table calm while still calling them out. Row states (player, pits, class) are drawn by the
+    /// row template in Themes/DriverTable.xaml.</summary>
+    public string PositionForeground => RankInOwnRace == 1 ? "#FFD24D" : "#F2F5F8";
 
-    /// <summary>Solid bar down the left edge of the row. Only the player gets one, so "where am I"
-    /// survives a glance too quick to read a background tint against a bright track.</summary>
-    public string RowAccent => IsPlayer ? "#33AAFF" : "#00000000";
+    /// <summary>The gap is the number a driver reads the table for, so it gets primary ink.</summary>
+    public virtual string GapForeground => "#F2F5F8";
 
     /// <summary>
     /// Abbreviates from the front once a name is too long for the driver column: "MARIA GARCIA

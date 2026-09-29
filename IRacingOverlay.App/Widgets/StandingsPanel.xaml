@@ -5,9 +5,7 @@
              x:Name="Root">
     <!-- Columns, cell styles and the row template all come from Themes/DriverTable.xaml, merged
          application-wide and shared with RelativePanel. -->
-    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
-            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10,8">
+    <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
         <DockPanel>
             <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
                 <StackPanel Orientation="Horizontal">
@@ -63,7 +61,7 @@
 
             <!-- Hairline under the ruler: separates "what the columns are" from "what the data is"
                  without spending as much vertical space as a gap big enough to do the same job. -->
-            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.Divider}" Margin="0,0,0,4"/>
+            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.DividerFade}" Margin="0,0,0,4"/>
 
             <Grid>
                 <TextBlock Text="Waiting for iRacing telemetry…">
@@ -83,32 +81,37 @@
                      never anything cut off. -->
                 <ItemsControl ItemsSource="{Binding Rows, ElementName=Root}">
                     <ItemsControl.Resources>
-                        <!-- Class title bar. Stretches rather than sizing to its text, so it can
-                             never be what decides the widget's width, and carries the same left
-                             inset as the rows so its label starts on the POS column. -->
+                        <!-- Class title bar: the same bar-and-wash as the rows beneath it, at a
+                             stronger strength, so a class reads as one block from its title down.
+                             Stretches rather than sizing to its text, so it can never be what
+                             decides the widget's width. -->
                         <DataTemplate DataType="{x:Type vm:StandingsHeaderRow}">
-                            <Border Background="{Binding HeaderBackground}" Margin="0,6,0,2"
-                                    CornerRadius="{StaticResource Radius.Chip}">
-                                <StackPanel Orientation="Horizontal" Margin="{StaticResource CellInset}">
-                                    <Border Width="3" Background="{Binding ClassColor}" CornerRadius="2"
-                                            Margin="0,1,7,1"/>
-                                    <TextBlock Text="{Binding ClassName}" Foreground="{StaticResource Text.Primary}"
-                                               FontSize="{StaticResource Type.Micro}" FontWeight="Bold"/>
-                                </StackPanel>
-                            </Border>
+                            <Grid Height="17" Margin="0,6,0,2">
+                                <Border CornerRadius="{StaticResource Radius.Chip}"
+                                        Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.55}"/>
+                                <Border Width="3" HorizontalAlignment="Left" Background="{Binding ClassColor}"
+                                        CornerRadius="3,0,0,3"/>
+                                <TextBlock Text="{Binding ClassName}" Style="{StaticResource PanelTitle}"
+                                           Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"
+                                           Margin="12,0,0,0"/>
+                            </Grid>
                         </DataTemplate>
 
-                        <!-- The break between the podium and the block around the player. A rule
-                             across the full width, with the number of cars in the gap sitting on it
-                             when there are any. Fixed height either way, so the widget doesn't
-                             twitch as cars move in and out of the gap. -->
+                        <!-- The break between the podium and the block around the player: a rule
+                             that feathers out at both ends, with the number of cars in the gap
+                             sitting in it when there are any. Fixed height either way, so the widget
+                             doesn't twitch as cars move in and out of the gap. -->
                         <DataTemplate DataType="{x:Type vm:StandingsSeparatorRow}">
                             <Grid Height="14" Margin="0,2">
-                                <Border Height="1" Background="{StaticResource Surface.Divider}" VerticalAlignment="Center"/>
-                                <Border Background="{DynamicResource Theme.PanelBackground}" Padding="7,0" HorizontalAlignment="Center"
-                                        Visibility="{Binding HasSkipped, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="{Binding Label}" Style="{StaticResource ColumnHeader}"/>
-                                </Border>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Height="1" Background="{StaticResource Surface.DividerFadeIn}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource ColumnHeader}" Margin="8,0"
+                                           Visibility="{Binding HasSkipped, Converter={StaticResource BoolToVis}}"/>
+                                <Border Grid.Column="2" Height="1" Background="{StaticResource Surface.DividerFadeOut}"/>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.Resources>

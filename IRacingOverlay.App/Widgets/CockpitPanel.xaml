@@ -4,12 +4,10 @@
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <!-- Chrome (background/border/corners) follows the active Dashboard theme like every other
-         panel — only the semantic colors (shift-light dots, amber proximity bars, gear brackets,
-         ABS glow) stay hardcoded, since those must match their real-world meaning regardless of
-         theme, the same principle FlagPanel already uses for flag colors. -->
-    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
-            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="8,6">
+         panel — only the semantic colors (shift-light dots, amber proximity bars, ABS glow) stay
+         fixed, since those must match their real-world meaning regardless of theme, the same
+         principle FlagPanel already uses for flag colors. -->
+    <Border Style="{StaticResource OverlayPanel}" Padding="8,6">
         <Grid>
             <!-- The three center columns are fixed pixel widths sized tightly to their actual
                  content (not star-ratios, which stretch to fill however much space the design
@@ -43,8 +41,7 @@
                  single pattern and the two units line up horizontally instead of one label sitting
                  above its number and the other below. -->
             <StackPanel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock x:Name="SpeedText" Text="—" Style="{StaticResource DisplayValue}"
-                           FontSize="{StaticResource Type.DisplayLarge}" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="SpeedText" Text="—" Style="{StaticResource DisplayValueLarge}" HorizontalAlignment="Center"/>
                 <Border Background="{StaticResource Surface.Divider}" Height="1" Margin="4,3,4,4"/>
                 <TextBlock Text="KM/H" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center"/>
             </StackPanel>
@@ -52,8 +49,7 @@
             <w:ShiftGearPanel x:Name="ShiftGear" Grid.Row="1" Grid.Column="2"/>
 
             <StackPanel Grid.Row="1" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock x:Name="RpmText" Text="—" Style="{StaticResource DisplayValue}"
-                           FontSize="{StaticResource Type.DisplaySmall}" HorizontalAlignment="Center"/>
+                <TextBlock x:Name="RpmText" Text="—" Style="{StaticResource DisplayValueSmall}" HorizontalAlignment="Center"/>
                 <Border Background="{StaticResource Surface.Divider}" Height="1" Margin="4,3,4,4"/>
                 <TextBlock Text="RPM" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
                 <w:AbsIndicatorPanel x:Name="AbsIndicator" HorizontalAlignment="Center"/>

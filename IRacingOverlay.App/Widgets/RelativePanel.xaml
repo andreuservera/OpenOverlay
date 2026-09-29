@@ -5,9 +5,7 @@
     <!-- Same columns, cell styles and row template as StandingsPanel, from the shared
          Themes/DriverTable.xaml. The two tables differ only in what their GAP column means and in
          which rows the builder hands them. -->
-    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
-            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10,8">
+    <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
         <DockPanel>
             <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
                 <StackPanel Orientation="Horizontal">
@@ -55,7 +53,7 @@
                            Visibility="{Binding Options.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
             </Grid>
 
-            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.Divider}" Margin="0,0,0,4"/>
+            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.DividerFade}" Margin="0,0,0,4"/>
 
             <Grid>
                 <TextBlock Text="Waiting for iRacing telemetry…">

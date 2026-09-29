@@ -4,16 +4,7 @@
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
         Title="Relative">
-    <Border BorderBrush="Orange" BorderThickness="0">
-        <Border.Style>
-            <Style TargetType="Border">
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsEditMode}" Value="True">
-                        <Setter Property="BorderThickness" Value="2"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </Border.Style>
+    <Grid>
         <!-- Driver names are the widest thing here and the name column is a star, so left to measure
              itself the panel collapses to whatever names happen to be on track right now. 300 keeps
              the row rhythm steady and gives full names room instead of ellipsing them. -->
@@ -21,5 +12,6 @@
                           DesignWidth="300">
             <w:RelativePanel/>
         </ov:ScalablePanel>
-    </Border>
+        <Border Style="{StaticResource EditFrame}"/>
+    </Grid>
 </ov:OverlayWindowBase>
