@@ -36,6 +36,7 @@ public sealed partial class ControlPanelViewModel
             {
                 DashboardPageKey => DashboardPage(),
                 PerformancePageKey => PerformancePage(),
+                UnitsPageKey => UnitsPage(),
                 _ => [],
             };
         }
@@ -237,11 +238,17 @@ public sealed partial class ControlPanelViewModel
                 }),
             new NumberSetting(
                 "Extra reserve",
-                null,
-                FuelCalculatorOptions.MarginLiters, 0, 50, 0.5, "0.#", "L",
+                "In your selected units (see the Units page).",
+                Units.Volume(FuelCalculatorOptions.MarginLiters, Units.Current),
+                0,
+                Units.Current == UnitSystem.Imperial ? 13 : 50,
+                Units.Current == UnitSystem.Imperial ? 0.1 : 0.5,
+                "0.#",
+                Units.VolumeUnit(Units.Current),
                 value =>
                 {
-                    FuelCalculatorOptions.MarginLiters = value;
+                    // Stored in litres, like every fuel figure, whatever the display units.
+                    FuelCalculatorOptions.MarginLiters = Units.VolumeToLiters(value, Units.Current);
                     FuelCalculatorOptionsStore.Save(FuelCalculatorOptions);
                 }));
 
@@ -270,7 +277,7 @@ public sealed partial class ControlPanelViewModel
 
     private SettingsGroup WeatherDisplay() => new SettingsGroup(
         "DISPLAY",
-        "The wind arrow points to where the wind comes from, relative to your car: up is a headwind.")
+        "The compass turns with your car; the arrow runs from where the wind comes from to where it blows. Units are set on the Units page.")
         .With(
             new ToggleSetting(
                 "Show labels",
@@ -282,12 +289,6 @@ public sealed partial class ControlPanelViewModel
                 "One horizontal strip instead of stacked sections.",
                 WeatherOptions.Compact,
                 value => SaveWeather(() => WeatherOptions.Compact = value)),
-            new SegmentedSetting(
-                "Units",
-                null,
-                ["°C · km/h", "°F · mph"],
-                (int)WeatherOptions.Units,
-                index => SaveWeather(() => WeatherOptions.Units = (WeatherUnits)index)),
             new SegmentedSetting(
                 "Forecast icon size",
                 null,
@@ -444,6 +445,26 @@ public sealed partial class ControlPanelViewModel
     private SettingsGroup HighRateNote() => new SettingsGroup(
         "UPDATE RATE",
         "This widget reads telemetry on its own timer — set it on the Performance page.");
+
+    private IEnumerable<SettingsGroup> UnitsPage() =>
+    [
+        new SettingsGroup(
+            "UNITS",
+            "Speed, temperature, tire pressure and fuel in every overlay, the dashboard and the previews.")
+            .With(new SegmentedSetting(
+                "Units",
+                Units.IRacingSetting is { } iracing
+                    ? $"iRacing is currently set to {(iracing == UnitSystem.Imperial ? "imperial" : "metric")}. A fixed choice here always wins."
+                    : "Following iRacing shows metric until the sim reports its setting. A fixed choice here always wins.",
+                ["Follow iRacing", "Metric", "Imperial"],
+                (int)Units.Preference,
+                index =>
+                {
+                    var preference = (UnitPreference)index;
+                    UnitPreferenceStore.Save(preference);
+                    Units.SetPreference(preference);
+                })),
+    ];
 
     private IEnumerable<SettingsGroup> PerformancePage() =>
     [

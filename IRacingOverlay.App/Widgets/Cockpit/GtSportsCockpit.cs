@@ -63,7 +63,7 @@ public sealed class GtSportsCockpit : CockpitDashboard
 
         Module(dc, new Rect(70, 38, 62, 62), "#22D3EE", "SPD");
         Text(dc, Speed, Mono, 26, B("#FFFFFF"), 128, 70, HAlign.Right, VAlign.Center);
-        Text(dc, "KPH", MonoLight, 9, B("#6B7280"), 128, 88, HAlign.Right);
+        Text(dc, SpeedUnit == "mph" ? "MPH" : "KPH", MonoLight, 9, B("#6B7280"), 128, 88, HAlign.Right);
 
         var shift = AtShiftPoint && ShiftLampsOn;
         var gearRect = new Rect(138, 38, 64, 104);
@@ -81,8 +81,8 @@ public sealed class GtSportsCockpit : CockpitDashboard
         Text(dc, AbsActive ? "ON" : "OFF", Mono, 14, B(AbsActive ? absColor : "#6B7280"), absRect.Right - 5, absRect.Y + 24, HAlign.Right, VAlign.Center);
 
         Module(dc, new Rect(208, 106, 62, 36), "#8B5CF6", "FUEL");
-        Text(dc, Fuel, Mono, 14, B("#FFFFFF"), 258, 130, HAlign.Right, VAlign.Center);
-        Text(dc, "L", MonoLight, 9, B("#6B7280"), 266, 130, HAlign.Right, VAlign.Center);
+        var fuelUnit = Text(dc, FuelUnit.ToUpperInvariant(), MonoLight, 9, B("#6B7280"), 266, 130, HAlign.Right, VAlign.Center);
+        Text(dc, Fuel, Mono, 14, B("#FFFFFF"), fuelUnit.X - 3, 130, HAlign.Right, VAlign.Center);
 
         dc.Pop();
     }

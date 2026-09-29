@@ -18,7 +18,13 @@ public sealed class TireCornerInfo
     public required double WearRight { get; init; }
     public required bool HasWearData { get; init; }
 
-    public string PressureDisplay => PressureKPa > 0 ? PressureKPa.ToString("0", CultureInfo.InvariantCulture) : "—";
+    public UnitSystem UnitSystem { get; init; }
+
+    public string PressureDisplay => PressureKPa > 0
+        ? Units.Pressure(PressureKPa, UnitSystem).ToString(Units.PressureFormat(UnitSystem), CultureInfo.InvariantCulture)
+        : "—";
+
+    public string PressureUnit => Units.PressureUnit(UnitSystem);
     public string TempLeftDisplay => FormatTemp(TempLeft);
     public string TempMiddleDisplay => FormatTemp(TempMiddle);
     public string TempRightDisplay => FormatTemp(TempRight);
@@ -27,7 +33,9 @@ public sealed class TireCornerInfo
     /// need to pit," since a tire fails at its thinnest point, not its average.</summary>
     public double WorstWearFraction => HasWearData ? Math.Min(WearLeft, Math.Min(WearMiddle, WearRight)) : 1.0;
 
-    private static string FormatTemp(double c) => c > 0 ? c.ToString("0", CultureInfo.InvariantCulture) + "°" : "—";
+    // Just the degree sign: three zone temps side by side have no room for the unit letter.
+    private string FormatTemp(double c) =>
+        c > 0 ? Units.Temperature(c, UnitSystem).ToString("0", CultureInfo.InvariantCulture) + "°" : "—";
 }
 
 public sealed class TireInfoState

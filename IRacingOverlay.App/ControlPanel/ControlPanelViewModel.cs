@@ -47,6 +47,16 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
+        Units.SetPreference(UnitPreferenceStore.Get());
+
+        // Settings with a unit (the fuel reserve) are built in the sim's units, so rebuild on a switch.
+        Units.CurrentChanged += () =>
+        {
+            if (Selected is { } selected)
+            {
+                BuildSettings(selected);
+            }
+        };
 
         foreach (var descriptor in WidgetCatalog.All)
         {
@@ -63,6 +73,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             PerformancePageKey, "Performance", "How hard the overlay works for the displays that need it.",
             "M4,20 A9,9 0 1 1 20,20 M12,14 L16,9"));
 
+        NavItems.Add(NavItem.ForPage(
+            UnitsPageKey, "Units", "Metric or imperial, for every overlay at once.",
+            "M3,17 L17,3 L21,7 L7,21 Z M7,13 L9,15 M10,10 L12,12 M13,7 L15,9"));
+
         MonitorNames = Screen.AllScreens.Select(DescribeScreen).ToList();
         // Second monitor by default: a dashboard on the same screen as the sim is in the way, which
         // is the one thing it must never be.
@@ -76,6 +90,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     private const string DashboardPageKey = "app.dashboard";
     private const string PerformancePageKey = "app.performance";
+    private const string UnitsPageKey = "app.units";
 
     // ===== Shared option objects =====
     // These are the same instances handed to the widgets and to the preview, which is what makes a

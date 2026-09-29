@@ -36,6 +36,7 @@ public partial class FuelCalculatorPanel : UserControl
     public void UpdateState(FuelCalculatorState state)
     {
         LevelText.Text = state.LevelDisplay;
+        LevelUnitText.Text = state.VolumeUnit;
         LastLapText.Text = state.LastLapDisplay;
         AverageText.Text = state.AverageDisplay;
         MinText.Text = state.MinDisplay;

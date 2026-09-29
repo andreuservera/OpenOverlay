@@ -18,7 +18,6 @@ internal static class WeatherOptionsStore
         bool ShowRainProbability,
         bool ShowLabels,
         bool Compact,
-        WeatherUnits Units,
         WeatherGraphicSize IconSize,
         WeatherGraphicSize ArrowSize);
 
@@ -43,7 +42,6 @@ internal static class WeatherOptionsStore
         options.ShowRainProbability = saved.ShowRainProbability;
         options.ShowLabels = saved.ShowLabels;
         options.Compact = saved.Compact;
-        options.Units = saved.Units;
         options.IconSize = saved.IconSize;
         options.ArrowSize = saved.ArrowSize;
     }
@@ -60,7 +58,6 @@ internal static class WeatherOptionsStore
             options.ShowRainProbability,
             options.ShowLabels,
             options.Compact,
-            options.Units,
             options.IconSize,
             options.ArrowSize);
 

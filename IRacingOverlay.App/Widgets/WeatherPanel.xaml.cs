@@ -42,15 +42,13 @@ public partial class WeatherPanel : UserControl
     private void Render(bool animate)
     {
         var state = _last;
-        var units = Options.Units;
-        var temperatureUnit = WeatherState.TemperatureUnit(units);
 
-        AirTempText.Text = state.AirTempDisplay(units);
-        AirUnitText.Text = temperatureUnit;
-        TrackTempText.Text = state.TrackTempDisplay(units);
-        TrackUnitText.Text = temperatureUnit;
-        WindSpeedText.Text = state.WindSpeedDisplay(units);
-        WindUnitText.Text = WeatherState.WindSpeedUnit(units);
+        AirTempText.Text = state.AirTempDisplay;
+        AirUnitText.Text = state.TemperatureUnit;
+        TrackTempText.Text = state.TrackTempDisplay;
+        TrackUnitText.Text = state.TemperatureUnit;
+        WindSpeedText.Text = state.WindSpeedDisplay;
+        WindUnitText.Text = state.WindSpeedUnit;
         HumidityText.Text = state.HumidityDisplay;
 
         ForecastIcon.Condition = state.Condition;

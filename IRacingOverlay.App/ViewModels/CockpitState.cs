@@ -38,6 +38,8 @@ public sealed class CockpitState
     public double? WaterTempC { get; init; }
     public double? OilTempC { get; init; }
 
+    public UnitSystem UnitSystem { get; init; }
+
     public static CockpitState Empty { get; } = new()
     {
         Gear = "–",

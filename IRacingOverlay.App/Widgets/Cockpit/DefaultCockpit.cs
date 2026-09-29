@@ -46,7 +46,7 @@ public sealed class DefaultCockpit : CockpitDashboard
         // Main plate.
         dc.DrawRoundedRectangle(Plate, P("#2EFFFFFF", 1), new Rect(96, 28, 266, 72), 6, 6);
         var speed = Text(dc, Speed, Numeric, 44, B("#F2F5F8"), 190, 62, HAlign.Right, VAlign.Center);
-        Text(dc, "KM/H", Label, 11, B("#8E99A5"), speed.Right + 5, 62 + (44 * 0.35), v: VAlign.Baseline);
+        Text(dc, SpeedUnit.ToUpperInvariant(), Label, 11, B("#8E99A5"), speed.Right + 5, 62 + (44 * 0.35), v: VAlign.Baseline);
 
         dc.DrawLine(P("#24FFFFFF", 1), new Point(240, 40), new Point(240, 88));
         Text(dc, Rpm, Numeric, 26, B("#C4CCD4"), 250, 56, v: VAlign.Center);

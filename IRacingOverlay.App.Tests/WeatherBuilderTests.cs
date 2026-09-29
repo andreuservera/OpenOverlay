@@ -40,11 +40,32 @@ public class WeatherBuilderTests
             w.SetFloat("WindVel", 3.6f);
         });
 
-        Assert.Equal("21.4", state.AirTempDisplay(WeatherUnits.Metric));
-        Assert.Equal("92.8", state.TrackTempDisplay(WeatherUnits.Imperial));
+        Assert.Equal("21.4", state.AirTempDisplay);
+        Assert.Equal("°C", state.TemperatureUnit);
         Assert.Equal("54%", state.HumidityDisplay);
-        Assert.Equal("13", state.WindSpeedDisplay(WeatherUnits.Metric));
-        Assert.Equal("8", state.WindSpeedDisplay(WeatherUnits.Imperial));
+        Assert.Equal("13", state.WindSpeedDisplay);
+        Assert.Equal("km/h", state.WindSpeedUnit);
+    }
+
+    [Fact]
+    public void Build_FollowsIRacingDisplayUnits()
+    {
+        var builder = WeatherVars();
+        builder.AddVar("DisplayUnits", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("DisplayUnits", 0); // English
+            w.SetFloat("TrackTempCrew", 33.8f);
+            w.SetFloat("WindVel", 3.6f);
+        });
+
+        var state = WeatherBuilder.Build(snapshot, null);
+
+        Assert.Equal(UnitSystem.Imperial, state.UnitSystem);
+        Assert.Equal("92.8", state.TrackTempDisplay);
+        Assert.Equal("°F", state.TemperatureUnit);
+        Assert.Equal("8", state.WindSpeedDisplay);
+        Assert.Equal("mph", state.WindSpeedUnit);
     }
 
     [Theory]
@@ -124,8 +145,8 @@ public class WeatherBuilderTests
     {
         var state = WeatherBuilder.Build(TestSnapshotFactory.Build(new SyntheticMemoryBuilder(), _ => { }), null);
 
-        Assert.Equal("—", state.AirTempDisplay(WeatherUnits.Metric));
-        Assert.Equal("—", state.WindSpeedDisplay(WeatherUnits.Metric));
+        Assert.Equal("—", state.AirTempDisplay);
+        Assert.Equal("—", state.WindSpeedDisplay);
         Assert.Null(state.WindFromRelativeDeg);
         Assert.Equal(WeatherCondition.Unknown, state.Condition);
         Assert.Equal("—", state.RainChanceDisplay);

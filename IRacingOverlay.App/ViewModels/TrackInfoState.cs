@@ -17,6 +17,8 @@ public sealed class TrackInfoState
     /// <summary>Null when the session has no lap limit (time-limited instead).</summary>
     public required int? LapsRemaining { get; init; }
 
+    public UnitSystem UnitSystem { get; init; }
+
     public static TrackInfoState Empty => new()
     {
         TrackName = "",
@@ -79,11 +81,15 @@ public sealed class TrackInfoState
             ? TrackUsage[..^UsageSuffix.Length]
             : TrackUsage).ToUpperInvariant();
 
-    public string AirTempDisplay => $"{AirTempC.ToString("0.#", CultureInfo.InvariantCulture)}°C";
+    public string AirTempDisplay => FormatTemperature(AirTempC);
 
-    public string TrackTempDisplay => $"{TrackTempC.ToString("0.#", CultureInfo.InvariantCulture)}°C";
+    public string TrackTempDisplay => FormatTemperature(TrackTempC);
 
-    public string WindDisplay => $"{(WindSpeedMs * 3.6).ToString("0.#", CultureInfo.InvariantCulture)} km/h {WindDirectionDisplay}";
+    public string WindDisplay =>
+        $"{Units.SpeedFromMs(WindSpeedMs, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)} {Units.SpeedUnit(UnitSystem)} {WindDirectionDisplay}";
+
+    private string FormatTemperature(double celsius) =>
+        $"{Units.Temperature(celsius, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)}{Units.TemperatureUnit(UnitSystem)}";
 
     public string WindDirectionDisplay => CompassPoints[(int)Math.Round(NormalizedWindDegrees / 22.5) % CompassPoints.Length];
 

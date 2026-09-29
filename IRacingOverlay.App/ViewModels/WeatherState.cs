@@ -36,19 +36,21 @@ public sealed class WeatherState
     public WeatherCondition Condition { get; init; }
     public double? RainChancePct { get; init; }
 
+    public UnitSystem UnitSystem { get; init; }
+
     public static WeatherState Empty { get; } = new();
 
-    public string AirTempDisplay(WeatherUnits units) => FormatTemperature(AirTempC, units);
+    public string AirTempDisplay => FormatTemperature(AirTempC);
 
-    public string TrackTempDisplay(WeatherUnits units) => FormatTemperature(TrackTempC, units);
+    public string TrackTempDisplay => FormatTemperature(TrackTempC);
 
-    public static string TemperatureUnit(WeatherUnits units) => units == WeatherUnits.Imperial ? "°F" : "°C";
+    public string TemperatureUnit => Units.TemperatureUnit(UnitSystem);
 
-    public string WindSpeedDisplay(WeatherUnits units) => WindSpeedMs is { } ms
-        ? (units == WeatherUnits.Imperial ? ms * 2.23694 : ms * 3.6).ToString("0", CultureInfo.InvariantCulture)
+    public string WindSpeedDisplay => WindSpeedMs is { } ms
+        ? Units.SpeedFromMs(ms, UnitSystem).ToString("0", CultureInfo.InvariantCulture)
         : "—";
 
-    public static string WindSpeedUnit(WeatherUnits units) => units == WeatherUnits.Imperial ? "mph" : "km/h";
+    public string WindSpeedUnit => Units.SpeedUnit(UnitSystem);
 
     public string HumidityDisplay => HumidityPct is { } pct ? $"{pct.ToString("0", CultureInfo.InvariantCulture)}%" : "—";
 
@@ -108,8 +110,8 @@ public sealed class WeatherState
         _ => "Sky conditions unavailable",
     };
 
-    private static string FormatTemperature(double? celsius, WeatherUnits units) => celsius is { } c
-        ? (units == WeatherUnits.Imperial ? (c * 9 / 5) + 32 : c).ToString("0.0", CultureInfo.InvariantCulture)
+    private string FormatTemperature(double? celsius) => celsius is { } c
+        ? Units.Temperature(c, UnitSystem).ToString("0.0", CultureInfo.InvariantCulture)
         : "—";
 }
 

@@ -41,6 +41,7 @@ internal static class CockpitBuilder
             Brake = Optional(telemetry, TelemetryVarNames.Brake) ?? 0,
             WaterTempC = Optional(telemetry, TelemetryVarNames.WaterTemp),
             OilTempC = Optional(telemetry, TelemetryVarNames.OilTemp),
+            UnitSystem = Units.Read(telemetry),
         };
     }
 

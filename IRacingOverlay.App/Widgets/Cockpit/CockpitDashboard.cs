@@ -85,14 +85,30 @@ public abstract class CockpitDashboard : FrameworkElement
 
     // ===== Data, formatted the same way in every theme =====
 
-    protected string Speed => State.SpeedKph > 0 ? State.SpeedKph.ToString("0", CultureInfo.InvariantCulture) : "—";
+    protected string Speed => State.SpeedKph > 0
+        ? Units.Speed(State.SpeedKph, State.UnitSystem).ToString("0", CultureInfo.InvariantCulture)
+        : "—";
+
+    /// <summary>"km/h" or "mph"; themes upper-case it where their labels are capitals.</summary>
+    protected string SpeedUnit => Units.SpeedUnit(State.UnitSystem);
 
     protected string Rpm => State.Rpm > 0 ? State.Rpm.ToString("0", CultureInfo.InvariantCulture) : "—";
 
     protected string Gear => State.Gear;
 
-    /// <summary>Fuel in the tank, litres to one decimal.</summary>
-    protected string Fuel => State.FuelLiters is { } liters ? liters.ToString("0.0", CultureInfo.InvariantCulture) : "—";
+    /// <summary>Fuel in the tank, to one decimal, in litres or gallons.</summary>
+    protected string Fuel => State.FuelLiters is { } liters
+        ? Units.Volume(liters, State.UnitSystem).ToString("0.0", CultureInfo.InvariantCulture)
+        : "—";
+
+    protected string FuelUnit => Units.VolumeUnit(State.UnitSystem);
+
+    /// <summary>A temperature to whole degrees in °C or °F, or a dash when unknown.</summary>
+    protected string Temperature(double? celsius) => celsius is { } c
+        ? Units.Temperature(c, State.UnitSystem).ToString("0", CultureInfo.InvariantCulture)
+        : "—";
+
+    protected string TemperatureUnit => Units.TemperatureUnit(State.UnitSystem);
 
     protected int LampsLit => Math.Clamp(State.ShiftLightsLit, 0, LampCount);
 

@@ -421,7 +421,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="5" MinWidth="38" Height="26" Margin="1">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="5" MinWidth="38" Height="26"
+                            Padding="12,0" Margin="2,1">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>

@@ -12,13 +12,17 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 internal static class TireInfoBuilder
 {
-    public static TireInfoState Build(TelemetrySnapshot telemetry) => new()
+    public static TireInfoState Build(TelemetrySnapshot telemetry)
     {
-        LF = BuildCorner(telemetry, "LF"),
-        RF = BuildCorner(telemetry, "RF"),
-        LR = BuildCorner(telemetry, "LR"),
-        RR = BuildCorner(telemetry, "RR"),
-    };
+        var units = Units.Read(telemetry);
+        return new()
+        {
+            LF = BuildCorner(telemetry, "LF", units),
+            RF = BuildCorner(telemetry, "RF", units),
+            LR = BuildCorner(telemetry, "LR", units),
+            RR = BuildCorner(telemetry, "RR", units),
+        };
+    }
 
     // Sanity bounds for readings that come from a variable name iRacing's var-header table can carry
     // even when a given car/build never actually writes a live value into it (see the surface-temp
@@ -30,7 +34,7 @@ internal static class TireInfoBuilder
     private const float MaxPlausibleTempC = 300f;
     private const float MaxPlausiblePressureKPa = 500f;
 
-    private static TireCornerInfo BuildCorner(TelemetrySnapshot telemetry, string corner)
+    private static TireCornerInfo BuildCorner(TelemetrySnapshot telemetry, string corner, UnitSystem units)
     {
         // Confirmed via iRacing's own telemetry variable list: there is no live/"hot" pressure
         // channel at all, on any car — cold/garage-set pressure is the only one that exists.
@@ -69,6 +73,7 @@ internal static class TireInfoBuilder
             WearMiddle = wearMiddle ?? 1.0,
             WearRight = wearRight ?? 1.0,
             HasWearData = hasWearData,
+            UnitSystem = units,
         };
     }
 

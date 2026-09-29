@@ -23,10 +23,11 @@ public sealed class PitWallCockpit : CockpitDashboard
     private static readonly Typeface Bold = Face("Tahoma", FontWeights.Bold);
     private static readonly Typeface Regular = Face("Tahoma", FontWeights.Normal);
     private static readonly string[] LampColors = ["#4ADE80", "#FACC15", "#F87171"];
+    // Unit suffixes are appended at draw time: they follow iRacing's display units.
     private static readonly (string Label, double Width)[] Columns =
     [
-        ("GEAR", 48), ("SPEED  km/h", 78), ("RPM", 70), ("SHIFT", 92), ("ABS", 52),
-        ("FUEL", 74), ("INPUTS", 56), ("TEMPS  °C", 72),
+        ("GEAR", 48), ("SPEED", 78), ("RPM", 70), ("SHIFT", 92), ("ABS", 52),
+        ("FUEL", 74), ("INPUTS", 56), ("TEMPS", 72),
     ];
 
     private const double DashHeight = 84;
@@ -58,7 +59,13 @@ public sealed class PitWallCockpit : CockpitDashboard
             }
 
             DrawCell(dc, c, cell);
-            Text(dc, Columns[c].Label, Regular, 9, B("#8A939C"), cell.X + 6, cell.Y + 5);
+            var label = c switch
+            {
+                1 => $"SPEED  {SpeedUnit}",
+                7 => $"TEMPS  {TemperatureUnit}",
+                _ => Columns[c].Label,
+            };
+            Text(dc, label, Regular, 9, B("#8A939C"), cell.X + 6, cell.Y + 5);
             x += Columns[c].Width;
         }
     }
@@ -102,7 +109,7 @@ public sealed class PitWallCockpit : CockpitDashboard
                 break;
             case 5:
                 var low = State.FuelPct is < 0.1;
-                var fuel = Text(dc, "L", Regular, 10, B("#8A939C"), right, cell.Y + 30, HAlign.Right, VAlign.Center);
+                var fuel = Text(dc, FuelUnit, Regular, 10, B("#8A939C"), right, cell.Y + 30, HAlign.Right, VAlign.Center);
                 Text(dc, Fuel, Bold, 18, B(low ? "#FBBF24" : "#FFFFFF"), fuel.X - 3, cell.Y + 30, HAlign.Right, VAlign.Center);
                 var track = new Rect(cell.X + 6, cell.Y + 48, cell.Width - 12, 6);
                 dc.DrawRectangle(B("#2A2F35"), null, track);
@@ -132,11 +139,11 @@ public sealed class PitWallCockpit : CockpitDashboard
         Text(dc, label, Regular, 9, B("#8A939C"), track.X + (track.Width / 2), track.Bottom + 2, HAlign.Center);
     }
 
-    private void Temp(DrawingContext dc, string label, double? value, double warnAt, Rect cell, double y)
+    // Warning thresholds stay in °C — the telemetry's own unit — and only the text is converted.
+    private void Temp(DrawingContext dc, string label, double? celsius, double warnAtCelsius, Rect cell, double y)
     {
         Text(dc, label, Regular, 9, B("#8A939C"), cell.X + 6, y, v: VAlign.Center);
-        var text = value is { } v ? v.ToString("0", CultureInfo.InvariantCulture) : "—";
-        var hot = value >= warnAt;
-        Text(dc, text, Bold, 14, B(hot ? "#FBBF24" : "#E5E7EB"), cell.Right - 6, y, HAlign.Right, VAlign.Center);
+        var hot = celsius >= warnAtCelsius;
+        Text(dc, Temperature(celsius), Bold, 14, B(hot ? "#FBBF24" : "#E5E7EB"), cell.Right - 6, y, HAlign.Right, VAlign.Center);
     }
 }

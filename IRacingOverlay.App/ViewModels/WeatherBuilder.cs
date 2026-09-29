@@ -35,6 +35,7 @@ internal static class WeatherBuilder
             HeadingDeg = Heading(telemetry),
             Condition = ConditionOf(telemetry, raining),
             RainChancePct = chance,
+            UnitSystem = Units.Read(telemetry),
         };
     }
 

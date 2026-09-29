@@ -55,7 +55,7 @@ public sealed class InvisibleCockpit : CockpitDashboard
         Text(dc, Gear, Semibold, 56, B(shift ? "#F43F5E" : "#FFFFFF"), Center, 72, HAlign.Center, VAlign.Baseline);
 
         Text(dc, Speed, Semibold, 30, B("#FFFFFF"), Center - 34, 62, HAlign.Right, VAlign.Baseline);
-        Text(dc, "KM/H", Semibold, 9, B("#A6FFFFFF"), Center - 35, 66, HAlign.Right);
+        Text(dc, SpeedUnit.ToUpperInvariant(), Semibold, 9, B("#A6FFFFFF"), Center - 35, 66, HAlign.Right);
 
         Text(dc, Rpm, Regular, 30, B("#D9FFFFFF"), Center + 34, 62, v: VAlign.Baseline);
         Text(dc, "RPM", Semibold, 9, B("#A6FFFFFF"), Center + 35, 66);

@@ -3,12 +3,6 @@ using System.Runtime.CompilerServices;
 
 namespace IRacingOverlay.App.ViewModels;
 
-public enum WeatherUnits
-{
-    Metric,
-    Imperial,
-}
-
 public enum WeatherGraphicSize
 {
     Small,
@@ -37,7 +31,6 @@ public sealed class WeatherOptions : INotifyPropertyChanged
     private bool _showRainProbability = true;
     private bool _showLabels = true;
     private bool _compact;
-    private WeatherUnits _units;
     private WeatherGraphicSize _iconSize = WeatherGraphicSize.Medium;
     private WeatherGraphicSize _arrowSize = WeatherGraphicSize.Medium;
 
@@ -61,8 +54,6 @@ public sealed class WeatherOptions : INotifyPropertyChanged
 
     /// <summary>One horizontal strip instead of stacked sections.</summary>
     public bool Compact { get => _compact; set => Set(ref _compact, value); }
-
-    public WeatherUnits Units { get => _units; set => Set(ref _units, value); }
 
     public WeatherGraphicSize IconSize
     {

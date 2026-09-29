@@ -52,7 +52,7 @@ public sealed class HypercarCockpit : CockpitDashboard
 
         Text(dc, "ABS", Semibold, 9, B(absColor), Center.X + (AbsActive ? 4 : 0), 122, HAlign.Center, VAlign.Center);
 
-        Pill(dc, new Rect(0, 46, 92, 64), Speed, "km/h", 34);
+        Pill(dc, new Rect(0, 46, 92, 64), Speed, SpeedUnit, 34);
         Pill(dc, new Rect(280, 46, 92, 64), Rpm, "rpm", 24);
     }
 

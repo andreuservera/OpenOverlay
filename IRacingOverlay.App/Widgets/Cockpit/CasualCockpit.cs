@@ -38,7 +38,7 @@ public sealed class CasualCockpit : CockpitDashboard
         Text(dc, Gear, Impact, 96, B("#F2F5F8"), 65, 62, HAlign.Center, VAlign.Center);
 
         var speed = Text(dc, Speed, Impact, 62, B("#F2F5F8"), 232, 52, HAlign.Right, VAlign.Center);
-        Text(dc, "KM/H", Impact, 13, B("#7C8590"), speed.Right + 6, 52 + (62 * 0.35), v: VAlign.Baseline);
+        Text(dc, SpeedUnit.ToUpperInvariant(), Impact, 13, B("#7C8590"), speed.Right + 6, 52 + (62 * 0.35), v: VAlign.Baseline);
 
         Text(dc, Rpm, Impact, 26, B("#9CA3AF"), 320, 22, HAlign.Right, VAlign.Center);
         Text(dc, "RPM", Impact, 11, B("#6B7280"), 320, 36, HAlign.Right);

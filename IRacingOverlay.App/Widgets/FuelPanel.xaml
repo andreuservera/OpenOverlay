@@ -39,7 +39,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,-18,0">
                     <StackPanel Style="{StaticResource StatCell}">
                         <TextBlock Text="LEVEL" Style="{StaticResource CellLabel}"/>
-                        <TextBlock x:Name="LevelText" Text="— L" Style="{StaticResource CellValue}"/>
+                        <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource CellValue}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource StatCell}">
                         <TextBlock Text="PER LAP" Style="{StaticResource CellLabel}"/>

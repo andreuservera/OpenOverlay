@@ -71,6 +71,8 @@ public partial class WidgetPreview : UserControl
         _cockpitOptions = cockpitOptions;
         // The weather panel follows its options itself, so no rebuild subscription is needed.
         _weatherOptions = weatherOptions;
+        // Previews show sample data in whatever units iRacing last reported.
+        Units.CurrentChanged += Refresh;
 
         standingsOptions.PropertyChanged += OnOptionsChanged;
         relativeOptions.PropertyChanged += OnOptionsChanged;

@@ -41,7 +41,7 @@
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
                         <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource DisplayValue}"/>
-                        <TextBlock Text="L" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+                        <TextBlock x:Name="LevelUnitText" Text="L" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
                     </StackPanel>
 
                     <Border x:Name="LevelTrack" Style="{StaticResource MeterTrack}" Height="8" Margin="0,6,0,0"

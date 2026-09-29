@@ -157,6 +157,7 @@ public static class PreviewData
 
     public static CockpitState Cockpit() => new()
     {
+        UnitSystem = Units.Current,
         Gear = "4",
         ShiftLightsLit = 9,
         ShiftBlink = false,
@@ -212,6 +213,7 @@ public static class PreviewData
 
     public static FuelState Fuel() => new()
     {
+        UnitSystem = Units.Current,
         LevelLiters = 31.4,
         LevelPct = 0.46,
         PerLapLiters = 2.68,
@@ -223,6 +225,7 @@ public static class PreviewData
     /// their warning state and the refuel line has a real number in it.</summary>
     public static FuelCalculatorState FuelCalculator() => new()
     {
+        UnitSystem = Units.Current,
         LevelLiters = 31.4,
         LevelPct = 0.46,
         LastLapLiters = 2.71,
@@ -306,6 +309,7 @@ public static class PreviewData
         double wearLeft, double wearMiddle, double wearRight) => new()
         {
             Label = label,
+            UnitSystem = Units.Current,
             PressureKPa = pressure,
             ColdPressureKPa = pressure - 14,
             TempLeft = left,
@@ -322,6 +326,7 @@ public static class PreviewData
     /// medium rain chance, so the arrow and the yellow rain colour both show.</summary>
     public static WeatherState Weather() => new()
     {
+        UnitSystem = Units.Current,
         AirTempC = 21.4,
         TrackTempC = 33.8,
         HumidityPct = 54,
@@ -334,6 +339,7 @@ public static class PreviewData
 
     public static TrackInfoState TrackInfo() => new()
     {
+        UnitSystem = Units.Current,
         TrackName = "Spa-Francorchamps",
         SessionLabel = "Race",
         TrackUsage = "moderately high usage",

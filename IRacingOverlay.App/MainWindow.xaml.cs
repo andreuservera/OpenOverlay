@@ -165,6 +165,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        Units.Observe(telemetry);
         UpdateTelemetryLine(telemetry);
 
         var session = _connection.Session;
@@ -387,10 +388,11 @@ public partial class MainWindow : Window
 
     private void UpdateTelemetryLine(TelemetrySnapshot telemetry)
     {
-        var speed = telemetry.HasVariable("Speed") ? telemetry.GetFloat("Speed") * 3.6 : 0; // m/s -> km/h
+        var units = Units.Read(telemetry);
+        var speed = telemetry.HasVariable("Speed") ? Units.SpeedFromMs(telemetry.GetFloat("Speed"), units) : 0;
         var lap = telemetry.HasVariable("Lap") ? telemetry.GetInt("Lap") : 0;
         var gear = telemetry.HasVariable("Gear") ? telemetry.GetInt("Gear") : 0;
-        _vm.TelemetryLine = $"Speed {speed:0} km/h    Lap {lap}    Gear {gear}";
+        _vm.TelemetryLine = $"Speed {speed:0} {Units.SpeedUnit(units)}    Lap {lap}    Gear {gear}";
     }
 
     private void UpdateDiagnostics()

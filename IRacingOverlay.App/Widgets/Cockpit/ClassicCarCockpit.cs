@@ -75,7 +75,7 @@ public sealed class ClassicCarCockpit : CockpitDashboard
         var odometer = new Rect(98, 146, 60, 22);
         dc.DrawRectangle(B("#EDE3C8"), P("#8C7B5A", 1), odometer);
         Text(dc, Speed, Dial, 18, B("#141414"), Center.X, odometer.Y + 11, HAlign.Center, VAlign.Center);
-        Text(dc, $"km/h · {Rpm} rpm", Caption, 8.5, B("#B8AC8E"), Center.X, 172, HAlign.Center);
+        Text(dc, $"{SpeedUnit} · {Rpm} rpm", Caption, 8.5, B("#B8AC8E"), Center.X, 172, HAlign.Center);
 
         var absAt = new Point(84, 126);
         dc.DrawEllipse(B(AbsActive ? (AbsFlashOn ? "#F59E0B" : "#8A5D18") : "#3A2A12"), P("#5A5046", 1), absAt, 6, 6);
