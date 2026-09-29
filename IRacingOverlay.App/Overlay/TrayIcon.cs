@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using IRacingOverlay.App.Diagnostics;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
@@ -33,17 +34,17 @@ internal sealed class TrayIcon : IDisposable
         _icons = CreateStatusIcons();
 
         var menu = new Forms.ContextMenuStrip();
-        var open = new Forms.ToolStripMenuItem("Open OpenOverlay", null, (_, _) => OpenRequested?.Invoke());
+        var open = new Forms.ToolStripMenuItem("Open OpenOverlay", null, Traced("Open OpenOverlay", () => OpenRequested));
         open.Font = new Drawing.Font(open.Font, Drawing.FontStyle.Bold);
-        _toggleOverlays = new Forms.ToolStripMenuItem("Hide overlays", null, (_, _) => ToggleOverlaysRequested?.Invoke());
+        _toggleOverlays = new Forms.ToolStripMenuItem("Hide overlays", null, Traced("Show / hide overlays", () => ToggleOverlaysRequested));
         menu.Items.Add(open);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(_toggleOverlays);
-        menu.Items.Add(new Forms.ToolStripMenuItem("Restart overlays", null, (_, _) => RestartOverlaysRequested?.Invoke()));
+        menu.Items.Add(new Forms.ToolStripMenuItem("Restart overlays", null, Traced("Restart overlays", () => RestartOverlaysRequested)));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(new Forms.ToolStripMenuItem("Open configuration folder", null, (_, _) => OpenConfigFolderRequested?.Invoke()));
+        menu.Items.Add(new Forms.ToolStripMenuItem("Open configuration folder", null, Traced("Open configuration folder", () => OpenConfigFolderRequested)));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(new Forms.ToolStripMenuItem("Exit", null, (_, _) => ExitRequested?.Invoke()));
+        menu.Items.Add(new Forms.ToolStripMenuItem("Exit", null, Traced("Exit", () => ExitRequested)));
 
         _icon = new Forms.NotifyIcon
         {
@@ -86,6 +87,12 @@ internal sealed class TrayIcon : IDisposable
 
     public void ShowNotice(string title, string text) =>
         _icon.ShowBalloonTip(6000, title, text, Forms.ToolTipIcon.Info);
+
+    private static EventHandler Traced(string item, Func<Action?> handler) => (_, _) =>
+    {
+        AppLog.Activity("Tray", $"Menu: {item}");
+        handler()?.Invoke();
+    };
 
     public void Dispose()
     {

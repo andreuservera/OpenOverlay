@@ -15,6 +15,12 @@ public static class AppInfo
 
     public static int ProcessId { get; } = Environment.ProcessId;
 
+    /// <summary>Stamped on every log line and report, so one launch can be pulled out of weeks of logs.</summary>
+    public static string RunId { get; } = Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+
+    /// <summary>The run this process replaced when <see cref="AppRestarter"/> relaunched it.</summary>
+    public static string? PreviousRunId { get; set; }
+
     public static TimeSpan Uptime => DateTime.UtcNow - StartedUtc;
 
     /// <summary>The Velopack release version when installed; the assembly's own version otherwise
@@ -57,6 +63,8 @@ public static class AppInfo
     /// <summary>The environment a bug report needs. Nothing personal: no user or machine name.</summary>
     public static IReadOnlyDictionary<string, string> Describe() => new Dictionary<string, string>
     {
+        ["run"] = RunId,
+        ["previousRun"] = PreviousRunId ?? "",
         ["version"] = Version,
         ["install"] = InstallKind,
         ["os"] = RuntimeInformation.OSDescription,

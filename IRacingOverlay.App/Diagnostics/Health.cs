@@ -26,13 +26,15 @@ public sealed record ComponentHealth(
     DateTime? LastFailureUtc = null,
     long Failures = 0,
     int Recoveries = 0,
-    string? LastError = null);
+    string? LastError = null,
+    string? LastErrorRef = null);
 
 public sealed record HealthReport(DateTime GeneratedUtc, HealthStatus Overall, IReadOnlyList<ComponentHealth> Components)
 {
     public static HealthReport Empty { get; } = new(DateTime.MinValue, HealthStatus.Healthy, []);
 
-    /// <summary>One line for the status bar: the worst component, or all clear.</summary>
+    /// <summary>One line for the status bar: the worst component, with the log reference of its
+    /// latest error so what the user sees can be found in the log.</summary>
     public string Summary
     {
         get
@@ -40,12 +42,15 @@ public sealed record HealthReport(DateTime GeneratedUtc, HealthStatus Overall, I
             var problems = Components.Where(c => c.Status != HealthStatus.Healthy)
                 .OrderByDescending(c => c.Status)
                 .ToList();
-            return problems.Count switch
+            if (problems.Count == 0)
             {
-                0 => "All systems healthy",
-                1 => $"{problems[0].Name}: {problems[0].Summary}",
-                _ => $"{problems[0].Name}: {problems[0].Summary} (+{problems.Count - 1} more)",
-            };
+                return "All systems healthy";
+            }
+
+            var worst = problems[0];
+            var reference = worst.LastErrorRef is { } r ? $" · ref {r}" : "";
+            var more = problems.Count > 1 ? $" (+{problems.Count - 1} more)" : "";
+            return $"{worst.Name}: {worst.Summary}{reference}{more}";
         }
     }
 }
@@ -86,6 +91,7 @@ public sealed class ComponentGuard
     private long _failures;
     private int _recoveries;
     private string? _lastError;
+    private string? _lastErrorRef;
 
     public ComponentGuard(
         string name,
@@ -158,7 +164,7 @@ public sealed class ComponentGuard
                 _ => (HealthStatus.Healthy, _lastSuccessUtc is null ? "idle" : "running"),
             };
 
-            return new ComponentHealth(Name, status, summary, _sinceUtc, _lastSuccessUtc, _lastFailureUtc, _failures, _recoveries, _lastError);
+            return new ComponentHealth(Name, status, summary, _sinceUtc, _lastSuccessUtc, _lastFailureUtc, _failures, _recoveries, _lastError, _lastErrorRef);
         }
     }
 
@@ -191,11 +197,13 @@ public sealed class ComponentGuard
         }
 
         var consecutive = ++_consecutive[(int)stage];
-        AppLog.Error(Name, $"{stage} failed", exception, new Dictionary<string, string>
+        var logged = AppLog.Error(Name, $"{stage} failed", exception, new Dictionary<string, string>
         {
             ["consecutive"] = consecutive.ToString(CultureInfo.InvariantCulture),
             ["total"] = _failures.ToString(CultureInfo.InvariantCulture),
         });
+        // A suppressed repeat keeps pointing at the entry that has the stack trace.
+        _lastErrorRef = logged?.Ref ?? _lastErrorRef;
 
         if (consecutive < _failureThreshold)
         {
@@ -262,10 +270,11 @@ public sealed class HealthMonitor
         DateTime? lastSuccessUtc = null,
         DateTime? lastFailureUtc = null,
         long failures = 0,
-        string? lastError = null)
+        string? lastError = null,
+        string? lastErrorRef = null)
     {
         var since = _reported.TryGetValue(name, out var previous) && previous.Status == status ? previous.SinceUtc : _clock();
-        _reported[name] = new ComponentHealth(name, status, summary, since, lastSuccessUtc, lastFailureUtc, failures, 0, lastError);
+        _reported[name] = new ComponentHealth(name, status, summary, since, lastSuccessUtc, lastFailureUtc, failures, 0, lastError, lastErrorRef);
     }
 
     public HealthReport Snapshot()

@@ -66,6 +66,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             }
 
             _isEnabled = value;
+            AppLog.Activity(LogSource, value ? "Switched on" : "Switched off");
             WidgetVisibilityStore.Save(Key, value);
             Apply();
             OnPropertyChanged();

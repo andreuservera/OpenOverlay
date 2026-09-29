@@ -36,6 +36,7 @@ internal sealed class UpdateService : IDisposable
     private Task? _task;
     private volatile UpdateState _state = UpdateState.NotStarted;
     private volatile string _detail = "Not checked yet";
+    private volatile string? _lastErrorRef;
     private int _failures;
 
     /// <param name="sessionLive">True while iRacing is in a session. Called from a background thread.</param>
@@ -46,6 +47,8 @@ internal sealed class UpdateService : IDisposable
     public string Detail => _detail;
 
     public int Failures => Volatile.Read(ref _failures);
+
+    public string? LastErrorRef => _lastErrorRef;
 
     public void Start() => _task ??= Task.Run(() => RunAsync(_cts.Token));
 
@@ -93,12 +96,12 @@ internal sealed class UpdateService : IDisposable
                     if (attempt >= RetryDelays.Length)
                     {
                         Set(UpdateState.Failed, $"{e.Message} — checking again next launch");
-                        AppLog.Warn("Updates", "Update check failed; giving up until next launch", e);
+                        _lastErrorRef = AppLog.Warn("Updates", "Update check failed; giving up until next launch", e)?.Ref ?? _lastErrorRef;
                         return;
                     }
 
                     Set(UpdateState.Failed, $"{e.Message} — retrying in {RetryDelays[attempt].TotalMinutes:0} min");
-                    AppLog.Warn("Updates", "Update check failed; will retry", e);
+                    _lastErrorRef = AppLog.Warn("Updates", "Update check failed; will retry", e)?.Ref ?? _lastErrorRef;
                     await Task.Delay(RetryDelays[attempt], token);
                 }
             }
@@ -111,7 +114,7 @@ internal sealed class UpdateService : IDisposable
         {
             Interlocked.Increment(ref _failures);
             Set(UpdateState.Failed, e.Message);
-            AppLog.Error("Updates", "Update service stopped", e);
+            _lastErrorRef = AppLog.Error("Updates", "Update service stopped", e)?.Ref ?? _lastErrorRef;
         }
     }
 

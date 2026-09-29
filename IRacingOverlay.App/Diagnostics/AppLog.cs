@@ -60,6 +60,8 @@ public sealed record ExceptionInfo(string Type, string Message, int HResult, str
 
 /// <summary>One structured log record, immutable so it can cross threads freely.</summary>
 /// <param name="Suppressed">Identical entries dropped by the duplicate filter since this one was last written.</param>
+/// <param name="Ref">Short reference for warnings and errors ("7F3A91C2-012"): shown in the Control Panel
+/// and reports, so a problem the user sees can be found in the log.</param>
 public sealed record LogEntry(
     DateTime TimestampUtc,
     LogLevel Level,
@@ -69,7 +71,19 @@ public sealed record LogEntry(
     int ThreadId,
     string? Session,
     int Suppressed,
-    IReadOnlyDictionary<string, string>? Data);
+    IReadOnlyDictionary<string, string>? Data,
+    string? Ref = null);
+
+/// <summary>Every occurrence of one kind of warning or error in this run, suppressed ones included.</summary>
+public sealed record ProblemTally(
+    LogLevel Level,
+    string Source,
+    string Message,
+    string? ExceptionType,
+    long Count,
+    DateTime FirstUtc,
+    DateTime LastUtc,
+    string? LastRef);
 
 /// <summary>Where written entries go after the in-memory buffer.</summary>
 public interface ILogSink
@@ -81,28 +95,34 @@ public interface ILogSink
 }
 
 /// <summary>
-/// The logging pipeline: duplicate suppression, a ring buffer of recent entries for diagnostics
-/// reports, and an optional persistent sink. Thread-safe and never throws into the caller — a
-/// failing logger must not be what takes the overlay down.
+/// The logging pipeline: duplicate suppression, error references, a tally of every problem in the
+/// run, a ring buffer of recent entries for diagnostics reports, and an optional persistent sink.
+/// Thread-safe and never throws into the caller — a failing logger must not take the app down.
 /// </summary>
 public sealed class Logger
 {
+    private const int MaxProblemKinds = 200;
+
     private readonly object _gate = new();
     private readonly Func<DateTime> _clock;
     private readonly TimeSpan _duplicateWindow;
+    private readonly string _refPrefix;
     private readonly LogEntry[] _ring;
     private readonly Dictionary<string, (DateTime LastWritten, int Suppressed)> _recent = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ProblemTally> _problems = new(StringComparer.Ordinal);
     private int _ringNext;
     private int _ringCount;
+    private int _refSequence;
     private long _totalSuppressed;
     private ILogSink? _sink;
     private volatile string? _session;
 
-    public Logger(Func<DateTime>? clock = null, int ringCapacity = 500, TimeSpan? duplicateWindow = null)
+    public Logger(Func<DateTime>? clock = null, int ringCapacity = 500, TimeSpan? duplicateWindow = null, string refPrefix = "LOG")
     {
         _clock = clock ?? (() => DateTime.UtcNow);
         _ring = new LogEntry[Math.Max(1, ringCapacity)];
         _duplicateWindow = duplicateWindow ?? TimeSpan.FromSeconds(60);
+        _refPrefix = refPrefix;
     }
 
     /// <summary>What the sim is running right now, stamped on every entry.</summary>
@@ -130,23 +150,41 @@ public sealed class Logger
         }
     }
 
-    public void Write(
+    /// <summary>Writes an entry, or counts it as a duplicate. Returns what was written (null when
+    /// suppressed) so callers can keep its <see cref="LogEntry.Ref"/>.</summary>
+    /// <param name="deduplicate">False for the activity trail, where two identical entries are two
+    /// separate things that happened.</param>
+    public LogEntry? Write(
         LogLevel level,
         string source,
         string message,
         Exception? exception = null,
-        IReadOnlyDictionary<string, string>? data = null)
+        IReadOnlyDictionary<string, string>? data = null,
+        bool deduplicate = true)
     {
         try
         {
             var now = _clock();
-            int suppressed;
+            var key = $"{(int)level}|{source}|{message}|{exception?.GetType().FullName}|{Truncate(exception?.Message, 300)}";
+            var suppressed = 0;
+            string? reference = null;
             ILogSink? sink;
             lock (_gate)
             {
-                if (!ShouldWrite(level, source, message, exception, now, out suppressed))
+                var write = !deduplicate || level == LogLevel.Critical || ShouldWrite(key, now, out suppressed);
+                if (write && level >= LogLevel.Warning)
                 {
-                    return;
+                    reference = $"{_refPrefix}-{++_refSequence:D3}";
+                }
+
+                if (level >= LogLevel.Warning)
+                {
+                    Tally(key, level, source, message, exception, now, reference);
+                }
+
+                if (!write)
+                {
+                    return null;
                 }
 
                 sink = _sink;
@@ -161,7 +199,8 @@ public sealed class Logger
                 Environment.CurrentManagedThreadId,
                 _session,
                 suppressed,
-                data);
+                data,
+                reference);
 
             lock (_gate)
             {
@@ -175,10 +214,13 @@ public sealed class Logger
             {
                 WriteToSink(sink, entry);
             }
+
+            return entry;
         }
         catch (Exception)
         {
             // Logging is best effort by design.
+            return null;
         }
     }
 
@@ -187,6 +229,19 @@ public sealed class Logger
         lock (_gate)
         {
             return RecentUnlocked();
+        }
+    }
+
+    /// <summary>Every kind of warning and error this run, most severe and most frequent first. Unlike
+    /// the ring buffer, nothing here scrolls away, and suppressed repeats are counted.</summary>
+    public IReadOnlyList<ProblemTally> Problems()
+    {
+        lock (_gate)
+        {
+            return _problems.Values
+                .OrderByDescending(p => p.Level)
+                .ThenByDescending(p => p.Count)
+                .ToList();
         }
     }
 
@@ -204,16 +259,10 @@ public sealed class Logger
 
     /// <summary>Drops an entry identical to one written less than a window ago, counting it instead,
     /// so a failure repeating at 60 Hz costs one line a minute rather than a disk full of the same
-    /// stack trace over a 24-hour race. Critical entries are never dropped.</summary>
-    private bool ShouldWrite(LogLevel level, string source, string message, Exception? exception, DateTime now, out int suppressed)
+    /// stack trace.</summary>
+    private bool ShouldWrite(string key, DateTime now, out int suppressed)
     {
         suppressed = 0;
-        if (level == LogLevel.Critical)
-        {
-            return true;
-        }
-
-        var key = $"{(int)level}|{source}|{message}|{exception?.GetType().FullName}|{Truncate(exception?.Message, 300)}";
         if (_recent.TryGetValue(key, out var state) && now - state.LastWritten < _duplicateWindow)
         {
             _recent[key] = state with { Suppressed = state.Suppressed + 1 };
@@ -232,6 +281,18 @@ public sealed class Logger
         }
 
         return true;
+    }
+
+    private void Tally(string key, LogLevel level, string source, string message, Exception? exception, DateTime now, string? reference)
+    {
+        if (_problems.TryGetValue(key, out var tally))
+        {
+            _problems[key] = tally with { Count = tally.Count + 1, LastUtc = now, LastRef = reference ?? tally.LastRef };
+        }
+        else if (_problems.Count < MaxProblemKinds)
+        {
+            _problems[key] = new ProblemTally(level, source, message, exception?.GetType().FullName, 1, now, now, reference);
+        }
     }
 
     private LogEntry[] RecentUnlocked()
@@ -263,7 +324,7 @@ public sealed class Logger
 }
 
 /// <summary>The application-wide logger. Every layer logs through here, so one file (and one
-/// diagnostics report) tells the whole story of a session.</summary>
+/// diagnostics report) tells the whole story of a run.</summary>
 public static class AppLog
 {
     public static readonly string LogDirectory = Path.Combine(
@@ -271,7 +332,7 @@ public static class AppLog
 
     private static RollingFileSink? _fileSink;
 
-    public static Logger Current { get; } = new();
+    public static Logger Current { get; } = new(refPrefix: AppInfo.RunId);
 
     public static string? Session
     {
@@ -304,22 +365,30 @@ public static class AppLog
 
     public static IReadOnlyList<LogEntry> Recent() => Current.Recent();
 
-    public static void Debug(string source, string message, IReadOnlyDictionary<string, string>? data = null) =>
+    public static IReadOnlyList<ProblemTally> Problems() => Current.Problems();
+
+    /// <summary>Something the user did or the app decided: the trail that explains the errors around
+    /// it. Never collapsed as a duplicate — switching a widget off, on and off again is three events.</summary>
+    public static LogEntry? Activity(string source, string message, IReadOnlyDictionary<string, string>? data = null) =>
+        Current.Write(LogLevel.Info, source, message, null, data, deduplicate: false);
+
+    public static LogEntry? Debug(string source, string message, IReadOnlyDictionary<string, string>? data = null) =>
         Current.Write(LogLevel.Debug, source, message, null, data);
 
-    public static void Info(string source, string message, IReadOnlyDictionary<string, string>? data = null) =>
+    public static LogEntry? Info(string source, string message, IReadOnlyDictionary<string, string>? data = null) =>
         Current.Write(LogLevel.Info, source, message, null, data);
 
-    public static void Warn(string source, string message, Exception? exception = null, IReadOnlyDictionary<string, string>? data = null) =>
+    public static LogEntry? Warn(string source, string message, Exception? exception = null, IReadOnlyDictionary<string, string>? data = null) =>
         Current.Write(LogLevel.Warning, source, message, exception, data);
 
-    public static void Error(string source, string message, Exception? exception = null, IReadOnlyDictionary<string, string>? data = null) =>
+    public static LogEntry? Error(string source, string message, Exception? exception = null, IReadOnlyDictionary<string, string>? data = null) =>
         Current.Write(LogLevel.Error, source, message, exception, data);
 
     /// <summary>For failures that end the process. Flushed immediately, since there may be no later.</summary>
-    public static void Critical(string source, string message, Exception? exception = null, IReadOnlyDictionary<string, string>? data = null)
+    public static LogEntry? Critical(string source, string message, Exception? exception = null, IReadOnlyDictionary<string, string>? data = null)
     {
-        Current.Write(LogLevel.Critical, source, message, exception, data);
+        var entry = Current.Write(LogLevel.Critical, source, message, exception, data);
         Current.Flush(TimeSpan.FromSeconds(2));
+        return entry;
     }
 }

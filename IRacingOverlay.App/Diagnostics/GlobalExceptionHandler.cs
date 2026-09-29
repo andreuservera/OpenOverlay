@@ -90,11 +90,15 @@ public static class GlobalExceptionHandler
     private static long _lastHandledTicks;
     private static int _terminating;
     private static Timer? _forcedExit;
+    private static volatile string? _lastRef;
 
     /// <summary>Rebuilds the overlay windows. Set by the Control Panel once it exists.</summary>
     public static Action? StormRecovery { get; set; }
 
     public static long HandledCount => Interlocked.Read(ref _handledCount);
+
+    /// <summary>Log reference of the latest contained UI exception.</summary>
+    public static string? LastRef => _lastRef;
 
     public static DateTime? LastHandledUtc
     {
@@ -143,7 +147,7 @@ public static class GlobalExceptionHandler
     {
         Interlocked.Increment(ref _handledCount);
         Interlocked.Exchange(ref _lastHandledTicks, DateTime.UtcNow.Ticks);
-        AppLog.Error(source, "Unhandled exception contained; the app keeps running", exception);
+        _lastRef = AppLog.Error(source, "Unhandled exception contained; the app keeps running", exception)?.Ref ?? _lastRef;
 
         StormAction action;
         lock (Gate)
@@ -194,6 +198,7 @@ public static class GlobalExceptionHandler
             ["thread"] = Environment.CurrentManagedThreadId.ToString(CultureInfo.InvariantCulture),
         });
         var report = DiagnosticsReport.WriteCrashReport("Unhandled exception", exception);
+        RunJournal.Current?.RecordCrash(report);
         AppRestarter.TryRelaunch(report is null ? "crash" : $"crash, report {System.IO.Path.GetFileName(report)}");
         AppLog.Flush(TimeSpan.FromSeconds(2));
     }
@@ -207,7 +212,7 @@ public static class GlobalExceptionHandler
         }
 
         AppLog.Critical("Crash", reason, exception);
-        DiagnosticsReport.WriteCrashReport(reason, exception);
+        var report = DiagnosticsReport.WriteCrashReport(reason, exception);
         if (!AppRestarter.TryRelaunch(reason))
         {
             // No replacement allowed: better a degraded overlay than none.
@@ -215,6 +220,7 @@ public static class GlobalExceptionHandler
             return;
         }
 
+        RunJournal.Current?.RecordCrash(report);
         AppLog.Flush(TimeSpan.FromSeconds(2));
         // A normal shutdown saves widget positions; the timer covers a UI thread too broken to get there.
         _forcedExit = new Timer(_ => Process.GetCurrentProcess().Kill(), null, TimeSpan.FromSeconds(5), Timeout.InfiniteTimeSpan);

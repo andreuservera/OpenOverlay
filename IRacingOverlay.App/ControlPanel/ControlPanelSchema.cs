@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
@@ -27,6 +28,20 @@ public sealed partial class ControlPanelViewModel
 
         foreach (var group in BuildGroups(item))
         {
+            // Names every change in the activity trail after where the user made it.
+            var path = $"{item.Title} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
+            foreach (var setting in group.Items)
+            {
+                setting.TracePath = path;
+                if (setting is ChipGroupSetting chips)
+                {
+                    foreach (var chip in chips.Chips)
+                    {
+                        chip.TracePath = $"{path}{chips.Label} › ";
+                    }
+                }
+            }
+
             item.Settings.Add(group);
         }
     }
@@ -486,19 +501,24 @@ public sealed partial class ControlPanelViewModel
                 copy!.ButtonText = "Copied";
             });
 
+        var problems = AppLog.Problems();
+        var errors = problems.Where(p => p.Level >= LogLevel.Error).Sum(p => p.Count);
+        var warnings = problems.Where(p => p.Level == LogLevel.Warning).Sum(p => p.Count);
         return new SettingsGroup(
             "DIAGNOSTICS",
-            "OpenOverlay recovers from errors on its own and writes what happened to a log. None of it leaves your PC unless you send it.")
+            "Every run is logged: what you changed, what the app did, and each error with a reference (shown in the status bar) to look it up by. " +
+            $"This run: {AppInfo.RunId} · {errors} {(errors == 1 ? "error" : "errors")} · {warnings} {(warnings == 1 ? "warning" : "warnings")}. " +
+            "Nothing leaves your PC unless you send it.")
             .With(
                 copy,
                 new ActionSetting(
                     "Export report",
-                    "A .zip with the report, recent logs, crash reports and your settings, shown in Explorer.",
+                    "A .zip with the report, the logs, crash reports and your settings, shown in Explorer.",
                     "Export",
                     () => ShowInExplorer(DiagnosticsReport.Export())),
                 new ActionSetting(
                     "Log files",
-                    "One file per day, kept for two weeks.",
+                    "One file per day, kept for 30 days. Each line carries the run it belongs to.",
                     "Open folder",
                     () =>
                     {

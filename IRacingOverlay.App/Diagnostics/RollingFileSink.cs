@@ -9,7 +9,7 @@ using System.Text.Json;
 namespace IRacingOverlay.App.Diagnostics;
 
 /// <summary>
-/// Persists log entries as JSON Lines: one file per local day, rolled at 10 MB, pruned after 14 days
+/// Persists log entries as JSON Lines: one file per local day, rolled at 10 MB, pruned after 30 days
 /// or past 100 MB in total. A dedicated background thread does the I/O, so a slow or full disk costs
 /// dropped log lines rather than a stalled UI thread; the queue is bounded for the same reason.
 /// </summary>
@@ -19,7 +19,7 @@ public sealed class RollingFileSink : ILogSink
     private const long MaxFileBytes = 10L * 1024 * 1024;
     private const long MaxTotalBytes = 100L * 1024 * 1024;
     private const int QueueCapacity = 10_000;
-    private static readonly TimeSpan Retention = TimeSpan.FromDays(14);
+    private static readonly TimeSpan Retention = TimeSpan.FromDays(30);
     private static readonly TimeSpan RetryOpenAfter = TimeSpan.FromSeconds(30);
 
     private readonly string _directory;
@@ -216,6 +216,12 @@ public static class LogFormatter
             json.WriteString("level", entry.Level.ToString());
             json.WriteString("source", entry.Source);
             json.WriteString("msg", entry.Message);
+            if (entry.Ref is { } reference)
+            {
+                json.WriteString("ref", reference);
+            }
+
+            json.WriteString("run", AppInfo.RunId);
             json.WriteString("version", AppInfo.Version);
             json.WriteString("env", AppInfo.InstallKind);
             json.WriteNumber("pid", AppInfo.ProcessId);
@@ -261,6 +267,11 @@ public static class LogFormatter
             .Append(' ').Append(entry.Level.ToString().ToUpperInvariant().PadRight(8))
             .Append('[').Append(entry.Source).Append("] ")
             .Append(entry.Message);
+        if (entry.Ref is { } reference)
+        {
+            text.Append(" (ref ").Append(reference).Append(')');
+        }
+
         if (entry.Suppressed > 0)
         {
             text.Append(" (+").Append(entry.Suppressed).Append(" identical suppressed)");

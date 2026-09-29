@@ -32,10 +32,16 @@ public abstract class SettingItem : INotifyPropertyChanged
     /// self-evident settings are better off without a line of text repeating their own name.</summary>
     public string? Hint { get; }
 
+    /// <summary>Where the setting lives ("Standings › Columns › "), stamped when its page is built.</summary>
+    internal string TracePath { get; set; } = "";
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    /// <summary>Records a change in the activity trail, before it is applied, so a change that fails is still on record.</summary>
+    protected void Trace(string value) => AppLog.Activity("Settings", $"{TracePath}{Label}: {value}");
 }
 
 /// <summary>An on/off option, drawn as a switch.</summary>
@@ -63,6 +69,7 @@ public sealed class ToggleSetting : SettingItem
 
             _value = value;
             OnPropertyChanged();
+            Trace(value ? "on" : "off");
             _apply(value);
         }
     }
@@ -98,6 +105,7 @@ public sealed class ChoiceSetting : SettingItem
 
             _selectedIndex = value;
             OnPropertyChanged();
+            Trace(value < Options.Count ? Options[value] : value.ToString(CultureInfo.InvariantCulture));
             _apply(value);
         }
     }
@@ -132,6 +140,7 @@ public sealed class SegmentedSetting : SettingItem
 
             _selectedIndex = value;
             OnPropertyChanged();
+            Trace(value < Options.Count ? Options[value] : value.ToString(CultureInfo.InvariantCulture));
             _apply(value);
         }
     }
@@ -206,6 +215,7 @@ public sealed class NumberSetting : SettingItem
 
             _value = clamped;
             OnPropertyChanged();
+            Trace(clamped.ToString(Format, CultureInfo.InvariantCulture) + (Unit is null ? "" : " " + Unit));
             _apply(clamped);
         }
     }
@@ -317,6 +327,9 @@ public sealed class ChipSetting : INotifyPropertyChanged
     public string Label { get; }
     public string? Hint { get; }
 
+    /// <summary>See <see cref="SettingItem.TracePath"/>; includes the chip group's own label.</summary>
+    internal string TracePath { get; set; } = "";
+
     public bool Value
     {
         get => _value;
@@ -329,6 +342,7 @@ public sealed class ChipSetting : INotifyPropertyChanged
 
             _value = value;
             OnPropertyChanged();
+            AppLog.Activity("Settings", $"{TracePath}{Label}: {(value ? "on" : "off")}");
             _apply(value);
         }
     }
@@ -363,7 +377,11 @@ public sealed class ActionSetting : SettingItem
         : base(label, hint)
     {
         _buttonText = buttonText;
-        InvokeCommand = new RelayCommand(invoke);
+        InvokeCommand = new RelayCommand(() =>
+        {
+            Trace("run");
+            invoke();
+        });
     }
 
     public ICommand InvokeCommand { get; }
@@ -433,6 +451,7 @@ public sealed class HotkeySetting : SettingItem
 
             _enabled = value;
             OnPropertyChanged();
+            Trace(value ? "enabled" : "disabled");
             _setEnabled(value);
         }
     }
@@ -488,10 +507,12 @@ public sealed class HotkeySetting : SettingItem
         IsRecording = false;
         if (problem is not null)
         {
+            Trace($"{candidate.Display} refused ({problem})");
             SetError(problem);
             return;
         }
 
+        Trace(candidate.Display);
         SetHotkey(candidate);
     }
 
@@ -505,6 +526,7 @@ public sealed class HotkeySetting : SettingItem
 
     private void Clear()
     {
+        Trace("cleared");
         _assign(null);
         SetError(null);
         SetHotkey(null);

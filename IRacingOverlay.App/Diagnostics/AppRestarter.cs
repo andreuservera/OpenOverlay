@@ -14,6 +14,7 @@ public static class AppRestarter
 {
     public const string RecoveredArgument = "--recovered";
     private const string WaitForPidArgument = "--wait-for-pid";
+    private const string PreviousRunArgument = "--previous-run";
     private const int MaxRestarts = 3;
     private static readonly TimeSpan RestartWindow = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan WaitForPrevious = TimeSpan.FromSeconds(15);
@@ -22,12 +23,14 @@ public static class AppRestarter
 
     public static bool IsRecoveredLaunch(string[] args) => args.Contains(RecoveredArgument, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>The run ID of the process that relaunched this one, linking the two in the logs.</summary>
+    public static string? PreviousRunId(string[] args) => ValueAfter(args, PreviousRunArgument);
+
     /// <summary>Blocks until the process that relaunched us has exited, so the two never hold the
     /// tray icon, the hotkeys or the settings files at the same time.</summary>
     public static void WaitForPreviousInstance(string[] args)
     {
-        var index = Array.FindIndex(args, a => string.Equals(a, WaitForPidArgument, StringComparison.OrdinalIgnoreCase));
-        if (index < 0 || index + 1 >= args.Length || !int.TryParse(args[index + 1], CultureInfo.InvariantCulture, out var pid))
+        if (!int.TryParse(ValueAfter(args, WaitForPidArgument), CultureInfo.InvariantCulture, out var pid))
         {
             return;
         }
@@ -72,6 +75,8 @@ public static class AppRestarter
             start.ArgumentList.Add(RecoveredArgument);
             start.ArgumentList.Add(WaitForPidArgument);
             start.ArgumentList.Add(Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
+            start.ArgumentList.Add(PreviousRunArgument);
+            start.ArgumentList.Add(AppInfo.RunId);
             using var _ = Process.Start(start);
             AppLog.Critical("Restart", "Started a replacement OpenOverlay process", data: Reason(reason));
             return true;
@@ -128,4 +133,10 @@ public static class AppRestarter
     }
 
     private static Dictionary<string, string> Reason(string reason) => new() { ["reason"] = reason };
+
+    private static string? ValueAfter(string[] args, string name)
+    {
+        var index = Array.FindIndex(args, a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+    }
 }

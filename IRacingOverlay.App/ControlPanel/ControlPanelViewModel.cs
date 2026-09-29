@@ -177,6 +177,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
 
             _isEditMode = value;
+            AppLog.Activity("Control Panel", value ? "Edit layout on" : "Edit layout off");
             foreach (var slot in _slots.Values)
             {
                 slot.IsEditMode = value;

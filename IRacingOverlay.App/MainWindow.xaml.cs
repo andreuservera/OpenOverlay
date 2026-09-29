@@ -59,6 +59,7 @@ public partial class MainWindow : Window
     private string? _sessionKey;
     private string? _sessionDescription;
     private bool _awaitingReconnect;
+    private volatile string? _telemetryErrorRef;
     // Cockpit (proximity/ABS bars) and the pedal trace are the two displays where update rate is
     // itself the whole point — they're read on their own timer, decoupled from the general 100ms
     // tick, so the user can push them faster (lower latency, more CPU) or slower independently of
@@ -88,11 +89,16 @@ public partial class MainWindow : Window
         RestoreFromTray();
     }
 
-    private void HideToTray() => Hide();
+    private void HideToTray()
+    {
+        AppLog.Activity("Control Panel", "Hidden to the tray");
+        Hide();
+    }
 
     /// <summary>Back to the state it was in before it went away, and in front of whatever has focus.</summary>
     private void RestoreFromTray()
     {
+        AppLog.Activity("Control Panel", "Opened");
         Show();
         if (WindowState == WindowState.Minimized)
         {
@@ -108,6 +114,7 @@ public partial class MainWindow : Window
 
     private void ExitApplication()
     {
+        AppLog.Activity("Control Panel", "Exit requested");
         _exiting = true;
         Close();
         System.Windows.Application.Current.Shutdown();
@@ -754,6 +761,7 @@ public partial class MainWindow : Window
     {
         if (_dashboard is { IsVisible: true })
         {
+            AppLog.Activity("Dashboard", "Hidden");
             _dashboard.Hide();
             SetDashboardButtonCaption("Show dashboard");
             return;
@@ -762,11 +770,14 @@ public partial class MainWindow : Window
         var screens = Screen.AllScreens;
         if (screens.Length == 0)
         {
+            AppLog.Warn("Dashboard", "No display found to show the dashboard on");
             return;
         }
 
+        var display = Math.Clamp(_vm.SelectedMonitorIndex, 0, screens.Length - 1);
+        AppLog.Activity("Dashboard", $"Shown on display {display + 1}");
         _dashboard ??= CreateDashboard();
-        _dashboard.MoveToScreen(screens[Math.Clamp(_vm.SelectedMonitorIndex, 0, screens.Length - 1)]);
+        _dashboard.MoveToScreen(screens[display]);
         SetDashboardButtonCaption("Hide dashboard");
     }
 
@@ -780,6 +791,7 @@ public partial class MainWindow : Window
             // Closed with Alt+F4: a closed window can't be shown again, so the next toggle builds a new one.
             if (ReferenceEquals(_dashboard, dashboard))
             {
+                AppLog.Activity("Dashboard", "Closed");
                 _dashboard = null;
             }
 
@@ -933,7 +945,10 @@ public partial class MainWindow : Window
             data["retryInSeconds"] = retry.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture);
         }
 
-        AppLog.Current.Write(level, "Telemetry", message, fault.Exception, data);
+        if (AppLog.Current.Write(level, "Telemetry", message, fault.Exception, data)?.Ref is { } reference)
+        {
+            _telemetryErrorRef = reference;
+        }
     }
 
     // ===== Health =====
@@ -956,7 +971,7 @@ public partial class MainWindow : Window
             ConnectionState.Recovering => (HealthStatus.Degraded, "reconnecting"),
             _ => (HealthStatus.Healthy, "waiting for iRacing"),
         };
-        _health.Report("Telemetry", status, summary, telemetry.LastTickUtc, telemetry.LastErrorUtc, telemetry.TotalFailures, telemetry.LastError);
+        _health.Report("Telemetry", status, summary, telemetry.LastTickUtc, telemetry.LastErrorUtc, telemetry.TotalFailures, telemetry.LastError, _telemetryErrorRef);
 
         _health.Report("UI thread", _watchdog.Status, _watchdog.Status == HealthStatus.Healthy
             ? "responsive"
@@ -969,10 +984,16 @@ public partial class MainWindow : Window
             settingsProblem ? "a change could not be saved" : "saved",
             lastFailureUtc: SettingsFile.LastWriteFailureUtc,
             failures: SettingsFile.WriteFailures,
-            lastError: SettingsFile.LastWriteError);
+            lastError: SettingsFile.LastWriteError,
+            lastErrorRef: SettingsFile.LastWriteErrorRef);
 
         // Updates never affect the overlay itself, so a failed check is only ever a degradation.
-        _health.Report("Updates", _updates.State == UpdateState.Failed ? HealthStatus.Degraded : HealthStatus.Healthy, _updates.Detail, failures: _updates.Failures);
+        _health.Report(
+            "Updates",
+            _updates.State == UpdateState.Failed ? HealthStatus.Degraded : HealthStatus.Healthy,
+            _updates.Detail,
+            failures: _updates.Failures,
+            lastErrorRef: _updates.LastErrorRef);
 
         var uiProblem = GlobalExceptionHandler.LastHandledUtc is { } uiFailure && now - uiFailure < RecentProblemWindow;
         _health.Report(
@@ -980,7 +1001,8 @@ public partial class MainWindow : Window
             uiProblem ? HealthStatus.Degraded : HealthStatus.Healthy,
             uiProblem ? $"{GlobalExceptionHandler.HandledCount} contained so far" : "none recently",
             lastFailureUtc: GlobalExceptionHandler.LastHandledUtc,
-            failures: GlobalExceptionHandler.HandledCount);
+            failures: GlobalExceptionHandler.HandledCount,
+            lastErrorRef: GlobalExceptionHandler.LastRef);
 
         var report = _health.Snapshot();
         _vm.Health = report.Overall;

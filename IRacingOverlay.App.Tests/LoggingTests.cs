@@ -70,6 +70,70 @@ public class LoggingTests
     }
 
     [Fact]
+    public void Write_WarningsAndErrorsGetSequentialReferences_InfoDoesNot()
+    {
+        var logger = new Logger(refPrefix: "7F3A91C2");
+
+        var info = logger.Write(LogLevel.Info, "Startup", "starting");
+        var warning = logger.Write(LogLevel.Warning, "Updates", "offline");
+        var error = logger.Write(LogLevel.Error, "Widget: Fuel", "Build failed", new InvalidOperationException());
+
+        Assert.Null(info!.Ref);
+        Assert.Equal("7F3A91C2-001", warning!.Ref);
+        Assert.Equal("7F3A91C2-002", error!.Ref);
+    }
+
+    [Fact]
+    public void Write_Suppressed_ReturnsNull()
+    {
+        var logger = new Logger();
+
+        Assert.NotNull(logger.Write(LogLevel.Error, "A", "failed"));
+        Assert.Null(logger.Write(LogLevel.Error, "A", "failed"));
+    }
+
+    [Fact]
+    public void Write_ActivityEntries_AreNeverCollapsed()
+    {
+        var logger = new Logger();
+
+        logger.Write(LogLevel.Info, "Widget: Fuel", "Switched on", deduplicate: false);
+        logger.Write(LogLevel.Info, "Widget: Fuel", "Switched off", deduplicate: false);
+        logger.Write(LogLevel.Info, "Widget: Fuel", "Switched on", deduplicate: false);
+
+        Assert.Equal(["Switched on", "Switched off", "Switched on"], logger.Recent().Select(e => e.Message));
+    }
+
+    [Fact]
+    public void Problems_CountEveryOccurrenceIncludingSuppressedOnes()
+    {
+        var clock = new Clock(new DateTime(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc));
+        var logger = new Logger(() => clock.Now, refPrefix: "RUN");
+        var first = clock.Now;
+
+        for (var i = 0; i < 50; i++)
+        {
+            logger.Write(LogLevel.Error, "Widget: Fuel", "Build failed", new IndexOutOfRangeException("bad index"));
+            clock.Now += TimeSpan.FromSeconds(1);
+        }
+
+        logger.Write(LogLevel.Warning, "Updates", "offline");
+        logger.Write(LogLevel.Info, "Startup", "not a problem");
+
+        var problems = logger.Problems();
+        Assert.Equal(2, problems.Count);
+        var fuel = problems[0];
+        Assert.Equal(LogLevel.Error, fuel.Level);
+        Assert.Equal(50, fuel.Count);
+        Assert.Equal(first, fuel.FirstUtc);
+        Assert.Equal(first.AddSeconds(49), fuel.LastUtc);
+        Assert.Equal("System.IndexOutOfRangeException", fuel.ExceptionType);
+        // 50 errors a second apart, one written per 60 s window: the reference points at the written one.
+        Assert.Equal("RUN-001", fuel.LastRef);
+        Assert.Equal(LogLevel.Warning, problems[1].Level);
+    }
+
+    [Fact]
     public void Recent_KeepsTheNewestEntriesInOrder()
     {
         var logger = new Logger(ringCapacity: 3);
@@ -141,7 +205,8 @@ public class LoggingTests
             7,
             "Spa · Race",
             3,
-            new Dictionary<string, string> { ["stage"] = "read" });
+            new Dictionary<string, string> { ["stage"] = "read" },
+            "7F3A91C2-012");
 
         var bytes = LogFormatter.ToJsonLine(entry);
 
@@ -152,6 +217,8 @@ public class LoggingTests
         Assert.Equal("2026-09-30T12:00:00.0000000Z", root.GetProperty("ts").GetString());
         Assert.Equal("Error", root.GetProperty("level").GetString());
         Assert.Equal("Telemetry", root.GetProperty("source").GetString());
+        Assert.Equal("7F3A91C2-012", root.GetProperty("ref").GetString());
+        Assert.Equal(AppInfo.RunId, root.GetProperty("run").GetString());
         Assert.Equal("Spa · Race", root.GetProperty("session").GetString());
         Assert.Equal(3, root.GetProperty("suppressed").GetInt32());
         Assert.Equal("read", root.GetProperty("data").GetProperty("stage").GetString());

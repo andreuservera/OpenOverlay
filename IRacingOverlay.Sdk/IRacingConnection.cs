@@ -9,11 +9,11 @@ namespace IRacingOverlay.Sdk;
 /// waits on iRacing's data-ready event for each tick, and publishes typed telemetry + session info.
 /// One instance should be shared app-wide (e.g. one per App.xaml.cs) rather than opened per widget.
 ///
-/// Built to run unattended through a 24-hour race: no failure ends the reader. Errors are retried
+/// No failure ends the reader, and every one is reported through <see cref="Fault"/>. Errors are retried
 /// with exponential backoff under a supervisor, a sim that stops ticking is detected and the mapping
 /// reopened, the variable layout is re-read whenever it can have changed, and session info that
-/// fails to parse never stops telemetry. Subscribers' exceptions are contained and reported through
-/// <see cref="Fault"/> rather than tearing the connection down.
+/// fails to parse never stops telemetry. Subscribers' exceptions are contained rather than tearing
+/// the connection down.
 /// </summary>
 public sealed class IRacingConnection : IDisposable
 {

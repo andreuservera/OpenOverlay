@@ -7,8 +7,8 @@ namespace IRacingOverlay.Sdk.Tests;
 
 /// <summary>
 /// Drives the real reader loop against a named shared-memory block and data event that stand in
-/// for iRacing, covering the failure modes a 24-hour race runs into: stalls, restarts, corrupt
-/// session info, misbehaving subscribers and the sim going away.
+/// for iRacing, covering the failure modes the reader has to survive and report: stalls, restarts,
+/// corrupt session info, misbehaving subscribers and the sim going away.
 /// </summary>
 public sealed class IRacingConnectionResilienceTests
 {

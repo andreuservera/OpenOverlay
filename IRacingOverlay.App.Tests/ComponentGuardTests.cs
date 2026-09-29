@@ -31,6 +31,7 @@ public class ComponentGuardTests
         Assert.Equal(HealthStatus.Degraded, health.Status);
         Assert.Equal(1, health.Failures);
         Assert.Contains("widget bug", health.LastError);
+        Assert.StartsWith(AppInfo.RunId + "-", health.LastErrorRef);
     }
 
     [Fact]
@@ -148,6 +149,7 @@ public class HealthMonitorTests
 
         Assert.Equal(HealthStatus.Failed, report.Overall);
         Assert.StartsWith("Widget: Fuel:", report.Summary);
+        Assert.Contains(" · ref " + report.Components.Single(c => c.Name == "Widget: Fuel").LastErrorRef, report.Summary);
         Assert.Same(report, HealthMonitor.Latest);
     }
 

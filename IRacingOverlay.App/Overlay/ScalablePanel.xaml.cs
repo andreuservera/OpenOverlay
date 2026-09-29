@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using IRacingOverlay.App.Diagnostics;
 
 namespace IRacingOverlay.App.Overlay;
 
@@ -141,11 +142,11 @@ public partial class ScalablePanel : UserControl
         }
     }
 
-    private void MinusButton_Click(object sender, RoutedEventArgs e) => Level = ScaleLevels.Smaller(Level);
+    private void MinusButton_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(ScaleLevels.Smaller(Level));
 
-    private void PlusButton_Click(object sender, RoutedEventArgs e) => Level = ScaleLevels.Larger(Level);
+    private void PlusButton_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(ScaleLevels.Larger(Level));
 
-    private void LevelChip_Click(object sender, RoutedEventArgs e) => Level = ScaleLevels.Default;
+    private void LevelChip_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(ScaleLevels.Default);
 
     // Ctrl+wheel is the same gesture as zooming anywhere else, and it only bites while the size
     // control is available — a bare wheel still belongs to whatever is underneath.
@@ -156,8 +157,19 @@ public partial class ScalablePanel : UserControl
             return;
         }
 
-        Level = e.Delta > 0 ? ScaleLevels.Larger(Level) : ScaleLevels.Smaller(Level);
+        SetLevelFromWidget(e.Delta > 0 ? ScaleLevels.Larger(Level) : ScaleLevels.Smaller(Level));
         e.Handled = true;
+    }
+
+    /// <summary>A size change made on the widget itself; the Control Panel's size selector records its own.</summary>
+    private void SetLevelFromWidget(ScaleLevel level)
+    {
+        if (level != Level && PersistenceKey is { } key)
+        {
+            AppLog.Activity("Layout", $"{key} size: {level}");
+        }
+
+        Level = level;
     }
 
     private void Root_MouseEnter(object sender, MouseEventArgs e)

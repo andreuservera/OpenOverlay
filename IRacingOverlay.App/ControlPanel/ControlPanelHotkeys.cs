@@ -1,3 +1,4 @@
+using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -41,6 +42,7 @@ public sealed partial class ControlPanelViewModel
             }
 
             _overlaysHidden = value;
+            AppLog.Activity("Control Panel", value ? "All overlays hidden" : "All overlays shown");
             foreach (var slot in _slots.Values)
             {
                 slot.IsSuppressed = value;
@@ -52,6 +54,7 @@ public sealed partial class ControlPanelViewModel
 
     public void Execute(string action)
     {
+        AppLog.Activity("Hotkeys", $"Pressed: {Describe(action)}");
         if (HotkeyActions.TryGetWidget(action, out var widgetKey))
         {
             // Same switch as the widget's own toggle in the rail, so the two can never disagree.
@@ -87,6 +90,7 @@ public sealed partial class ControlPanelViewModel
     /// glitch without restarting the app. Positions, sizes and options all carry over.</summary>
     public void RestartOverlays()
     {
+        AppLog.Activity("Control Panel", "Overlay windows restarted");
         foreach (var slot in _slots.Values)
         {
             slot.Restart();
@@ -96,6 +100,7 @@ public sealed partial class ControlPanelViewModel
     /// <summary>Every widget back to its default position, including ones not opened yet.</summary>
     public void ResetLayout()
     {
+        AppLog.Activity("Control Panel", "Overlay positions reset");
         foreach (var slot in _slots.Values)
         {
             slot.ResetPosition();
@@ -105,6 +110,11 @@ public sealed partial class ControlPanelViewModel
     public void ReportHotkeyFailures(IReadOnlySet<string> failed)
     {
         _hotkeyFailures = failed;
+        if (failed.Count > 0)
+        {
+            AppLog.Warn("Hotkeys", $"Windows refused {failed.Count} shortcut(s): {string.Join(", ", failed.Select(Describe))}");
+        }
+
         foreach (var (action, setting) in _hotkeySettings)
         {
             setting.SetStatus(failed.Contains(action) ? HotkeyTakenMessage : null);

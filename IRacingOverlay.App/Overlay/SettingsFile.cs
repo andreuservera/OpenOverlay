@@ -16,11 +16,14 @@ internal static class SettingsFile
     private const int WriteAttempts = 3;
     private static long _writeFailures;
     private static volatile string? _lastWriteError;
+    private static volatile string? _lastWriteErrorRef;
     private static long _lastWriteFailureTicks;
 
     public static long WriteFailures => Interlocked.Read(ref _writeFailures);
 
     public static string? LastWriteError => _lastWriteError;
+
+    public static string? LastWriteErrorRef => _lastWriteErrorRef;
 
     public static DateTime? LastWriteFailureUtc
     {
@@ -163,7 +166,8 @@ internal static class SettingsFile
         Interlocked.Increment(ref _writeFailures);
         Interlocked.Exchange(ref _lastWriteFailureTicks, DateTime.UtcNow.Ticks);
         _lastWriteError = $"{Path.GetFileName(path)}: {exception.Message}";
-        AppLog.Error("Settings", "Could not save settings; the change applies until the app closes", exception, Name(path));
+        _lastWriteErrorRef = AppLog.Error("Settings", "Could not save settings; the change applies until the app closes", exception, Name(path))?.Ref
+            ?? _lastWriteErrorRef;
     }
 
     private static void TryDelete(string path)

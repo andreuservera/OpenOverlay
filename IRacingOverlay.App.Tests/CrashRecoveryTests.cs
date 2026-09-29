@@ -107,6 +107,14 @@ public class CrashRecoveryTests
     }
 
     [Fact]
+    public void PreviousRun_LinksTheRelaunchedProcessToTheOneItReplaced()
+    {
+        Assert.Equal("7F3A91C2", AppRestarter.PreviousRunId(["--recovered", "--wait-for-pid", "1", "--previous-run", "7F3A91C2"]));
+        Assert.Null(AppRestarter.PreviousRunId(["--recovered"]));
+        Assert.Null(AppRestarter.PreviousRunId(["--previous-run"]));
+    }
+
+    [Fact]
     public void WaitForPreviousInstance_ReturnsForMissingOrInvalidPids()
     {
         AppRestarter.WaitForPreviousInstance(["--wait-for-pid", "not-a-pid"]);

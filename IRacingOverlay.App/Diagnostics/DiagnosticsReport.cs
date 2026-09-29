@@ -17,14 +17,14 @@ public sealed record DiagnosticsContext(
 
 /// <summary>
 /// Builds the plain-text diagnostics report behind "Copy diagnostics", "Export report" and every
-/// crash report: version and environment, the session, telemetry and component health, and the
-/// recent log. The user's profile path is masked so a report can be pasted into a public issue.
+/// crash report: version, run and environment, the session, telemetry and component health, every
+/// problem of the run with its reference, and the recent log. The user's profile path is masked so
+/// a report can be pasted into a public issue.
 /// </summary>
 public static class DiagnosticsReport
 {
     private const int MaxCrashReports = 20;
     private const long MaxExportedLogBytes = 25L * 1024 * 1024;
-    private static readonly TimeSpan ExportedLogAge = TimeSpan.FromDays(3);
     private static volatile DiagnosticsContext? _latestContext;
 
     public static readonly string CrashDirectory = Path.Combine(AppLog.LogDirectory, "crashes");
@@ -60,6 +60,7 @@ public static class DiagnosticsReport
 
         AppendTelemetry(text, context?.Telemetry);
         AppendHealth(text, HealthMonitor.Latest);
+        AppendProblems(text, AppLog.Problems());
 
         Section(text, "Widgets");
         foreach (var widget in context?.Widgets ?? [])
@@ -96,7 +97,7 @@ public static class DiagnosticsReport
         try
         {
             Directory.CreateDirectory(CrashDirectory);
-            var path = Path.Combine(CrashDirectory, $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)}.txt");
+            var path = Path.Combine(CrashDirectory, $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}-{AppInfo.RunId}.txt");
             File.WriteAllText(path, Build(reason, exception), Encoding.UTF8);
             PruneCrashReports();
             return path;
@@ -120,8 +121,7 @@ public static class DiagnosticsReport
             AddText(zip, "report.txt", Build("Exported by the user"));
 
             long logBytes = 0;
-            foreach (var log in Files(AppLog.LogDirectory, RollingFileSink.FilePrefix + "*.log")
-                         .Where(f => DateTime.UtcNow - f.LastWriteTimeUtc < ExportedLogAge))
+            foreach (var log in Files(AppLog.LogDirectory, RollingFileSink.FilePrefix + "*.log"))
             {
                 logBytes += log.Length;
                 if (logBytes > MaxExportedLogBytes)
@@ -159,6 +159,9 @@ public static class DiagnosticsReport
         Section(text, "Application");
         var environment = AppInfo.Describe();
         Line(text, "Version", $"{AppInfo.Version} ({AppInfo.InstallKind})");
+        Line(text, "Run", AppInfo.PreviousRunId is { } previous
+            ? $"{AppInfo.RunId}, relaunched automatically after run {previous}"
+            : AppInfo.RunId);
         Line(text, "Started", $"{Utc(AppInfo.StartedUtc)}, up {Duration(AppInfo.Uptime)}");
         Line(text, "Process", $"{AppInfo.ProcessId}, recovered launch: {environment["recovered"]}");
         try
@@ -225,7 +228,43 @@ public static class DiagnosticsReport
                 line.Append(" | ").Append(error);
             }
 
+            if (component.LastErrorRef is { } reference)
+            {
+                line.Append(" (ref ").Append(reference).Append(')');
+            }
+
             text.AppendLine(line.ToString());
+        }
+    }
+
+    /// <summary>Every kind of warning and error this run with how often it happened — the recent log
+    /// only holds the last few hundred lines, this holds the whole run.</summary>
+    private static void AppendProblems(StringBuilder text, IReadOnlyList<ProblemTally> problems)
+    {
+        Section(text, $"Problems this run (errors: {problems.Where(p => p.Level >= LogLevel.Error).Sum(p => p.Count)}, warnings: {problems.Where(p => p.Level == LogLevel.Warning).Sum(p => p.Count)})");
+        if (problems.Count == 0)
+        {
+            text.AppendLine("None");
+            return;
+        }
+
+        foreach (var problem in problems)
+        {
+            text.Append(problem.Level.ToString().ToUpperInvariant().PadRight(9))
+                .Append(CultureInfo.InvariantCulture, $"x{problem.Count,-5} ")
+                .Append(problem.Source).Append(" — ").Append(problem.Message);
+            if (problem.ExceptionType is { } type)
+            {
+                text.Append(" (").Append(type).Append(')');
+            }
+
+            text.Append(" | first ").Append(Utc(problem.FirstUtc)).Append(", last ").Append(Utc(problem.LastUtc));
+            if (problem.LastRef is { } reference)
+            {
+                text.Append(", ref ").Append(reference);
+            }
+
+            text.AppendLine();
         }
     }
 
