@@ -312,6 +312,20 @@ public static class PreviewData
             HasWearData = true,
         };
 
+    /// <summary>A warm, breezy afternoon with rain threatening: a crosswind from front-left and a
+    /// medium rain chance, so the arrow and the yellow rain colour both show.</summary>
+    public static WeatherState Weather() => new()
+    {
+        AirTempC = 21.4,
+        TrackTempC = 33.8,
+        HumidityPct = 54,
+        WindSpeedMs = 3.6,
+        WindFromRelativeDeg = 315,
+        HeadingDeg = 60,
+        Condition = WeatherCondition.PartlyCloudy,
+        RainChancePct = 40,
+    };
+
     public static TrackInfoState TrackInfo() => new()
     {
         TrackName = "Spa-Francorchamps",

@@ -134,4 +134,13 @@ internal static class TelemetryVarNames
     /// <summary>Reported as a 0-1 fraction despite iRacing documenting the unit as "%" — multiply by
     /// 100 before display.</summary>
     public const string RelativeHumidity = "RelativeHumidity";
+    /// <summary>Car heading, radians clockwise from north — the reference for relative wind.</summary>
+    public const string YawNorth = "YawNorth";
+    /// <summary>int — 0 clear, 1 partly cloudy, 2 mostly cloudy, 3 overcast.</summary>
+    public const string Skies = "Skies";
+    /// <summary>Precipitation at the start/finish line, a 0-1 fraction like humidity.</summary>
+    public const string Precipitation = "Precipitation";
+    /// <summary>Sun angle above the horizon in radians; below zero is night.</summary>
+    public const string SolarAltitude = "SolarAltitude";
+    public const string WeatherDeclaredWet = "WeatherDeclaredWet";
 }

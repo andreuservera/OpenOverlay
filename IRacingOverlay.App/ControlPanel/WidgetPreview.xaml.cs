@@ -29,6 +29,7 @@ public partial class WidgetPreview : UserControl
     private FlagOptions? _flagOptions;
     private FlagPreviewScenario? _flagPreview;
     private CockpitOptions? _cockpitOptions;
+    private WeatherOptions? _weatherOptions;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -59,7 +60,8 @@ public partial class WidgetPreview : UserControl
         FuelCalculatorOptions fuelCalculatorOptions,
         FlagOptions flagOptions,
         FlagPreviewScenario flagPreview,
-        CockpitOptions cockpitOptions)
+        CockpitOptions cockpitOptions,
+        WeatherOptions weatherOptions)
     {
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
@@ -67,6 +69,8 @@ public partial class WidgetPreview : UserControl
         _flagOptions = flagOptions;
         _flagPreview = flagPreview;
         _cockpitOptions = cockpitOptions;
+        // The weather panel follows its options itself, so no rebuild subscription is needed.
+        _weatherOptions = weatherOptions;
 
         standingsOptions.PropertyChanged += OnOptionsChanged;
         relativeOptions.PropertyChanged += OnOptionsChanged;
@@ -155,6 +159,7 @@ public partial class WidgetPreview : UserControl
         WidgetCatalog.PedalTrace => new PedalTracePanel(),
         WidgetCatalog.Incident => new IncidentPanel(),
         WidgetCatalog.TrackInfo => new TrackInfoPanel(),
+        WidgetCatalog.Weather => new WeatherPanel { Options = _weatherOptions ?? new WeatherOptions() },
         WidgetCatalog.TrackMap => new TrackMapPanel(),
         WidgetCatalog.FuelCalculator => new FuelCalculatorPanel { Options = _fuelCalculatorOptions ?? new FuelCalculatorOptions() },
         _ => null,
@@ -240,6 +245,9 @@ public partial class WidgetPreview : UserControl
                 break;
             case TrackInfoPanel trackInfo:
                 trackInfo.UpdateState(PreviewData.TrackInfo());
+                break;
+            case WeatherPanel weather:
+                weather.UpdateState(PreviewData.Weather());
                 break;
             case TrackMapPanel trackMap:
                 trackMap.UpdateState(PreviewData.TrackMap());

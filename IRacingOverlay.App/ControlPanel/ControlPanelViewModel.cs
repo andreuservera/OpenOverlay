@@ -43,6 +43,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         DriverTableOptionsStore.ApplyTo(RelativeOptions);
         FuelCalculatorOptionsStore.ApplyTo(FuelCalculatorOptions);
         FlagOptionsStore.ApplyTo(FlagOptions);
+        WeatherOptionsStore.ApplyTo(WeatherOptions);
         CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
@@ -84,6 +85,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public FuelCalculatorOptions FuelCalculatorOptions { get; } = new();
     public FlagOptions FlagOptions { get; } = new();
     public CockpitOptions CockpitOptions { get; } = new();
+    public WeatherOptions WeatherOptions { get; } = new();
 
     /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
     /// seen by the live widget.</summary>
@@ -287,6 +289,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.PedalTrace => new PedalTraceWidget(),
         WidgetCatalog.Incident => new IncidentWidget(),
         WidgetCatalog.TrackInfo => new TrackInfoWidget(),
+        WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),

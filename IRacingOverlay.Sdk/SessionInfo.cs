@@ -27,6 +27,9 @@ public sealed class WeekendInfoSection
     public string? TrackDisplayShortName { get; set; }
     public string? TrackLength { get; set; }
 
+    /// <summary>The event's chance of rain, e.g. "15 %". Absent on builds without dynamic rain.</summary>
+    public string? TrackPrecipitation { get; set; }
+
     /// <summary>Identifies the specific room the driver is in. iRacing's telemetry YAML carries no
     /// split *index* ("split 2 of 7" only exists in the web API), so this id is the closest thing
     /// the SDK offers to "which of the splits am I in".</summary>

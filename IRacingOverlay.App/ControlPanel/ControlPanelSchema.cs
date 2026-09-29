@@ -49,6 +49,7 @@ public sealed partial class ControlPanelViewModel
             WidgetCatalog.Flag => [FlagPreviewGroup(), FlagTypes(), FlagContent(), FlagLayoutGroup(), Placement(slot)],
             WidgetCatalog.Cockpit => [CockpitThemeGroup(), HighRateNote(), Placement(slot)],
             WidgetCatalog.PedalTrace => [HighRateNote(), Placement(slot)],
+            WidgetCatalog.Weather => [WeatherElements(), WeatherDisplay(), Placement(slot)],
             _ => [Placement(slot)],
         };
     }
@@ -243,6 +244,68 @@ public sealed partial class ControlPanelViewModel
                     FuelCalculatorOptions.MarginLiters = value;
                     FuelCalculatorOptionsStore.Save(FuelCalculatorOptions);
                 }));
+
+    // ===== Weather =====
+
+    private static readonly string[] GraphicSizes = ["S", "M", "L"];
+
+    private SettingsGroup WeatherElements() => new SettingsGroup(
+        "ELEMENTS",
+        "Each one is independent; the widget closes up around whatever is hidden.")
+        .With(new ChipGroupSetting(
+            "Visible elements",
+            null,
+            [
+                WeatherChip("Air temp", WeatherOptions.ShowAirTemp, v => WeatherOptions.ShowAirTemp = v),
+                WeatherChip("Track temp", WeatherOptions.ShowTrackTemp, v => WeatherOptions.ShowTrackTemp = v),
+                WeatherChip("Humidity", WeatherOptions.ShowHumidity, v => WeatherOptions.ShowHumidity = v),
+                WeatherChip("Wind speed", WeatherOptions.ShowWindSpeed, v => WeatherOptions.ShowWindSpeed = v),
+                WeatherChip("Wind arrow", WeatherOptions.ShowWindArrow, v => WeatherOptions.ShowWindArrow = v),
+                WeatherChip("Forecast icon", WeatherOptions.ShowForecast, v => WeatherOptions.ShowForecast = v),
+                WeatherChip("Rain chance", WeatherOptions.ShowRainProbability, v => WeatherOptions.ShowRainProbability = v),
+            ]));
+
+    private ChipSetting WeatherChip(string label, bool value, Action<bool> assign) =>
+        new(label, null, value, isVisible => SaveWeather(() => assign(isVisible)));
+
+    private SettingsGroup WeatherDisplay() => new SettingsGroup(
+        "DISPLAY",
+        "The wind arrow points to where the wind comes from, relative to your car: up is a headwind.")
+        .With(
+            new ToggleSetting(
+                "Show labels",
+                "AIR, TRACK, WIND and RAIN captions. Off leaves only the values and icons.",
+                WeatherOptions.ShowLabels,
+                value => SaveWeather(() => WeatherOptions.ShowLabels = value)),
+            new ToggleSetting(
+                "Compact",
+                "One horizontal strip instead of stacked sections.",
+                WeatherOptions.Compact,
+                value => SaveWeather(() => WeatherOptions.Compact = value)),
+            new SegmentedSetting(
+                "Units",
+                null,
+                ["°C · km/h", "°F · mph"],
+                (int)WeatherOptions.Units,
+                index => SaveWeather(() => WeatherOptions.Units = (WeatherUnits)index)),
+            new SegmentedSetting(
+                "Forecast icon size",
+                null,
+                GraphicSizes,
+                (int)WeatherOptions.IconSize,
+                index => SaveWeather(() => WeatherOptions.IconSize = (WeatherGraphicSize)index)),
+            new SegmentedSetting(
+                "Wind arrow size",
+                null,
+                GraphicSizes,
+                (int)WeatherOptions.ArrowSize,
+                index => SaveWeather(() => WeatherOptions.ArrowSize = (WeatherGraphicSize)index)));
+
+    private void SaveWeather(Action change)
+    {
+        change();
+        WeatherOptionsStore.Save(WeatherOptions);
+    }
 
     // ===== Delta =====
 

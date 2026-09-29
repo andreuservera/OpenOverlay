@@ -81,7 +81,7 @@ public partial class MainWindow : Window
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions);
         DataContext = _vm;
 
         _criticalTimer.Interval = TimeSpan.FromMilliseconds(_vm.CriticalRefreshIntervalMs);
@@ -127,6 +127,7 @@ public partial class MainWindow : Window
     private PedalTraceWidget? Pedals => _vm.WidgetOf<PedalTraceWidget>(WidgetCatalog.PedalTrace);
     private IncidentWidget? Incidents => _vm.WidgetOf<IncidentWidget>(WidgetCatalog.Incident);
     private TrackInfoWidget? TrackInfo => _vm.WidgetOf<TrackInfoWidget>(WidgetCatalog.TrackInfo);
+    private WeatherWidget? Weather => _vm.WidgetOf<WeatherWidget>(WidgetCatalog.Weather);
     private TrackMapWidget? TrackMap => _vm.WidgetOf<TrackMapWidget>(WidgetCatalog.TrackMap);
     private FuelCalculatorWidget? FuelCalculator => _vm.WidgetOf<FuelCalculatorWidget>(WidgetCatalog.FuelCalculator);
 
@@ -258,6 +259,9 @@ public partial class MainWindow : Window
             TrackInfo?.UpdateState(trackInfoState);
             _dashboard?.UpdateTrackInfo(trackInfoState);
         }
+
+        // Every tick: the wind arrow follows the car's heading, which changes through every corner.
+        Weather?.UpdateState(WeatherBuilder.Build(telemetry, session));
 
         if (TrackMap is not null || _dashboard is not null)
         {
