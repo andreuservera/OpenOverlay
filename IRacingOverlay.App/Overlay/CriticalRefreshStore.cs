@@ -10,26 +10,10 @@ internal static class CriticalRefreshStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IRacingOverlay", "critical-refresh.txt");
 
-    public static int Get(int defaultIndex = 2)
-    {
-        try
-        {
-            if (File.Exists(FilePath) && int.TryParse(File.ReadAllText(FilePath).Trim(), out var index) && index is >= 0 and <= 4)
-            {
-                return index;
-            }
-        }
-        catch (IOException)
-        {
-            // fall through to default
-        }
+    public static int Get(int defaultIndex = 2) =>
+        SettingsFile.ReadText(FilePath) is { } text && int.TryParse(text.Trim(), out var index) && index is >= 0 and <= 4
+            ? index
+            : defaultIndex;
 
-        return defaultIndex;
-    }
-
-    public static void Save(int index)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, index.ToString());
-    }
+    public static void Save(int index) => SettingsFile.Write(FilePath, index.ToString());
 }

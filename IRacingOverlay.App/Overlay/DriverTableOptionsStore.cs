@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Overlay;
@@ -63,26 +62,11 @@ internal static class DriverTableOptionsStore
     {
         Load();
         _cache![$"{table}.{key}"] = value;
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(_cache));
+        SettingsFile.WriteJson(FilePath, _cache);
     }
 
     private static void Load()
     {
-        if (_cache is not null)
-        {
-            return;
-        }
-
-        try
-        {
-            _cache = File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, int>>(File.ReadAllText(FilePath)) ?? []
-                : [];
-        }
-        catch (JsonException)
-        {
-            _cache = [];
-        }
+        _cache ??= SettingsFile.ReadJson<Dictionary<string, int>>(FilePath) ?? [];
     }
 }

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -564,5 +565,17 @@ public sealed class RelayCommand : ICommand
 
     public bool CanExecute(object? parameter) => true;
 
-    public void Execute(object? parameter) => _execute();
+    /// <summary>Contained, so a failing button (Explorer not starting, the clipboard held by another
+    /// app) is a log line rather than an exception loose on the UI thread.</summary>
+    public void Execute(object? parameter)
+    {
+        try
+        {
+            _execute();
+        }
+        catch (Exception e) when (!ExceptionPolicy.IsFatal(e))
+        {
+            AppLog.Error("Control Panel", "Action failed", e);
+        }
+    }
 }

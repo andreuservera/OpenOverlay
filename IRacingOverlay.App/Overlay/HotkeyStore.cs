@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 using System.Windows.Input;
 
 namespace IRacingOverlay.App.Overlay;
@@ -43,21 +42,8 @@ internal static class HotkeyStore
         var entries = bindings.ToDictionary(
             b => b.Action,
             b => new Entry(b.Hotkey?.Modifiers ?? ModifierKeys.None, b.Hotkey?.Key ?? Key.None, b.Enabled));
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(entries));
+        SettingsFile.WriteJson(FilePath, entries);
     }
 
-    private static Dictionary<string, Entry> Read()
-    {
-        try
-        {
-            return File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, Entry>>(File.ReadAllText(FilePath)) ?? []
-                : [];
-        }
-        catch (Exception e) when (e is JsonException or IOException)
-        {
-            return [];
-        }
-    }
+    private static Dictionary<string, Entry> Read() => SettingsFile.ReadJson<Dictionary<string, Entry>>(FilePath) ?? [];
 }

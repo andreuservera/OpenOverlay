@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Threading;
+using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -28,6 +30,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     private bool _isEditMode;
     private bool _isDriving;
     private bool _isSuppressed;
+    private bool _openFailed;
 
     public WidgetSlot(WidgetDescriptor descriptor, Func<OverlayWindowBase> factory)
     {
@@ -188,6 +191,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     /// report as a bug.</summary>
     public string StateLabel => !_isEnabled
         ? "HIDDEN"
+        : _openFailed ? "COULD NOT OPEN"
         : _isSuppressed && !_isEditMode ? "HIDDEN BY HOTKEY"
         : ShouldBeOnScreen ? "VISIBLE" : "WAITING FOR CAR";
 
@@ -222,20 +226,35 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     /// a widget on from the menus with auto-hide enabled costs nothing and shows nothing.</summary>
     public void Apply()
     {
-        if (ShouldBeOnScreen)
+        try
         {
-            if (_window is null)
+            if (ShouldBeOnScreen)
             {
-                _window = _factory();
-                // Assigned before Show so the widget never appears on screen in the wrong mode.
-                _window.IsEditMode = _isEditMode;
+                if (_window is null)
+                {
+                    var window = _factory();
+                    // Assigned before Show so the widget never appears on screen in the wrong mode.
+                    window.IsEditMode = _isEditMode;
+                    window.Closed += OnWindowClosed;
+                    _window = window;
+                }
+
+                _window.Show();
+            }
+            else
+            {
+                _window?.Hide();
             }
 
-            _window.Show();
+            _openFailed = false;
         }
-        else
+        catch (Exception e) when (!ExceptionPolicy.IsFatal(e))
         {
-            _window?.Hide();
+            // Contained here so one widget that can't open never stops the others around it; the
+            // broken window is dropped and the next Apply builds a fresh one.
+            AppLog.Error(LogSource, "Could not show or hide the widget window", e);
+            _openFailed = true;
+            Discard();
         }
 
         OnPropertyChanged(nameof(StateLabel));
@@ -256,7 +275,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         OnPropertyChanged(nameof(Scale));
     }
 
-    public void Close() => _window?.Close();
+    public void Close() => Discard();
 
     /// <summary>Throws the window away and, if it should be on screen, builds a fresh one. Closing
     /// saves its position, so the new window opens exactly where the old one was.</summary>
@@ -267,8 +286,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             return;
         }
 
-        _window.Close();
-        _window = null;
+        Discard();
         Apply();
     }
 
@@ -286,6 +304,54 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    private string LogSource => $"Widget: {Descriptor.Name}";
+
+    /// <summary>Forgets the window before closing it, so its Closed event reads as ours.</summary>
+    private void Discard()
+    {
+        var window = _window;
+        _window = null;
+        if (window is null)
+        {
+            return;
+        }
+
+        window.Closed -= OnWindowClosed;
+        try
+        {
+            window.Close();
+        }
+        catch (Exception e) when (!ExceptionPolicy.IsFatal(e))
+        {
+            AppLog.Warn(LogSource, "Could not close the widget window", e);
+        }
+    }
+
+    /// <summary>
+    /// A widget window closed by something other than this slot — Alt+F4 while editing the layout.
+    /// Holding on to it would make the next Show throw, since WPF can't reopen a closed window. The
+    /// close is taken as the user's choice to switch the widget off, which keeps the rail honest.
+    /// Deferred, because during application shutdown the dispatcher never gets round to it, and
+    /// that close must not be saved as "off".
+    /// </summary>
+    private void OnWindowClosed(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, _window))
+        {
+            return;
+        }
+
+        _window = null;
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            if (_window is null && _isEnabled)
+            {
+                AppLog.Info(LogSource, "Widget window closed outside the Control Panel; switching it off");
+                IsEnabled = false;
+            }
+        });
+    }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

@@ -78,6 +78,71 @@ public static class IrsdkParser
         return result;
     }
 
+    /// <summary>
+    /// Whether every region the header points at lies inside a mapping of <paramref name="capacity"/>
+    /// bytes. False while the sim is still initialising the block (or if it is corrupt); reading
+    /// through such a header would throw or return garbage.
+    /// </summary>
+    public static bool IsPlausible(IrsdkHeader header, long capacity)
+    {
+        if (header.NumVars is <= 0 or > MaxPlausibleVars
+            || header.BufLen <= 0
+            || header.NumBuf is < 1 or > IrsdkConstants.MaxBufs
+            || header.SessionInfoLen < 0
+            || !Fits(header.VarHeaderOffset, (long)header.NumVars * IrsdkConstants.VarHeaderEntrySize, capacity)
+            || !Fits(header.SessionInfoOffset, header.SessionInfoLen, capacity))
+        {
+            return false;
+        }
+
+        for (var i = 0; i < header.NumBuf; i++)
+        {
+            if (!Fits(header.VarBufs[i].BufOffset, header.BufLen, capacity))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Name to header for every variable that lies entirely inside a tick buffer of
+    /// <paramref name="bufLen"/> bytes. Entries that don't, or that repeat a name, are dropped rather
+    /// than left to throw (or read a neighbour's bytes) on every tick.</summary>
+    public static Dictionary<string, IrsdkVarHeader> BuildVarMap(IEnumerable<IrsdkVarHeader> headers, int bufLen)
+    {
+        var map = new Dictionary<string, IrsdkVarHeader>(StringComparer.Ordinal);
+        foreach (var header in headers)
+        {
+            var size = ElementSize(header.Type);
+            if (size == 0
+                || string.IsNullOrEmpty(header.Name)
+                || header.Count <= 0
+                || header.Offset < 0
+                || header.Offset + ((long)size * header.Count) > bufLen)
+            {
+                continue;
+            }
+
+            map.TryAdd(header.Name, header);
+        }
+
+        return map;
+    }
+
+    private const int MaxPlausibleVars = 10_000;
+
+    private static bool Fits(long offset, long length, long capacity) =>
+        offset >= 0 && length >= 0 && offset + length <= capacity;
+
+    private static int ElementSize(IrsdkVarType type) => type switch
+    {
+        IrsdkVarType.Char or IrsdkVarType.Bool => 1,
+        IrsdkVarType.Int or IrsdkVarType.BitField or IrsdkVarType.Float => 4,
+        IrsdkVarType.Double => 8,
+        _ => 0,
+    };
+
     public static string ReadSessionInfoYaml(ReadOnlySpan<byte> buffer, int sessionInfoOffset, int sessionInfoLen)
     {
         var slice = buffer.Slice(sessionInfoOffset, sessionInfoLen);

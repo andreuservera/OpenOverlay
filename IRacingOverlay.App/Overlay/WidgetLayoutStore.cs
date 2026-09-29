@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 
 namespace IRacingOverlay.App.Overlay;
 
@@ -41,28 +40,10 @@ internal static class WidgetLayoutStore
         }
     }
 
-    private static void Write()
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(_cache));
-    }
+    private static void Write() => SettingsFile.WriteJson(FilePath, _cache);
 
     private static void Load()
     {
-        if (_cache is not null)
-        {
-            return;
-        }
-
-        try
-        {
-            _cache = File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, WidgetLayout>>(File.ReadAllText(FilePath)) ?? []
-                : [];
-        }
-        catch (JsonException)
-        {
-            _cache = [];
-        }
+        _cache ??= SettingsFile.ReadJson<Dictionary<string, WidgetLayout>>(FilePath) ?? [];
     }
 }

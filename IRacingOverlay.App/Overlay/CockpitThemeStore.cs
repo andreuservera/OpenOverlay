@@ -11,26 +11,10 @@ internal static class CockpitThemeStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IRacingOverlay", "cockpit-theme.txt");
 
-    public static CockpitTheme Get()
-    {
-        try
-        {
-            if (File.Exists(FilePath) && Enum.TryParse<CockpitTheme>(File.ReadAllText(FilePath).Trim(), out var theme))
-            {
-                return theme;
-            }
-        }
-        catch (IOException)
-        {
-            // fall through to default
-        }
+    public static CockpitTheme Get() =>
+        SettingsFile.ReadText(FilePath) is { } text && Enum.TryParse<CockpitTheme>(text.Trim(), out var theme)
+            ? theme
+            : CockpitTheme.Default;
 
-        return CockpitTheme.Default;
-    }
-
-    public static void Save(CockpitTheme theme)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, theme.ToString());
-    }
+    public static void Save(CockpitTheme theme) => SettingsFile.Write(FilePath, theme.ToString());
 }

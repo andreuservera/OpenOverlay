@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Overlay;
@@ -59,19 +58,8 @@ internal static class FlagOptionsStore
             options.MaxFlags,
             options.InfoFlagSeconds);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(snapshot));
+        SettingsFile.WriteJson(FilePath, snapshot);
     }
 
-    private static Snapshot? Load()
-    {
-        try
-        {
-            return File.Exists(FilePath) ? JsonSerializer.Deserialize<Snapshot>(File.ReadAllText(FilePath)) : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
+    private static Snapshot? Load() => SettingsFile.ReadJson<Snapshot>(FilePath);
 }

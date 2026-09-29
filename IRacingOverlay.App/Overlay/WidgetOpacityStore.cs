@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 
 namespace IRacingOverlay.App.Overlay;
 
@@ -31,26 +30,11 @@ internal static class WidgetOpacityStore
     {
         Load();
         _cache![widgetName] = Math.Clamp(opacity, 0, 1);
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(_cache));
+        SettingsFile.WriteJson(FilePath, _cache);
     }
 
     private static void Load()
     {
-        if (_cache is not null)
-        {
-            return;
-        }
-
-        try
-        {
-            _cache = File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, double>>(File.ReadAllText(FilePath)) ?? []
-                : [];
-        }
-        catch (JsonException)
-        {
-            _cache = [];
-        }
+        _cache ??= SettingsFile.ReadJson<Dictionary<string, double>>(FilePath) ?? [];
     }
 }

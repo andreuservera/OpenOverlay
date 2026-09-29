@@ -10,26 +10,10 @@ internal static class UnitPreferenceStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IRacingOverlay", "units.txt");
 
-    public static UnitPreference Get()
-    {
-        try
-        {
-            if (File.Exists(FilePath) && Enum.TryParse<UnitPreference>(File.ReadAllText(FilePath).Trim(), out var preference))
-            {
-                return preference;
-            }
-        }
-        catch (IOException)
-        {
-            // fall through to default
-        }
+    public static UnitPreference Get() =>
+        SettingsFile.ReadText(FilePath) is { } text && Enum.TryParse<UnitPreference>(text.Trim(), out var preference)
+            ? preference
+            : UnitPreference.FollowIRacing;
 
-        return UnitPreference.FollowIRacing;
-    }
-
-    public static void Save(UnitPreference preference)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, preference.ToString());
-    }
+    public static void Save(UnitPreference preference) => SettingsFile.Write(FilePath, preference.ToString());
 }

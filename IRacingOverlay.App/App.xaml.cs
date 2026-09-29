@@ -1,6 +1,6 @@
 using System.Windows;
+using IRacingOverlay.App.Diagnostics;
 using Velopack;
-using Velopack.Sources;
 
 namespace IRacingOverlay.App;
 
@@ -24,49 +24,35 @@ public partial class App : Application
     [STAThread]
     public static void Main(string[] args)
     {
-        VelopackApp.Build().Run();
+        // Before anything else can throw: every later failure must land in the log.
+        GlobalExceptionHandler.InstallProcessHandlers();
+        AppRestarter.WaitForPreviousInstance(args);
+
+        try
+        {
+            VelopackApp.Build().Run();
+        }
+        catch (Exception e)
+        {
+            // Install hooks and pending updates are a convenience; the overlay has to start regardless.
+            AppLog.Error("Startup", "Velopack startup failed; continuing without update support", e);
+        }
+
+        AppInfo.IsRecoveredLaunch = AppRestarter.IsRecoveredLaunch(args);
+        AppInfo.Initialize();
+        AppLog.Initialize();
+        AppLog.Info("Startup", "OpenOverlay starting", AppInfo.Describe());
 
         var app = new App();
+        GlobalExceptionHandler.InstallDispatcherHandler(app);
         app.InitializeComponent();
         app.Run();
     }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override void OnExit(ExitEventArgs e)
     {
-        base.OnStartup(e);
-        _ = CheckForUpdatesAsync();
-    }
-
-    /// <summary>
-    /// Silent, best-effort background check — runs once per launch, never blocks or interrupts the
-    /// user. If a newer release is published on GitHub, it's downloaded in the background and
-    /// applied automatically the *next* time the app restarts (not the current session), so it never
-    /// yanks widgets away mid-race. Any failure (offline, GitHub unreachable, running a dev build that
-    /// wasn't installed via the Velopack installer) is swallowed — update-checking is a convenience,
-    /// never something that should be able to break a normal launch.
-    /// </summary>
-    private static async Task CheckForUpdatesAsync()
-    {
-        try
-        {
-            var manager = new UpdateManager(new GithubSource(GitHubRepoUrl, accessToken: null, prerelease: false));
-            if (!manager.IsInstalled)
-            {
-                return; // running from a loose dev build, not a Velopack install — nothing to update
-            }
-
-            var newVersion = await manager.CheckForUpdatesAsync();
-            if (newVersion is null)
-            {
-                return;
-            }
-
-            await manager.DownloadUpdatesAsync(newVersion);
-            manager.WaitExitThenApplyUpdates(newVersion, restart: false);
-        }
-        catch
-        {
-            // Offline, GitHub unreachable, etc. — silently skip; the app works fine either way.
-        }
+        AppLog.Info("Shutdown", "OpenOverlay exiting", new Dictionary<string, string> { ["exitCode"] = e.ApplicationExitCode.ToString() });
+        AppLog.Shutdown(TimeSpan.FromSeconds(2));
+        base.OnExit(e);
     }
 }

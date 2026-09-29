@@ -2,9 +2,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Data;
+using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
+using IRacingOverlay.Sdk;
 using Screen = System.Windows.Forms.Screen;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -26,6 +28,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private NavItem? _selected;
     private bool _isEditMode;
     private bool _isConnected;
+    private ConnectionState _connectionState;
+    private HealthStatus _health;
+    private string _healthLine = "Starting";
     private string _telemetryLine = "Speed —   Lap —   Gear —";
     private string _diagnosticsLine = "";
     private string _searchText = "";
@@ -200,7 +205,63 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
     }
 
-    public string ConnectionLabel => _isConnected ? "CONNECTED" : "WAITING FOR IRACING";
+    public string ConnectionLabel => _connectionState switch
+    {
+        ConnectionState.Stale => "TELEMETRY STALLED",
+        ConnectionState.Recovering => "RECONNECTING",
+        _ => _isConnected ? "CONNECTED" : "WAITING FOR IRACING",
+    };
+
+    /// <summary>The reader's own view of the link, polled once a second: it knows about stalls and
+    /// retries that the connected/disconnected events never report.</summary>
+    public ConnectionState ConnectionState
+    {
+        get => _connectionState;
+        set
+        {
+            if (_connectionState == value)
+            {
+                return;
+            }
+
+            _connectionState = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConnectionLabel));
+            OnPropertyChanged(nameof(ConnectionDegraded));
+        }
+    }
+
+    public bool ConnectionDegraded => _connectionState is ConnectionState.Stale or ConnectionState.Recovering;
+
+    public HealthStatus Health
+    {
+        get => _health;
+        set
+        {
+            if (_health == value)
+            {
+                return;
+            }
+
+            _health = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string HealthLine
+    {
+        get => _healthLine;
+        set
+        {
+            if (_healthLine == value)
+            {
+                return;
+            }
+
+            _healthLine = value;
+            OnPropertyChanged();
+        }
+    }
 
     public string TelemetryLine
     {

@@ -1,5 +1,3 @@
-using YamlDotNet.Serialization;
-
 namespace IRacingOverlay.Sdk;
 
 /// <summary>
@@ -12,12 +10,8 @@ public sealed class IracingSessionInfo
     public DriverInfoSection? DriverInfo { get; set; }
     public SessionInfoSection? SessionInfo { get; set; }
 
-    private static readonly IDeserializer Deserializer = new DeserializerBuilder()
-        .IgnoreUnmatchedProperties()
-        .Build();
-
-    public static IracingSessionInfo Parse(string yaml) =>
-        Deserializer.Deserialize<IracingSessionInfo>(yaml) ?? new IracingSessionInfo();
+    /// <summary>Parses with the same repair steps as the live connection; see <see cref="SessionInfoParser"/>.</summary>
+    public static IracingSessionInfo Parse(string yaml) => SessionInfoParser.Parse(yaml).Session;
 }
 
 public sealed class WeekendInfoSection

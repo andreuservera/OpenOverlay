@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
@@ -467,7 +468,47 @@ public sealed partial class ControlPanelViewModel
                     "Where layouts, options and hotkeys are saved.",
                     "Open folder",
                     OpenConfigFolder)),
+        DiagnosticsGroup(),
     ];
+
+    /// <summary>Everything a bug report needs, one click away. The report masks the Windows user
+    /// folder, so it can be pasted into a public issue as is.</summary>
+    private static SettingsGroup DiagnosticsGroup()
+    {
+        ActionSetting? copy = null;
+        copy = new ActionSetting(
+            "Copy diagnostics",
+            "Version, telemetry and widget health, and the recent log, as text for a bug report.",
+            "Copy",
+            () =>
+            {
+                System.Windows.Clipboard.SetText(DiagnosticsReport.Build("Copied by the user"));
+                copy!.ButtonText = "Copied";
+            });
+
+        return new SettingsGroup(
+            "DIAGNOSTICS",
+            "OpenOverlay recovers from errors on its own and writes what happened to a log. None of it leaves your PC unless you send it.")
+            .With(
+                copy,
+                new ActionSetting(
+                    "Export report",
+                    "A .zip with the report, recent logs, crash reports and your settings, shown in Explorer.",
+                    "Export",
+                    () => ShowInExplorer(DiagnosticsReport.Export())),
+                new ActionSetting(
+                    "Log files",
+                    "One file per day, kept for two weeks.",
+                    "Open folder",
+                    () =>
+                    {
+                        Directory.CreateDirectory(AppLog.LogDirectory);
+                        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppLog.LogDirectory}\"") { UseShellExecute = true });
+                    }));
+    }
+
+    private static void ShowInExplorer(string path) =>
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
 
     /// <summary>Opens the settings folder in Explorer, creating it first on a fresh install.</summary>
     public static void OpenConfigFolder()

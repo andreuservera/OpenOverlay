@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 
 namespace IRacingOverlay.App.Overlay;
 
@@ -30,29 +29,12 @@ internal static class TrayPreferencesStore
 
     public static void MarkTrayNoticeShown() => Save(Load() with { TrayNoticeShown = true });
 
-    private static Snapshot Load()
-    {
-        if (_cache is not null)
-        {
-            return _cache;
-        }
-
-        try
-        {
-            _cache = File.Exists(FilePath) ? JsonSerializer.Deserialize<Snapshot>(File.ReadAllText(FilePath)) : null;
-        }
-        catch (Exception e) when (e is JsonException or IOException)
-        {
-            _cache = null;
-        }
-
-        return _cache ??= new Snapshot(CloseBehavior.MinimizeToTray, false);
-    }
+    private static Snapshot Load() =>
+        _cache ??= SettingsFile.ReadJson<Snapshot>(FilePath) ?? new Snapshot(CloseBehavior.MinimizeToTray, false);
 
     private static void Save(Snapshot snapshot)
     {
         _cache = snapshot;
-        Directory.CreateDirectory(ConfigFolder);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(snapshot));
+        SettingsFile.WriteJson(FilePath, snapshot);
     }
 }
