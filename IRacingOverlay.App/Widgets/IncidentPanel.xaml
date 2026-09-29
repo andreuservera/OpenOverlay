@@ -2,15 +2,27 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
-    <!-- Horizontal padding rebalanced against the narrower caption cut, so the panel keeps its
-         original footprint. -->
+    <!-- Your count, the team's beside it in a team race, and the session's limit when it has one.
+         Captions only appear when there are two numbers to tell apart. -->
     <Border Style="{StaticResource OverlayPanel}" Padding="14.5,10">
         <StackPanel>
             <TextBlock Text="INCIDENTS" Style="{StaticResource PanelTitle}" Margin="0,0,0,2"/>
             <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="MyCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
-                <TextBlock x:Name="TeamCountText" Text="" Style="{StaticResource UnitLabel}"
-                           VerticalAlignment="Bottom" Margin="8,0,0,4"/>
+                <StackPanel>
+                    <TextBlock x:Name="MyCaption" Text="YOU" Style="{StaticResource ColumnHeader}" Visibility="Collapsed"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="MyCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
+                        <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel x:Name="TeamBlock" Margin="18,0,0,0" Visibility="Collapsed">
+                    <TextBlock Text="TEAM" Style="{StaticResource ColumnHeader}"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="TeamCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
+                        <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock x:Name="LimitText" Text="" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="5,0,0,4"/>
             </StackPanel>
         </StackPanel>
     </Border>

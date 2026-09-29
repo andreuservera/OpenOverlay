@@ -82,13 +82,9 @@ internal static class CockpitBuilder
         var fraction = Math.Clamp((rpm - first) / (shift - first), 0, 1);
         var litCount = (int)Math.Round(fraction * CockpitState.ShiftLightCount);
 
-        // Some cars report usable light thresholds but leave the blink one at 0, which silently
-        // meant "never blink" — fall back to the last-LED RPM, then to the shift point itself.
-        var blinkRpm = driverInfo.DriverCarSLBlinkRPM > 0 ? driverInfo.DriverCarSLBlinkRPM
-            : driverInfo.DriverCarSLLastRPM > 0 ? driverInfo.DriverCarSLLastRPM
-            : shift;
-        var blink = rpm >= blinkRpm;
-        return (litCount, blink);
+        // Flash from the shift point, when every light is lit. iRacing's own blink RPM usually sits
+        // up at the limiter, which a driver shifting on the lights never reaches.
+        return (litCount, rpm >= shift);
     }
 
     private static (ProximitySide left, ProximitySide right) BuildProximity(TelemetrySnapshot telemetry, IracingSessionInfo? session)

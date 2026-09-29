@@ -248,7 +248,7 @@ public partial class MainWindow : Window
 
         if (Incidents is not null || _dashboard is not null)
         {
-            var incidentState = IncidentBuilder.Build(telemetry);
+            var incidentState = IncidentBuilder.Build(telemetry, session);
             Incidents?.UpdateState(incidentState);
             _dashboard?.UpdateIncident(incidentState);
         }

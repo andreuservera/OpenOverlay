@@ -239,7 +239,8 @@ public static class PreviewData
     public static IncidentState Incidents() => new()
     {
         MyIncidentCount = 4,
-        TeamIncidentCount = 9,
+        TeamIncidentCount = null,
+        Limit = 17,
     };
 
     /// <summary>One braking event followed by full throttle, with ABS biting in the middle of the

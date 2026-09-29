@@ -80,46 +80,33 @@ public class CockpitBuilderTests
     }
 
     [Fact]
-    public void Build_RpmAtOrAboveBlinkThreshold_Blinks()
+    public void Build_RpmJustBelowShiftPoint_DoesNotBlink()
     {
         GearAndShiftVars(out var builder);
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("Gear", 3);
-            w.SetFloat("RPM", 7300); // >= Blink=7200
+            w.SetFloat("RPM", 6950);
         });
 
         var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
 
-        Assert.True(state.ShiftBlink);
+        Assert.False(state.ShiftBlink);
     }
 
-    [Fact]
-    public void Build_BlinkThresholdMissing_FallsBackToLastRpm()
+    [Theory]
+    [InlineData(7000)] // at the shift point, below the car's own blink RPM
+    [InlineData(7300)] // past it
+    public void Build_AtOrAboveShiftPoint_Blinks(float rpm)
     {
         GearAndShiftVars(out var builder);
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("Gear", 3);
-            w.SetFloat("RPM", 7150); // >= Last=7100
+            w.SetFloat("RPM", rpm);
         });
 
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(blink: 0, last: 7100));
-
-        Assert.True(state.ShiftBlink);
-    }
-
-    [Fact]
-    public void Build_BlinkAndLastThresholdsMissing_FallsBackToShiftPoint()
-    {
-        GearAndShiftVars(out var builder);
-        var snapshot = TestSnapshotFactory.Build(builder, w =>
-        {
-            w.SetInt("Gear", 3);
-            w.SetFloat("RPM", 7000); // == Shift
-        });
-
-        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights(blink: 0));
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
 
         Assert.True(state.ShiftBlink);
     }

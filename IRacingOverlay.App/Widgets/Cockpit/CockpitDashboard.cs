@@ -75,7 +75,13 @@ public abstract class CockpitDashboard : FrameworkElement
 
     protected abstract void Draw(DrawingContext dc);
 
-    private bool IsFlashing => State.ShiftBlink || State.AbsActive;
+    private bool IsFlashing => ShiftFlashing || State.AbsActive;
+
+    /// <summary>Whether this theme flashes its shift lights at the shift point. Period-style
+    /// instruments turn the override off and simply stay lit.</summary>
+    protected virtual bool FlashesAtShiftPoint => true;
+
+    private bool ShiftFlashing => State.ShiftBlink && FlashesAtShiftPoint;
 
     // ===== Data, formatted the same way in every theme =====
 
@@ -91,7 +97,7 @@ public abstract class CockpitDashboard : FrameworkElement
     protected int LampsLit => Math.Clamp(State.ShiftLightsLit, 0, LampCount);
 
     /// <summary>False during the "off" half of the shift-point flash; always true otherwise.</summary>
-    protected bool ShiftLampsOn => !State.ShiftBlink || Environment.TickCount64 / ShiftFlashHalfPeriodMs % 2 == 0;
+    protected bool ShiftLampsOn => !ShiftFlashing || Environment.TickCount64 / ShiftFlashHalfPeriodMs % 2 == 0;
 
     protected bool AtShiftPoint => State.ShiftBlink;
 

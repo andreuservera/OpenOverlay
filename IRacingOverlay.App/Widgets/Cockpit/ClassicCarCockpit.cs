@@ -32,6 +32,9 @@ public sealed class ClassicCarCockpit : CockpitDashboard
 
     protected override Size DesignSize => new(256, 224);
 
+    // A period rev counter has no flashing shift light; the jewels just stay lit.
+    protected override bool FlashesAtShiftPoint => false;
+
     protected override void Draw(DrawingContext dc)
     {
         if (State.Rpm + 250 > _scaleMax)
