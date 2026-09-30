@@ -99,9 +99,10 @@ public sealed class IRacingConnectionResilienceTests
         WaitUntil(() => sim.TickAnd(() => connection.IsConnected && connection.Session is not null));
 
         sim.SetConnected(false);
-        WaitUntil(() => !connection.IsConnected);
+        // The flag clears just before the event is raised; wait for the event itself.
+        WaitUntil(() => Volatile.Read(ref disconnected) == 1);
 
-        Assert.Equal(1, Volatile.Read(ref disconnected));
+        Assert.False(connection.IsConnected);
         Assert.Null(connection.Latest);
         Assert.Null(connection.Session);
 

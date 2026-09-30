@@ -16,13 +16,15 @@ namespace IRacingOverlay.App.Diagnostics;
 public sealed class RollingFileSink : ILogSink
 {
     public const string FilePrefix = "openoverlay-";
-    private const long MaxFileBytes = 10L * 1024 * 1024;
-    private const long MaxTotalBytes = 100L * 1024 * 1024;
+    private const long DefaultMaxFileBytes = 10L * 1024 * 1024;
+    private const long DefaultMaxTotalBytes = 100L * 1024 * 1024;
     private const int QueueCapacity = 10_000;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(30);
     private static readonly TimeSpan RetryOpenAfter = TimeSpan.FromSeconds(30);
 
     private readonly string _directory;
+    private readonly long _maxFileBytes;
+    private readonly long _maxTotalBytes;
     private readonly BlockingCollection<LogEntry> _queue = new(QueueCapacity);
     private readonly Thread _writer;
     private long _enqueued;
@@ -34,10 +36,16 @@ public sealed class RollingFileSink : ILogSink
     private long _retryOpenAtMs;
 
     public RollingFileSink(string directory)
+        : this(directory, DefaultMaxFileBytes, DefaultMaxTotalBytes)
+    {
+    }
+
+    internal RollingFileSink(string directory, long maxFileBytes, long maxTotalBytes)
     {
         _directory = directory;
+        _maxFileBytes = maxFileBytes;
+        _maxTotalBytes = maxTotalBytes;
         Directory.CreateDirectory(directory);
-        Prune();
         _writer = new Thread(Run)
         {
             IsBackground = true,
@@ -129,7 +137,7 @@ public sealed class RollingFileSink : ILogSink
     private FileStream EnsureStream(DateTime timestampUtc)
     {
         var date = timestampUtc.ToLocalTime().ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-        if (_stream is not null && date == _currentDate && _stream.Length < MaxFileBytes)
+        if (_stream is not null && date == _currentDate && _stream.Length < _maxFileBytes)
         {
             return _stream;
         }
@@ -139,14 +147,15 @@ public sealed class RollingFileSink : ILogSink
         {
             _currentDate = date;
             _currentPart = 0;
-            Prune();
         }
 
+        // On every new file, not just the first of the day, so the total cap also holds within a day.
+        Prune();
         while (true)
         {
             var path = PathFor(date, _currentPart);
             var info = new FileInfo(path);
-            if (!info.Exists || info.Length < MaxFileBytes)
+            if (!info.Exists || info.Length < _maxFileBytes)
             {
                 // Shared so the log can be opened, tailed or zipped while the app is running.
                 _stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
@@ -184,7 +193,7 @@ public sealed class RollingFileSink : ILogSink
             foreach (var file in files)
             {
                 total += file.Length;
-                if (DateTime.UtcNow - file.LastWriteTimeUtc > Retention || total > MaxTotalBytes)
+                if (DateTime.UtcNow - file.LastWriteTimeUtc > Retention || total > _maxTotalBytes)
                 {
                     file.Delete();
                 }
@@ -299,6 +308,11 @@ public static class LogFormatter
         if (exception.StackTrace is { } stack)
         {
             json.WriteString("stack", stack);
+        }
+
+        if (exception.StackRef is { } stackRef)
+        {
+            json.WriteString("stackRef", stackRef);
         }
 
         if (exception.Inner.Count > 0)

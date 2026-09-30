@@ -66,7 +66,7 @@ Control Panel › General › Diagnostics: **Copy diagnostics**, **Export report
 | `ref` | Warnings and errors only: `<run>-<sequence>`. The status bar, tray tooltip and reports quote it |
 | `session` | Track · session type · subsession · car, when connected |
 | `suppressed` | Identical entries collapsed since this one was last written (≤ 1 line/min per repeating error) |
-| `exception` | Type, message, HResult, stack trace and inner exceptions (aggregates expanded) |
+| `exception` | Type, message, HResult, stack trace and inner exceptions (aggregates expanded). Each distinct stack trace is written once per run; later entries for the same error from the same place carry `stackRef` (the entry that has it) instead |
 
 ### 2.3 The activity trail (never collapsed)
 
@@ -208,7 +208,7 @@ At startup the [run journal](../../IRacingOverlay.App/Diagnostics/RunJournal.cs)
 | Item | Result |
 |---|---|
 | Widget/dashboard windows recreated by recovery | No static subscriptions to widgets; options are DPs bound via WPF weak events; `Closed` handler removed on discard; cockpit flash timer stops on `Unloaded` — **no leak** |
-| Log volume | Identical entries collapsed per 60 s (a 60 Hz failure = 1 line/min, count kept); files rolled at 10 MB, 30 days, 100 MB cap; queue bounded to 10 000 |
+| Log volume | Identical entries collapsed per 60 s (a 60 Hz failure = 1 line/min, count kept); each stack trace written once per run. Measured for a widget failing nonstop: about 0.85 KB/min, ~1.2 MB/day (vs ~1.6 MB/day with every stack trace; deeper stacks save more). Files rolled at 10 MB, 30 days, 100 MB cap checked every time a file starts; queue bounded to 10 000 |
 | Diagnostics buffers | Ring of 500 entries; suppression map pruned past 2 000 keys; problem tally capped at 200 kinds; crash reports capped at 20 |
 | Run journal | One small file per live run; removed on clean exit or once reported |
 | Trackers | Keyed by CarIdx (≤ 64) or bounded windows; fuel lap history grows one double per lap |

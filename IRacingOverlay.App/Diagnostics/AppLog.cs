@@ -13,7 +13,15 @@ public enum LogLevel
 
 /// <summary>An exception reduced to plain data when it is logged, so the log never keeps the object
 /// graph an exception can reference alive.</summary>
-public sealed record ExceptionInfo(string Type, string Message, int HResult, string? StackTrace, IReadOnlyList<ExceptionInfo> Inner)
+/// <param name="StackRef">Set instead of the stack traces when this run already logged them, pointing
+/// at the entry that has them.</param>
+public sealed record ExceptionInfo(
+    string Type,
+    string Message,
+    int HResult,
+    string? StackTrace,
+    IReadOnlyList<ExceptionInfo> Inner,
+    string? StackRef = null)
 {
     private const int MaxDepth = 4;
     private const int MaxInner = 5;
@@ -32,10 +40,36 @@ public sealed record ExceptionInfo(string Type, string Message, int HResult, str
             depth >= MaxDepth ? [] : inner.Take(MaxInner).Select(e => From(e, depth + 1)).ToList());
     }
 
+    public bool HasStackTrace => StackTrace is not null || Inner.Any(i => i.HasStackTrace);
+
+    /// <summary>Equal for the same exception type thrown along the same path, within this run.</summary>
+    public int Fingerprint()
+    {
+        var hash = new HashCode();
+        hash.Add(Type);
+        hash.Add(StackTrace);
+        foreach (var inner in Inner)
+        {
+            hash.Add(inner.Fingerprint());
+        }
+
+        return hash.ToHashCode();
+    }
+
+    public ExceptionInfo WithoutStackTraces(string stackRef) => Strip(this) with { StackRef = stackRef };
+
+    private static ExceptionInfo Strip(ExceptionInfo info) =>
+        info with { StackTrace = null, Inner = info.Inner.Select(Strip).ToList() };
+
     public override string ToString()
     {
         var text = new System.Text.StringBuilder();
         Append(text, this, 0);
+        if (StackRef is { } stackRef)
+        {
+            text.Append("  (stack trace: see ref ").Append(stackRef).AppendLine(")");
+        }
+
         return text.ToString();
     }
 
@@ -75,6 +109,7 @@ public sealed record LogEntry(
     string? Ref = null);
 
 /// <summary>Every occurrence of one kind of warning or error in this run, suppressed ones included.</summary>
+/// <param name="FirstRef">The first entry written for it, the one that carries the stack trace.</param>
 public sealed record ProblemTally(
     LogLevel Level,
     string Source,
@@ -83,7 +118,8 @@ public sealed record ProblemTally(
     long Count,
     DateTime FirstUtc,
     DateTime LastUtc,
-    string? LastRef);
+    string? LastRef,
+    string? FirstRef = null);
 
 /// <summary>Where written entries go after the in-memory buffer.</summary>
 public interface ILogSink
@@ -102,6 +138,7 @@ public interface ILogSink
 public sealed class Logger
 {
     private const int MaxProblemKinds = 200;
+    private const int MaxStackSignatures = 1000;
 
     private readonly object _gate = new();
     private readonly Func<DateTime> _clock;
@@ -110,6 +147,7 @@ public sealed class Logger
     private readonly LogEntry[] _ring;
     private readonly Dictionary<string, (DateTime LastWritten, int Suppressed)> _recent = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ProblemTally> _problems = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _stackRefs = new(StringComparer.Ordinal);
     private int _ringNext;
     private int _ringCount;
     private int _refSequence;
@@ -195,7 +233,7 @@ public sealed class Logger
                 level,
                 source,
                 message,
-                exception is null ? null : ExceptionInfo.From(exception),
+                exception is null ? null : StackTraceOnce(key, level, ExceptionInfo.From(exception), reference),
                 Environment.CurrentManagedThreadId,
                 _session,
                 suppressed,
@@ -287,12 +325,46 @@ public sealed class Logger
     {
         if (_problems.TryGetValue(key, out var tally))
         {
-            _problems[key] = tally with { Count = tally.Count + 1, LastUtc = now, LastRef = reference ?? tally.LastRef };
+            _problems[key] = tally with
+            {
+                Count = tally.Count + 1,
+                LastUtc = now,
+                LastRef = reference ?? tally.LastRef,
+                FirstRef = tally.FirstRef ?? reference,
+            };
         }
         else if (_problems.Count < MaxProblemKinds)
         {
-            _problems[key] = new ProblemTally(level, source, message, exception?.GetType().FullName, 1, now, now, reference);
+            _problems[key] = new ProblemTally(level, source, message, exception?.GetType().FullName, 1, now, now, reference, reference);
         }
+    }
+
+    /// <summary>A stack trace is written the first time it appears in the run; later entries for the
+    /// same error from the same place point at that entry instead of repeating kilobytes of it.
+    /// Critical entries always keep theirs.</summary>
+    private ExceptionInfo StackTraceOnce(string key, LogLevel level, ExceptionInfo exception, string? reference)
+    {
+        if (level == LogLevel.Critical || !exception.HasStackTrace)
+        {
+            return exception;
+        }
+
+        var signature = $"{key}|{exception.Fingerprint()}";
+        lock (_gate)
+        {
+            if (_stackRefs.TryGetValue(signature, out var first))
+            {
+                return exception.WithoutStackTraces(first);
+            }
+
+            // Without a reference there is nothing for later entries to point at.
+            if (reference is not null && _stackRefs.Count < MaxStackSignatures)
+            {
+                _stackRefs[signature] = reference;
+            }
+        }
+
+        return exception;
     }
 
     private LogEntry[] RecentUnlocked()

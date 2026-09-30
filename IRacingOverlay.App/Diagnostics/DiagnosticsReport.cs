@@ -259,7 +259,11 @@ public static class DiagnosticsReport
             }
 
             text.Append(" | first ").Append(Utc(problem.FirstUtc)).Append(", last ").Append(Utc(problem.LastUtc));
-            if (problem.LastRef is { } reference)
+            if (problem.FirstRef is { } first && problem.LastRef is { } last && first != last)
+            {
+                text.Append(", ref ").Append(first).Append(" (with stack trace) … ").Append(last);
+            }
+            else if ((problem.FirstRef ?? problem.LastRef) is { } reference)
             {
                 text.Append(", ref ").Append(reference);
             }

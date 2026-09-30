@@ -130,7 +130,83 @@ public class LoggingTests
         Assert.Equal("System.IndexOutOfRangeException", fuel.ExceptionType);
         // 50 errors a second apart, one written per 60 s window: the reference points at the written one.
         Assert.Equal("RUN-001", fuel.LastRef);
+        Assert.Equal("RUN-001", fuel.FirstRef);
         Assert.Equal(LogLevel.Warning, problems[1].Level);
+    }
+
+    private static Exception ThrownByBuilder() => Capture(() => throw new IndexOutOfRangeException("bad index"));
+
+    private static Exception ThrownByRenderer() => Capture(() => throw new IndexOutOfRangeException("bad index"));
+
+    private static Exception Capture(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception e)
+        {
+            return e;
+        }
+
+        throw new InvalidOperationException("Expected an exception.");
+    }
+
+    [Fact]
+    public void StackTrace_IsWrittenOnceThenReferenced()
+    {
+        var clock = new Clock(new DateTime(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc));
+        var logger = new Logger(() => clock.Now, refPrefix: "RUN");
+
+        var first = logger.Write(LogLevel.Error, "Widget: Fuel", "Build failed", ThrownByBuilder());
+        clock.Now += TimeSpan.FromSeconds(61);
+        var repeat = logger.Write(LogLevel.Error, "Widget: Fuel", "Build failed", ThrownByBuilder());
+
+        Assert.NotNull(first!.Exception!.StackTrace);
+        Assert.Null(first.Exception.StackRef);
+        Assert.Null(repeat!.Exception!.StackTrace);
+        Assert.Equal(first.Ref, repeat.Exception.StackRef);
+        Assert.Equal("bad index", repeat.Exception.Message);
+        Assert.Contains($"(stack trace: see ref {first.Ref})", repeat.Exception.ToString());
+        Assert.Equal(first.Ref, logger.Problems().Single().FirstRef);
+    }
+
+    [Fact]
+    public void StackTrace_OfTheSameErrorFromAnotherPlace_IsWrittenToo()
+    {
+        var clock = new Clock(new DateTime(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc));
+        var logger = new Logger(() => clock.Now);
+
+        logger.Write(LogLevel.Error, "Widget: Fuel", "Build failed", ThrownByBuilder());
+        clock.Now += TimeSpan.FromSeconds(61);
+        var elsewhere = logger.Write(LogLevel.Error, "Widget: Fuel", "Build failed", ThrownByRenderer());
+
+        Assert.NotNull(elsewhere!.Exception!.StackTrace);
+        Assert.Null(elsewhere.Exception.StackRef);
+    }
+
+    [Fact]
+    public void StackTrace_OfCriticalEntries_IsAlwaysWritten()
+    {
+        var logger = new Logger();
+
+        logger.Write(LogLevel.Critical, "Crash", "terminating", ThrownByBuilder());
+        var again = logger.Write(LogLevel.Critical, "Crash", "terminating", ThrownByBuilder());
+
+        Assert.NotNull(again!.Exception!.StackTrace);
+    }
+
+    [Fact]
+    public void ToJsonLine_ShortenedException_CarriesStackRefInsteadOfStack()
+    {
+        var exception = ExceptionInfo.From(ThrownByBuilder()).WithoutStackTraces("RUN-007");
+        var entry = new LogEntry(DateTime.UtcNow, LogLevel.Error, "Widget: Fuel", "Build failed", exception, 1, null, 0, null, "RUN-042");
+
+        using var json = JsonDocument.Parse(LogFormatter.ToJsonLine(entry));
+        var logged = json.RootElement.GetProperty("exception");
+
+        Assert.Equal("RUN-007", logged.GetProperty("stackRef").GetString());
+        Assert.False(logged.TryGetProperty("stack", out _));
     }
 
     [Fact]
@@ -252,6 +328,37 @@ public class LoggingTests
             var lines = Directory.GetFiles(directory, RollingFileSink.FilePrefix + "*.log").SelectMany(File.ReadAllLines).ToList();
             Assert.Equal(10, lines.Count);
             Assert.All(lines, line => JsonDocument.Parse(line).Dispose());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RollingFileSink_KeepsTheTotalUnderTheCapWithinOneDay()
+    {
+        const long maxFile = 2_000;
+        const long maxTotal = 6_000;
+        var directory = Path.Combine(Path.GetTempPath(), "oo-log-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var sink = new RollingFileSink(directory, maxFile, maxTotal);
+            var logger = new Logger();
+            logger.AttachSink(sink);
+            for (var i = 0; i < 300; i++)
+            {
+                logger.Write(LogLevel.Info, "Test", $"line {i}", deduplicate: false);
+            }
+
+            sink.Flush(TimeSpan.FromSeconds(5));
+            sink.Dispose(TimeSpan.FromSeconds(5));
+
+            var files = new DirectoryInfo(directory).GetFiles(RollingFileSink.FilePrefix + "*.log");
+            Assert.True(files.Length > 1, "Expected the log to roll over several files.");
+            // A file can overshoot its limit by the one line that crossed it.
+            Assert.InRange(files.Sum(f => f.Length), 1, maxTotal + maxFile + 1_000);
+            Assert.Contains(files.SelectMany(f => File.ReadAllLines(f.FullName)), line => line.Contains("\"line 299\""));
         }
         finally
         {
