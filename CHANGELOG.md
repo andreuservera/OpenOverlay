@@ -2,6 +2,29 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.8.0] - 2026-09-30
+
+#### Added
+- New ABOUT section in the Control Panel with What's New, Changelog and About OpenOverlay pages.
+- What's New page showing the changes in the version you're running.
+- Changelog page listing every release, newest first, with each version expandable.
+- Current version always visible in the Control Panel status bar; clicking it opens About OpenOverlay.
+- One-time notice after an update with the new version's main changes and a shortcut to What's New.
+- About OpenOverlay page:
+  - Version, build, release date and install date on this PC
+  - Update channel and the result of the last update check
+  - One-click copy of the version details for bug reports
+  - Links to GitHub, the documentation, issue reporting and the license
+- Build and update channel included in diagnostics reports.
+
+#### Changed
+- Builds take their version from the newest CHANGELOG.md entry instead of git tags.
+- CHANGELOG.md is the single source for What's New, the Changelog page and the GitHub release notes.
+- The release workflow stops when the version tag doesn't match the newest CHANGELOG.md entry.
+- pack-installer.ps1 reads the version from CHANGELOG.md and no longer takes -Version.
+
+---
+
 ### [0.7.0] - 2026-09-30
 
 #### Added
@@ -16,6 +39,10 @@ All notable changes to OpenOverlay, newest first.
   - Pit Wall
   - Invisible
   - Default
+  - Global hotkey management.
+  - System tray icon integration.
+  - Restart overlays action directly from the tray menu.
+  - Single-instance enforcement to prevent multiple OpenOverlay processes.
 
 #### Improved
 - Complete flag management redesign through the new FlagCatalog, FlagOptions and FlagPresenter systems.
@@ -23,12 +50,6 @@ All notable changes to OpenOverlay, newest first.
 - SDK connection resilience improvements.
 - Session information parser hardening.
 - Connection health monitoring and tracking.
-
-#### Added
-- Global hotkey management.
-- System tray icon integration.
-- Restart overlays action directly from the tray menu.
-- Single-instance enforcement to prevent multiple OpenOverlay processes.
 
 #### Reliability
 - Structured application logging with rolling log files.
@@ -46,17 +67,15 @@ All notable changes to OpenOverlay, newest first.
 - Widget resize and layout system completely redesigned.
 - Dynamic widget sizing.
 - More accurate reference lap time calculations.
-
-#### Added
-- DriverTableOptions configuration for Relative and Standings visibility controls.
-
-#### Improved
 - Control Panel completely rewritten.
 - New ControlPanel module.
 - Schema-driven settings architecture.
 - Live widget preview backdrop.
 - Widget catalog management.
 - Theme management system.
+
+#### Added
+- DriverTableOptions configuration for Relative and Standings visibility controls.
 
 #### Refactored
 - Major MainWindow.xaml and MainWindow.xaml.cs redesign replacing the previous menu implementation.
