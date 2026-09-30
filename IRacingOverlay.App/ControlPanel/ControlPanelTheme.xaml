@@ -306,6 +306,30 @@
         </Setter>
     </Style>
 
+    <!-- Plain text that is also a link, for the status bar: it must read as part of the line until
+         the pointer finds it. -->
+    <Style x:Key="Cp.TextButton" TargetType="ButtonBase">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- ===== Toggle switch =====
          A switch, not a checkbox: it says "this thing is on right now", which is what every boolean
          in this tool actually means. The knob slides rather than snapping so the state change is
@@ -862,8 +886,131 @@
     <DataTemplate DataType="{x:Type cp:ActionSetting}">
         <ContentControl Template="{StaticResource Cp.SettingRow}">
             <Button Style="{StaticResource Cp.Button}" Content="{Binding ButtonText}"
-                    Command="{Binding InvokeCommand}"/>
+                    Command="{Binding InvokeCommand}" IsEnabled="{Binding IsEnabled}"/>
         </ContentControl>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:InfoSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingRow}">
+            <TextBlock Text="{Binding Value}" Style="{StaticResource Cp.Mono}" FontSize="{StaticResource Cp.Size.Body}"
+                       Foreground="{StaticResource Cp.Text}" TextAlignment="Right" TextWrapping="Wrap"
+                       MaxWidth="230" VerticalAlignment="Center"/>
+        </ContentControl>
+    </DataTemplate>
+
+    <!-- One line of release notes: the amber dot is the only ornament, so a long list stays calm. -->
+    <DataTemplate x:Key="Cp.NoteLine">
+        <Grid Margin="0,4,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Ellipse Width="5" Height="5" Fill="{StaticResource Cp.Accent}" HorizontalAlignment="Left"
+                     VerticalAlignment="Top" Margin="1,7,0,0"/>
+            <TextBlock Grid.Column="1" Text="{Binding}" Style="{StaticResource Cp.Body}"
+                       Foreground="{StaticResource Cp.Text}" TextWrapping="Wrap" VerticalAlignment="Top"/>
+        </Grid>
+    </DataTemplate>
+
+    <!-- A line of release notes and the lines nested under it. -->
+    <DataTemplate x:Key="Cp.NoteItem">
+        <StackPanel>
+            <ContentPresenter Content="{Binding Text}" ContentTemplate="{StaticResource Cp.NoteLine}"/>
+            <ItemsControl ItemsSource="{Binding Children}" Focusable="False" Margin="16,0,0,0"
+                          ItemTemplate="{StaticResource Cp.NoteLine}"/>
+        </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type cp:BulletSetting}">
+        <ContentPresenter Content="{Binding Item}" ContentTemplate="{StaticResource Cp.NoteItem}" Margin="0,1"/>
+    </DataTemplate>
+
+    <!-- The row a release collapses to: the whole row is the toggle. -->
+    <Style x:Key="Cp.ReleaseHeader" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="6" Padding="8,9" Margin="-8,0">
+                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#1A2028"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- One release in the changelog: version, badge and date on one line, its changes underneath
+         by section once opened. -->
+    <DataTemplate DataType="{x:Type cp:ReleaseSetting}">
+        <Border BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0" Padding="0,3">
+            <StackPanel>
+                <ToggleButton Style="{StaticResource Cp.ReleaseHeader}" IsChecked="{Binding IsExpanded, Mode=TwoWay}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Path x:Name="Chevron" Data="M0,0 L4,4 L0,8" Width="5" Height="9" Stretch="Uniform"
+                              Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.6"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              VerticalAlignment="Center" Margin="2,0,13,0" RenderTransformOrigin="0.5,0.5"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Cp.Title}"
+                                   FontSize="{StaticResource Cp.Size.Body}" VerticalAlignment="Center"/>
+                        <Border Grid.Column="2" Background="{StaticResource Cp.AccentWash}" BorderBrush="#66FFD24D"
+                                BorderThickness="1" CornerRadius="9" Padding="7,1,7,2" Margin="10,0,0,0"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding Badge, Converter={StaticResource Cp.EmptyToCollapsed}}">
+                            <TextBlock Text="{Binding Badge}" Style="{StaticResource Cp.Eyebrow}"
+                                       Foreground="{StaticResource Cp.Accent}"/>
+                        </Border>
+                        <TextBlock Grid.Column="4" Text="{Binding Date}" Style="{StaticResource Cp.Mono}"
+                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    </Grid>
+                </ToggleButton>
+
+                <StackPanel Margin="20,2,0,10" Visibility="{Binding IsExpanded, Converter={StaticResource Cp.BoolToVis}}">
+                    <TextBlock Text="{Binding Summary}" Style="{StaticResource Cp.Hint}" Margin="0,0,0,4"
+                               Visibility="{Binding Summary, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                    <ItemsControl ItemsSource="{Binding Sections}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,8,0,0">
+                                    <TextBlock x:Name="Heading" Text="{Binding Heading}" Style="{StaticResource Cp.Eyebrow}"
+                                               Foreground="{StaticResource Cp.TextMuted}" Margin="0,0,0,3"/>
+                                    <ItemsControl ItemsSource="{Binding Items}" Focusable="False"
+                                                  ItemTemplate="{StaticResource Cp.NoteItem}"/>
+                                </StackPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                        <Setter TargetName="Heading" Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                <Setter TargetName="Chevron" Property="RenderTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="90"/>
+                    </Setter.Value>
+                </Setter>
+                <Setter TargetName="Chevron" Property="Stroke" Value="{StaticResource Cp.Accent}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- Hotkey row: its own layout rather than Cp.SettingRow, because the line under the label turns
@@ -950,7 +1097,7 @@
         <Border Style="{StaticResource Cp.Card}">
             <StackPanel>
                 <StackPanel Margin="0,12,0,2">
-                    <TextBlock Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
+                    <TextBlock x:Name="GroupTitle" Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
                                Foreground="{StaticResource Cp.Accent}"/>
                     <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Cp.Hint}"
                                Visibility="{Binding Subtitle, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
@@ -964,5 +1111,10 @@
                 </ItemsControl>
             </StackPanel>
         </Border>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                <Setter TargetName="GroupTitle" Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
     </DataTemplate>
 </ResourceDictionary>

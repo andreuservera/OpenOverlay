@@ -36,12 +36,8 @@ if (-not (Test-Path $project)) {
 
 $selfContainedValue = if ($SelfContained) { "true" } else { "false" }
 
-# Version from the latest vX.Y.Z tag: "0.4.0" on the tag itself, "0.4.0-dev.33" 33 commits after it.
-$version = "0.0.0-dev"
-$describe = & { $ErrorActionPreference = "Continue"; git -C $repoRoot describe --tags --long --match "v[0-9]*" 2>$null } 2>$null
-if ($describe -match '^v(\d+\.\d+\.\d+)-(\d+)-g[0-9a-f]+$') {
-    $version = if ($Matches[2] -eq "0") { $Matches[1] } else { "$($Matches[1])-dev.$($Matches[2])" }
-}
+# The build stamps the version of the newest CHANGELOG.md entry; this only reads it for the message.
+$version = "$(& dotnet msbuild $project -getProperty:Version)".Trim()
 
 Write-Host "Publishing OpenOverlay $version - Release, ReadyToRun, self-contained=$selfContainedValue" -ForegroundColor Cyan
 
@@ -49,7 +45,6 @@ Write-Host "Publishing OpenOverlay $version - Release, ReadyToRun, self-containe
     -c Release `
     -r win-x64 `
     --self-contained $selfContainedValue `
-    -p:Version=$version `
     -p:PublishReadyToRun=true `
     -p:TieredPGO=true `
     -p:DebugType=none `

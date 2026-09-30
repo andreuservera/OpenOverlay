@@ -57,6 +57,9 @@ public sealed partial class ControlPanelViewModel
                 PerformancePageKey => PerformancePage(),
                 UnitsPageKey => UnitsPage(),
                 HotkeysPageKey => HotkeysPage(),
+                WhatsNewPageKey => WhatsNewPage(),
+                ChangelogPageKey => ChangelogPage(),
+                AboutPageKey => AboutPage(),
                 _ => [],
             };
         }

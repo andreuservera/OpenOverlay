@@ -10,6 +10,7 @@ public static class AppInfo
 {
     private static string? _version;
     private static string? _installKind;
+    private static string? _updateChannel;
 
     public static DateTime StartedUtc { get; } = DateTime.UtcNow;
 
@@ -24,11 +25,15 @@ public static class AppInfo
     public static TimeSpan Uptime => DateTime.UtcNow - StartedUtc;
 
     /// <summary>The Velopack release version when installed; otherwise the assembly's own version,
-    /// which builds stamp with <c>-p:Version</c> (1.0.0 when nothing does).</summary>
+    /// which the build takes from the newest CHANGELOG.md entry.</summary>
     public static string Version => _version ?? AssemblyVersion;
 
     /// <summary>"installed" for a Velopack install, "development" for a loose build.</summary>
     public static string InstallKind => _installKind ?? "development";
+
+    /// <summary>The Velopack channel an installed copy was packaged for ("win" unless a release
+    /// was packed with another); null for a loose build.</summary>
+    public static string? UpdateChannel => _updateChannel;
 
     /// <summary>True when this process was started by <see cref="AppRestarter"/> after a crash or hang.</summary>
     public static bool IsRecoveredLaunch { get; set; }
@@ -56,6 +61,7 @@ public static class AppInfo
             {
                 _version = installed.ToString();
                 _installKind = "installed";
+                _updateChannel = VelopackLocator.Current.Channel;
                 return;
             }
         }

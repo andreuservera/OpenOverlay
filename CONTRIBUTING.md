@@ -33,6 +33,17 @@ ideas from anyone are welcome.
   in this codebase were confirmed empirically against a running session rather than from official
   docs. Flag anything you're not 100% sure about so it's easy to verify later.
 
+## The changelog
+
+[CHANGELOG.md](CHANGELOG.md) is written by hand, and it's the only place versions and release
+notes come from: builds take their version from the newest `[X.Y.Z]` entry, the app's **What's
+New** page shows that entry and the **Changelog** page shows them all. Commit messages are
+free-form and never appear in the app.
+
+When a change is worth telling drivers about, add a line for it under `### [Unreleased]` at the
+top, written for a driver rather than a developer. Nothing reads that entry until the release
+renames it to its version.
+
 ## Reporting bugs / requesting features
 
 Open an issue with:

@@ -53,4 +53,21 @@
     <InternalsVisibleTo Include="IRacingOverlay.App.Tests" />
   </ItemGroup>
 
+  <!-- CHANGELOG.md is the single source of truth: its first "[X.Y.Z]" heading is this build's
+       version, and the file is embedded for What's New and the Changelog page. -->
+  <PropertyGroup>
+    <ChangelogPath>$(MSBuildThisFileDirectory)..\CHANGELOG.md</ChangelogPath>
+    <_ChangelogHeading>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(ChangelogPath)')), '(?m)^#{2,3}[ \t]+\[?v?\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?').Value)</_ChangelogHeading>
+    <ChangelogVersion>$([System.Text.RegularExpressions.Regex]::Replace('$(_ChangelogHeading)', '^#{2,3}[ \t]+\[?v?', ''))</ChangelogVersion>
+    <Version>$(ChangelogVersion)</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="$(ChangelogPath)" LogicalName="OpenOverlay.CHANGELOG.md" Link="CHANGELOG.md" />
+  </ItemGroup>
+
+  <Target Name="RequireChangelogVersion" BeforeTargets="BeforeBuild" Condition="'$(ChangelogVersion)' == ''">
+    <Error Text="CHANGELOG.md needs a version heading such as '### [1.2.3] - 2026-10-01' above the older ones." />
+  </Target>
+
 </Project>

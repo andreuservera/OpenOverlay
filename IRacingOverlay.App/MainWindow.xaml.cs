@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using IRacingOverlay.App.About;
 using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Dashboard;
 using IRacingOverlay.App.Diagnostics;
@@ -110,6 +111,41 @@ public partial class MainWindow : Window
         Topmost = true;
         Topmost = false;
         Focus();
+        ShowUpdateNoticeIfPending();
+    }
+
+    /// <summary>
+    /// The one-time notice after an update, over the control panel. It waits for the panel to be on
+    /// screen — from the tray, the next time it's opened — and is marked shown before it appears,
+    /// so not even a crash brings it back a second time.
+    /// </summary>
+    private void ShowUpdateNoticeIfPending()
+    {
+        if (!InstallHistory.NoticePending || !IsVisible || WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        InstallHistory.MarkNoticeShown();
+        try
+        {
+            var notice = new UpdateNoticeWindow(UpdateNotice.For(BuildInfo.Version, ReleaseCatalog.Current))
+            {
+                Owner = this,
+                ShowActivated = IsActive,
+            };
+            notice.DetailsRequested += () =>
+            {
+                RestoreFromTray();
+                _vm.ShowWhatsNew();
+            };
+            notice.Show();
+            AppLog.Info("Updates", "Update notice shown", new Dictionary<string, string> { ["version"] = BuildInfo.Version });
+        }
+        catch (Exception e) when (!ExceptionPolicy.IsFatal(e))
+        {
+            AppLog.Warn("Updates", "Update notice could not be shown", e);
+        }
     }
 
     private void ExitApplication()
@@ -301,6 +337,7 @@ public partial class MainWindow : Window
             }
         };
         Closing += OnClosing;
+        ContentRendered += (_, _) => ShowUpdateNoticeIfPending();
         // Signing out or shutting down must never be held up by the close-to-tray behavior.
         System.Windows.Application.Current.SessionEnding += (_, _) => _exiting = true;
 
@@ -994,6 +1031,7 @@ public partial class MainWindow : Window
             _updates.Detail,
             failures: _updates.Failures,
             lastErrorRef: _updates.LastErrorRef);
+        _vm.UpdateStatus = _updates.Detail;
 
         var uiProblem = GlobalExceptionHandler.LastHandledUtc is { } uiFailure && now - uiFailure < RecentProblemWindow;
         _health.Report(

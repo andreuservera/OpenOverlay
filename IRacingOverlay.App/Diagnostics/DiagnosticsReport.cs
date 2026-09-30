@@ -159,6 +159,7 @@ public static class DiagnosticsReport
         Section(text, "Application");
         var environment = AppInfo.Describe();
         Line(text, "Version", $"{AppInfo.Version} ({AppInfo.InstallKind})");
+        Line(text, "Build", $"{BuildInfo.Commit ?? "commit not recorded"}, {BuildInfo.Channel} channel");
         Line(text, "Run", AppInfo.PreviousRunId is { } previous
             ? $"{AppInfo.RunId}, relaunched automatically after run {previous}"
             : AppInfo.RunId);
