@@ -29,6 +29,7 @@ public abstract class DriverRow
     public required int IRating { get; init; }
     public required string LicString { get; init; }
     public required double IRatingDelta { get; init; }
+    /// <summary>Fastest lap of the session within the driver's own class.</summary>
     public required bool IsSessionFastestLap { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
     public int CarClassID { get; init; }
@@ -77,12 +78,12 @@ public abstract class DriverRow
 
     public string BestLapDisplay => FormatLapTime(BestLapTime);
 
-    // Purple is reserved for the single fastest lap of the session, across all cars — the one lap
-    // time worth colouring. Every other best lap is just secondary data.
+    // Purple is reserved for the fastest lap of each class — the one lap time worth colouring.
+    // Every other best lap is just secondary data.
     public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#C4CCD4";
 
     // Broadcast convention: green when the lap just completed is the driver's personal best, purple
-    // when that personal best is also the fastest lap of the session.
+    // when that personal best is also the fastest lap of their class.
     public string LastLapForeground => !IsLastLapPersonalBest
         ? "#C4CCD4"
         : IsSessionFastestLap ? "#B58CFF" : "#34D399";

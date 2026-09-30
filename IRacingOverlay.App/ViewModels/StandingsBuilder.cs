@@ -112,7 +112,7 @@ internal static class StandingsBuilder
         var currentLaps = carIdxLap;
         var results = CurrentSession.Results(telemetry, session);
         var positions = TryGetIntArray(telemetry, TelemetryVarNames.CarIdxPosition);
-        var sessionFastestLap = laps.FastestOf(racing.Select(d => d.CarIdx));
+        var fastestLapByClass = FastestLapByClass(racing, laps.Best);
 
         int LapCountOf(int carIdx)
         {
@@ -205,6 +205,7 @@ internal static class StandingsBuilder
                 continue;
             }
 
+            var bestLapTime = laps.Best(driver.CarIdx);
             var penalties = penaltiesOf(driver.CarIdx);
             rows.Add(new RelativeRow
             {
@@ -221,12 +222,12 @@ internal static class StandingsBuilder
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
-                BestLapTime = laps.Best(driver.CarIdx),
+                BestLapTime = bestLapTime,
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
                 IRatingDelta = IRatingDeltaOf(driver.CarIdx),
-                IsSessionFastestLap = laps.Best(driver.CarIdx) > 0 && laps.Best(driver.CarIdx) <= sessionFastestLap,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
@@ -439,9 +440,7 @@ internal static class StandingsBuilder
             classLeader.TryAdd(driver.CarClassID, driver);
         }
 
-        // The single fastest lap set by anyone in the session, across every car — not just the
-        // player's own best. 0 (no valid lap yet) never counts.
-        var sessionFastestLap = laps.FastestOf(ordered.Select(d => d.CarIdx));
+        var fastestLapByClass = FastestLapByClass(ordered, laps.Best);
 
         var iRatingDeltaByCarIdx = EstimateIRatingDeltas(ordered);
 
@@ -478,7 +477,7 @@ internal static class StandingsBuilder
                 IRating = driver.IRating,
                 LicString = driver.LicString,
                 IRatingDelta = iRatingDeltaByCarIdx.GetValueOrDefault(driver.CarIdx, 0),
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 // iRacing leaves CarClassShortName blank for fixed/spec series (a "class" of one car
@@ -844,14 +843,7 @@ internal static class StandingsBuilder
         // Drivers with no time yet sort to the bottom (double.MaxValue), stable-tied by CarIdx.
         var ordered = drivers.OrderBy(QualTime).ThenBy(d => d.CarIdx).ToList();
 
-        var sessionFastestLap = 0.0;
-        foreach (var t in cachedBest.Values)
-        {
-            if (t > 0 && (sessionFastestLap <= 0 || t < sessionFastestLap))
-            {
-                sessionFastestLap = t;
-            }
-        }
+        var fastestLapByClass = FastestLapByClass(drivers, carIdx => cachedBest.GetValueOrDefault(carIdx, 0));
 
         // Same reasoning as the race path: the benchmark is the class's own pole, not the outright
         // fastest car in the session. `ordered` is sorted fastest-first, so the first car seen for a
@@ -900,7 +892,7 @@ internal static class StandingsBuilder
                 LicString = driver.LicString,
                 // A single pairwise-duel iRating estimate makes no sense against a fastest-lap order.
                 IRatingDelta = 0,
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
@@ -908,6 +900,24 @@ internal static class StandingsBuilder
         }
 
         return rows;
+    }
+
+    /// <summary>Each class's fastest lap, keyed by CarClassID. Purple marks the best of every class, not
+    /// only the field's overall fastest: a GT4 never out-laps a GTP, yet its drivers still need to see
+    /// who is quickest among them. 0 (no valid lap yet) never counts.</summary>
+    private static Dictionary<int, double> FastestLapByClass(IEnumerable<DriverEntry> drivers, Func<int, double> bestLapOf)
+    {
+        var fastest = new Dictionary<int, double>();
+        foreach (var driver in drivers)
+        {
+            var best = bestLapOf(driver.CarIdx);
+            if (best > 0 && (!fastest.TryGetValue(driver.CarClassID, out var classBest) || best < classBest))
+            {
+                fastest[driver.CarClassID] = best;
+            }
+        }
+
+        return fastest;
     }
 
     private static PitStop? LastPitStopOf(IReadOnlyDictionary<int, PitStop>? lastPitStops, int carIdx) =>

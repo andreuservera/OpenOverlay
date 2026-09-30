@@ -7,7 +7,7 @@ namespace IRacingOverlay.App.ControlPanel;
 ///
 /// The values are chosen to exercise the things a user is actually deciding between when they open
 /// this panel: a mid-pack player rather than the leader (so the podium/focus split is visible), one
-/// car in the pits and one purple session-best lap (so both row states show up), a spread of
+/// car in the pits and a purple fastest lap in each class (so both row states show up), a spread of
 /// iRatings and licences (so those columns are worth their width), and a fuel picture that is
 /// genuinely short of the finish (so the strategy figures aren't all neutral grey). A preview where
 /// everything is nominal teaches nothing.
@@ -102,7 +102,8 @@ public static class PreviewData
                 IRating = entry.IRating,
                 LicString = entry.Licence,
                 IRatingDelta = 46 - (i * 4.7),
-                IsSessionFastestLap = i == 0,
+                // Pace only grows down the field, so each class's first car holds its fastest lap.
+                IsSessionFastestLap = classPositions[classIndex] == 1,
                 ClassColor = multiClass ? Classes[entry.ClassIndex].Color : "#B9C4CF",
                 CarClassID = multiClass ? entry.ClassIndex + 1 : 1,
                 CarClassName = multiClass ? Classes[entry.ClassIndex].Name : "GT3 CLASS",

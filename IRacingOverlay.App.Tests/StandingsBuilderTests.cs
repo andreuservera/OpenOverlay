@@ -1433,6 +1433,36 @@ public class StandingsBuilderTests
         Assert.Equal("+1.0", rows.Single(r => r.CarIdx == 1).GapDisplay);
     }
 
+    /// <summary>GTP's fastest lap is car 1; GT3's is car 3 (the player), slower than any GTP lap.</summary>
+    private static TelemetrySnapshot TwoClassLapTimes() =>
+        TestSnapshotFactory.Build(WeekendVars(), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 10, 10, 10]);
+            w.SetFloatArray("CarIdxEstTime", [90f, 80f, 50f, 44f]);
+            w.SetFloatArray("CarIdxLastLapTime", [95f, 94f, 101f, 100f]);
+            w.SetFloatArray("CarIdxBestLapTime", [94f, 93f, 100.5f, 99.8f]);
+        });
+
+    [Theory]
+    [InlineData("Race")]
+    [InlineData("Open Qualify")]
+    public void BuildStandings_Multiclass_MarksTheFastestLapOfEachClass(string sessionType)
+    {
+        // Regression test for "only the overall fastest lap goes purple in multiclass".
+        var rows = StandingsBuilder.BuildStandings(TwoClassLapTimes(), TwoClassSession(sessionType), new SessionBestLapTracker());
+
+        Assert.Equal([1, 3], rows.Where(r => r.IsSessionFastestLap).Select(r => r.CarIdx).Order());
+    }
+
+    [Fact]
+    public void BuildRelative_Multiclass_MarksTheFastestLapOfEachClass()
+    {
+        var rows = RelativeRows(TwoClassLapTimes(), TwoClassSession("Race"));
+
+        Assert.Equal([1, 3], rows.Where(r => r.IsSessionFastestLap).Select(r => r.CarIdx).Order());
+    }
+
     [Fact]
     public void BuildStandings_SameClassDifferentMakes_OrdersByTrackPositionNotRawEstTime()
     {

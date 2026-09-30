@@ -44,8 +44,7 @@ internal sealed class LapTimeSource
             : _results.TryGetValue(carIdx, out var result) && result.LastTime > 0 ? result.LastTime : 0;
     }
 
-    /// <summary>Fastest lap set by anyone, or 0 if nobody has one. The benchmark the fastest-lap
-    /// highlight is measured against, so it counts only genuine best laps.</summary>
+    /// <summary>Fastest lap set by anyone, or 0 if nobody has one. Counts only genuine best laps.</summary>
     public double FastestOf(IEnumerable<int> carIndexes)
     {
         var fastest = 0.0;
