@@ -19,6 +19,7 @@ public partial class WeatherPanel : UserControl
         new PropertyMetadata(new WeatherOptions(), (d, e) => ((WeatherPanel)d).OnOptionsChanged(e)));
 
     private WeatherState _last = WeatherState.Empty;
+    private long _nextCompassMs;
 
     public WeatherPanel()
     {
@@ -32,6 +33,9 @@ public partial class WeatherPanel : UserControl
         get => (WeatherOptions)GetValue(OptionsProperty);
         set => SetValue(OptionsProperty, value);
     }
+
+    /// <summary>Minimum time between wind-dial redraws on live updates; 0 = every update, animated.</summary>
+    public int CompassIntervalMs { get; set; }
 
     public void UpdateState(WeatherState state)
     {
@@ -64,10 +68,25 @@ public partial class WeatherPanel : UserControl
 
         WindDial.ToolTip = state.WindDirectionDescription;
         // A hidden dial isn't animated at all; it snaps into place when it's shown again.
-        if (Options.ShowWindArrow)
+        if (!Options.ShowWindArrow)
         {
-            WindDial.Point(state.WindFromRelativeDeg, state.HeadingDeg, animate);
+            return;
         }
+
+        if (animate && CompassIntervalMs > 0)
+        {
+            // Half a 10 Hz tick of slack, so 500 ms lands on every 5th tick despite timer jitter.
+            var now = Environment.TickCount64;
+            if (now < _nextCompassMs - 50)
+            {
+                return;
+            }
+
+            _nextCompassMs = now + CompassIntervalMs;
+            animate = false;
+        }
+
+        WindDial.Point(state.WindFromRelativeDeg, state.HeadingDeg, animate);
     }
 
     private void OnOptionsChanged(DependencyPropertyChangedEventArgs e)

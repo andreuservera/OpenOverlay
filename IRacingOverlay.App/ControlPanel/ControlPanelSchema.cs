@@ -4,6 +4,7 @@ using System.IO;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.App.Widgets;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -575,6 +576,20 @@ public sealed partial class ControlPanelViewModel
                     _criticalRefreshIndex = index;
                     CriticalRefreshStore.Save(index);
                     CriticalRefreshChanged?.Invoke(CriticalRefreshIntervalMs);
+                })),
+        new SettingsGroup(
+            "WIND COMPASS",
+            "The wind arrow in the Weather widget. The wind changes over minutes, but the dial turns with the car through every corner, so animating it redraws the widget for most of the lap.")
+            .With(new ChoiceSetting(
+                "Refresh rate",
+                "Fixed rates jump straight to the new angle instead of animating. Slower is less GPU work.",
+                ["Smooth (animated)", "10 Hz", "5 Hz", "2 Hz", "1 Hz"],
+                _compassRefreshIndex,
+                index =>
+                {
+                    _compassRefreshIndex = index;
+                    CompassRefreshStore.Save(index);
+                    WidgetOf<WeatherWidget>(WidgetCatalog.Weather)?.SetCompassInterval(CompassRefreshIntervalMs);
                 })),
     ];
 
