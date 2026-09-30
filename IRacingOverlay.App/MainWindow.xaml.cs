@@ -96,7 +96,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Back to the state it was in before it went away, and in front of whatever has focus.</summary>
-    private void RestoreFromTray()
+    internal void RestoreFromTray()
     {
         AppLog.Activity("Control Panel", "Opened");
         Show();

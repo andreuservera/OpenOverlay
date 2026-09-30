@@ -29,6 +29,12 @@ public partial class App : Application
         GlobalExceptionHandler.InstallProcessHandlers();
         AppRestarter.WaitForPreviousInstance(args);
 
+        // Ahead of Velopack: a second launch must not apply a pending update beneath the running copy.
+        if (!SingleInstance.TryClaim())
+        {
+            return;
+        }
+
         try
         {
             VelopackApp.Build().Run();
@@ -49,7 +55,14 @@ public partial class App : Application
         var app = new App();
         GlobalExceptionHandler.InstallDispatcherHandler(app);
         app.InitializeComponent();
+        SingleInstance.ListenForActivation(() => app.Dispatcher.BeginInvoke(() =>
+        {
+            AppLog.Activity("Startup", "Another launch brought this instance forward");
+            // Null only while still starting up, and then the window is about to appear anyway.
+            (app.MainWindow as MainWindow)?.RestoreFromTray();
+        }));
         app.Run();
+        SingleInstance.Release();
     }
 
     /// <summary>Puts runs that never shut down into this run's log, so a log that stops abruptly
