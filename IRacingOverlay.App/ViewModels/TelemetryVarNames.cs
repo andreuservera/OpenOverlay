@@ -39,8 +39,8 @@ internal static class TelemetryVarNames
     public const string CarIdxF2Time = "CarIdxF2Time";
     public const string CarIdxBestLapTime = "CarIdxBestLapTime";
     public const string CarIdxLastLapTime = "CarIdxLastLapTime";
-    /// <summary>float[], seconds — "estimated time to reach current location on track" per car.
-    /// The precise, class-agnostic building block for relative gaps (confirmed via iRacing SDK docs).</summary>
+    /// <summary>float[], seconds — "estimated time to reach current location on track" per car, on that
+    /// car's own CarClassEstLapTime clock: not comparable between classes (or BoP'd models) unscaled.</summary>
     public const string CarIdxEstTime = "CarIdxEstTime";
 
     public const string BrakeAbsActive = "BrakeABSactive";

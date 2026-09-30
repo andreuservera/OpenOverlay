@@ -9,14 +9,15 @@ internal static class StandingsBuilder
 {
     /// <summary>
     /// Relative gap uses CarIdxEstTime — iRacing's own "estimated time to reach current location on
-    /// track" per car — which is precise within a lap and class-agnostic (each car's progress is
-    /// measured in its own seconds, so it works the same for a GT3 car as a slower class). The gap
-    /// is the raw CarIdxEstTime difference folded into the nearest ±half-lap-time window (a shared
-    /// reference lap time, not each car's individually — using each car's own lap time here was an
-    /// earlier bug), rather than corrected by each car's own *total completed laps*: CarIdxLap only
-    /// tracks laps-since-session-start, which is meaningless for "how far apart on track are we
-    /// right now" in Practice/Qualifying — cars don't start together there, so a car that joined
-    /// earlier can be dozens of laps ahead in count while still running right next to the player.
+    /// track" per car. That runs on each car's own CarClassEstLapTime clock (per class, and per BoP'd
+    /// model within one), so each is read as a fraction of its car's lap; the difference is folded to
+    /// the nearest half lap and timed at the player's own pace. (Without est lap times:
+    /// the raw difference folded into a ±half-lap window of one shared reference lap time — using
+    /// each car's own recorded lap time there was an earlier bug.) The fold replaces a correction by
+    /// each car's own *total completed laps*: CarIdxLap only tracks laps-since-session-start, which
+    /// is meaningless for "how far apart on track are we right now" in Practice/Qualifying — cars
+    /// don't start together there, so a car that joined earlier can be dozens of laps ahead in count
+    /// while still running right next to the player.
     /// Multiplying that raw lap-count difference by a lap time (the earlier approach) produced gaps
     /// of thousands of seconds for cars that were genuinely side by side (reported live). Folding to
     /// the nearest half-lap instead answers the question a Relative widget actually needs to: what's
@@ -75,9 +76,17 @@ internal static class StandingsBuilder
             refLapTime = laps.ReferenceLapOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.CarIdx));
         }
 
-        double GapTo(int carIdx)
+        var playerEstLapTime = driverInfo.Drivers.FirstOrDefault(d => d.CarIdx == playerCarIdx)?.CarClassEstLapTime ?? 0;
+
+        double GapTo(DriverEntry driver)
         {
-            var gap = (double)carIdxEstTime[playerCarIdx] - carIdxEstTime[carIdx];
+            if (playerEstLapTime > 0 && driver.CarClassEstLapTime > 0)
+            {
+                var lapsBehind = carIdxEstTime[playerCarIdx] / playerEstLapTime - carIdxEstTime[driver.CarIdx] / driver.CarClassEstLapTime;
+                return (lapsBehind - Math.Round(lapsBehind)) * playerEstLapTime;
+            }
+
+            var gap = (double)carIdxEstTime[playerCarIdx] - carIdxEstTime[driver.CarIdx];
             if (refLapTime > 0)
             {
                 gap %= refLapTime;
@@ -205,7 +214,7 @@ internal static class StandingsBuilder
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
-                GapSeconds = GapTo(driver.CarIdx),
+                GapSeconds = GapTo(driver),
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
                 HasMeatballFlag = penalties.Meatball,
@@ -261,16 +270,16 @@ internal static class StandingsBuilder
     /// made the whole table look frozen mid-lap. CarIdxPosition is still used as one signal for "has
     /// this car actually started," just not for the displayed position/gap numbers themselves.
     ///
-    /// The running order is a straight lexicographic comparison of (laps completed, progress around
-    /// the current lap) and deliberately involves no lap-time estimate at all. It used to collapse
-    /// both into one scalar, laps * referenceLapTime + estTime, which is only a valid ordering while
-    /// referenceLapTime is at least as long as any car's lap — and that reference came from the
-    /// player's own last lap. Attach the overlay to a race already in progress and the player has no
-    /// lap time yet, so it fell back to whichever car sat lowest in the telemetry array; too small a
-    /// value (a faster class, or simply a quicker car) let cars a lap down outrank cars a lap ahead,
-    /// and no value at all reduced the whole sort to within-lap position, which is what "it ignores
-    /// every lap run before I joined" looks like on screen. Laps and track position answer the
-    /// question on their own.
+    /// The running order is a straight lexicographic comparison of (laps completed, fraction of the
+    /// current lap covered), so no lap-time estimate ever weighs laps against track position. It used
+    /// to collapse both into one scalar, laps * referenceLapTime + estTime, which is only a valid
+    /// ordering while referenceLapTime is at least as long as any car's lap — and that reference came
+    /// from the player's own last lap. Attach the overlay to a race already in progress and the
+    /// player has no lap time yet, so it fell back to whichever car sat lowest in the telemetry array;
+    /// too small a value (a faster class, or simply a quicker car) let cars a lap down outrank cars a
+    /// lap ahead, and no value at all reduced the whole sort to within-lap position, which is what "it
+    /// ignores every lap run before I joined" looks like on screen. Laps and track position answer
+    /// the question on their own.
     /// </summary>
     public static List<StandingsRow> BuildStandings(
         TelemetrySnapshot telemetry,
@@ -339,9 +348,7 @@ internal static class StandingsBuilder
                 lastPitStops);
         }
 
-        // Only the gap *display* needs a lap length, to turn "a lap down" into seconds. The running
-        // order below deliberately doesn't use it, so a bad estimate can misprice a gap but can never
-        // reshuffle the table.
+        // Stand-in lap length for cars without an est lap time in the session info.
         var refLapTime = laps.Best(playerCarIdx);
         if (refLapTime <= 0)
         {
@@ -350,11 +357,25 @@ internal static class StandingsBuilder
 
         int LapOf(int carIdx) => carIdx < currentLaps.Length ? currentLaps[carIdx] : 0;
 
-        // Seconds from the start/finish line to where the car is right now, so within one lap a
-        // bigger number is simply further round the track.
-        double TrackProgress(int carIdx) => carIdx < carIdxEstTime.Length ? carIdxEstTime[carIdx] : 0;
+        double EstTimeOf(int carIdx) => carIdx < carIdxEstTime.Length ? carIdxEstTime[carIdx] : 0;
 
-        double TimePosition(int carIdx) => LapOf(carIdx) * refLapTime + TrackProgress(carIdx);
+        // CarIdxEstTime runs on each car's own CarClassEstLapTime clock, and wraps when it runs out.
+        double ClockOf(DriverEntry driver) => driver.CarClassEstLapTime > 0 ? driver.CarClassEstLapTime : refLapTime;
+
+        double TrackProgress(DriverEntry driver) =>
+            ClockOf(driver) > 0 ? EstTimeOf(driver.CarIdx) / ClockOf(driver) : EstTimeOf(driver.CarIdx);
+
+        // Laps down plus the time the car needs to reach where the leader is now, at its own pace.
+        double GapBehind(DriverEntry leader, DriverEntry driver)
+        {
+            var clock = ClockOf(driver);
+            if (clock <= 0)
+            {
+                return EstTimeOf(leader.CarIdx) - EstTimeOf(driver.CarIdx);
+            }
+
+            return (LapOf(leader.CarIdx) + TrackProgress(leader) - LapOf(driver.CarIdx) - TrackProgress(driver)) * clock;
+        }
 
         var eligible = new List<DriverEntry>();
         foreach (var driver in driverInfo.Drivers)
@@ -404,7 +425,7 @@ internal static class StandingsBuilder
 
         var ordered = eligible
             .OrderByDescending(d => LapOf(d.CarIdx))
-            .ThenByDescending(d => TrackProgress(d.CarIdx))
+            .ThenByDescending(d => TrackProgress(d))
             .ThenBy(d => TieBreakPosition(d.CarIdx))
             .ToList();
 
@@ -412,13 +433,10 @@ internal static class StandingsBuilder
         // driver they are 45s behind a prototype is a number they can do nothing with. `ordered` is
         // in overall order, so the first car seen for a class is that class's leader. In a
         // single-class session this is simply the race leader.
-        var classLeaderTimePosition = new Dictionary<int, double>();
+        var classLeader = new Dictionary<int, DriverEntry>();
         foreach (var driver in ordered)
         {
-            if (!classLeaderTimePosition.ContainsKey(driver.CarClassID))
-            {
-                classLeaderTimePosition[driver.CarClassID] = TimePosition(driver.CarIdx);
-            }
+            classLeader.TryAdd(driver.CarClassID, driver);
         }
 
         // The single fastest lap set by anyone in the session, across every car — not just the
@@ -453,7 +471,7 @@ internal static class StandingsBuilder
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
-                GapToLeaderSeconds = classLeaderTimePosition[driver.CarClassID] - TimePosition(driver.CarIdx),
+                GapToLeaderSeconds = GapBehind(classLeader[driver.CarClassID], driver),
                 LastLapTime = laps.Last(driver.CarIdx),
                 BestLapTime = bestLapTime,
                 IsMultiClass = isMultiClass,

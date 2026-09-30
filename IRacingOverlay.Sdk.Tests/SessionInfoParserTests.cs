@@ -24,6 +24,7 @@ public class SessionInfoParserTests
            UserName: Carlos Test
            TeamName: Night Owls
            CarNumber: "7"
+           CarClassEstLapTime: 115.5741
            IRating: 2500
          - CarIdx: 1
            UserName: Second Driver
@@ -44,6 +45,14 @@ public class SessionInfoParserTests
         Assert.Equal(12345, result.Session.WeekendInfo!.SubSessionID);
         Assert.Equal("Race", result.Session.SessionInfo!.Sessions[0].SessionType);
         Assert.Equal(2, result.Session.DriverInfo!.Drivers.Count);
+    }
+
+    [Fact]
+    public void Parse_ReadsEachDriversEstLapTime()
+    {
+        var result = SessionInfoParser.Parse(ValidYaml);
+
+        Assert.Equal(115.5741, result.Session.DriverInfo!.Drivers[0].CarClassEstLapTime, precision: 4);
     }
 
     [Fact]
