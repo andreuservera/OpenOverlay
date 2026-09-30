@@ -155,6 +155,11 @@ public static class PreviewData
                 // Cars ahead of the player read negative, behind positive — the sign is the whole
                 // point of the column, so both have to appear in the preview.
                 GapSeconds = (source.GapToLeaderSeconds - playerPace) * 0.42,
+                // Traffic from both directions: a backmarker up the road, a faster car closing to lap you.
+                LapRelation = source.IsPlayer ? LapRelation.SameLap
+                    : i == first ? LapRelation.Lapped
+                    : i == last ? LapRelation.Lapping
+                    : LapRelation.SameLap,
             });
         }
 
@@ -194,7 +199,7 @@ public static class PreviewData
     public sealed record FlagScenario(string Label, IReadOnlyList<ActiveFlag> Flags);
 
     /// <summary>What the flag preview can simulate: a busy moment first (a primary flag with two
-    /// advisories, so the stacking and the size hierarchy both show), then every flag and variant in
+    /// advisories, so the stacking shows), then every flag and variant in
     /// the catalog — generated from it, so a newly added flag is previewable with no change here.</summary>
     public static IReadOnlyList<FlagScenario> FlagScenarios { get; } = BuildFlagScenarios();
 
@@ -342,6 +347,7 @@ public static class PreviewData
         HeadingDeg = 60,
         Condition = WeatherCondition.PartlyCloudy,
         RainChancePct = 40,
+        TrackWetness = 2,
     };
 
     public static TrackInfoState TrackInfo() => new()
@@ -388,5 +394,5 @@ public static class PreviewData
 
     public static int SubSessionId => 68412907;
 
-    public static string CarName => "IMSA OPEN";
+    public static string ClassName => "GT3";
 }

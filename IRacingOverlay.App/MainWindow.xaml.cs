@@ -569,12 +569,12 @@ public partial class MainWindow : Window
                         ? StandingsBuilder.BuildMulticlassView(_latestStandings, _vm.StandingsOptions.FocusSize)
                         : StandingsBuilder.BuildFocusedView(_latestStandings, _vm.StandingsOptions.FocusSize),
                     Sof: StandingsBuilder.ComputeStrengthOfField(session),
-                    CarName: StandingsBuilder.SingleClassCarName(session)),
+                    ClassName: StandingsBuilder.PlayerClassName(session)),
                 (widget, view) =>
                 {
                     widget.UpdateRows(view.Rows);
                     widget.SetSof(view.Sof);
-                    widget.SetCarName(view.CarName);
+                    widget.SetClassName(view.ClassName);
                     widget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
                 },
                 null);
@@ -583,14 +583,14 @@ public partial class MainWindow : Window
                     () => (
                         Rows: StandingsBuilder.GroupForDisplay(_latestStandings),
                         Sof: StandingsBuilder.ComputeStrengthOfField(session),
-                        CarName: StandingsBuilder.SingleClassCarName(session)),
+                        ClassName: StandingsBuilder.PlayerClassName(session)),
                     out var full))
             {
                 _dashboardGuard.Run(() =>
                 {
                     dashboard.UpdateStandingsRows(full.Rows);
                     dashboard.UpdateStandingsSof(full.Sof);
-                    dashboard.UpdateStandingsCarName(full.CarName);
+                    dashboard.UpdateStandingsClassName(full.ClassName);
                 });
             }
         }
@@ -604,7 +604,7 @@ public partial class MainWindow : Window
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);
-                widget.SetCarName(StandingsBuilder.SingleClassCarName(session));
+                widget.SetClassName(StandingsBuilder.PlayerClassName(session));
                 widget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
@@ -800,14 +800,14 @@ public partial class MainWindow : Window
     private void PushTableHeader(DriverTable table)
     {
         var session = _connection.Session;
-        var carName = StandingsBuilder.SingleClassCarName(session);
+        var className = StandingsBuilder.PlayerClassName(session);
         var subSessionId = session?.WeekendInfo?.SubSessionID ?? 0;
 
         if (table == DriverTable.Standings)
         {
             Clear(WidgetCatalog.Standings, Standings, w =>
             {
-                w.SetCarName(carName);
+                w.SetClassName(className);
                 w.SetSessionId(subSessionId);
             });
         }
@@ -815,7 +815,7 @@ public partial class MainWindow : Window
         {
             Clear(WidgetCatalog.Relative, Relative, w =>
             {
-                w.SetCarName(carName);
+                w.SetClassName(className);
                 w.SetSessionId(subSessionId);
             });
         }

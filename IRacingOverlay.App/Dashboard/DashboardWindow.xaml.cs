@@ -95,7 +95,7 @@ public partial class DashboardWindow : Window
 
     public void UpdateStandingsSof(double sof) => _standingsPanel.SetSof(sof);
 
-    public void UpdateStandingsCarName(string carName) => _standingsPanel.SetCarName(carName);
+    public void UpdateStandingsClassName(string className) => _standingsPanel.SetClassName(className);
 
     public void UpdateRelativeRows(IReadOnlyList<object> relative) => _relativePanel.SetRows(relative);
 

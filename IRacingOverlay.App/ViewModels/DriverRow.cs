@@ -2,6 +2,16 @@ using System.Globalization;
 
 namespace IRacingOverlay.App.ViewModels;
 
+/// <summary>Where a car is in the race relative to the player, whatever their order on track.</summary>
+public enum LapRelation
+{
+    SameLap,
+    /// <summary>A lap or more down on the player: the player is lapping them.</summary>
+    Lapped,
+    /// <summary>A lap or more up on the player: they are lapping, or have lapped, the player.</summary>
+    Lapping,
+}
+
 /// <summary>
 /// One driver's line in a timing table, with every column's formatting. Shared by Standings and
 /// Relative so the two tables can't drift apart: they render from the same template against the
@@ -34,6 +44,9 @@ public abstract class DriverRow
     public string ClassColor { get; init; } = "#FFFFFF";
     public int CarClassID { get; init; }
     public string CarClassName { get; init; } = "";
+
+    /// <summary>Only Relative sets this; the row template tints lapped cars blue and lapping cars red.</summary>
+    public LapRelation LapRelation { get; init; }
 
     /// <summary>Most recent completed pit stop this session; null until the car has made one.</summary>
     public PitStop? LastPitStop { get; init; }

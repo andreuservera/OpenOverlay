@@ -167,6 +167,35 @@ internal static class StandingsBuilder
         double IRatingDeltaOf(int carIdx) =>
             standingsByCarIdx.TryGetValue(carIdx, out var ranked) ? ranked.IRatingDelta : 0;
 
+        // Race distance, not track position: laps plus the fraction of the current one. Lapping only
+        // means something in a race; in practice and qualifying lap counts are just time on track.
+        var isRace = IsRaceSession(telemetry, session);
+
+        double? RaceDistanceOf(int carIdx) =>
+            carIdxLapDistPct is not null && carIdx < carIdxLapDistPct.Length && carIdx < carIdxLap.Length &&
+            carIdxLap[carIdx] >= 0 && carIdxLapDistPct[carIdx] >= 0
+                ? carIdxLap[carIdx] + carIdxLapDistPct[carIdx]
+                : null;
+
+        var playerDistance = RaceDistanceOf(playerCarIdx);
+
+        // Half a lap is where the folded Relative order flips: a car more than half a lap up on the
+        // player sits behind them on track only because it is about to lap them.
+        LapRelation LapRelationOf(int carIdx)
+        {
+            if (!isRace || carIdx == playerCarIdx || playerDistance is not { } mine || RaceDistanceOf(carIdx) is not { } theirs)
+            {
+                return LapRelation.SameLap;
+            }
+
+            return (theirs - mine) switch
+            {
+                > 0.5 => LapRelation.Lapping,
+                < -0.5 => LapRelation.Lapped,
+                _ => LapRelation.SameLap,
+            };
+        }
+
         foreach (var driver in driverInfo.Drivers)
         {
             if (driver.IsPaceCar || driver.CarIdx < 0 || driver.CarIdx >= carIdxLap.Length)
@@ -230,7 +259,8 @@ internal static class StandingsBuilder
                 IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
-                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+                CarClassName = driver.CarClassShortName,
+                LapRelation = LapRelationOf(driver.CarIdx),
             });
         }
 
@@ -480,10 +510,9 @@ internal static class StandingsBuilder
                 IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
-                // iRacing leaves CarClassShortName blank for fixed/spec series (a "class" of one car
-                // model, e.g. Porsche Cup) — it's only populated for genuine multi-car classes like
-                // GT3. Falling back to the car's own name keeps the header informative either way.
-                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+                // The category, never the car: blank for a spec series, where the header falls back
+                // to the class id.
+                CarClassName = driver.CarClassShortName,
             });
         }
 
@@ -785,9 +814,9 @@ internal static class StandingsBuilder
         }
     }
 
-    /// <summary>The car the player is racing, for the panel header. Empty in multiclass, where the
-    /// per-class headers already say what each block is driving.</summary>
-    public static string SingleClassCarName(IracingSessionInfo? session)
+    /// <summary>The category (class) the player races in, for the panel header — e.g. "GT3". Never
+    /// the car's name: iRacing leaves the class name blank for a spec series, and then so is this.</summary>
+    public static string PlayerClassName(IracingSessionInfo? session)
     {
         if (session?.DriverInfo is not { } driverInfo)
         {
@@ -795,15 +824,18 @@ internal static class StandingsBuilder
         }
 
         var racing = driverInfo.Drivers.Where(d => !d.IsPaceCar).ToList();
-        if (racing.Count == 0 || racing.Select(d => d.CarClassID).Distinct().Count() > 1)
+        if (racing.Count == 0)
         {
             return "";
         }
 
-        // Spectating has no player entry, and with one class any car in the field is the same one.
+        // Spectating has no player entry: the first car's class stands in.
         var car = racing.FirstOrDefault(d => d.CarIdx == driverInfo.DriverCarIdx) ?? racing[0];
-        return string.IsNullOrWhiteSpace(car.CarScreenNameShort) ? car.CarClassShortName : car.CarScreenNameShort;
+        return car.CarClassShortName?.Trim() ?? "";
     }
+
+    private static bool IsRaceSession(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+        (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsPracticeOrQualifyingSession(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
@@ -895,7 +927,7 @@ internal static class StandingsBuilder
                 IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
-                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+                CarClassName = driver.CarClassShortName,
             });
         }
 

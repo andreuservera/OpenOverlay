@@ -21,6 +21,7 @@ public class WeatherBuilderTests
         builder.AddVar("Precipitation", IrsdkVarType.Float);
         builder.AddVar("SolarAltitude", IrsdkVarType.Float);
         builder.AddVar("WeatherDeclaredWet", IrsdkVarType.Bool);
+        builder.AddVar("TrackWetness", IrsdkVarType.Int);
         return builder;
     }
 
@@ -138,6 +139,27 @@ public class WeatherBuilderTests
 
         Assert.Equal("15%", state.RainChanceDisplay);
         Assert.Equal(RainRisk.Low, state.RainRisk);
+    }
+
+    [Theory]
+    [InlineData(1, "DRY", RainRisk.Low)]
+    [InlineData(3, "DAMP", RainRisk.Medium)]
+    [InlineData(6, "VERY WET", RainRisk.High)]
+    public void Build_ReadsTrackWetness(int wetness, string expected, RainRisk risk)
+    {
+        var state = Build(w => w.SetInt("TrackWetness", wetness));
+
+        Assert.Equal(expected, state.TrackWetnessDisplay);
+        Assert.Equal(risk, state.TrackWetnessRisk);
+    }
+
+    [Fact]
+    public void Build_UnknownTrackWetness_IsADash()
+    {
+        var state = Build(w => w.SetInt("TrackWetness", 0));
+
+        Assert.Null(state.TrackWetness);
+        Assert.Equal("—", state.TrackWetnessDisplay);
     }
 
     [Fact]

@@ -5,13 +5,17 @@
     <UserControl.Resources>
         <!-- Same cell shape as FuelCalculatorPanel, so the two fuel readouts read as one family. -->
         <Style x:Key="StatCell" TargetType="StackPanel">
-            <Setter Property="MinWidth" Value="64"/>
+            <Setter Property="MinWidth" Value="70"/>
             <Setter Property="Margin" Value="0,0,18,0"/>
         </Style>
         <Style x:Key="CellLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+            <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
             <Setter Property="Margin" Value="0,0,0,2"/>
         </Style>
-        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
+        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
     </UserControl.Resources>

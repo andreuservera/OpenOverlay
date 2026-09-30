@@ -149,6 +149,8 @@ internal static class TelemetryVarNames
     /// <summary>Sun angle above the horizon in radians; below zero is night.</summary>
     public const string SolarAltitude = "SolarAltitude";
     public const string WeatherDeclaredWet = "WeatherDeclaredWet";
+    /// <summary>int — irsdk_TrackWetness: 0 unknown, 1 dry … 7 extremely wet.</summary>
+    public const string TrackWetness = "TrackWetness";
     /// <summary>int — the sim's unit setting: 0 = English (imperial), 1 = metric.</summary>
     public const string DisplayUnits = "DisplayUnits";
 }

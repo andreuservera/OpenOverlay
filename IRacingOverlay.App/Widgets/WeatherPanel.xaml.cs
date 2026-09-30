@@ -57,14 +57,14 @@ public partial class WeatherPanel : UserControl
 
         ForecastIcon.Condition = state.Condition;
         ForecastIcon.ToolTip = state.ConditionDescription;
+        ConditionText.Text = state.ConditionLabel;
         RainChanceText.Text = state.RainChanceDisplay;
-        RainChanceText.Foreground = state.RainRisk switch
-        {
-            RainRisk.Low => StatePalette.Positive,
-            RainRisk.Medium => StatePalette.Info,
-            RainRisk.High => StatePalette.Critical,
-            _ => StatePalette.TextMuted,
-        };
+        var rainBrush = RiskBrush(state.RainRisk);
+        RainChanceText.Foreground = rainBrush;
+        RainFill.Fill = rainBrush;
+        RainFillScale.ScaleX = Math.Clamp((state.RainChancePct ?? 0) / 100, 0, 1);
+        WetnessText.Text = state.TrackWetnessDisplay;
+        WetnessText.Foreground = RiskBrush(state.TrackWetnessRisk);
 
         WindDial.ToolTip = state.WindDirectionDescription;
         // A hidden dial isn't animated at all; it snaps into place when it's shown again.
@@ -88,6 +88,14 @@ public partial class WeatherPanel : UserControl
 
         WindDial.Point(state.WindFromRelativeDeg, state.HeadingDeg, animate);
     }
+
+    private static Brush RiskBrush(RainRisk? risk) => risk switch
+    {
+        RainRisk.Low => StatePalette.Positive,
+        RainRisk.Medium => StatePalette.Info,
+        RainRisk.High => StatePalette.Critical,
+        _ => StatePalette.TextMuted,
+    };
 
     private void OnOptionsChanged(DependencyPropertyChangedEventArgs e)
     {

@@ -130,6 +130,7 @@
                      never louder than the data on top of it. -->
                 <Border x:Name="ClassWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"
                         Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.22}"/>
+                <Border x:Name="LapWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"/>
                 <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Row}" BorderThickness="1"/>
                 <Border x:Name="EdgeBar" Width="3" HorizontalAlignment="Left" CornerRadius="{StaticResource Radius.RowEdge}"/>
                 <Grid x:Name="Cells" Margin="{StaticResource CellInset}">
@@ -153,7 +154,7 @@
 
                     <!-- Neutral plate: the class is already on the row's edge, so a filled chip in the
                          class colour would only repeat it at full volume. -->
-                    <Border Grid.Column="1" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
+                    <Border x:Name="CarChip" Grid.Column="1" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}"
                             Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <TextBlock Text="{Binding CarNumberDisplay}" Style="{StaticResource ChipText}"/>
@@ -249,7 +250,7 @@
                                Foreground="{Binding LastLapForeground}"
                                Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="10" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
+                    <TextBlock x:Name="GapText" Grid.Column="10" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
                                Foreground="{Binding GapForeground}"
                                Visibility="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 </Grid>
@@ -264,6 +265,22 @@
             <DataTrigger Binding="{Binding OnPitRoad}" Value="True">
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Pit}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+            </DataTrigger>
+            <!-- Lapped (blue) / lapping you (red): name, number and gap take the tone, the class bar
+                 and wash stay the class colour. -->
+            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.Lapped}">
+                <Setter TargetName="LapWash" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="LapWash" Property="Background" Value="{StaticResource Row.LappedWash}"/>
+                <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
+                <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
+                <Setter TargetName="CarChip" Property="BorderBrush" Value="{StaticResource Row.LappedInk}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.Lapping}">
+                <Setter TargetName="LapWash" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="LapWash" Property="Background" Value="{StaticResource Row.LappingWash}"/>
+                <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
+                <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
+                <Setter TargetName="CarChip" Property="BorderBrush" Value="{StaticResource Row.LappingInk}"/>
             </DataTrigger>
             <!-- Declared after the others so it wins: the player's row is always full strength,
                  even in the pits, and its own wash replaces the class one (the class bar stays). -->

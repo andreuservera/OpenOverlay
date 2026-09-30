@@ -3,27 +3,44 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
     <!-- Your count, the team's beside it in a team race, and the session's limit when it has one.
-         Captions only appear when there are two numbers to tell apart. -->
+         Captions only appear when there are two numbers to tell apart. A new incident briefly swaps
+         the title for what it was ("2x LOSS OF CONTROL") and washes the panel in its colour. -->
     <Border Style="{StaticResource OverlayPanel}" Padding="14.5,10">
-        <StackPanel>
-            <TextBlock Text="INCIDENTS" Style="{StaticResource PanelTitle}" Margin="0,0,0,2"/>
-            <StackPanel Orientation="Horizontal">
-                <StackPanel>
-                    <TextBlock x:Name="MyCaption" Text="YOU" Style="{StaticResource ColumnHeader}" Visibility="Collapsed"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="MyCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
-                        <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>
+        <Grid>
+            <!-- Under the text, out to the panel's edges (the negative margin undoes the padding). -->
+            <Border x:Name="AlertWash" Margin="-14.5,-10" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
+                    Opacity="0" IsHitTestVisible="False"/>
+            <StackPanel>
+                <!-- Title and alert share one slot. The hidden sizer holds the longest alert, so the
+                     panel is always that wide and never resizes when one appears. -->
+                <Grid Margin="0,0,0,2">
+                    <TextBlock Text="2x LOSS OF CONTROL" Style="{StaticResource PanelTitle}" FontWeight="Bold" Visibility="Hidden"/>
+                    <TextBlock x:Name="TitleText" Text="INCIDENTS" Style="{StaticResource PanelTitle}"/>
+                    <TextBlock x:Name="AlertText" Text="" Style="{StaticResource PanelTitle}" FontWeight="Bold" Opacity="0"/>
+                </Grid>
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel>
+                        <TextBlock x:Name="MyCaption" Text="YOU" Style="{StaticResource ColumnHeader}" Visibility="Collapsed"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="MyCountText" Text="0" Style="{StaticResource DisplayValueSmall}"
+                                       RenderTransformOrigin="0.5,0.6">
+                                <TextBlock.RenderTransform>
+                                    <ScaleTransform x:Name="MyCountScale"/>
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                            <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
-                <StackPanel x:Name="TeamBlock" Margin="18,0,0,0" Visibility="Collapsed">
-                    <TextBlock Text="TEAM" Style="{StaticResource ColumnHeader}"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="TeamCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
-                        <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>
+                    <StackPanel x:Name="TeamBlock" Margin="18,0,0,0" Visibility="Collapsed">
+                        <TextBlock Text="TEAM" Style="{StaticResource ColumnHeader}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="TeamCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
+                            <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>
+                        </StackPanel>
                     </StackPanel>
+                    <TextBlock x:Name="LimitText" Text="" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="5,0,0,4"/>
                 </StackPanel>
-                <TextBlock x:Name="LimitText" Text="" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="5,0,0,4"/>
             </StackPanel>
-        </StackPanel>
+        </Grid>
     </Border>
 </UserControl>

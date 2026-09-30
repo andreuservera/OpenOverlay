@@ -459,10 +459,10 @@ public class StandingsBuilderTests
     }
 
     [Fact]
-    public void BuildStandings_ClassShortNameBlank_FallsBackToCarName()
+    public void BuildStandings_ClassShortNameBlank_NeverFallsBackToTheCarName()
     {
-        // Fixed/spec series (one car model per "class", e.g. Porsche Cup) leave CarClassShortName
-        // blank in iRacing's own YAML — the car's own name is the only informative label available.
+        // Fixed/spec series leave CarClassShortName blank. The class header then reads "CLASS n"
+        // rather than the car: the table names categories, not cars.
         var builder = StandingsVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
@@ -485,7 +485,7 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildStandings(snapshot, session);
 
-        Assert.Equal("Porsche Cup", rows.Single(r => r.CarIdx == 0).CarClassName);
+        Assert.Equal("", rows.Single(r => r.CarIdx == 0).CarClassName);
         Assert.Equal("GT3", rows.Single(r => r.CarIdx == 1).CarClassName);
     }
 
@@ -1605,50 +1605,40 @@ public class StandingsBuilderTests
     };
 
     [Fact]
-    public void SingleClassCarName_SingleClassSession_NamesThePlayersCar()
+    public void PlayerClassName_NamesThePlayersClassNotTheirCar()
     {
         var session = RosterOf(2,
-            new DriverEntry { CarIdx = 0, UserName = "A", CarClassID = 100, CarScreenNameShort = "911 GT3 Cup" },
-            new DriverEntry { CarIdx = 1, UserName = "B", CarClassID = 100, CarScreenNameShort = "911 GT3 Cup" },
-            new DriverEntry { CarIdx = 2, UserName = "Me", CarClassID = 100, CarScreenNameShort = "911 GT3 Cup" });
+            new DriverEntry { CarIdx = 0, UserName = "A", CarClassID = 100, CarScreenNameShort = "911 GT3 R", CarClassShortName = "GT3" },
+            new DriverEntry { CarIdx = 1, UserName = "B", CarClassID = 200, CarScreenNameShort = "Dallara P217", CarClassShortName = "LMP2" },
+            new DriverEntry { CarIdx = 2, UserName = "Me", CarClassID = 200, CarScreenNameShort = "Dallara P217", CarClassShortName = "LMP2" });
 
-        Assert.Equal("911 GT3 Cup", StandingsBuilder.SingleClassCarName(session));
+        Assert.Equal("LMP2", StandingsBuilder.PlayerClassName(session));
     }
 
     [Fact]
-    public void SingleClassCarName_Multiclass_IsEmptyBecauseClassHeadersAlreadySayIt()
+    public void PlayerClassName_PaceCarIsNeverTheClass()
     {
         var session = RosterOf(0,
-            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarScreenNameShort = "911 GT3 R", CarClassShortName = "GT3" },
-            new DriverEntry { CarIdx = 1, UserName = "Proto", CarClassID = 200, CarScreenNameShort = "Dallara P217", CarClassShortName = "LMP2" });
+            new DriverEntry { CarIdx = 1, UserName = "Pace", CarClassID = 999, CarClassShortName = "Safety", CarIsPaceCar = 1 },
+            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarClassShortName = "GT4" });
 
-        Assert.Equal("", StandingsBuilder.SingleClassCarName(session));
+        Assert.Equal("GT4", StandingsBuilder.PlayerClassName(session));
     }
 
     [Fact]
-    public void SingleClassCarName_PaceCarDoesNotCountAsASecondClass()
+    public void PlayerClassName_BlankClass_IsEmptyRatherThanTheCarName()
     {
         var session = RosterOf(0,
-            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarScreenNameShort = "MX-5" },
-            new DriverEntry { CarIdx = 1, UserName = "Pace", CarClassID = 999, CarScreenNameShort = "Pace Car", CarIsPaceCar = 1 });
+            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarScreenNameShort = "MX-5", CarClassShortName = "" });
 
-        Assert.Equal("MX-5", StandingsBuilder.SingleClassCarName(session));
+        Assert.Equal("", StandingsBuilder.PlayerClassName(session));
     }
 
     [Fact]
-    public void SingleClassCarName_BlankCarName_FallsBackToTheClassName()
+    public void PlayerClassName_NoSessionOrEmptyRoster_IsEmpty()
     {
-        var session = RosterOf(0,
-            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarScreenNameShort = "", CarClassShortName = "GT4" });
-
-        Assert.Equal("GT4", StandingsBuilder.SingleClassCarName(session));
-    }
-
-    [Fact]
-    public void SingleClassCarName_NoSessionOrEmptyRoster_IsEmpty()
-    {
-        Assert.Equal("", StandingsBuilder.SingleClassCarName(null));
-        Assert.Equal("", StandingsBuilder.SingleClassCarName(RosterOf(0)));
+        Assert.Equal("", StandingsBuilder.PlayerClassName(null));
+        Assert.Equal("", StandingsBuilder.PlayerClassName(RosterOf(0)));
     }
 
     private static SyntheticMemoryBuilder FieldVars(int cars)
@@ -1823,6 +1813,42 @@ public class StandingsBuilderTests
             .OfType<RelativeRow>().ToList();
 
         Assert.Equal("1", relative.Single(r => r.CarIdx == 1).PositionDisplay);
+    }
+
+    private static TelemetrySnapshot LappingTraffic() =>
+        TestSnapshotFactory.Build(FieldVars(5), w =>
+        {
+            // Player (2) is at 10.5 laps. Race distance, not track order, decides the relation.
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [11, 10, 10, 9, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.3f, 0.9f, 0.5f, 0.8f, 0.1f]);
+            w.SetFloatArray("CarIdxEstTime", [27f, 81f, 45f, 72f, 9f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f, 90f]);
+            w.SetFloatArray("CarIdxBestLapTime", [90f, 90f, 90f, 90f, 90f]);
+        });
+
+    [Fact]
+    public void BuildRelative_Race_MarksLappedAndLappingCarsByRaceDistance()
+    {
+        var relative = StandingsBuilder.BuildRelative(LappingTraffic(), FieldOf(5, 2), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapping, relative[0]); // +0.8: behind on track, about to lap the player
+        Assert.Equal(LapRelation.SameLap, relative[1]); // +0.4
+        Assert.Equal(LapRelation.SameLap, relative[2]); // the player
+        Assert.Equal(LapRelation.Lapped, relative[3]);  // -0.7: up the road, a lap down
+        Assert.Equal(LapRelation.SameLap, relative[4]); // -0.4
+    }
+
+    [Fact]
+    public void BuildRelative_OutsideARace_MarksNobodyAsLapped()
+    {
+        var session = FieldOf(5, 2);
+        session.SessionInfo!.Sessions[0].SessionType = "Open Practice";
+
+        var relative = StandingsBuilder.BuildRelative(LappingTraffic(), session, maxEachSide: 4).OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
     }
 
     private static List<StandingsRow> MakeRows(bool isMultiClass, params (int carIdx, bool isPlayer, int classId, string className, int position)[] specs) =>

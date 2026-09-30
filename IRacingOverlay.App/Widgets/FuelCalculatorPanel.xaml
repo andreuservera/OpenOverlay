@@ -9,20 +9,25 @@
              label-left/value-right Grid rows did, where both TextBlocks shared a single cell and ran
              straight into each other as soon as the panel was narrower than label + value. -->
         <Style x:Key="StatCell" TargetType="StackPanel">
-            <Setter Property="MinWidth" Value="62"/>
+            <Setter Property="MinWidth" Value="70"/>
             <Setter Property="Margin" Value="0,0,18,0"/>
         </Style>
         <!-- Wider, because "LAPS LEFT"/"TO FINISH" are longer captions over a bigger number. -->
         <Style x:Key="StrategyCell" TargetType="StackPanel" BasedOn="{StaticResource StatCell}">
-            <Setter Property="MinWidth" Value="80"/>
+            <Setter Property="MinWidth" Value="92"/>
         </Style>
         <Style x:Key="CellLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+            <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
             <Setter Property="Margin" Value="0,0,0,2"/>
         </Style>
-        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
+        <!-- Read at a glance on the straight, so a full value size rather than table-cell size. -->
+        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
-        <Style x:Key="StrategyValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+        <Style x:Key="StrategyValue" TargetType="TextBlock" BasedOn="{StaticResource ValueTextLarge}">
             <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
     </UserControl.Resources>

@@ -23,6 +23,7 @@
     <sys:Double x:Key="Type.Label">13</sys:Double>
     <sys:Double x:Key="Type.Body">14</sys:Double>
     <sys:Double x:Key="Type.Value">18</sys:Double>
+    <sys:Double x:Key="Type.ValueLarge">22</sys:Double>
     <sys:Double x:Key="Type.DisplaySmall">29</sys:Double>
     <sys:Double x:Key="Type.Display">36</sys:Double>
     <sys:Double x:Key="Type.DisplayLarge">45</sys:Double>
@@ -37,6 +38,7 @@
     <sys:Double x:Key="Line.Label">14.4024</sys:Double>
     <sys:Double x:Key="Line.Body">15.6026</sys:Double>
     <sys:Double x:Key="Line.Value">20.4034</sys:Double>
+    <sys:Double x:Key="Line.ValueLarge">26.4044</sys:Double>
     <sys:Double x:Key="Line.DisplaySmall">32.4054</sys:Double>
     <sys:Double x:Key="Line.Display">40.8068</sys:Double>
     <sys:Double x:Key="Line.DisplayLarge">50.4084</sys:Double>
@@ -122,6 +124,18 @@
     <!-- In the pits: a warm band, a PIT badge, and the row's content recedes (see the row template). -->
     <SolidColorBrush x:Key="Row.Pit" Color="#1FF5A524"/>
     <sys:Double x:Key="Row.PitOpacity">0.7</sys:Double>
+    <!-- Relative: a car a lap down (blue) or a lap up (red). Washes in from the right so the class
+         colour keeps the left edge and the two never mix. -->
+    <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
+    <SolidColorBrush x:Key="Row.LappingInk" Color="#FF6B6B"/>
+    <LinearGradientBrush x:Key="Row.LappedWash" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#006CB8FF" Offset="0.3"/>
+        <GradientStop Color="#476CB8FF" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Row.LappingWash" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#00FF6B6B" Offset="0.3"/>
+        <GradientStop Color="#47FF6B6B" Offset="1"/>
+    </LinearGradientBrush>
 
     <!-- ===== Status badges =====
          Short live states (PIT) as a tinted, outlined pill: the same shape as the licence chip, so
@@ -254,6 +268,12 @@
     <Style x:Key="ValueTextSmall" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
         <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
         <Setter Property="LineHeight" Value="{StaticResource Line.Body}"/>
+    </Style>
+
+    <!-- A readout a step above ValueText, for what a panel's secondary row is acted on. -->
+    <Style x:Key="ValueTextLarge" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+        <Setter Property="FontSize" Value="{StaticResource Type.ValueLarge}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.ValueLarge}"/>
     </Style>
 
     <!-- The one number a panel exists to show (delta, laps of fuel). -->

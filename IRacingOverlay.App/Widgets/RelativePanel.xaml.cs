@@ -45,8 +45,8 @@ public partial class RelativePanel : UserControl
             Rows.RemoveAt(Rows.Count - 1);
     }
 
-    public void SetCarName(string carName) =>
-        CarNameText.Text = Options.ShowCarName ? carName.ToUpperInvariant() : "";
+    public void SetClassName(string className) =>
+        ClassNameText.Text = Options.ShowClassName ? className.ToUpperInvariant() : "";
 
     public void SetSessionId(int subSessionId) =>
         SessionIdText.Text = Options.ShowSessionId && subSessionId > 0 ? $"#{subSessionId}" : "";
