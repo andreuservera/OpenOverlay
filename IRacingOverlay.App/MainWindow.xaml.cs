@@ -219,6 +219,9 @@ public partial class MainWindow : Window
     private long _lastCriticalTickTimestampMs = -1;
     private double _criticalTickMaxGapMs;
 
+    // What the cockpit was last fed; a repeat means a frame with no new sim tick, so nothing to redraw.
+    private (int Tick, CockpitWidget? Widget, DashboardWindow? Dashboard)? _lastCockpitFeed;
+
     private DashboardWindow? _dashboard;
 
     // Last computed running order, shared with Relative so both tables report the same position for
@@ -393,6 +396,7 @@ public partial class MainWindow : Window
     private void ClearWidgets()
     {
         _latestStandings = [];
+        _lastCockpitFeed = null;
         _vm.TelemetryLine = "Waiting for iRacing";
 
         Clear(WidgetCatalog.Relative, Relative, w => w.UpdateRows([]));
@@ -733,8 +737,14 @@ public partial class MainWindow : Window
         }
 
         var session = _connection.Session;
-        Feed(WidgetCatalog.Cockpit, Cockpit, () => CockpitBuilder.Build(telemetry, session),
-            (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateCockpit(state));
+        var cockpit = Cockpit;
+        var cockpitFeed = (telemetry.TickCount, cockpit, _dashboard);
+        if (cockpitFeed != _lastCockpitFeed)
+        {
+            _lastCockpitFeed = cockpitFeed;
+            Feed(WidgetCatalog.Cockpit, cockpit, () => CockpitBuilder.Build(telemetry, session),
+                (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateCockpit(state));
+        }
 
         Feed(WidgetCatalog.PedalTrace, Pedals, () => _pedalTraceBuilder.Build(telemetry),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdatePedalTrace(state));

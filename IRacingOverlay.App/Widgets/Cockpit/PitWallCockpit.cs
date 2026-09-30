@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
+using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets.Cockpit;
 
@@ -36,6 +37,14 @@ public sealed class PitWallCockpit : CockpitDashboard
     private const double BarGap = 4;
     private const double TableX = BarWidth + BarGap;
     private static readonly double TableWidth = Columns.Sum(c => c.Width);
+    private static readonly string ChannelsLabel = $"CH 1–{Columns.Length}";
+    private static readonly Dictionary<UnitSystem, string[]> ColumnLabels =
+        Enum.GetValues<UnitSystem>().ToDictionary(units => units, units => Columns.Select((column, c) => c switch
+        {
+            1 => $"SPEED  {Units.SpeedUnit(units)}",
+            7 => $"TEMPS  {Units.TemperatureUnit(units)}",
+            _ => column.Label,
+        }).ToArray());
 
     protected override Size DesignSize => new(TableWidth + (2 * TableX), DashHeight);
 
@@ -47,9 +56,10 @@ public sealed class PitWallCockpit : CockpitDashboard
 
         dc.DrawRectangle(B("#F2101214"), P("#3A3F45", 1), new Rect(TableX + 0.5, 0.5, TableWidth - 1, DashHeight - 1));
         dc.DrawRectangle(B("#1B1F24"), null, new Rect(TableX + 1, 1, TableWidth - 2, 15));
-        Text(dc, "DRIVER TELEMETRY", Bold, 9, B("#9CA3AF"), TableX + 6, 8.5, v: VAlign.Center);
-        Text(dc, $"CH 1–{Columns.Length}", Regular, 9, B("#6B7280"), tableRight - 6, 8.5, HAlign.Right, VAlign.Center);
+        CachedText(dc, "DRIVER TELEMETRY", Bold, 9, B("#9CA3AF"), TableX + 6, 8.5, v: VAlign.Center);
+        CachedText(dc, ChannelsLabel, Regular, 9, B("#6B7280"), tableRight - 6, 8.5, HAlign.Right, VAlign.Center);
 
+        var labels = ColumnLabels[State.UnitSystem];
         var x = TableX;
         for (var c = 0; c < Columns.Length; c++)
         {
@@ -60,13 +70,7 @@ public sealed class PitWallCockpit : CockpitDashboard
             }
 
             DrawCell(dc, c, cell);
-            var label = c switch
-            {
-                1 => $"SPEED  {SpeedUnit}",
-                7 => $"TEMPS  {TemperatureUnit}",
-                _ => Columns[c].Label,
-            };
-            Text(dc, label, Regular, 9, B("#8A939C"), cell.X + 6, cell.Y + 5);
+            CachedText(dc, labels[c], Regular, 9, B("#8A939C"), cell.X + 6, cell.Y + 5);
             x += Columns[c].Width;
         }
     }
@@ -124,7 +128,7 @@ public sealed class PitWallCockpit : CockpitDashboard
                 break;
             case 5:
                 var low = State.FuelPct is < 0.1;
-                var fuel = Text(dc, FuelUnit, Regular, 10, B("#8A939C"), right, cell.Y + 30, HAlign.Right, VAlign.Center);
+                var fuel = CachedText(dc, FuelUnit, Regular, 10, B("#8A939C"), right, cell.Y + 30, HAlign.Right, VAlign.Center);
                 Text(dc, Fuel, Bold, 18, B(low ? "#FBBF24" : "#FFFFFF"), fuel.X - 3, cell.Y + 30, HAlign.Right, VAlign.Center);
                 var track = new Rect(cell.X + 6, cell.Y + 48, cell.Width - 12, 6);
                 dc.DrawRectangle(B("#2A2F35"), null, track);
@@ -151,13 +155,13 @@ public sealed class PitWallCockpit : CockpitDashboard
         dc.DrawRectangle(B("#2A2F35"), null, track);
         var h = track.Height * Math.Clamp(value, 0, 1);
         dc.DrawRectangle(B(color), null, new Rect(track.X, track.Bottom - h, track.Width, h));
-        Text(dc, label, Regular, 9, B("#8A939C"), track.X + (track.Width / 2), track.Bottom + 2, HAlign.Center);
+        CachedText(dc, label, Regular, 9, B("#8A939C"), track.X + (track.Width / 2), track.Bottom + 2, HAlign.Center);
     }
 
     // Warning thresholds stay in °C — the telemetry's own unit — and only the text is converted.
     private void Temp(DrawingContext dc, string label, double? celsius, double warnAtCelsius, Rect cell, double y)
     {
-        Text(dc, label, Regular, 9, B("#8A939C"), cell.X + 6, y, v: VAlign.Center);
+        CachedText(dc, label, Regular, 9, B("#8A939C"), cell.X + 6, y, v: VAlign.Center);
         var hot = celsius >= warnAtCelsius;
         Text(dc, Temperature(celsius), Bold, 14, B(hot ? "#FBBF24" : "#E5E7EB"), cell.Right - 6, y, HAlign.Right, VAlign.Center);
     }
