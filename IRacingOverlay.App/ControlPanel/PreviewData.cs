@@ -162,6 +162,7 @@ public static class PreviewData
         ShiftLightsLit = 9,
         ShiftBlink = false,
         AbsActive = false,
+        AbsLevel = 3,
         SpeedKph = 214,
         Rpm = 7180,
         // One car half-alongside on the left, nothing on the right: shows both the lit and unlit

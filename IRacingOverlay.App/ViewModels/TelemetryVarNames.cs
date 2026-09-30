@@ -44,6 +44,8 @@ internal static class TelemetryVarNames
     public const string CarIdxEstTime = "CarIdxEstTime";
 
     public const string BrakeAbsActive = "BrakeABSactive";
+    /// <summary>float — the in-car ABS setting. Only present on cars with adjustable ABS.</summary>
+    public const string AbsSetting = "dcABS";
     /// <summary>Enum irsdk_CarLeftRight, confirmed live to be typed as a plain Int (not a bitfield,
     /// despite what the docs say): 0=off,1=clear,2=car left,3=car right,4=car both sides,
     /// 5=two cars left,6=two cars right.</summary>

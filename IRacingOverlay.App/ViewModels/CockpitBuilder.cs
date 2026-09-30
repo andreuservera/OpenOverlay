@@ -32,6 +32,7 @@ internal static class CockpitBuilder
             ShiftLightsLit = litCount,
             ShiftBlink = blink,
             AbsActive = abs,
+            AbsLevel = Optional(telemetry, TelemetryVarNames.AbsSetting) is { } level ? (int)Math.Round(level) : null,
             SpeedKph = speedKph,
             Rpm = rpm,
             LeftProximity = left,

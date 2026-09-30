@@ -79,7 +79,7 @@ public sealed class ClassicCarCockpit : CockpitDashboard
 
         var absAt = new Point(84, 126);
         dc.DrawEllipse(B(AbsActive ? (AbsFlashOn ? "#F59E0B" : "#8A5D18") : "#3A2A12"), P("#5A5046", 1), absAt, 6, 6);
-        Text(dc, "ABS", Caption, 8.5, B(AbsActive ? "#F59E0B" : "#8C7B5A"), absAt.X, absAt.Y + 9, HAlign.Center);
+        Text(dc, AbsLabel, Caption, 8.5, B(AbsActive ? "#F59E0B" : "#8C7B5A"), absAt.X, absAt.Y + 9, HAlign.Center);
 
         var needle = AngleOf(Math.Min(State.Rpm, _scaleMax));
         dc.DrawLine(P("#E03131", 3), OnCircle(Center, -12, needle), OnCircle(Center, 88, needle));

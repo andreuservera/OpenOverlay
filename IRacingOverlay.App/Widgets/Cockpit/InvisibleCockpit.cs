@@ -14,7 +14,8 @@ namespace IRacingOverlay.App.Widgets.Cockpit;
 /// Typography: Segoe UI Variable Display — clean, tabular figures, no outlines. Colour: white at
 /// descending opacity; colour only on the rev lights and when something needs attention.
 /// Hierarchy: gear → speed → RPM → lights. Alerts: the rev rail flashes and the gear turns red at the
-/// shift point; ABS and the side bars only exist while they have something to say.
+/// shift point; the ABS level sits quietly under the gear and lights amber while ABS intervenes; the
+/// side bars only exist while they have something to say.
 /// </summary>
 public sealed class InvisibleCockpit : CockpitDashboard
 {
@@ -60,12 +61,16 @@ public sealed class InvisibleCockpit : CockpitDashboard
         Text(dc, Rpm, Regular, 30, B("#D9FFFFFF"), Center + 34, 62, v: VAlign.Baseline);
         Text(dc, "RPM", Semibold, 9, B("#A6FFFFFF"), Center + 35, 66);
 
+        var pill = new Rect(Center - 20, 80, 40, 14);
         if (AbsActive)
         {
             var amber = AbsFlashOn ? "#FBBF24" : "#9A7418";
-            var pill = new Rect(Center - 18, 80, 36, 14);
             dc.DrawRoundedRectangle(B("#33FBBF24"), P(amber, 1), pill, 7, 7);
-            Text(dc, "ABS", Semibold, 9, B(amber), Center, pill.Y + 7, HAlign.Center, VAlign.Center);
+            Text(dc, AbsLabel, Semibold, 9, B(amber), Center, pill.Y + 7, HAlign.Center, VAlign.Center);
+        }
+        else if (State.AbsLevel is not null)
+        {
+            Text(dc, AbsLabel, Semibold, 9, B("#A6FFFFFF"), Center, pill.Y + 7, HAlign.Center, VAlign.Center);
         }
 
         SideBar(dc, State.LeftProximity, 2);

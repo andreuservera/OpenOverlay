@@ -119,6 +119,13 @@ public abstract class CockpitDashboard : FrameworkElement
 
     protected bool AbsActive => State.AbsActive;
 
+    /// <summary>"ABS 3" — the configured level, or plain "ABS" when the car doesn't report one.
+    /// Never "OFF": intervention is shown by colour/flash, not by this text.</summary>
+    protected string AbsLabel => State.AbsLevel is { } level ? $"ABS {level}" : "ABS";
+
+    /// <summary>The configured level alone, for themes that label the value separately.</summary>
+    protected string AbsLevel => State.AbsLevel is { } level ? level.ToString(CultureInfo.InvariantCulture) : "—";
+
     /// <summary>Bright half of the ABS flash while active.</summary>
     protected bool AbsFlashOn => State.AbsActive && Environment.TickCount64 / AbsFlashHalfPeriodMs % 2 == 0;
 

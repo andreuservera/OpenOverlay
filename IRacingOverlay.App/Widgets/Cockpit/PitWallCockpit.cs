@@ -15,8 +15,8 @@ namespace IRacingOverlay.App.Widgets.Cockpit;
 /// values. Containers: a strict grid with ruled cells and no rounding. Colour: workstation grey;
 /// green/amber/red only on values that carry a state. Hierarchy: flat by design — every cell weighs
 /// the same, the reading order is left to right. Alerts: the gear cell turns red at the shift point,
-/// ABS reads ACTIVE, fuel and temperatures turn amber when they need attention, and the side bars
-/// light amber where a car is alongside.
+/// the ABS cell (the configured level) flashes amber while ABS intervenes, fuel and temperatures turn
+/// amber when they need attention, and the side bars light amber where a car is alongside.
 /// </summary>
 public sealed class PitWallCockpit : CockpitDashboard
 {
@@ -104,8 +104,13 @@ public sealed class PitWallCockpit : CockpitDashboard
 
                 break;
             case 4:
-                var absColor = AbsActive ? (AbsFlashOn ? "#FBBF24" : "#8A6A1E") : "#6B7280";
-                Text(dc, AbsActive ? "ACTIVE" : "OFF", Bold, AbsActive ? 11 : 14, B(absColor), right, middle, HAlign.Right, VAlign.Center);
+                if (AbsActive)
+                {
+                    dc.DrawRectangle(B("#3A2E0E"), null, new Rect(cell.X + 1, cell.Y, cell.Width - 1, cell.Height - 1));
+                }
+
+                var absColor = AbsActive ? (AbsFlashOn ? "#FBBF24" : "#8A6A1E") : "#E5E7EB";
+                Text(dc, AbsLevel, Bold, 18, B(absColor), right, middle, HAlign.Right, VAlign.Center);
                 break;
             case 5:
                 var low = State.FuelPct is < 0.1;

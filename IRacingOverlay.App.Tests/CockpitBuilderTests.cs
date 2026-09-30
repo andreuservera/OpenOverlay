@@ -129,6 +129,36 @@ public class CockpitBuilderTests
     }
 
     [Fact]
+    public void Build_AbsSetting_ReportsConfiguredLevelIndependentlyOfActivation()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("BrakeABSactive", IrsdkVarType.Bool);
+        builder.AddVar("dcABS", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBool("BrakeABSactive", false);
+            w.SetFloat("dcABS", 4f);
+        });
+
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+
+        Assert.Equal(4, state.AbsLevel);
+        Assert.False(state.AbsActive);
+    }
+
+    [Fact]
+    public void Build_NoAbsSetting_LevelIsNull()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("BrakeABSactive", IrsdkVarType.Bool);
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetBool("BrakeABSactive", true));
+
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+
+        Assert.Null(state.AbsLevel);
+    }
+
+    [Fact]
     public void Build_Speed_ConvertsMetersPerSecondToKph()
     {
         var builder = new SyntheticMemoryBuilder();

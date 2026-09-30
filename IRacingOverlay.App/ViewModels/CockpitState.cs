@@ -22,6 +22,9 @@ public sealed class CockpitState
     public required int ShiftLightsLit { get; init; }
     public required bool ShiftBlink { get; init; }
     public required bool AbsActive { get; init; }
+
+    /// <summary>The car's configured ABS setting; null when the car has no adjustable ABS.</summary>
+    public int? AbsLevel { get; init; }
     public required double SpeedKph { get; init; }
     public required double Rpm { get; init; }
 
