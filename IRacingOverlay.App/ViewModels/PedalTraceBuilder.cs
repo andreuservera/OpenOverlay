@@ -89,10 +89,8 @@ internal sealed class PedalTraceBuilder
     private static double ReadPedal(TelemetrySnapshot telemetry, string name) =>
         telemetry.HasVariable(name) ? Math.Clamp(telemetry.GetFloat(name), 0, 1) : 0;
 
-    // iRacing's Clutch variable is inverted relative to Throttle/Brake: 1.0 = fully engaged
-    // (pedal released), 0.0 = fully disengaged (pedal to the floor). Flip it so the trace shows
-    // "how much the pedal is pressed" like the other two — otherwise autoclutch, which leaves the
-    // pedal released almost all the time, reads as a constant 100% clutch.
+    // Pedal only, with no fallback to the assisted "Clutch" channel. Inverted relative to
+    // Throttle/Brake (1 = pedal up, 0 = floored), so flip it to read "how much the pedal is pressed".
     private static double ReadClutch(TelemetrySnapshot telemetry) =>
-        telemetry.HasVariable(TelemetryVarNames.Clutch) ? 1 - Math.Clamp(telemetry.GetFloat(TelemetryVarNames.Clutch), 0, 1) : 0;
+        telemetry.HasVariable(TelemetryVarNames.ClutchRaw) ? 1 - Math.Clamp(telemetry.GetFloat(TelemetryVarNames.ClutchRaw), 0, 1) : 0;
 }

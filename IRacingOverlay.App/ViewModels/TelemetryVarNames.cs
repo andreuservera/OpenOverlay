@@ -11,7 +11,9 @@ internal static class TelemetryVarNames
     public const string Gear = "Gear";
     public const string Throttle = "Throttle";
     public const string Brake = "Brake";
-    public const string Clutch = "Clutch";
+    /// <summary>The player's clutch pedal alone. "Clutch" is what the physics applied, including
+    /// iRacing's auto-clutch, anti-stall and launch assists.</summary>
+    public const string ClutchRaw = "ClutchRaw";
     public const string Lap = "Lap";
     public const string LapDistPct = "LapDistPct";
     public const string SessionTime = "SessionTime";

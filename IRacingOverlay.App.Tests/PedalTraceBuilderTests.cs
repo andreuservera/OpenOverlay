@@ -12,22 +12,26 @@ public class PedalTraceBuilderTests
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("Throttle", IrsdkVarType.Float);
         builder.AddVar("Brake", IrsdkVarType.Float);
+        builder.AddVar("ClutchRaw", IrsdkVarType.Float);
         builder.AddVar("Clutch", IrsdkVarType.Float);
         return builder;
     }
 
-    private static TelemetrySnapshot Pedals(SyntheticMemoryBuilder builder, int tick, float throttle, float brake = 0, float clutch = 0) =>
+    // Clutch values as iRacing sends them (1 = pedal up). clutchApplied is the physics' clutch, assists
+    // included; left out, it follows the pedal, as when no assist is intervening.
+    private static TelemetrySnapshot Pedals(SyntheticMemoryBuilder builder, int tick, float throttle, float brake = 0, float clutchPedal = 1, float? clutchApplied = null) =>
         TestSnapshotFactory.Build(builder, w =>
         {
             w.SetFloat("Throttle", throttle);
             w.SetFloat("Brake", brake);
-            w.SetFloat("Clutch", clutch);
+            w.SetFloat("ClutchRaw", clutchPedal);
+            w.SetFloat("Clutch", clutchApplied ?? clutchPedal);
         }, tick);
 
     [Fact]
     public void Build_ReadsCurrentPedalValues()
     {
-        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0.8f, 0.1f, 0f));
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0.8f, 0.1f, clutchPedal: 0f));
 
         Assert.Equal(0.8, state.Throttle, precision: 3);
         Assert.Equal(0.1, state.Brake, precision: 3);
@@ -37,10 +41,49 @@ public class PedalTraceBuilderTests
     [Fact]
     public void Build_ClutchReleased_ReadsAsNotPressed()
     {
-        // iRacing reports raw Clutch=1 when the pedal is released (e.g. autoclutch idling).
-        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0f, 0f, 1f));
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0f, 0f, clutchPedal: 1f));
 
         Assert.Equal(0, state.Clutch, precision: 3);
+    }
+
+    [Fact]
+    public void Build_AssistWorksClutch_PedalUntouched_ReadsZero()
+    {
+        // Anti-stall pulling the clutch as the car stops, then the start assist feeding it back in.
+        var builder = PedalVars();
+        var trace = new PedalTraceBuilder();
+        var state = PedalTraceState.Empty;
+        var tick = 0;
+        foreach (var applied in new[] { 1f, 0.4f, 0f, 0f, 0.3f, 0.8f, 1f })
+        {
+            state = trace.Build(Pedals(builder, ++tick, 0f, clutchPedal: 1f, clutchApplied: applied));
+        }
+
+        Assert.Equal(0, state.Clutch);
+        Assert.Equal(7, state.ClutchHistory.Count);
+        Assert.All(state.ClutchHistory, clutch => Assert.Equal(0, clutch));
+    }
+
+    [Fact]
+    public void Build_PedalPressedWhileAssistHoldsClutch_ReadsPedalOnly()
+    {
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0f, clutchPedal: 0.75f, clutchApplied: 0f));
+
+        Assert.Equal(0.25, state.Clutch, precision: 3);
+        Assert.Equal(0.25, state.ClutchHistory[^1], precision: 3);
+    }
+
+    [Fact]
+    public void Build_NoRawClutchChannel_NeverFallsBackToAssistedClutch()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("Clutch", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("Clutch", 0f));
+
+        var state = new PedalTraceBuilder().Build(snapshot);
+
+        Assert.Equal(0, state.Clutch);
+        Assert.All(state.ClutchHistory, clutch => Assert.Equal(0, clutch));
     }
 
     [Fact]
