@@ -15,7 +15,16 @@ All notable changes to OpenOverlay, newest first.
   - Update channel and the result of the last update check
   - One-click copy of the version details for bug reports
   - Links to GitHub, the documentation, issue reporting and the license
+- Clutch pedal trace added to the Pedal Trace widget for complete pedal input monitoring.
 - Build and update channel included in diagnostics reports.
+
+#### Improved
+- Relative calculations refined for more accurate gap tracking throughout a session.
+- Standings calculations improved for greater consistency during session transitions and live updates.
+- Cockpit dashboard proximity detection improved, providing a more reliable view of nearby cars.
+- General UI polish across all widgets with improved readability and visual consistency.
+- Additional widget sizing options for greater flexibility when building custom layouts.
+- Performance optimizations across the application resulting in smoother updates and lower resource usage.
 
 #### Changed
 - Builds take their version from the newest CHANGELOG.md entry instead of git tags.
