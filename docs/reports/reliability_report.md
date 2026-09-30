@@ -64,6 +64,7 @@ Control Panel › General › Diagnostics: **Copy diagnostics**, **Export report
 |---|---|
 | `run` | Per-launch ID. Pulls one run out of weeks of logs; an automatic relaunch logs `previousRun`, linking the chain |
 | `ref` | Warnings and errors only: `<run>-<sequence>`. The status bar, tray tooltip and reports quote it |
+| `version` | Installed builds: the release version (`0.6.0`). Local builds are stamped from the latest tag: `0.4.0-dev.33+af575b8` = 33 commits after `v0.4.0`, at commit `af575b8`. `env` tells the two apart |
 | `session` | Track · session type · subsession · car, when connected |
 | `suppressed` | Identical entries collapsed since this one was last written (≤ 1 line/min per repeating error) |
 | `exception` | Type, message, HResult, stack trace and inner exceptions (aggregates expanded). Each distinct stack trace is written once per run; later entries for the same error from the same place carry `stackRef` (the entry that has it) instead |
@@ -147,7 +148,7 @@ At startup the [run journal](../../IRacingOverlay.App/Diagnostics/RunJournal.cs)
 | R20 | Medium | `Stop()` could dispose the CTS the reader was still waiting on; `Start()` lambda read `_cts` late (NRE) | SDK | **Fixed** |
 | R21 | Medium | Button actions (`Process.Start`, clipboard) unguarded | `RelayCommand` | **Fixed** — [SettingItems.cs](../../IRacingOverlay.App/ControlPanel/SettingItems.cs#L592) |
 | R22 | Medium | `VelopackApp.Run()` failure prevented startup | `App.Main` | **Fixed** — contained, app starts without updates |
-| R23 | Medium | No single-instance guard (two instances fight over hotkeys/files) | `App.Main` | **Mitigated** — detected and logged at startup; prevention is §10 step 2 |
+| R23 | Medium | No single-instance guard (two instances fight over hotkeys/files) | `App.Main` | **Mitigated** — detected and logged at startup; each instance writes its own log file (two processes appending to one file garbled lines); prevention is §10 step 2 |
 | R24 | Medium | Layout/render exceptions can't be attributed to a widget; storm recovery rebuilds all windows | WPF layout pass | **Mitigated** — storm detector; attribution is §10 step 5 |
 | R25 | Low | Settings still written synchronously per change (opacity slider) | stores | **Open** — debounce, §10 step 6 |
 | R26 | Low | `Latest`/`Session` read separately → one tick of mismatch after a session change | UI loop | **Mitigated** — guards contain it; atomic pair is §10 step 7 |
@@ -284,5 +285,5 @@ Each step lists what the log must show — the point is that every event is expl
 6. **Widget closed with Alt+F4** in edit mode → switched off in the rail. Log: `closed outside the Control Panel`, then `Switched off`.
 7. **Hard kill** (Task Manager → End task) → next start logs `Run <id> ended without shutting down …`, and that run's log ends abruptly at the kill.
 8. **Crash with relaunch** (debug build with a thrown exception on a background thread) → crash report `crash-…-<run>.txt`; new run logs `previousRun=<run>` and `Run <run> crashed; see crash-…`.
-9. **Two instances** (start the exe twice) → second logs `Another OpenOverlay instance is running`.
+9. **Two instances** (start the exe twice) → second logs `Another OpenOverlay instance is running` into its own file (`openoverlay-<date>-1.log`); every line in both files parses as JSON.
 10. **Trace drill**: take a ref from the status bar, find it with the `jq`/PowerShell recipes in §2.5, and read that run's activity around it. Then Export report and check the zip holds the report, logs, crash reports and settings.

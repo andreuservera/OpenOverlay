@@ -19,6 +19,9 @@ public sealed class RollingFileSink : ILogSink
     private const long DefaultMaxFileBytes = 10L * 1024 * 1024;
     private const long DefaultMaxTotalBytes = 100L * 1024 * 1024;
     private const int QueueCapacity = 10_000;
+    private const int MaxPartsPerDay = 1_000;
+    private const int ErrorSharingViolation = 32;
+    private const int ErrorLockViolation = 33;
     private static readonly TimeSpan Retention = TimeSpan.FromDays(30);
     private static readonly TimeSpan RetryOpenAfter = TimeSpan.FromSeconds(30);
 
@@ -157,14 +160,24 @@ public sealed class RollingFileSink : ILogSink
             var info = new FileInfo(path);
             if (!info.Exists || info.Length < _maxFileBytes)
             {
-                // Shared so the log can be opened, tailed or zipped while the app is running.
-                _stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
-                return _stream;
+                try
+                {
+                    // Readable while the app runs, but written by one process only: two instances
+                    // appending to one file overwrite each other's lines.
+                    _stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read | FileShare.Delete);
+                    return _stream;
+                }
+                catch (IOException e) when (IsSharingViolation(e) && _currentPart < MaxPartsPerDay)
+                {
+                    // Another instance owns this file; take the next one.
+                }
             }
 
             _currentPart++;
         }
     }
+
+    private static bool IsSharingViolation(IOException e) => (e.HResult & 0xFFFF) is ErrorSharingViolation or ErrorLockViolation;
 
     private string PathFor(string date, int part) =>
         Path.Combine(_directory, $"{FilePrefix}{date}{(part == 0 ? "" : "-" + part.ToString(CultureInfo.InvariantCulture))}.log");

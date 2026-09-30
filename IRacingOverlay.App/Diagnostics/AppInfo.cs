@@ -23,8 +23,8 @@ public static class AppInfo
 
     public static TimeSpan Uptime => DateTime.UtcNow - StartedUtc;
 
-    /// <summary>The Velopack release version when installed; the assembly's own version otherwise
-    /// (release builds don't stamp it, so a dev build reads as 1.0.0).</summary>
+    /// <summary>The Velopack release version when installed; otherwise the assembly's own version,
+    /// which builds stamp with <c>-p:Version</c> (1.0.0 when nothing does).</summary>
     public static string Version => _version ?? AssemblyVersion;
 
     /// <summary>"installed" for a Velopack install, "development" for a loose build.</summary>
@@ -33,10 +33,18 @@ public static class AppInfo
     /// <summary>True when this process was started by <see cref="AppRestarter"/> after a crash or hang.</summary>
     public static bool IsRecoveredLaunch { get; set; }
 
-    private static string AssemblyVersion =>
+    private static string AssemblyVersion => ShortenCommit(
         typeof(AppInfo).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? typeof(AppInfo).Assembly.GetName().Version?.ToString()
-        ?? "unknown";
+        ?? "unknown");
+
+    /// <summary>"0.4.0-dev.33+af575b8f322e…" → "0.4.0-dev.33+af575b8", git's short form of the commit.</summary>
+    internal static string ShortenCommit(string version)
+    {
+        var plus = version.IndexOf('+');
+        var metadata = plus < 0 ? "" : version[(plus + 1)..];
+        return metadata.Length > 7 && metadata.All(Uri.IsHexDigit) ? version[..(plus + 8)] : version;
+    }
 
     /// <summary>Reads the installed version. Must run after VelopackApp.Build().Run(), which is what
     /// sets up the locator this asks.</summary>

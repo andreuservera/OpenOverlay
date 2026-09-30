@@ -303,6 +303,17 @@ public class LoggingTests
         Assert.Equal("inner", root.GetProperty("exception").GetProperty("inner")[0].GetProperty("message").GetString());
     }
 
+    [Theory]
+    [InlineData("1.0.0+8c4721df322ec5526dfb2e63de5ec7b3f4793b38", "1.0.0+8c4721d")]
+    [InlineData("0.4.0-dev.33+af575b8f322ec5526dfb2e63de5ec7b3f4793b38", "0.4.0-dev.33+af575b8")]
+    [InlineData("0.5.0+af575b8", "0.5.0+af575b8")]
+    [InlineData("0.5.0+build.2026", "0.5.0+build.2026")]
+    [InlineData("0.5.0", "0.5.0")]
+    public void Version_ShortensTheCommitHashTheSdkAppends(string informational, string expected)
+    {
+        Assert.Equal(expected, AppInfo.ShortenCommit(informational));
+    }
+
     [Fact]
     public void RollingFileSink_WritesJsonLinesAndPrunesOldFiles()
     {
@@ -359,6 +370,48 @@ public class LoggingTests
             // A file can overshoot its limit by the one line that crossed it.
             Assert.InRange(files.Sum(f => f.Length), 1, maxTotal + maxFile + 1_000);
             Assert.Contains(files.SelectMany(f => File.ReadAllLines(f.FullName)), line => line.Contains("\"line 299\""));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RollingFileSink_TwoInstancesWriteSeparateFilesInsteadOfCorruptingOne()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "oo-log-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var first = new RollingFileSink(directory);
+            var second = new RollingFileSink(directory);
+            var firstLogger = new Logger();
+            var secondLogger = new Logger();
+            firstLogger.AttachSink(first);
+            secondLogger.AttachSink(second);
+            for (var i = 0; i < 20; i++)
+            {
+                firstLogger.Write(LogLevel.Info, "First", $"line {i}", deduplicate: false);
+                first.Flush(TimeSpan.FromSeconds(5));
+                secondLogger.Write(LogLevel.Info, "Second", $"line {i}", deduplicate: false);
+                second.Flush(TimeSpan.FromSeconds(5));
+            }
+
+            first.Dispose(TimeSpan.FromSeconds(5));
+            second.Dispose(TimeSpan.FromSeconds(5));
+
+            var files = Directory.GetFiles(directory, RollingFileSink.FilePrefix + "*.log");
+            Assert.Equal(2, files.Length);
+            foreach (var file in files)
+            {
+                var sources = File.ReadAllLines(file).Select(line =>
+                {
+                    using var json = JsonDocument.Parse(line);
+                    return json.RootElement.GetProperty("source").GetString();
+                }).ToList();
+                Assert.Equal(20, sources.Count);
+                Assert.Single(sources.Distinct());
+            }
         }
         finally
         {
