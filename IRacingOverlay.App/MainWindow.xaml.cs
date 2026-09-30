@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _dashboardGuard;
     private readonly ComponentGuard _standingsGuard;
     private readonly ComponentGuard _pitStopGuard;
+    private readonly ComponentGuard _penaltyGuard;
     private readonly ComponentGuard _statusGuard;
     private readonly ComponentGuard _autoHideGuard;
     private readonly ComponentGuard _healthGuard;
@@ -198,6 +199,7 @@ public partial class MainWindow : Window
     private FuelCalculatorBuilder _fuelCalculatorBuilder = new();
     private SessionBestLapTracker _sessionBestLapTracker = new();
     private PitStopTracker _pitStopTracker = new();
+    private PenaltyFlagTracker _penaltyTracker = new();
     private int _tickCount;
 
     // Perf diagnostics for the reported "stutter, even at low Hz" — both timers share one UI thread
@@ -250,6 +252,7 @@ public partial class MainWindow : Window
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
         _standingsGuard = _health.CreateGuard("Standings model", _ => _sessionBestLapTracker = new());
         _pitStopGuard = _health.CreateGuard("Pit stop tracker", _ => _pitStopTracker = new());
+        _penaltyGuard = _health.CreateGuard("Penalty flag log", _ => _penaltyTracker = new());
         _statusGuard = _health.CreateGuard("Status line");
         _autoHideGuard = _health.CreateGuard("Auto-hide");
         _healthGuard = _health.CreateGuard("Health report");
@@ -523,6 +526,20 @@ public partial class MainWindow : Window
         _tickCount++;
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        _penaltyGuard.Run(() =>
+        {
+            foreach (var (driver, penalties) in _penaltyTracker.Update(telemetry, session))
+            {
+                AppLog.Activity("Flags", "Penalty flags changed", new Dictionary<string, string>
+                {
+                    ["car"] = driver.CarNumber,
+                    ["carIdx"] = driver.CarIdx.ToString(CultureInfo.InvariantCulture),
+                    ["player"] = (driver.CarIdx == session?.DriverInfo?.DriverCarIdx).ToString(),
+                    ["black"] = penalties.Black.ToString(),
+                    ["meatball"] = penalties.Meatball.ToString(),
+                });
+            }
+        }, GuardStage.Build);
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
@@ -952,11 +969,15 @@ public partial class MainWindow : Window
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();
+            _penaltyTracker = new();
             _flagPresenter = new();
             _latestStandings = [];
         }
 
-        AppLog.Info("Session", isNewEvent ? "New event; per-session state reset" : "Session detected");
+        AppLog.Info("Session", isNewEvent ? "New event; per-session state reset" : "Session detected", new Dictionary<string, string>
+        {
+            ["perCarFlags"] = telemetry.HasVariable(TelemetryVarNames.CarIdxSessionFlags).ToString(),
+        });
     }
 
     private void OnConnectionFault(object? sender, ConnectionFault fault)
