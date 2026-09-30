@@ -51,10 +51,6 @@ public sealed class IRacingConnection : IDisposable
     private int _failedSessionInfoUpdate = -1;
     private bool _wasEverConnected;
 
-    // The tick a hung sim was frozen on when the watchdog let go of it. Reopening the mapping finds
-    // the same frozen buffer, which must not be published as live again until the sim moves on.
-    private int? _stalledAtTick;
-
     public IRacingConnection()
         : this(IrsdkConstants.MemoryMappedFileName, IrsdkConstants.DataValidEventName, ConnectionTimings.Default)
     {
@@ -207,7 +203,6 @@ public sealed class IRacingConnection : IDisposable
                 {
                     // iRacing closed is the normal idle state, not an error streak.
                     _lastError = null;
-                    _stalledAtTick = null;
                     Volatile.Write(ref _consecutiveFailures, 0);
                     _state = ConnectionState.Disconnected;
                     backoff.Reset();
@@ -246,7 +241,10 @@ public sealed class IRacingConnection : IDisposable
         var headerBytes = new byte[IrsdkConstants.HeaderTotalSize];
         WaitHandle[]? waitHandles = dataEvent is null ? null : [dataEvent, token.WaitHandle];
         VarLayout? layout = null;
-        var lastTickCount = _stalledAtTick ?? int.MinValue;
+        // A killed sim can't clear its status bit, and the block outlives it while any other process
+        // holds it open. Only a tick that follows the first one seen proves the sim is alive.
+        var lastTickCount = int.MinValue;
+        var published = false;
         var lastProgressMs = Environment.TickCount64;
 
         while (!token.IsCancellationRequested)
@@ -261,8 +259,8 @@ public sealed class IRacingConnection : IDisposable
                 // joins next may publish a different variable layout and restart its counters.
                 layout = null;
                 lastTickCount = int.MinValue;
+                published = false;
                 lastProgressMs = nowMs;
-                _stalledAtTick = null;
                 SetDisconnected();
                 Sleep(token, _timings.DisconnectedPoll);
                 continue;
@@ -288,12 +286,14 @@ public sealed class IRacingConnection : IDisposable
                 layout = VarLayout.Read(accessor, header, nowMs);
             }
 
-            ReadSessionInfoIfChanged(accessor, header);
-
             var snapshot = ReadLatestTickWithRetry(accessor, header, layout.VarsByName);
-            if (snapshot is not null && snapshot.TickCount != lastTickCount)
+            if (snapshot is not null && lastTickCount == int.MinValue)
             {
-                if (snapshot.TickCount < lastTickCount && lastTickCount != int.MinValue)
+                lastTickCount = snapshot.TickCount;
+            }
+            else if (snapshot is not null && snapshot.TickCount != lastTickCount)
+            {
+                if (snapshot.TickCount < lastTickCount)
                 {
                     // The counter restarted: a new sim instance re-initialised the mapping we still
                     // hold. Re-read everything before trusting a single value from it.
@@ -307,15 +307,24 @@ public sealed class IRacingConnection : IDisposable
 
                 lastTickCount = snapshot.TickCount;
                 lastProgressMs = nowMs;
-                _stalledAtTick = null;
+                published = true;
                 backoff.Reset();
+                ReadSessionInfoIfChanged(accessor, header);
                 PublishTick(snapshot);
             }
             else if (nowMs - lastProgressMs >= _timings.ReconnectAfterStale.TotalMilliseconds)
             {
+                if (!published)
+                {
+                    // Nothing live ever came through: a dead sim's leftover block, i.e. iRacing is closed.
+                    _lastError = null;
+                    Volatile.Write(ref _consecutiveFailures, 0);
+                    _state = ConnectionState.Disconnected;
+                    return;
+                }
+
                 // Still flagged connected but silent: most likely the sim crashed, which leaves the
                 // status bit set. Letting go of the mapping lets a restarted sim start clean.
-                _stalledAtTick = lastTickCount == int.MinValue ? null : lastTickCount;
                 RecordFailure(
                     "watchdog",
                     new TimeoutException($"No new telemetry for {_timings.ReconnectAfterStale.TotalSeconds:0} s; reopening shared memory."),
