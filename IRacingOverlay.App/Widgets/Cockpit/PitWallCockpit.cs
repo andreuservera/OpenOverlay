@@ -23,6 +23,7 @@ public sealed class PitWallCockpit : CockpitDashboard
     private static readonly Typeface Bold = Face("Tahoma", FontWeights.Bold);
     private static readonly Typeface Regular = Face("Tahoma", FontWeights.Normal);
     private static readonly string[] LampColors = ["#4ADE80", "#FACC15", "#F87171"];
+    private static readonly string[] LampOffColors = ["#1C3326", "#3A3314", "#3F1F22"];
     // Unit suffixes are appended at draw time: they follow iRacing's display units.
     private static readonly (string Label, double Width)[] Columns =
     [
@@ -92,16 +93,25 @@ public sealed class PitWallCockpit : CockpitDashboard
                 Text(dc, Rpm, Bold, 18, B("#E5E7EB"), right, middle, HAlign.Right, VAlign.Center);
                 break;
             case 3:
-                // Lights only: two staggered rows so each lamp stays readable in a narrow cell.
-                var w = (cell.Width - 12 - 6) / 7;
+                // One row of segments grouped by stage, stepping up in height like a bar-graph tach.
+                const double stageGap = 4;
+                var w = (cell.Width - 12 - (LampCount - 1) - (2 * (stageGap - 1))) / LampCount;
+                var baseline = cell.Y + 58;
+                var lx = cell.X + 6;
                 for (var i = 0; i < LampCount; i++)
                 {
-                    var row = i / 7;
-                    var col = i % 7;
-                    var color = IsLampLit(i) ? LampColors[LampStage(i)] : "#2A2F35";
-                    dc.DrawRectangle(B(color), null, new Rect(cell.X + 6 + (col * (w + 1)), cell.Y + 22 + (row * 20), w, 17));
+                    if (i > 0)
+                    {
+                        lx += LampStage(i) != LampStage(i - 1) ? stageGap : 1;
+                    }
+
+                    var h = 14 + (20.0 * i / (LampCount - 1));
+                    var color = IsLampLit(i) ? LampColors[LampStage(i)] : LampOffColors[LampStage(i)];
+                    dc.DrawRectangle(B(color), null, new Rect(lx, baseline - h, w, h));
+                    lx += w;
                 }
 
+                dc.DrawLine(P("#3A3F45", 1), new Point(cell.X + 6, baseline + 1.5), new Point(cell.Right - 6, baseline + 1.5));
                 break;
             case 4:
                 if (AbsActive)
