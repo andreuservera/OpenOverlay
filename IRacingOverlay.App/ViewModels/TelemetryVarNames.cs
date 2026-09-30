@@ -53,6 +53,8 @@ internal static class TelemetryVarNames
 
     /// <summary>uint bitfield, irsdk_Flags — see FlagBuilder for the bit layout.</summary>
     public const string SessionFlags = "SessionFlags";
+    /// <summary>uint bitfield[] per CarIdx, same irsdk_Flags layout as <see cref="SessionFlags"/>.</summary>
+    public const string CarIdxSessionFlags = "CarIdxSessionFlags";
 
     /// <summary>
     /// Tire variable name for one corner ("LF"/"RF"/"LR"/"RR"). Confirmed via iRacing's own published

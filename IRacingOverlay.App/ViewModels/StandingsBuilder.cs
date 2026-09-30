@@ -55,6 +55,8 @@ internal static class StandingsBuilder
             return [];
         }
 
+        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
+
         // Fall back to ANY car's recorded lap time, not just the player's own — otherwise the whole
         // field disappears from Relative for the player's entire first lap of every session (reported
         // live), even though by then other cars in a live session have almost always already set one.
@@ -194,6 +196,7 @@ internal static class StandingsBuilder
                 continue;
             }
 
+            var penalties = penaltiesOf(driver.CarIdx);
             rows.Add(new RelativeRow
             {
                 CarIdx = driver.CarIdx,
@@ -204,6 +207,8 @@ internal static class StandingsBuilder
                 IsPlayer = isPlayer,
                 GapSeconds = GapTo(driver.CarIdx),
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                HasBlackFlag = penalties.Black,
+                HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
@@ -291,6 +296,7 @@ internal static class StandingsBuilder
         var bestLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxBestLapTime);
         var onPitRoad = TryGetBoolArray(telemetry, TelemetryVarNames.CarIdxOnPitRoad);
         var playerCarIdx = driverInfo.DriverCarIdx;
+        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
 
         var distinctClasses = driverInfo.Drivers
             .Where(d => !d.IsPaceCar)
@@ -327,7 +333,7 @@ internal static class StandingsBuilder
         if (IsPracticeOrQualifyingSession(telemetry, session))
         {
             return BuildFastestLapStandings(
-                driverInfo, LapCountOf, laps, onPitRoad, playerCarIdx, isMultiClass,
+                driverInfo, LapCountOf, laps, onPitRoad, penaltiesOf, playerCarIdx, isMultiClass,
                 bestLapTracker ?? new SessionBestLapTracker(),
                 CurrentSession.Number(telemetry, session),
                 lastPitStops);
@@ -432,6 +438,7 @@ internal static class StandingsBuilder
             classRank[driver.CarClassID] = rank;
 
             var bestLapTime = laps.Best(driver.CarIdx);
+            var penalties = penaltiesOf(driver.CarIdx);
 
             rows.Add(new StandingsRow
             {
@@ -442,6 +449,8 @@ internal static class StandingsBuilder
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                HasBlackFlag = penalties.Black,
+                HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = classLeaderTimePosition[driver.CarClassID] - TimePosition(driver.CarIdx),
@@ -802,6 +811,7 @@ internal static class StandingsBuilder
         Func<int, int> lapCountOf,
         LapTimeSource laps,
         bool[]? onPitRoad,
+        Func<int, CarPenalties> penaltiesOf,
         int playerCarIdx,
         bool isMultiClass,
         SessionBestLapTracker bestLapTracker,
@@ -849,6 +859,7 @@ internal static class StandingsBuilder
             var bestLapTime = cachedBest.GetValueOrDefault(driver.CarIdx, 0);
             var thisTime = QualTime(driver);
             var poleTime = classPoleTime[driver.CarClassID];
+            var penalties = penaltiesOf(driver.CarIdx);
 
             rows.Add(new StandingsRow
             {
@@ -859,6 +870,8 @@ internal static class StandingsBuilder
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                HasBlackFlag = penalties.Black,
+                HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = lapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = thisTime < double.MaxValue && poleTime < double.MaxValue ? thisTime - poleTime : 0,

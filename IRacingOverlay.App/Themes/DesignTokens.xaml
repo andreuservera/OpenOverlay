@@ -146,6 +146,10 @@
         <Setter Property="Foreground" Value="{StaticResource State.Warning}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
+    <!-- Penalty flags (black, meatball) drawn as tiny flags; the edge keeps the black readable on a dark row. -->
+    <SolidColorBrush x:Key="Badge.FlagFill" Color="#0B0D10"/>
+    <SolidColorBrush x:Key="Badge.FlagEdge" Color="#B3F2F5F8"/>
+    <SolidColorBrush x:Key="Badge.MeatballInk" Color="#FF7A1A"/>
 
     <!-- ===== Radii ===== -->
     <CornerRadius x:Key="Radius.Chip">3</CornerRadius>

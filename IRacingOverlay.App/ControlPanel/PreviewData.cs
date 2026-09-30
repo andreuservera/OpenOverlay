@@ -87,6 +87,9 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
+                // Black, meatball (pitting for repairs) and both at once, so every penalty flag shows.
+                HasBlackFlag = i == 6 || i == 10,
+                HasMeatballFlag = i == 10 || i == 12,
                 // Every third car has stopped, plus the one in the lane now, so both pit states show.
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 CurrentLap = i < 3 ? 18 : 17,
@@ -134,6 +137,8 @@ public static class PreviewData
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
+                HasBlackFlag = source.HasBlackFlag,
+                HasMeatballFlag = source.HasMeatballFlag,
                 LastPitStop = source.LastPitStop,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,

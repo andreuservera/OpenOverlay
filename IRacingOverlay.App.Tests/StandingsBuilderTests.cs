@@ -1919,4 +1919,89 @@ public class StandingsBuilderTests
 
         Assert.Equal(0, Assert.Single(rows).IRatingDelta);
     }
+
+    private const uint BlackFlagBit = 0x00010000;
+    private const uint MeatballBit = 0x00100000;
+
+    private static IracingSessionInfo PenaltySession() => new()
+    {
+        DriverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                new DriverEntry { CarIdx = 1, UserName = "Black", CarNumber = "8" },
+                new DriverEntry { CarIdx = 2, UserName = "Meatball", CarNumber = "9" },
+                new DriverEntry { CarIdx = 3, UserName = "Both", CarNumber = "10" },
+            ],
+        },
+    };
+
+    private static TelemetrySnapshot PenaltySnapshot(SyntheticMemoryBuilder builder, uint ownFlags = 0)
+    {
+        builder.AddVar("CarIdxSessionFlags", IrsdkVarType.BitField, count: 4);
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        return TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f]);
+            w.SetIntArray("CarIdxSessionFlags", [0, unchecked((int)BlackFlagBit), unchecked((int)MeatballBit), unchecked((int)(BlackFlagBit | MeatballBit))]);
+            w.SetBitField("SessionFlags", ownFlags);
+        });
+    }
+
+    [Fact]
+    public void BuildStandings_PerCarPenaltyFlags_ShowBlackAndMeatballIndependently()
+    {
+        var rows = StandingsBuilder.BuildStandings(PenaltySnapshot(StandingsVars()), PenaltySession());
+
+        Assert.False(rows.Single(r => r.CarIdx == 0).HasBlackFlag);
+        Assert.False(rows.Single(r => r.CarIdx == 0).HasMeatballFlag);
+        Assert.True(rows.Single(r => r.CarIdx == 1).HasBlackFlag);
+        Assert.False(rows.Single(r => r.CarIdx == 1).HasMeatballFlag);
+        Assert.False(rows.Single(r => r.CarIdx == 2).HasBlackFlag);
+        Assert.True(rows.Single(r => r.CarIdx == 2).HasMeatballFlag);
+        Assert.True(rows.Single(r => r.CarIdx == 3).HasBlackFlag);
+        Assert.True(rows.Single(r => r.CarIdx == 3).HasMeatballFlag);
+    }
+
+    [Fact]
+    public void BuildRelative_PerCarPenaltyFlags_BothShowAtOnce()
+    {
+        var rows = RelativeRows(PenaltySnapshot(RelativeVars()), PenaltySession());
+
+        var both = rows.Single(r => r.CarIdx == 3);
+        Assert.True(both.HasBlackFlag);
+        Assert.True(both.HasMeatballFlag);
+        Assert.True(rows.Single(r => r.CarIdx == 1).HasBlackFlag);
+        Assert.True(rows.Single(r => r.CarIdx == 2).HasMeatballFlag);
+    }
+
+    [Fact]
+    public void BuildStandings_PlayersOwnSessionFlags_MarkThePlayerRow()
+    {
+        var rows = StandingsBuilder.BuildStandings(
+            PenaltySnapshot(StandingsVars(), ownFlags: BlackFlagBit | MeatballBit), PenaltySession());
+
+        var me = rows.Single(r => r.IsPlayer);
+        Assert.True(me.HasBlackFlag);
+        Assert.True(me.HasMeatballFlag);
+        Assert.False(rows.Single(r => r.CarIdx == 2).HasBlackFlag);
+    }
+
+    [Fact]
+    public void BuildStandings_NoFlagVariables_NoPenaltyBadges()
+    {
+        var snapshot = TestSnapshotFactory.Build(StandingsVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [30f, 0, 0, 0]);
+        });
+
+        var row = Assert.Single(StandingsBuilder.BuildStandings(snapshot, PenaltySession()));
+        Assert.False(row.HasBlackFlag);
+        Assert.False(row.HasMeatballFlag);
+    }
 }
