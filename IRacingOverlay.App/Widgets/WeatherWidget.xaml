@@ -1,0 +1,13 @@
+<ov:OverlayWindowBase x:Class="IRacingOverlay.App.Widgets.WeatherWidget"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
+        xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
+        Title="Weather">
+    <Grid>
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Weather">
+            <w:WeatherPanel/>
+        </ov:ScalablePanel>
+        <Border Style="{StaticResource EditFrame}"/>
+    </Grid>
+</ov:OverlayWindowBase>

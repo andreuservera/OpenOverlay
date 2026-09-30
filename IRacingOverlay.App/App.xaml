@@ -24,28 +24,43 @@
               keys in its own Resources when a different theme is selected, which DynamicResource lookups
               from inside that window find first.
             -->
-            <RadialGradientBrush x:Key="Theme.WindowBackground" Center="0.5,0.4" RadiusX="0.9" RadiusY="0.9">
-                <GradientStop Color="#1A1010" Offset="0"/>
-                <GradientStop Color="#000000" Offset="1"/>
+            <RadialGradientBrush x:Key="Theme.WindowBackground" Center="0.5,0.35" RadiusX="0.95" RadiusY="0.95">
+                <GradientStop Color="#161C24" Offset="0"/>
+                <GradientStop Color="#05070A" Offset="1"/>
             </RadialGradientBrush>
-            <!-- Denser than the old #E6 alpha: at 90% opacity a bright sky or a white car behind the
-                 overlay still lifted the panel interior enough to eat the contrast of small text. -->
-            <SolidColorBrush x:Key="Theme.PanelBackground" Color="#F2121417"/>
-            <SolidColorBrush x:Key="Theme.PanelBorder" Color="#4C5157"/>
+            <!-- Deep graphite with a whisper of blue, lit from above: the top of every panel sits a
+                 shade lighter than the bottom, which reads as depth without a drop shadow (a shadow
+                 would be clipped by the widget window's own edge anyway). Kept at ~95% opacity: a
+                 bright sky or a white car behind the overlay must not eat the contrast of small text. -->
+            <LinearGradientBrush x:Key="Theme.PanelBackground" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#F4161B22" Offset="0"/>
+                <GradientStop Color="#F20D1015" Offset="1"/>
+            </LinearGradientBrush>
+            <!-- Hairline edge, brighter along the top: the "machined bezel" highlight broadcast
+                 graphics use instead of a heavy outline. -->
+            <LinearGradientBrush x:Key="Theme.PanelBorder" StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#4DFFFFFF" Offset="0"/>
+                <GradientStop Color="#1FFFFFFF" Offset="0.35"/>
+                <GradientStop Color="#14FFFFFF" Offset="1"/>
+            </LinearGradientBrush>
             <Thickness x:Key="Theme.PanelBorderThickness">1</Thickness>
             <CornerRadius x:Key="Theme.PanelCornerRadius">8</CornerRadius>
-            <SolidColorBrush x:Key="Theme.LabelForeground" Color="#A7B0B8"/>
+            <SolidColorBrush x:Key="Theme.LabelForeground" Color="#A9B3BE"/>
 
             <!--
-              Three font roles rather than one, so text is chosen by the job it does:
-                FontFamily        — labels, driver names, prose.
+              Four font roles rather than one, so text is chosen by the job it does:
+                FontFamily        — prose and anything not covered below.
+                LabelFontFamily   — titles, column headers, captions.
                 NumericFontFamily — the hero readouts (speed, RPM, delta, fuel, incidents).
-                DataFontFamily    — tabular columns (lap times, gaps) that must stay column-aligned.
+                DataFontFamily    — table cells (driver names, lap times, gaps).
               Bahnschrift is the DIN 1451 industrial/instrument face bundled with Windows 10 1709+; its
               condensed cuts fit more digits into a fixed column than Segoe UI or Consolas at the same
               point size. Each list keeps a plain-Windows fallback so nothing ever renders in Times.
             -->
             <FontFamily x:Key="Theme.FontFamily">Bahnschrift, Segoe UI</FontFamily>
+            <!-- Titles, column headers and captions: the broadcast-caption cut. Semi-condensed is
+                 what lets the type scale grow a step without any label getting wider. -->
+            <FontFamily x:Key="Theme.LabelFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold</FontFamily>
             <FontFamily x:Key="Theme.NumericFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold, Consolas</FontFamily>
             <FontFamily x:Key="Theme.DataFontFamily">Bahnschrift SemiCondensed, Bahnschrift, Consolas</FontFamily>
             <!-- Just for the big gear numeral — the most condensed/heaviest cut available, so the

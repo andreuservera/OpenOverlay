@@ -42,6 +42,10 @@ public sealed class FuelCalculatorState
     /// 0 when the session info hasn't reported it yet.</summary>
     public required double TankCapacityLiters { get; init; }
 
+    public UnitSystem UnitSystem { get; init; }
+
+    public string VolumeUnit => Units.VolumeUnit(UnitSystem);
+
     public bool HasUsageEstimate => AverageLiters > 0;
 
     /// <summary>Gates every "to the finish" figure. Without a known session end there is no finish
@@ -64,9 +68,11 @@ public sealed class FuelCalculatorState
     /// takes whole liters, and rounding down would leave you exactly short of the number just
     /// calculated.
     /// </summary>
-    public double RefuelLiters => CanProjectToFinish
-        ? (FuelDeltaLiters < 0 ? Math.Ceiling(-FuelDeltaLiters) : 0)
-        : HasTankCapacity ? Math.Max(0, Math.Ceiling(TankCapacityLiters - LevelLiters)) : 0;
+    public double RefuelLiters => Math.Ceiling(RefuelNeededLiters);
+
+    private double RefuelNeededLiters => CanProjectToFinish
+        ? Math.Max(0, -FuelDeltaLiters)
+        : HasTankCapacity ? Math.Max(0, TankCapacityLiters - LevelLiters) : 0;
 
     public bool NeedsRefuel => RefuelLiters > 0;
 
@@ -75,27 +81,34 @@ public sealed class FuelCalculatorState
     public string AverageDisplay => AverageLiters > 0 ? Format(AverageLiters, "0.00") : "—";
     public string MinDisplay => MinLiters > 0 ? Format(MinLiters, "0.00") : "—";
     public string MaxDisplay => MaxLiters > 0 ? Format(MaxLiters, "0.00") : "—";
-    public string LapsRemainingDisplay => HasUsageEstimate ? Format(LapsRemainingWithFuel, "0.0") : "—";
+    public string LapsRemainingDisplay => HasUsageEstimate ? Number(LapsRemainingWithFuel, "0.0") : "—";
 
     /// <summary>Signed so the sign itself carries the meaning at a glance: "+2.4 L" spare versus
     /// "-3.1 L" short.</summary>
     public string FuelDeltaDisplay => CanProjectToFinish
-        ? (FuelDeltaLiters >= 0 ? "+" : "-") + Format(Math.Abs(FuelDeltaLiters), "0.0") + " L"
+        ? $"{(FuelDeltaLiters >= 0 ? "+" : "-")}{Format(Math.Abs(FuelDeltaLiters), "0.0")} {VolumeUnit}"
         : "—";
 
-    public string FuelToFinishDisplay => CanProjectToFinish ? Format(FuelToFinishLiters, "0.0") + " L" : "—";
+    public string FuelToFinishDisplay => CanProjectToFinish ? $"{Format(FuelToFinishLiters, "0.0")} {VolumeUnit}" : "—";
 
     // "TO FULL" rather than a bare number when there's no finish to aim at, so the figure can't be
     // mistaken for a computed strategy call.
     public string RefuelDisplay => CanProjectToFinish
-        ? (NeedsRefuel ? Format(RefuelLiters, "0") + " L" : "NOT NEEDED")
+        ? (NeedsRefuel ? $"{RefuelAmount} {VolumeUnit}" : "NOT NEEDED")
         : HasTankCapacity
-            ? (NeedsRefuel ? Format(RefuelLiters, "0") + " L TO FULL" : "FULL")
+            ? (NeedsRefuel ? $"{RefuelAmount} {VolumeUnit} TO FULL" : "FULL")
             : "—";
+
+    // Whole litres, or tenths of a gallon: the steps each unit's pit fuel control moves in.
+    private string RefuelAmount => UnitSystem == UnitSystem.Imperial
+        ? (Math.Ceiling(Units.Volume(RefuelNeededLiters, UnitSystem) * 10) / 10).ToString("0.0", CultureInfo.InvariantCulture)
+        : Number(RefuelLiters, "0");
+
+    private string Format(double liters, string format) => Number(Units.Volume(liters, UnitSystem), format);
 
     // InvariantCulture throughout: a comma decimal separator has already caused a real display bug
     // in this codebase (see RelativeRow.GapDisplay).
-    private static string Format(double value, string format) => value.ToString(format, CultureInfo.InvariantCulture);
+    private static string Number(double value, string format) => value.ToString(format, CultureInfo.InvariantCulture);
 
     public static FuelCalculatorState Empty { get; } = new()
     {

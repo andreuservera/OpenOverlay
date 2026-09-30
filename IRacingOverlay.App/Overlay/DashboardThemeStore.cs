@@ -11,26 +11,10 @@ internal static class DashboardThemeStore
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IRacingOverlay", "dashboard-theme.txt");
 
-    public static DashboardTheme Get()
-    {
-        try
-        {
-            if (File.Exists(FilePath) && Enum.TryParse<DashboardTheme>(File.ReadAllText(FilePath).Trim(), out var theme))
-            {
-                return theme;
-            }
-        }
-        catch (IOException)
-        {
-            // fall through to default
-        }
+    public static DashboardTheme Get() =>
+        SettingsFile.ReadText(FilePath) is { } text && Enum.TryParse<DashboardTheme>(text.Trim(), out var theme)
+            ? theme
+            : DashboardTheme.Classic;
 
-        return DashboardTheme.Classic;
-    }
-
-    public static void Save(DashboardTheme theme)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, theme.ToString());
-    }
+    public static void Save(DashboardTheme theme) => SettingsFile.Write(FilePath, theme.ToString());
 }

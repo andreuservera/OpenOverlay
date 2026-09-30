@@ -87,6 +87,7 @@ internal sealed class FuelCalculatorBuilder
             FuelToFinishLiters = fuelToFinish,
             FuelDeltaLiters = fuelDelta,
             TankCapacityLiters = ResolveTankCapacity(session, levelLiters, levelPct),
+            UnitSystem = Units.Read(telemetry),
         };
     }
 

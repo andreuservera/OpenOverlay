@@ -1,6 +1,7 @@
+using System.Globalization;
 using System.Windows;
+using IRacingOverlay.App.Diagnostics;
 using Velopack;
-using Velopack.Sources;
 
 namespace IRacingOverlay.App;
 
@@ -24,49 +25,88 @@ public partial class App : Application
     [STAThread]
     public static void Main(string[] args)
     {
-        VelopackApp.Build().Run();
+        // Before anything else can throw: every later failure must land in the log.
+        GlobalExceptionHandler.InstallProcessHandlers();
+        AppRestarter.WaitForPreviousInstance(args);
 
-        var app = new App();
-        app.InitializeComponent();
-        app.Run();
-    }
+        // Ahead of Velopack: a second launch must not apply a pending update beneath the running copy.
+        if (!SingleInstance.TryClaim())
+        {
+            return;
+        }
 
-    protected override void OnStartup(StartupEventArgs e)
-    {
-        base.OnStartup(e);
-        _ = CheckForUpdatesAsync();
-    }
-
-    /// <summary>
-    /// Silent, best-effort background check — runs once per launch, never blocks or interrupts the
-    /// user. If a newer release is published on GitHub, it's downloaded in the background and
-    /// applied automatically the *next* time the app restarts (not the current session), so it never
-    /// yanks widgets away mid-race. Any failure (offline, GitHub unreachable, running a dev build that
-    /// wasn't installed via the Velopack installer) is swallowed — update-checking is a convenience,
-    /// never something that should be able to break a normal launch.
-    /// </summary>
-    private static async Task CheckForUpdatesAsync()
-    {
         try
         {
-            var manager = new UpdateManager(new GithubSource(GitHubRepoUrl, accessToken: null, prerelease: false));
-            if (!manager.IsInstalled)
-            {
-                return; // running from a loose dev build, not a Velopack install — nothing to update
-            }
-
-            var newVersion = await manager.CheckForUpdatesAsync();
-            if (newVersion is null)
-            {
-                return;
-            }
-
-            await manager.DownloadUpdatesAsync(newVersion);
-            manager.WaitExitThenApplyUpdates(newVersion, restart: false);
+            VelopackApp.Build().Run();
         }
-        catch
+        catch (Exception e)
         {
-            // Offline, GitHub unreachable, etc. — silently skip; the app works fine either way.
+            // Install hooks and pending updates are a convenience; the overlay has to start regardless.
+            AppLog.Error("Startup", "Velopack startup failed; continuing without update support", e);
         }
+
+        AppInfo.IsRecoveredLaunch = AppRestarter.IsRecoveredLaunch(args);
+        AppInfo.PreviousRunId = AppRestarter.PreviousRunId(args);
+        AppInfo.Initialize();
+        AppLog.Initialize();
+        AppLog.Info("Startup", "OpenOverlay starting", AppInfo.Describe());
+        RecordEarlierRuns();
+
+        var app = new App();
+        GlobalExceptionHandler.InstallDispatcherHandler(app);
+        app.InitializeComponent();
+        SingleInstance.ListenForActivation(() => app.Dispatcher.BeginInvoke(() =>
+        {
+            AppLog.Activity("Startup", "Another launch brought this instance forward");
+            // Null only while still starting up, and then the window is about to appear anyway.
+            (app.MainWindow as MainWindow)?.RestoreFromTray();
+        }));
+        app.Run();
+        SingleInstance.Release();
+    }
+
+    /// <summary>Puts runs that never shut down into this run's log, so a log that stops abruptly
+    /// is explained by the next one rather than left as a mystery.</summary>
+    private static void RecordEarlierRuns()
+    {
+        RunJournal.Current = new RunJournal(
+            System.IO.Path.Combine(AppLog.LogDirectory, "runs"),
+            new RunRecord(AppInfo.RunId, AppInfo.ProcessId, AppInfo.StartedUtc, AppInfo.Version));
+        var (unclean, stillRunning) = RunJournal.Current.Begin();
+        foreach (var run in unclean)
+        {
+            AppLog.Warn(
+                "Startup",
+                run.CrashReport is { } report
+                    ? $"Run {run.RunId} crashed; see {report}"
+                    : $"Run {run.RunId} ended without shutting down (killed, a fault no handler can catch, or power loss)",
+                data: new Dictionary<string, string>
+                {
+                    ["run"] = run.RunId,
+                    ["version"] = run.Version,
+                    ["started"] = run.StartedUtc.ToString("O", CultureInfo.InvariantCulture),
+                });
+        }
+
+        foreach (var run in stillRunning)
+        {
+            AppLog.Warn("Startup", $"Another OpenOverlay instance is running (run {run.RunId}, pid {run.ProcessId})");
+        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        var problems = AppLog.Problems();
+        AppLog.Info("Shutdown", "OpenOverlay exiting", new Dictionary<string, string>
+        {
+            ["exitCode"] = e.ApplicationExitCode.ToString(CultureInfo.InvariantCulture),
+            ["uptime"] = AppInfo.Uptime.ToString(@"d\.hh\:mm\:ss", CultureInfo.InvariantCulture),
+            ["errors"] = problems.Where(p => p.Level >= LogLevel.Error).Sum(p => p.Count).ToString(CultureInfo.InvariantCulture),
+            ["warnings"] = problems.Where(p => p.Level == LogLevel.Warning).Sum(p => p.Count).ToString(CultureInfo.InvariantCulture),
+            ["topProblem"] = problems.FirstOrDefault() is { } top ? $"{top.Source}: {top.Message} x{top.Count}" : "none",
+        });
+        RunJournal.Current?.End();
+        AppLog.Shutdown(TimeSpan.FromSeconds(2));
+        base.OnExit(e);
     }
 }

@@ -27,6 +27,8 @@ public partial class FlagWidget : OverlayWindowBase
         };
     }
 
+    public void SetOptions(FlagOptions options) => _panel.Options = options;
+
     public void UpdateState(IReadOnlyList<FlagState> flags)
     {
         _lastFlags = flags;

@@ -9,7 +9,7 @@ public partial class FuelPanel : UserControl
 {
     private static readonly Brush Ample = StatePalette.TextPrimary;
     private static readonly Brush Short = StatePalette.Critical;
-    private static readonly Brush LevelNormal = StatePalette.Warning;
+    private static readonly Brush LevelNormal = StatePalette.Info;
 
     public FuelPanel()
     {

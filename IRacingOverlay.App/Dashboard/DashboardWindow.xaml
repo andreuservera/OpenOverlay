@@ -91,14 +91,10 @@
                 <w:DeltaPanel/>
             </ov:ScalablePanel>
 
-            <!-- Cockpit cluster (speed/gear/RPM/ABS/proximity, all in one bezel): lower-center,
-                 closer to eye level since a second monitor is typically mounted above the main one.
-                 Same CockpitPanel the floating widget uses, at the same 310x150 design size, so both
-                 stay visually identical by construction rather than by keeping two hand-written
-                 layouts in sync. 310x150 is CockpitPanel's own measured natural size (tightly-fit
-                 fixed-width columns inside, no padded-out star ratios) — that's what eliminated the
-                 dead space between speed/gear/RPM. -->
-            <ov:ScalablePanel x:Name="CockpitScaler" PersistenceKey="Dashboard.Cockpit" DesignWidth="310" DesignHeight="150"
+            <!-- Cockpit cluster: lower-center, closer to eye level since a second monitor is typically
+                 mounted above the main one. Same CockpitPanel the floating widget uses, in the same
+                 theme; each theme has its own footprint, so there is no design size here. -->
+            <ov:ScalablePanel x:Name="CockpitScaler" PersistenceKey="Dashboard.Cockpit"
                               Grid.Row="4" HorizontalAlignment="Center" Margin="0,14,0,0">
                 <w:CockpitPanel/>
             </ov:ScalablePanel>

@@ -1,5 +1,6 @@
+using System.Globalization;
+using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
@@ -7,9 +8,6 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class IncidentPanel : UserControl
 {
-    private static readonly Brush Low = StatePalette.TextPrimary;
-    private static readonly Brush High = StatePalette.Critical;
-
     public IncidentPanel()
     {
         InitializeComponent();
@@ -17,8 +15,22 @@ public partial class IncidentPanel : UserControl
 
     public void UpdateState(IncidentState state)
     {
-        MyCountText.Text = state.MyIncidentCount.ToString();
-        MyCountText.Foreground = state.MyIncidentCount >= 4 ? High : Low;
-        TeamCountText.Text = state.TeamIncidentCount is { } team ? $"team {team}" : "";
+        var isTeamRace = state.TeamIncidentCount is not null;
+        var severity = state.Severity switch
+        {
+            IncidentSeverity.Critical => StatePalette.Critical,
+            IncidentSeverity.Warning => StatePalette.Warning,
+            _ => StatePalette.TextPrimary,
+        };
+
+        MyCountText.Text = state.MyIncidentCount.ToString(CultureInfo.InvariantCulture);
+        MyCaption.Visibility = isTeamRace ? Visibility.Visible : Visibility.Collapsed;
+        TeamBlock.Visibility = isTeamRace ? Visibility.Visible : Visibility.Collapsed;
+        TeamCountText.Text = state.TeamIncidentCount?.ToString(CultureInfo.InvariantCulture) ?? "";
+
+        // The limit applies to the team total in a team race, so that's the number that changes colour.
+        MyCountText.Foreground = isTeamRace ? StatePalette.TextPrimary : severity;
+        TeamCountText.Foreground = severity;
+        LimitText.Text = state.Limit is { } limit ? $"/ {limit.ToString(CultureInfo.InvariantCulture)}" : "";
     }
 }

@@ -1,5 +1,3 @@
-using YamlDotNet.Serialization;
-
 namespace IRacingOverlay.Sdk;
 
 /// <summary>
@@ -12,12 +10,8 @@ public sealed class IracingSessionInfo
     public DriverInfoSection? DriverInfo { get; set; }
     public SessionInfoSection? SessionInfo { get; set; }
 
-    private static readonly IDeserializer Deserializer = new DeserializerBuilder()
-        .IgnoreUnmatchedProperties()
-        .Build();
-
-    public static IracingSessionInfo Parse(string yaml) =>
-        Deserializer.Deserialize<IracingSessionInfo>(yaml) ?? new IracingSessionInfo();
+    /// <summary>Parses with the same repair steps as the live connection; see <see cref="SessionInfoParser"/>.</summary>
+    public static IracingSessionInfo Parse(string yaml) => SessionInfoParser.Parse(yaml).Session;
 }
 
 public sealed class WeekendInfoSection
@@ -27,10 +21,24 @@ public sealed class WeekendInfoSection
     public string? TrackDisplayShortName { get; set; }
     public string? TrackLength { get; set; }
 
+    /// <summary>The event's chance of rain, e.g. "15 %". Absent on builds without dynamic rain.</summary>
+    public string? TrackPrecipitation { get; set; }
+
+    /// <summary>1 in a team race, 0 otherwise.</summary>
+    public int TeamRacing { get; set; }
+
+    public WeekendOptionsSection? WeekendOptions { get; set; }
+
     /// <summary>Identifies the specific room the driver is in. iRacing's telemetry YAML carries no
     /// split *index* ("split 2 of 7" only exists in the web API), so this id is the closest thing
     /// the SDK offers to "which of the splits am I in".</summary>
     public int SubSessionID { get; set; }
+}
+
+public sealed class WeekendOptionsSection
+{
+    /// <summary>Incident points before disqualification, e.g. "17", or "unlimited".</summary>
+    public string? IncidentLimit { get; set; }
 }
 
 public sealed class DriverInfoSection

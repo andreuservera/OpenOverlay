@@ -73,6 +73,7 @@ internal static class TrackInfoBuilder
             HumidityPct = GetFloatOrZero(telemetry, TelemetryVarNames.RelativeHumidity) * 100,
             TimeRemainingSeconds = timeRemaining,
             LapsRemaining = lapsRemaining,
+            UnitSystem = Units.Read(telemetry),
         };
     }
 

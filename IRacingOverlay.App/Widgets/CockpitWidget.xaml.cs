@@ -14,5 +14,7 @@ public partial class CockpitWidget : OverlayWindowBase
         _panel = (CockpitPanel)Scaler.ScalableContent!;
     }
 
+    public void SetOptions(CockpitOptions options) => _panel.Options = options;
+
     public void UpdateState(CockpitState state) => _panel.UpdateState(state);
 }

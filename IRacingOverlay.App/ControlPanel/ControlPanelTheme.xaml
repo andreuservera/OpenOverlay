@@ -421,7 +421,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="5" MinWidth="38" Height="26" Margin="1">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="5" MinWidth="38" Height="26"
+                            Padding="12,0" Margin="2,1">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -863,6 +864,67 @@
             <Button Style="{StaticResource Cp.Button}" Content="{Binding ButtonText}"
                     Command="{Binding InvokeCommand}"/>
         </ContentControl>
+    </DataTemplate>
+
+    <!-- Hotkey row: its own layout rather than Cp.SettingRow, because the line under the label turns
+         into a red explanation when a combination is refused or Windows won't register it. -->
+    <DataTemplate DataType="{x:Type cp:HotkeySetting}">
+        <Grid Margin="0,10,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center" Margin="0,0,20,0">
+                <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <TextBlock Text="{Binding Hint}" Style="{StaticResource Cp.Hint}"
+                           Visibility="{Binding HasError, Converter={StaticResource Cp.NotBoolToVis}}"/>
+                <TextBlock Text="{Binding Message}" Style="{StaticResource Cp.Hint}" Foreground="{StaticResource Cp.Danger}"
+                           Visibility="{Binding HasError, Converter={StaticResource Cp.BoolToVis}}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <cp:HotkeyRecorder MinWidth="176" ToolTip="Click, then press the new shortcut. Esc cancels.">
+                    <cp:HotkeyRecorder.Style>
+                        <Style TargetType="cp:HotkeyRecorder" BasedOn="{StaticResource Cp.Button}">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="cp:HotkeyRecorder">
+                                        <Border x:Name="Chrome" Background="{StaticResource Cp.Field}"
+                                                BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6"
+                                                Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                            <TextBlock x:Name="Caption" Text="{Binding Display}" Style="{StaticResource Cp.Mono}"
+                                                       Foreground="{StaticResource Cp.Text}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding HasHotkey}" Value="False">
+                                                <Setter TargetName="Caption" Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Enabled}" Value="False">
+                                                <Setter TargetName="Caption" Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+                                            </DataTrigger>
+                                            <!-- Recording: accent outline and wash, so it's obvious keys are being captured. -->
+                                            <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                                                <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                                                <Setter TargetName="Caption" Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </cp:HotkeyRecorder.Style>
+                </cp:HotkeyRecorder>
+                <Button Style="{StaticResource Cp.Button}" Content="✕" Padding="0" Width="32" Margin="6,0,0,0"
+                        ToolTip="Clear this shortcut" Command="{Binding ClearCommand}"
+                        IsEnabled="{Binding HasHotkey}"/>
+                <CheckBox Style="{StaticResource Cp.Switch}" IsChecked="{Binding Enabled, Mode=TwoWay}" Margin="14,0,0,0"
+                          VerticalAlignment="Center" ToolTip="Enable or disable this shortcut"/>
+            </StackPanel>
+        </Grid>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:ChipGroupSetting}">

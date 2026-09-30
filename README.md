@@ -23,38 +23,58 @@ and rendered directly by the app.
 
 ## Screenshots
 
-**Fullscreen dashboard**, on a second monitor — track map, standings, relative, tires, fuel,
-incidents, and the cockpit cluster all on one screen, captured live mid-race:
+**Floating widgets** — each one is its own movable, click-through window on top of the sim:
+
+![Floating widgets](docs/screenshots/floating-widgets.png)
+
+**Fullscreen dashboard**, for a second monitor — track map, standings, relative, tires, fuel,
+incidents, flags, pedals and the cockpit all on one screen:
 
 ![Fullscreen dashboard](docs/screenshots/dashboard.png)
 
-**Floating widgets**, overlaid directly on top of the sim while driving:
+**Standings and Relative** — class-coloured rows, iRating badge with the estimated gain/loss,
+safety rating, personal-best and session-best lap colours, the live PIT tag and the optional
+last-pit-stop column:
 
-![Floating widgets over iRacing](docs/screenshots/floating-widgets.jpg)
+![Standings and Relative](docs/screenshots/timing-tables.png)
 
-The cockpit cluster up close — speed, gear, RPM, shift lights, ABS indicator, and the
-throttle/brake trace:
+**Cockpit themes** — seven completely different dashboards, switchable from the Control Panel:
 
-![Cockpit cluster close-up](docs/screenshots/cockpit-cluster.png)
+![Cockpit themes](docs/screenshots/cockpit-themes.png)
+
+**Weather** — stacked or compact, with a wind compass that turns with your car:
+
+![Weather widget](docs/screenshots/weather.png)
+
+<sub>Screenshots are rendered by the app itself from its built-in preview data.</sub>
 
 ## Features
 
-- **Cockpit cluster** — speed, gear, RPM, shift lights, ABS indicator, and left/right proximity
-  bars for nearby cars.
+- **Cockpit** — speed, gear, RPM, 14 shift lights, ABS and cars alongside, in seven themes:
+  Default, GT Sports, Casual, Hypercar, Pit Wall, Classic Car and Invisible.
 - **Relative** — cars ahead/behind you on track, gap in seconds, class-colored.
-- **Standings** — full running order with position, iRating, iRating delta, safety rating, lap,
-  last/best lap time, and gap to leader; automatically grouped by class in multiclass sessions.
+- **Standings** — full running order with position, iRating and estimated iRating change, safety
+  rating, lap, last/best lap time, and gap to the class leader; automatically grouped by class in
+  multiclass sessions.
+- **Last pit stop** — optional Standings/Relative column showing the lap of each driver's most
+  recent stop and its pit-lane time (e.g. `L24 | 01:18`).
 - **Delta bar** — live time delta vs. session best, personal best, or optimal lap.
-- **Fuel calculator** — average consumption per lap (computed from your own fuel burn across
-  completed laps, not a jumpy instantaneous rate), laps of fuel remaining, and whether you'll make
-  it to the end of the session.
-- **Flags** — current session flags (green, yellow, checkered, etc.).
+- **Fuel & fuel calculator** — average consumption per lap (computed from your own fuel burn across
+  completed laps, not a jumpy instantaneous rate), laps of fuel remaining, whether you'll make it to
+  the end of the session, and how much to add at the next stop.
+- **Flags** — every iRacing flag (track status, flags aimed at you, race progress and advisories),
+  each one individually switchable.
+- **Weather** — air and track temperature, humidity, wind speed, a wind compass relative to your
+  car, the current sky and the chance of rain; every element can be hidden and the widget closes up
+  around it.
 - **Tire info** — tire temps and pressures.
 - **Pedal trace** — a scrolling throttle/brake/clutch trace.
 - **Incidents** — your own and your team's incident count.
 - **Track info / Track map** — session/weather info bar and a schematic track map with live car
   markers.
 - **Three dashboard themes** — Classic, Digital HUD, and Raw DIY.
+- **Control Panel** — every widget has its own page with a live preview: visible columns and
+  elements, themes, units and sizes, plus opacity and auto-hide when you're not driving.
 - Every widget and dashboard panel is independently movable and scalable through five preset sizes
   (XS · S · M · L · XL).
 

@@ -17,6 +17,11 @@ public sealed class TrackInfoState
     /// <summary>Null when the session has no lap limit (time-limited instead).</summary>
     public required int? LapsRemaining { get; init; }
 
+    public UnitSystem UnitSystem { get; init; }
+
+    /// <summary>False for <see cref="Empty"/>, so readings show as dashes instead of a believable 0.</summary>
+    public bool HasData { get; init; } = true;
+
     public static TrackInfoState Empty => new()
     {
         TrackName = "",
@@ -29,6 +34,7 @@ public sealed class TrackInfoState
         HumidityPct = 0,
         TimeRemainingSeconds = null,
         LapsRemaining = null,
+        HasData = false,
     };
 
     public string TrackNameDisplay => string.IsNullOrWhiteSpace(TrackName) ? "—" : TrackName;
@@ -79,11 +85,17 @@ public sealed class TrackInfoState
             ? TrackUsage[..^UsageSuffix.Length]
             : TrackUsage).ToUpperInvariant();
 
-    public string AirTempDisplay => $"{AirTempC.ToString("0.#", CultureInfo.InvariantCulture)}°C";
+    public string AirTempDisplay => FormatTemperature(AirTempC);
 
-    public string TrackTempDisplay => $"{TrackTempC.ToString("0.#", CultureInfo.InvariantCulture)}°C";
+    public string TrackTempDisplay => FormatTemperature(TrackTempC);
 
-    public string WindDisplay => $"{(WindSpeedMs * 3.6).ToString("0.#", CultureInfo.InvariantCulture)} km/h {WindDirectionDisplay}";
+    public string WindDisplay => !HasData
+        ? "—"
+        : $"{Units.SpeedFromMs(WindSpeedMs, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)} {Units.SpeedUnit(UnitSystem)} {WindDirectionDisplay}";
+
+    private string FormatTemperature(double celsius) => !HasData
+        ? "—"
+        : $"{Units.Temperature(celsius, UnitSystem).ToString("0.#", CultureInfo.InvariantCulture)}{Units.TemperatureUnit(UnitSystem)}";
 
     public string WindDirectionDisplay => CompassPoints[(int)Math.Round(NormalizedWindDegrees / 22.5) % CompassPoints.Length];
 
@@ -99,7 +111,7 @@ public sealed class TrackInfoState
     private static readonly string[] CompassPoints =
         ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
 
-    public string HumidityDisplay => $"{HumidityPct.ToString("0", CultureInfo.InvariantCulture)}%";
+    public string HumidityDisplay => HasData ? $"{HumidityPct.ToString("0", CultureInfo.InvariantCulture)}%" : "—";
 
     public string TimeRemainingDisplay => TimeRemainingSeconds is { } seconds ? FormatCountdown(seconds) : "—";
 

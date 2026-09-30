@@ -8,7 +8,7 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 internal static class IncidentBuilder
 {
-    public static IncidentState Build(TelemetrySnapshot telemetry)
+    public static IncidentState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session = null)
     {
         if (!telemetry.HasVariable(TelemetryVarNames.PlayerCarMyIncidentCount))
         {
@@ -16,10 +16,14 @@ internal static class IncidentBuilder
         }
 
         var mine = telemetry.GetInt(TelemetryVarNames.PlayerCarMyIncidentCount);
-        int? team = telemetry.HasVariable(TelemetryVarNames.PlayerCarTeamIncidentCount)
+        // The team variable exists in every session; it only means something in a team race.
+        int? team = session?.WeekendInfo?.TeamRacing == 1 && telemetry.HasVariable(TelemetryVarNames.PlayerCarTeamIncidentCount)
             ? telemetry.GetInt(TelemetryVarNames.PlayerCarTeamIncidentCount)
             : null;
+        int? limit = int.TryParse(session?.WeekendInfo?.WeekendOptions?.IncidentLimit, out var parsed) && parsed > 0
+            ? parsed
+            : null;
 
-        return new IncidentState { MyIncidentCount = mine, TeamIncidentCount = team };
+        return new IncidentState { MyIncidentCount = mine, TeamIncidentCount = team, Limit = limit };
     }
 }

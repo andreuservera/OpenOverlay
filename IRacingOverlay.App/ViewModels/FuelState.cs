@@ -15,6 +15,8 @@ public sealed class FuelState
     /// <summary>null when the session has no lap limit (timed or open session).</summary>
     public required int? LapsRemainingInSession { get; init; }
 
+    public UnitSystem UnitSystem { get; init; }
+
     public bool HasEstimate => PerLapLiters > 0;
 
     /// <summary>null when either side of the comparison isn't known yet.</summary>
@@ -22,9 +24,12 @@ public sealed class FuelState
         ? LapsOfFuelRemaining >= laps
         : null;
 
-    public string LevelDisplay => LevelLiters > 0 ? LevelLiters.ToString("0.0", CultureInfo.InvariantCulture) + " L" : "—";
+    public string LevelDisplay => LevelLiters > 0 ? $"{Volume(LevelLiters, "0.0")} {Units.VolumeUnit(UnitSystem)}" : "—";
     public string LapsOfFuelDisplay => HasEstimate ? LapsOfFuelRemaining.ToString("0.0", CultureInfo.InvariantCulture) : "—";
-    public string PerLapDisplay => HasEstimate ? PerLapLiters.ToString("0.00", CultureInfo.InvariantCulture) + " L/lap" : "—";
+    public string PerLapDisplay => HasEstimate ? $"{Volume(PerLapLiters, "0.00")} {Units.VolumeUnit(UnitSystem)}/lap" : "—";
+
+    private string Volume(double liters, string format) =>
+        Units.Volume(liters, UnitSystem).ToString(format, CultureInfo.InvariantCulture);
 
     public static FuelState Empty { get; } = new()
     {

@@ -101,6 +101,10 @@ public partial class DashboardWindow : Window
 
     public void UpdateCockpit(CockpitState state) => _cockpitPanel.UpdateState(state);
 
+    public void SetFlagOptions(FlagOptions options) => _flagPanel.Options = options;
+
+    public void SetCockpitOptions(CockpitOptions options) => _cockpitPanel.Options = options;
+
     // Dashboard has no edit/drag mode of its own — unlike the floating FlagWidget, it always shows
     // an explicit "all clear" placeholder rather than going blank when nothing's happening.
     public void UpdateFlag(IReadOnlyList<FlagState> flags) =>

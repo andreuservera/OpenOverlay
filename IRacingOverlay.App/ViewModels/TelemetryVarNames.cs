@@ -108,6 +108,9 @@ internal static class TelemetryVarNames
 
     public const string FuelLevel = "FuelLevel";
     public const string FuelLevelPct = "FuelLevelPct";
+    /// <summary>Engine coolant and oil temperature, degrees C.</summary>
+    public const string WaterTemp = "WaterTemp";
+    public const string OilTemp = "OilTemp";
     /// <summary>iRacing's own live consumption-rate estimate, in liters/hour — no need to derive it
     /// from a fuel-level delta ourselves.</summary>
     public const string FuelUsePerHour = "FuelUsePerHour";
@@ -131,4 +134,15 @@ internal static class TelemetryVarNames
     /// <summary>Reported as a 0-1 fraction despite iRacing documenting the unit as "%" — multiply by
     /// 100 before display.</summary>
     public const string RelativeHumidity = "RelativeHumidity";
+    /// <summary>Car heading, radians clockwise from north — the reference for relative wind.</summary>
+    public const string YawNorth = "YawNorth";
+    /// <summary>int — 0 clear, 1 partly cloudy, 2 mostly cloudy, 3 overcast.</summary>
+    public const string Skies = "Skies";
+    /// <summary>Precipitation at the start/finish line, a 0-1 fraction like humidity.</summary>
+    public const string Precipitation = "Precipitation";
+    /// <summary>Sun angle above the horizon in radians; below zero is night.</summary>
+    public const string SolarAltitude = "SolarAltitude";
+    public const string WeatherDeclaredWet = "WeatherDeclaredWet";
+    /// <summary>int — the sim's unit setting: 0 = English (imperial), 1 = metric.</summary>
+    public const string DisplayUnits = "DisplayUnits";
 }

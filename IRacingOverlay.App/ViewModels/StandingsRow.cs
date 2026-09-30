@@ -13,4 +13,7 @@ public sealed class StandingsRow : DriverRow
     public override string GapDisplay => RankInOwnRace == 1
         ? "Leader"
         : $"+{GapToLeaderSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
+
+    // "Leader" takes the same accent as the leader's position number.
+    public override string GapForeground => RankInOwnRace == 1 ? "#FFD24D" : base.GapForeground;
 }

@@ -27,7 +27,7 @@ public static class PreviewData
     [
         ("GT3 CLASS", "#33CEFF"),
         ("GT4 CLASS", "#FFB238"),
-        ("TCR CLASS", "#C88BFF"),
+        ("TCR CLASS", "#FF4F8B"),
     ];
 
     // Names are invented but shaped like the real thing — a mix of lengths, including two long
@@ -87,8 +87,13 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
+                // Every third car has stopped, plus the one in the lane now, so both pit states show.
+                LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 CurrentLap = i < 3 ? 18 : 17,
-                LastLapTime = BaseLapTime + (entry.Pace * 0.07) + ((i % 4) * 0.093),
+                // Car 8 has just set a personal best, so the green last-lap state shows too.
+                LastLapTime = i == 7
+                    ? BaseLapTime + (entry.Pace * 0.05)
+                    : BaseLapTime + (entry.Pace * 0.07) + ((i % 4) * 0.093),
                 BestLapTime = BaseLapTime + (entry.Pace * 0.05),
                 IsMultiClass = multiClass,
                 IRating = entry.IRating,
@@ -106,10 +111,11 @@ public static class PreviewData
     }
 
     /// <summary>The Relative table's own rows: the player in the middle, the requested number of
-    /// cars each side, gaps measured to the player and signed accordingly.</summary>
+    /// cars each side, gaps measured to the player and signed accordingly. Always mixed-class
+    /// traffic, since that is where Relative earns its keep — and it shows the class bars.</summary>
     public static List<object> RelativeRows(int eachSide)
     {
-        var field = StandingsField(multiClass: false);
+        var field = StandingsField(multiClass: true);
         var playerIndex = PlayerPosition - 1;
         var first = Math.Max(0, playerIndex - eachSide);
         var last = Math.Min(field.Count - 1, playerIndex + eachSide);
@@ -128,10 +134,11 @@ public static class PreviewData
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
+                LastPitStop = source.LastPitStop,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,
-                IsMultiClass = false,
+                IsMultiClass = true,
                 IRating = source.IRating,
                 LicString = source.LicString,
                 IRatingDelta = source.IRatingDelta,
@@ -150,6 +157,7 @@ public static class PreviewData
 
     public static CockpitState Cockpit() => new()
     {
+        UnitSystem = Units.Current,
         Gear = "4",
         ShiftLightsLit = 9,
         ShiftBlink = false,
@@ -160,6 +168,12 @@ public static class PreviewData
         // state of the proximity bars in a single frame.
         LeftProximity = new ProximitySide(0.55, 0.18, 0.73),
         RightProximity = ProximitySide.None,
+        FuelLiters = 31.4,
+        FuelPct = 0.46,
+        Throttle = 0.82,
+        Brake = 0,
+        WaterTempC = 88,
+        OilTempC = 104,
     };
 
     public static DeltaState Delta() => new()
@@ -170,26 +184,36 @@ public static class PreviewData
         ReferenceLabel = "SESSION BEST",
     };
 
-    public static IReadOnlyList<FlagState> Flags() =>
-    [
-        new FlagState
+    public sealed record FlagScenario(string Label, IReadOnlyList<ActiveFlag> Flags);
+
+    /// <summary>What the flag preview can simulate: a busy moment first (a primary flag with two
+    /// advisories, so the stacking and the size hierarchy both show), then every flag and variant in
+    /// the catalog — generated from it, so a newly added flag is previewable with no change here.</summary>
+    public static IReadOnlyList<FlagScenario> FlagScenarios { get; } = BuildFlagScenarios();
+
+    private static List<FlagScenario> BuildFlagScenarios()
+    {
+        var scenarios = new List<FlagScenario>
         {
-            Name = "YELLOW",
-            BackgroundColor = "#FFD24D",
-            ForegroundColor = "#0B0B0B",
-            Style = FlagVisualStyle.Solid,
-        },
-        new FlagState
+            new("Race moment — waving yellow, debris, blue",
+                [new(FlagKind.Yellow, FlagVariant.Waving), new(FlagKind.Debris), new(FlagKind.Blue)]),
+        };
+
+        foreach (var definition in FlagCatalog.All)
         {
-            Name = "BLUE",
-            BackgroundColor = "#2F6FE0",
-            ForegroundColor = "#FFFFFF",
-            Style = FlagVisualStyle.BlueWithOrangeStripe,
-        },
-    ];
+            scenarios.Add(new(definition.Label, [new(definition.Kind)]));
+            foreach (var variant in definition.Variants)
+            {
+                scenarios.Add(new($"{definition.Label} — {variant.Label}", [new(definition.Kind, variant.Variant)]));
+            }
+        }
+
+        return scenarios;
+    }
 
     public static FuelState Fuel() => new()
     {
+        UnitSystem = Units.Current,
         LevelLiters = 31.4,
         LevelPct = 0.46,
         PerLapLiters = 2.68,
@@ -201,6 +225,7 @@ public static class PreviewData
     /// their warning state and the refuel line has a real number in it.</summary>
     public static FuelCalculatorState FuelCalculator() => new()
     {
+        UnitSystem = Units.Current,
         LevelLiters = 31.4,
         LevelPct = 0.46,
         LastLapLiters = 2.71,
@@ -217,7 +242,8 @@ public static class PreviewData
     public static IncidentState Incidents() => new()
     {
         MyIncidentCount = 4,
-        TeamIncidentCount = 9,
+        TeamIncidentCount = null,
+        Limit = 17,
     };
 
     /// <summary>One braking event followed by full throttle, with ABS biting in the middle of the
@@ -227,11 +253,14 @@ public static class PreviewData
         const int samples = 160;
         var throttle = new double[samples];
         var brake = new double[samples];
+        var clutch = new double[samples];
         var abs = new bool[samples];
 
         for (var i = 0; i < samples; i++)
         {
             var t = i / (double)(samples - 1);
+            // Two quick clutch dabs: the downshifts under braking.
+            clutch[i] = Math.Max(0, 1 - (Math.Min(Math.Abs(t - 0.47), Math.Abs(t - 0.55)) / 0.018));
             if (t < 0.34)
             {
                 throttle[i] = 1.0;
@@ -259,7 +288,9 @@ public static class PreviewData
             Clutch = 0,
             ThrottleHistory = throttle,
             BrakeHistory = brake,
+            ClutchHistory = clutch,
             AbsHistory = abs,
+            Positions = Enumerable.Range(0, samples).Select(i => i / (double)(samples - 1)).ToArray(),
         };
     }
 
@@ -278,6 +309,7 @@ public static class PreviewData
         double wearLeft, double wearMiddle, double wearRight) => new()
         {
             Label = label,
+            UnitSystem = Units.Current,
             PressureKPa = pressure,
             ColdPressureKPa = pressure - 14,
             TempLeft = left,
@@ -290,8 +322,24 @@ public static class PreviewData
             HasWearData = true,
         };
 
+    /// <summary>A warm, breezy afternoon with rain threatening: a crosswind from front-left and a
+    /// medium rain chance, so the arrow and the yellow rain colour both show.</summary>
+    public static WeatherState Weather() => new()
+    {
+        UnitSystem = Units.Current,
+        AirTempC = 21.4,
+        TrackTempC = 33.8,
+        HumidityPct = 54,
+        WindSpeedMs = 3.6,
+        WindFromRelativeDeg = 315,
+        HeadingDeg = 60,
+        Condition = WeatherCondition.PartlyCloudy,
+        RainChancePct = 40,
+    };
+
     public static TrackInfoState TrackInfo() => new()
     {
+        UnitSystem = Units.Current,
         TrackName = "Spa-Francorchamps",
         SessionLabel = "Race",
         TrackUsage = "moderately high usage",

@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 
 namespace IRacingOverlay.App.Overlay;
 
@@ -28,26 +27,23 @@ internal static class WidgetLayoutStore
     {
         Load();
         _cache![widgetName] = layout;
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(_cache));
+        Write();
     }
+
+    /// <summary>Forgets a widget's position, so it opens at its default next time.</summary>
+    public static void Remove(string widgetName)
+    {
+        Load();
+        if (_cache!.Remove(widgetName))
+        {
+            Write();
+        }
+    }
+
+    private static void Write() => SettingsFile.WriteJson(FilePath, _cache);
 
     private static void Load()
     {
-        if (_cache is not null)
-        {
-            return;
-        }
-
-        try
-        {
-            _cache = File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, WidgetLayout>>(File.ReadAllText(FilePath)) ?? []
-                : [];
-        }
-        catch (JsonException)
-        {
-            _cache = [];
-        }
+        _cache ??= SettingsFile.ReadJson<Dictionary<string, WidgetLayout>>(FilePath) ?? [];
     }
 }

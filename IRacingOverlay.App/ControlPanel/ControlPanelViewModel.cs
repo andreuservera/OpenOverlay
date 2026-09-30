@@ -2,9 +2,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Data;
+using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
+using IRacingOverlay.Sdk;
 using Screen = System.Windows.Forms.Screen;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -26,6 +28,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private NavItem? _selected;
     private bool _isEditMode;
     private bool _isConnected;
+    private ConnectionState _connectionState;
+    private HealthStatus _health;
+    private string _healthLine = "Starting";
     private string _telemetryLine = "Speed —   Lap —   Gear —";
     private string _diagnosticsLine = "";
     private string _searchText = "";
@@ -42,8 +47,21 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         DriverTableOptionsStore.ApplyTo(StandingsOptions);
         DriverTableOptionsStore.ApplyTo(RelativeOptions);
         FuelCalculatorOptionsStore.ApplyTo(FuelCalculatorOptions);
+        FlagOptionsStore.ApplyTo(FlagOptions);
+        WeatherOptionsStore.ApplyTo(WeatherOptions);
+        CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
+        Units.SetPreference(UnitPreferenceStore.Get());
+
+        // Settings with a unit (the fuel reserve) are built in the sim's units, so rebuild on a switch.
+        Units.CurrentChanged += () =>
+        {
+            if (Selected is { } selected)
+            {
+                BuildSettings(selected);
+            }
+        };
 
         foreach (var descriptor in WidgetCatalog.All)
         {
@@ -53,12 +71,24 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
 
         NavItems.Add(NavItem.ForPage(
+            GeneralPageKey, "General", "How the app runs: closing, the tray and where settings live.",
+            "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9"));
+
+        NavItems.Add(NavItem.ForPage(
             DashboardPageKey, "Dashboard", "The fullscreen layout for a second monitor.",
             "M3,4 H21 V16 H3 Z M9,20 H15 M12,16 V20"));
 
         NavItems.Add(NavItem.ForPage(
             PerformancePageKey, "Performance", "How hard the overlay works for the displays that need it.",
             "M4,20 A9,9 0 1 1 20,20 M12,14 L16,9"));
+
+        NavItems.Add(NavItem.ForPage(
+            UnitsPageKey, "Units", "Metric or imperial, for every overlay at once.",
+            "M3,17 L17,3 L21,7 L7,21 Z M7,13 L9,15 M10,10 L12,12 M13,7 L15,9"));
+
+        NavItems.Add(NavItem.ForPage(
+            HotkeysPageKey, "Hotkeys", "Control the overlay from inside iRacing, without Alt+Tab.",
+            "M3,6 H21 V18 H3 Z M6,9 H7 M9.5,9 H10.5 M13,9 H14 M16.5,9 H17.5 M6,12 H7 M17,12 H18 M8,15 H16"));
 
         MonitorNames = Screen.AllScreens.Select(DescribeScreen).ToList();
         // Second monitor by default: a dashboard on the same screen as the sim is in the way, which
@@ -72,7 +102,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     }
 
     private const string DashboardPageKey = "app.dashboard";
+    private const string GeneralPageKey = "app.general";
     private const string PerformancePageKey = "app.performance";
+    private const string UnitsPageKey = "app.units";
 
     // ===== Shared option objects =====
     // These are the same instances handed to the widgets and to the preview, which is what makes a
@@ -80,6 +112,13 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public DriverTableOptions StandingsOptions { get; } = new(DriverTable.Standings);
     public DriverTableOptions RelativeOptions { get; } = new(DriverTable.Relative);
     public FuelCalculatorOptions FuelCalculatorOptions { get; } = new();
+    public FlagOptions FlagOptions { get; } = new();
+    public CockpitOptions CockpitOptions { get; } = new();
+    public WeatherOptions WeatherOptions { get; } = new();
+
+    /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
+    /// seen by the live widget.</summary>
+    public FlagPreviewScenario FlagPreview { get; } = new();
 
     public ObservableCollection<NavItem> NavItems { get; } = [];
 
@@ -138,6 +177,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
 
             _isEditMode = value;
+            AppLog.Activity("Control Panel", value ? "Edit layout on" : "Edit layout off");
             foreach (var slot in _slots.Values)
             {
                 slot.IsEditMode = value;
@@ -166,7 +206,63 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
     }
 
-    public string ConnectionLabel => _isConnected ? "CONNECTED" : "WAITING FOR IRACING";
+    public string ConnectionLabel => _connectionState switch
+    {
+        ConnectionState.Stale => "TELEMETRY STALLED",
+        ConnectionState.Recovering => "RECONNECTING",
+        _ => _isConnected ? "CONNECTED" : "WAITING FOR IRACING",
+    };
+
+    /// <summary>The reader's own view of the link, polled once a second: it knows about stalls and
+    /// retries that the connected/disconnected events never report.</summary>
+    public ConnectionState ConnectionState
+    {
+        get => _connectionState;
+        set
+        {
+            if (_connectionState == value)
+            {
+                return;
+            }
+
+            _connectionState = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConnectionLabel));
+            OnPropertyChanged(nameof(ConnectionDegraded));
+        }
+    }
+
+    public bool ConnectionDegraded => _connectionState is ConnectionState.Stale or ConnectionState.Recovering;
+
+    public HealthStatus Health
+    {
+        get => _health;
+        set
+        {
+            if (_health == value)
+            {
+                return;
+            }
+
+            _health = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string HealthLine
+    {
+        get => _healthLine;
+        set
+        {
+            if (_healthLine == value)
+            {
+                return;
+            }
+
+            _healthLine = value;
+            OnPropertyChanged();
+        }
+    }
 
     public string TelemetryLine
     {
@@ -271,14 +367,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     {
         WidgetCatalog.Relative => Configured(new RelativeWidget(), w => w.SetOptions(RelativeOptions)),
         WidgetCatalog.Standings => Configured(new StandingsWidget(), w => w.SetOptions(StandingsOptions)),
-        WidgetCatalog.Cockpit => new CockpitWidget(),
-        WidgetCatalog.Flag => new FlagWidget(),
+        WidgetCatalog.Cockpit => Configured(new CockpitWidget(), w => w.SetOptions(CockpitOptions)),
+        WidgetCatalog.Flag => Configured(new FlagWidget(), w => w.SetOptions(FlagOptions)),
         WidgetCatalog.TireInfo => new TireInfoWidget(),
         WidgetCatalog.Delta => new DeltaWidget(),
         WidgetCatalog.Fuel => new FuelWidget(),
         WidgetCatalog.PedalTrace => new PedalTraceWidget(),
         WidgetCatalog.Incident => new IncidentWidget(),
         WidgetCatalog.TrackInfo => new TrackInfoWidget(),
+        WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),

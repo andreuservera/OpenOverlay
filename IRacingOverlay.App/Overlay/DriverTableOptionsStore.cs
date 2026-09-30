@@ -1,5 +1,4 @@
 using System.IO;
-using System.Text.Json;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Overlay;
@@ -41,7 +40,8 @@ internal static class DriverTableOptionsStore
         Load();
         foreach (var column in Enum.GetValues<DriverTableColumn>())
         {
-            options.SetVisible(column, Get(options.Table, column.ToString(), 1) != 0);
+            var defaultVisible = column == DriverTableColumn.LastPitStop ? 0 : 1;
+            options.SetVisible(column, Get(options.Table, column.ToString(), defaultVisible) != 0);
         }
 
         options.ShowSessionId = Get(options.Table, ShowSessionIdKey, 0) != 0;
@@ -62,26 +62,11 @@ internal static class DriverTableOptionsStore
     {
         Load();
         _cache![$"{table}.{key}"] = value;
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(_cache));
+        SettingsFile.WriteJson(FilePath, _cache);
     }
 
     private static void Load()
     {
-        if (_cache is not null)
-        {
-            return;
-        }
-
-        try
-        {
-            _cache = File.Exists(FilePath)
-                ? JsonSerializer.Deserialize<Dictionary<string, int>>(File.ReadAllText(FilePath)) ?? []
-                : [];
-        }
-        catch (JsonException)
-        {
-            _cache = [];
-        }
+        _cache ??= SettingsFile.ReadJson<Dictionary<string, int>>(FilePath) ?? [];
     }
 }

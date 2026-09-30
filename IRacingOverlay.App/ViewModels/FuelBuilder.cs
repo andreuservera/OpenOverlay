@@ -61,6 +61,7 @@ internal sealed class FuelBuilder
             PerLapLiters = perLapLiters,
             LapsOfFuelRemaining = lapsOfFuelRemaining,
             LapsRemainingInSession = lapsRemaining,
+            UnitSystem = Units.Read(telemetry),
         };
     }
 

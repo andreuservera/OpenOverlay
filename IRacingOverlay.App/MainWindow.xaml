@@ -67,6 +67,9 @@
                                             <DataTrigger Binding="{Binding IsConnected}" Value="True">
                                                 <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionDegraded}" Value="True">
+                                                <Setter Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Ellipse.Style>
@@ -222,10 +225,37 @@
         <Border Grid.Row="2" Height="28" Background="{StaticResource Cp.Rail}"
                 BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0" Padding="18,0">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
                 <TextBlock Text="{Binding TelemetryLine}" Style="{StaticResource Cp.Mono}"
                            VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
-                           Foreground="{StaticResource Cp.TextFaint}" HorizontalAlignment="Right"
+                <!-- Health first: it is the line that says whether the rest can be trusted. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
+                            VerticalAlignment="Center" Margin="24,0,0,0">
+                    <Ellipse Width="7" Height="7" Margin="0,0,7,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Health}" Value="Degraded">
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Health}" Value="Failed">
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Danger}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding HealthLine}" Style="{StaticResource Cp.Mono}" Foreground="{StaticResource Cp.TextSoft}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               ToolTip="General › Diagnostics has the full report."/>
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
+                           Foreground="{StaticResource Cp.TextFaint}" Margin="18,0,0,0"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </Grid>
         </Border>

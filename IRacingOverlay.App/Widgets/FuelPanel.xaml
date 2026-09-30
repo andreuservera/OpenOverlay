@@ -16,9 +16,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
-            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="14,10">
+    <Border Style="{StaticResource OverlayPanel}" Padding="14,10">
         <StackPanel>
             <TextBlock Text="FUEL" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
             <StackPanel Orientation="Horizontal">
@@ -27,9 +25,8 @@
                         <TextBlock x:Name="LapsOfFuelText" Text="—" Style="{StaticResource DisplayValue}"/>
                         <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
                     </StackPanel>
-                    <Border x:Name="LevelTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                            Height="8" Margin="0,6,0,0">
-                        <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Warning}" HorizontalAlignment="Left" Width="0"
+                    <Border x:Name="LevelTrack" Style="{StaticResource MeterTrack}" Height="8" Margin="0,6,0,0">
+                        <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Info}" HorizontalAlignment="Left" Width="0"
                                    RadiusX="3" RadiusY="3"/>
                     </Border>
                 </StackPanel>
@@ -42,7 +39,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,-18,0">
                     <StackPanel Style="{StaticResource StatCell}">
                         <TextBlock Text="LEVEL" Style="{StaticResource CellLabel}"/>
-                        <TextBlock x:Name="LevelText" Text="— L" Style="{StaticResource CellValue}"/>
+                        <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource CellValue}"/>
                     </StackPanel>
                     <StackPanel Style="{StaticResource StatCell}">
                         <TextBlock Text="PER LAP" Style="{StaticResource CellLabel}"/>

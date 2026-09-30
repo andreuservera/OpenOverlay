@@ -26,6 +26,10 @@ public partial class WidgetPreview : UserControl
     private DriverTableOptions? _standingsOptions;
     private DriverTableOptions? _relativeOptions;
     private FuelCalculatorOptions? _fuelCalculatorOptions;
+    private FlagOptions? _flagOptions;
+    private FlagPreviewScenario? _flagPreview;
+    private CockpitOptions? _cockpitOptions;
+    private WeatherOptions? _weatherOptions;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -53,15 +57,28 @@ public partial class WidgetPreview : UserControl
     public void Bind(
         DriverTableOptions standingsOptions,
         DriverTableOptions relativeOptions,
-        FuelCalculatorOptions fuelCalculatorOptions)
+        FuelCalculatorOptions fuelCalculatorOptions,
+        FlagOptions flagOptions,
+        FlagPreviewScenario flagPreview,
+        CockpitOptions cockpitOptions,
+        WeatherOptions weatherOptions)
     {
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
         _fuelCalculatorOptions = fuelCalculatorOptions;
+        _flagOptions = flagOptions;
+        _flagPreview = flagPreview;
+        _cockpitOptions = cockpitOptions;
+        // The weather panel follows its options itself, so no rebuild subscription is needed.
+        _weatherOptions = weatherOptions;
+        // Previews show sample data in whatever units iRacing last reported.
+        Units.CurrentChanged += Refresh;
 
         standingsOptions.PropertyChanged += OnOptionsChanged;
         relativeOptions.PropertyChanged += OnOptionsChanged;
         fuelCalculatorOptions.PropertyChanged += OnOptionsChanged;
+        flagOptions.PropertyChanged += OnOptionsChanged;
+        flagPreview.PropertyChanged += OnOptionsChanged;
     }
 
     private static void OnSlotChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -136,14 +153,15 @@ public partial class WidgetPreview : UserControl
     {
         WidgetCatalog.Relative => new RelativePanel { Options = _relativeOptions ?? new DriverTableOptions(DriverTable.Relative) },
         WidgetCatalog.Standings => new StandingsPanel { Options = _standingsOptions ?? new DriverTableOptions(DriverTable.Standings) },
-        WidgetCatalog.Cockpit => new CockpitPanel(),
-        WidgetCatalog.Flag => new FlagPanel(),
+        WidgetCatalog.Cockpit => new CockpitPanel { Options = _cockpitOptions ?? new CockpitOptions() },
+        WidgetCatalog.Flag => new FlagPanel { Options = _flagOptions ?? new FlagOptions() },
         WidgetCatalog.TireInfo => new TireInfoPanel(),
         WidgetCatalog.Delta => new DeltaPanel(),
         WidgetCatalog.Fuel => new FuelPanel(),
         WidgetCatalog.PedalTrace => new PedalTracePanel(),
         WidgetCatalog.Incident => new IncidentPanel(),
         WidgetCatalog.TrackInfo => new TrackInfoPanel(),
+        WidgetCatalog.Weather => new WeatherPanel { Options = _weatherOptions ?? new WeatherOptions() },
         WidgetCatalog.TrackMap => new TrackMapPanel(),
         WidgetCatalog.FuelCalculator => new FuelCalculatorPanel { Options = _fuelCalculatorOptions ?? new FuelCalculatorOptions() },
         _ => null,
@@ -203,8 +221,15 @@ public partial class WidgetPreview : UserControl
                 cockpit.UpdateState(PreviewData.Cockpit());
                 break;
             case FlagPanel flag:
-                flag.UpdateState(PreviewData.Flags());
-                break;
+                {
+                    // Same selection the live widget makes; a disabled flag shows the placeholder,
+                    // which is the honest answer to "what will I see".
+                    var flags = FlagPresenter.Compose(
+                        _flagPreview?.Flags ?? PreviewData.FlagScenarios[0].Flags,
+                        _flagOptions ?? new FlagOptions());
+                    flag.UpdateState(flags.Count > 0 ? flags : [FlagState.None]);
+                    break;
+                }
             case TireInfoPanel tires:
                 tires.UpdateState(PreviewData.Tires());
                 break;
@@ -222,6 +247,9 @@ public partial class WidgetPreview : UserControl
                 break;
             case TrackInfoPanel trackInfo:
                 trackInfo.UpdateState(PreviewData.TrackInfo());
+                break;
+            case WeatherPanel weather:
+                weather.UpdateState(PreviewData.Weather());
                 break;
             case TrackMapPanel trackMap:
                 trackMap.UpdateState(PreviewData.TrackMap());

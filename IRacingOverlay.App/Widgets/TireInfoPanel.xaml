@@ -8,17 +8,21 @@
         <Style x:Key="CornerLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
             <Setter Property="Margin" Value="0,0,0,1"/>
         </Style>
+        <!-- Carcass temps are supporting data under the pressure, so secondary ink rather than
+             a colour that would suggest a state they don't carry. -->
         <Style x:Key="CornerTemp" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
-            <Setter Property="Foreground" Value="{StaticResource State.Accent}"/>
             <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Micro}"/>
             <Setter Property="Width" Value="30"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="TextAlignment" Value="Left"/>
         </Style>
+        <Style x:Key="WearTrack" TargetType="Border" BasedOn="{StaticResource MeterTrack}">
+            <Setter Property="Height" Value="6"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+        </Style>
     </UserControl.Resources>
-    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
-            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="10,8">
+    <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
         <StackPanel>
             <TextBlock Text="TIRES" Style="{StaticResource PanelTitle}" Margin="0,0,0,4"/>
             <Grid>
@@ -39,8 +43,7 @@
                         <TextBlock x:Name="LFTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
                         <TextBlock x:Name="LFTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
                     </StackPanel>
-                    <Border x:Name="LFWearTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                            Height="6" Margin="0,4,0,0">
+                    <Border x:Name="LFWearTrack" Style="{StaticResource WearTrack}">
                         <Rectangle x:Name="LFWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
                                    RadiusX="3" RadiusY="3"/>
                     </Border>
@@ -53,8 +56,7 @@
                         <TextBlock x:Name="RFTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
                         <TextBlock x:Name="RFTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
                     </StackPanel>
-                    <Border x:Name="RFWearTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                            Height="6" Margin="0,4,0,0">
+                    <Border x:Name="RFWearTrack" Style="{StaticResource WearTrack}">
                         <Rectangle x:Name="RFWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
                                    RadiusX="3" RadiusY="3"/>
                     </Border>
@@ -67,8 +69,7 @@
                         <TextBlock x:Name="LRTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
                         <TextBlock x:Name="LRTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
                     </StackPanel>
-                    <Border x:Name="LRWearTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                            Height="6" Margin="0,4,0,0">
+                    <Border x:Name="LRWearTrack" Style="{StaticResource WearTrack}">
                         <Rectangle x:Name="LRWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
                                    RadiusX="3" RadiusY="3"/>
                     </Border>
@@ -81,8 +82,7 @@
                         <TextBlock x:Name="RRTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
                         <TextBlock x:Name="RRTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
                     </StackPanel>
-                    <Border x:Name="RRWearTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}"
-                            Height="6" Margin="0,4,0,0">
+                    <Border x:Name="RRWearTrack" Style="{StaticResource WearTrack}">
                         <Rectangle x:Name="RRWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
                                    RadiusX="3" RadiusY="3"/>
                     </Border>

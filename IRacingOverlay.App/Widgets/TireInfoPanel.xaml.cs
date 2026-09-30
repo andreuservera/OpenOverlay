@@ -29,7 +29,7 @@ public partial class TireInfoPanel : UserControl
         TextBlock pressureText, TextBlock leftText, TextBlock middleText, TextBlock rightText,
         Border wearTrack, Rectangle wearFill, TireCornerInfo corner)
     {
-        pressureText.Text = corner.PressureKPa > 0 ? $"{corner.PressureDisplay} kPa" : "—";
+        pressureText.Text = corner.PressureKPa > 0 ? $"{corner.PressureDisplay} {corner.PressureUnit}" : "—";
         leftText.Text = corner.TempLeftDisplay;
         middleText.Text = corner.TempMiddleDisplay;
         rightText.Text = corner.TempRightDisplay;

@@ -51,7 +51,7 @@ if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "Publishing self-contained build (v$Version)..." -ForegroundColor Cyan
-& dotnet publish $project -c Release -r win-x64 --self-contained true -o $publishDir
+& dotnet publish $project -c Release -r win-x64 --self-contained true -p:Version=$Version -o $publishDir
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Fetching previous release for delta patching (skips harmlessly if none exists)..." -ForegroundColor Cyan

@@ -4,17 +4,18 @@
              x:Name="Root">
     <UserControl.Resources>
         <!-- Every field in this bar is the same shape — caption, then value — so the reading rhythm
-             stays constant all the way across and the eye can jump straight to the one it wants. -->
+             stays constant all the way across and the eye can jump straight to the one it wants.
+             The gutter is a little wider than the old 18: the condensed caption cut freed the
+             room, and the bar keeps its original length. -->
         <Style x:Key="BarField" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Margin" Value="0,0,18,0"/>
+            <Setter Property="Margin" Value="0,0,21,0"/>
         </Style>
         <Style x:Key="BarCaption" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
             <Setter Property="Margin" Value="0,0,6,0"/>
         </Style>
         <Style x:Key="BarValue" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
-            <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <Style x:Key="BarSeparator" TargetType="Rectangle">
@@ -22,70 +23,75 @@
             <Setter Property="Fill" Value="{StaticResource Surface.Divider}"/>
             <Setter Property="Margin" Value="0,2,18,2"/>
         </Style>
+        <Style x:Key="UsageSegment" TargetType="Rectangle">
+            <Setter Property="Width" Value="5"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="RadiusX" Value="1"/>
+            <Setter Property="RadiusY" Value="1"/>
+            <Setter Property="Margin" Value="0,0,2,0"/>
+            <Setter Property="Fill" Value="{StaticResource Surface.Track}"/>
+        </Style>
     </UserControl.Resources>
-    <Border Background="{DynamicResource Theme.PanelBackground}" BorderBrush="{DynamicResource Theme.PanelBorder}"
-            BorderThickness="{DynamicResource Theme.PanelBorderThickness}" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"
-            TextElement.FontFamily="{DynamicResource Theme.FontFamily}" Padding="16,9">
+    <Border Style="{StaticResource OverlayPanel}" Padding="16,9">
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
             <!-- Capped + trimmed: this bar is one long horizontal StackPanel, so an unusually long
                  circuit name would otherwise push the session clock off the right-hand end. -->
-            <TextBlock x:Name="TrackNameText" Text="—" FontSize="{StaticResource Type.Value}" FontWeight="Bold"
-                       Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"
+            <TextBlock x:Name="TrackNameText" Text="—" Style="{StaticResource ValueText}" VerticalAlignment="Center"
                        MaxWidth="220" TextTrimming="CharacterEllipsis"/>
             <TextBlock x:Name="SessionLabelText" Text="—" Style="{StaticResource PanelTitle}"
-                       VerticalAlignment="Center" Margin="10,2,0,0"/>
+                       VerticalAlignment="Center" Margin="11,2,0,0"/>
 
             <Rectangle Style="{StaticResource BarSeparator}" Margin="18,2,18,2"/>
 
+            <!-- Weather is context, read on purpose rather than at a glance: secondary ink
+                 throughout, with colour left to the one field here that carries a state (usage). -->
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="AIR" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource BarValue}" Foreground="{StaticResource State.Accent}"/>
+                <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="TRACK" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource BarValue}" Foreground="{StaticResource State.Accent}"/>
+                <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="WIND" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="WindText" Text="—" Style="{StaticResource BarValue}" Foreground="{StaticResource State.Info}"/>
+                <TextBlock x:Name="WindText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="HUMIDITY" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}" Foreground="{StaticResource State.Info}"/>
+                <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="USAGE" Style="{StaticResource BarCaption}"/>
                 <StackPanel x:Name="TrackUsageBar" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0">
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Margin="0,0,2,0" Fill="{StaticResource Surface.Track}"/>
-                    <Rectangle Width="5" Height="12" RadiusX="1" RadiusY="1" Fill="{StaticResource Surface.Track}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}" Margin="0"/>
                 </StackPanel>
-                <TextBlock x:Name="TrackUsageText" Text="—" Style="{StaticResource BarValue}" Foreground="{StaticResource State.Special}"/>
+                <TextBlock x:Name="TrackUsageText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <Rectangle Style="{StaticResource BarSeparator}"/>
 
             <!-- Time/laps remaining are what a driver actually glances up for mid-stint, so they end
-                 the bar in primary white rather than in the muted color the weather fields use. -->
+                 the bar in primary ink rather than the secondary the weather fields use. -->
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="TIME LEFT" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueText}"
-                           FontSize="{StaticResource Type.Body}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <StackPanel Style="{StaticResource BarField}" Margin="0">
                 <TextBlock Text="LAPS LEFT" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource ValueText}"
-                           FontSize="{StaticResource Type.Body}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
             </StackPanel>
         </StackPanel>
     </Border>
