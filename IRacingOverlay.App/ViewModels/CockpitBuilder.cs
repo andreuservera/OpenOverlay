@@ -1,3 +1,4 @@
+using System.Globalization;
 using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
@@ -91,8 +92,9 @@ internal static class CockpitBuilder
     private static (ProximitySide left, ProximitySide right) BuildProximity(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
         if (session?.DriverInfo is not { } driverInfo ||
+            ParseTrackLengthMeters(session.WeekendInfo?.TrackLength) is not { } trackLengthMeters ||
             !telemetry.HasVariable(TelemetryVarNames.CarLeftRight) ||
-            !telemetry.HasVariable(TelemetryVarNames.CarIdxEstTime) ||
+            !telemetry.HasVariable(TelemetryVarNames.CarIdxLapDistPct) ||
             !telemetry.HasVariable(TelemetryVarNames.Speed))
         {
             return (ProximitySide.None, ProximitySide.None);
@@ -103,10 +105,10 @@ internal static class CockpitBuilder
         var carLeftRight = telemetry.GetInt(TelemetryVarNames.CarLeftRight);
 
         var playerCarIdx = driverInfo.DriverCarIdx;
-        var carIdxEstTime = telemetry.GetFloatArray(TelemetryVarNames.CarIdxEstTime);
+        var lapDistPct = telemetry.GetFloatArray(TelemetryVarNames.CarIdxLapDistPct);
         var speed = telemetry.GetFloat(TelemetryVarNames.Speed);
 
-        if (playerCarIdx < 0 || playerCarIdx >= carIdxEstTime.Length || speed <= 0.5)
+        if (playerCarIdx < 0 || playerCarIdx >= lapDistPct.Length || lapDistPct[playerCarIdx] < 0 || speed <= 0.5)
         {
             return (ProximitySide.None, ProximitySide.None);
         }
@@ -116,23 +118,30 @@ internal static class CockpitBuilder
         // after a pass); negative means their front is behind ours (we've drawn ahead, or they're
         // about to draw level from behind). That sign is what lets ComputeBand place the overlap at
         // the right end of our own car instead of just reporting how much of them is alongside.
-        // Deliberately class-agnostic — same technique the Relative/Standings/Track Map widgets use,
-        // all confirmed live to work correctly across classes.
+        // Track position, not CarIdxEstTime: EstTime is scaled by each car's own CarClassEstLapTime,
+        // so it can't be compared between classes (or BoP'd models) — that kept multiclass bars dark.
         var minAbsGapMeters = double.MaxValue;
         var closestSignedGapMeters = 0.0;
         foreach (var driver in driverInfo.Drivers)
         {
-            if (driver.IsPaceCar || driver.CarIdx == playerCarIdx || driver.CarIdx < 0 || driver.CarIdx >= carIdxEstTime.Length)
+            if (driver.IsPaceCar || driver.CarIdx == playerCarIdx || driver.CarIdx < 0 || driver.CarIdx >= lapDistPct.Length ||
+                lapDistPct[driver.CarIdx] < 0) // -1 = not in world; would otherwise fold to "alongside" near S/F
             {
                 continue;
             }
 
-            // Nearby-car gaps are dominated by the same-lap term, so plain CarIdxEstTime difference
-            // (no lap-count correction) is accurate enough for "is this car within a car length of me."
-            // Positive => the other car's EstTime (progress along track) is further than ours, i.e.
-            // their front is ahead of ours.
-            var gapSeconds = carIdxEstTime[driver.CarIdx] - carIdxEstTime[playerCarIdx];
-            var gapMeters = gapSeconds * speed;
+            // Wrapped to ±half a lap across S/F. Lap count is ignored on purpose: lapped traffic alongside is still alongside.
+            var gapPct = (double)lapDistPct[driver.CarIdx] - lapDistPct[playerCarIdx];
+            if (gapPct > 0.5)
+            {
+                gapPct -= 1;
+            }
+            else if (gapPct < -0.5)
+            {
+                gapPct += 1;
+            }
+
+            var gapMeters = gapPct * trackLengthMeters;
             var absGapMeters = Math.Abs(gapMeters);
             if (absGapMeters < minAbsGapMeters)
             {
@@ -160,6 +169,15 @@ internal static class CockpitBuilder
             4 => (side, side),
             _ => (ProximitySide.None, ProximitySide.None),
         };
+    }
+
+    /// <summary>"5.7536 km" → 5753.6. iRacing writes the session's TrackLength in kilometres; anything unparsable is null.</summary>
+    private static double? ParseTrackLengthMeters(string? text)
+    {
+        var km = text?.Replace("km", "").Trim();
+        return double.TryParse(km, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value * 1000
+            : null;
     }
 
     /// <summary>
