@@ -11,7 +11,6 @@ public class StandingsBuilderTests
     {
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("CarIdxLap", IrsdkVarType.Int, count: 4);
-        builder.AddVar("CarIdxEstTime", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxLapDistPct", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxLastLapTime", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxBestLapTime", IrsdkVarType.Float, count: 4);
@@ -25,6 +24,19 @@ public class StandingsBuilderTests
         TelemetrySnapshot snapshot, IracingSessionInfo session, int maxEachSide = 4) =>
         StandingsBuilder.BuildRelative(snapshot, session, maxEachSide).OfType<RelativeRow>().ToList();
 
+    private static IracingSessionInfo PlayerAndRival() => new()
+    {
+        DriverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
+            ],
+        },
+    };
+
     [Fact]
     public void BuildRelative_SoloSession_StillReturnsThePlayer()
     {
@@ -32,7 +44,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [3, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [12.5f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -52,34 +64,38 @@ public class StandingsBuilderTests
     }
 
     [Fact]
-    public void BuildRelative_CarAheadOnSameLap_ShowsNegativeGap()
+    public void BuildRelative_CarBehindOnSameLap_ShowsPositiveGap()
     {
+        // The rival is 2% of a 100s lap further back round the same lap.
         var builder = RelativeVars();
-        // Player (idx 0) is at 10s into the lap; car idx 1 is at 8s into the same lap, i.e. behind.
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 8.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.10f, 0.08f, 0, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100f, 0, 0]);
         });
 
-        var session = new IracingSessionInfo
+        var rows = RelativeRows(snapshot, PlayerAndRival());
+
+        Assert.Equal([0, 1], rows.Select(r => r.CarIdx));
+        Assert.Equal(2.0, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void BuildRelative_CarAheadOnSameLap_ShowsNegativeGap()
+    {
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
-            DriverInfo = new DriverInfoSection
-            {
-                DriverCarIdx = 0,
-                Drivers =
-                [
-                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
-                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
-                ],
-            },
-        };
+            w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.10f, 0.13f, 0, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100f, 0, 0]);
+        });
 
-        var rows = RelativeRows(snapshot, session);
+        var rows = RelativeRows(snapshot, PlayerAndRival());
 
-        var rivalRow = rows.Single(r => r.CarIdx == 1);
-        // Player is 2s further into the lap than the rival => the rival is 2s behind => positive gap.
-        Assert.Equal(2.0, rivalRow.GapSeconds, precision: 3);
+        Assert.Equal([1, 0], rows.Select(r => r.CarIdx));
+        Assert.Equal(-3.0, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
     }
 
     [Fact]
@@ -89,67 +105,103 @@ public class StandingsBuilderTests
         // 40 (same lap, genuinely close together), but have different (or, for car 1, no) recorded
         // lap times. The old per-car-reference-lap-time formula multiplied that mismatch by the lap
         // count (40 * ~90s), producing a gap of thousands of seconds for cars sitting right next to
-        // each other. The fix must keep the gap tiny regardless of car 1's lap-time data.
+        // each other. The gap must stay tiny regardless of car 1's lap-time data.
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [40, 40, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [30.0f, 29.5f, 0, 0]); // 0.5s apart on the same lap
-            w.SetFloatArray("CarIdxLastLapTime", [92.3f, 0, 0, 0]); // player has a lap time; rival doesn't
-            w.SetFloatArray("CarIdxBestLapTime", [91.8f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.300f, 0.295f, 0, 0]); // half a percent apart
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 0, 0, 0]); // player has a lap time; rival doesn't
+            w.SetFloatArray("CarIdxBestLapTime", [99.5f, 0, 0, 0]);
         });
 
-        var session = new IracingSessionInfo
+        var rows = RelativeRows(snapshot, PlayerAndRival());
+
+        Assert.Equal(0.5, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
+    }
+
+    private static TelemetrySnapshot NoLapTimesYetOnDifferentLaps() =>
+        TestSnapshotFactory.Build(RelativeVars(), w =>
         {
-            DriverInfo = new DriverInfoSection
-            {
-                DriverCarIdx = 0,
-                Drivers =
-                [
-                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
-                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
-                ],
-            },
-        };
+            w.SetIntArray("CarIdxLap", [0, 12, 5, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.01f, 0.30f, 0.95f, 0]); // 29% up the road; 6% back across S/F
+        });
 
-        var rows = RelativeRows(snapshot, session);
+    private static IracingSessionInfo ThreeCarsWithEarlierSessions(params SessionEntry[] earlier) => new()
+    {
+        SessionInfo = new SessionInfoSection
+        {
+            CurrentSessionNum = earlier.Length,
+            Sessions = [.. earlier, new SessionEntry { SessionNum = earlier.Length, SessionType = "Race" }],
+        },
+        DriverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                // iRacing's own estimate is deliberately nothing like the measured pace: it must not be used.
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassEstLapTime = 150 },
+                new DriverEntry { CarIdx = 1, UserName = "LapsAhead", CarNumber = "42", CarClassEstLapTime = 150 },
+                new DriverEntry { CarIdx = 2, UserName = "Behind", CarNumber = "3", CarClassEstLapTime = 150 },
+            ],
+        },
+    };
 
-        var rivalRow = rows.Single(r => r.CarIdx == 1);
-        Assert.Equal(0.5, rivalRow.GapSeconds, precision: 3);
+    [Fact]
+    public void BuildRelative_NoLapTimeAnywhereYet_PlacesCarsByTrackPositionAndLeavesTheGapBlank()
+    {
+        // Nobody has a lap, this session or any earlier one. Gaps used to come from CarIdxEstTime,
+        // which without a lap length to fold by gave small, plausible but meaningless numbers for
+        // cars on other laps, so such cars were dropped. Track position places them with no lap time
+        // at all; the seconds just aren't known yet, and a dash says so instead of a made-up 0.0.
+        var rows = RelativeRows(NoLapTimesYetOnDifferentLaps(), ThreeCarsWithEarlierSessions());
+
+        Assert.Equal([1, 0, 2], rows.Select(r => r.CarIdx));
+        Assert.All(rows.Where(r => !r.IsPlayer), r => Assert.Equal("—", r.GapDisplay));
     }
 
     [Fact]
-    public void BuildRelative_NoReferenceLapTime_ExcludesCarsOnADifferentLap()
+    public void BuildRelative_OpeningLapOfTheRace_PricesGapsAtTheClassQualifyingPace()
     {
-        // Regression test for what live testing surfaced: player sitting in the garage (no lap time
-        // set yet, refLapTime == 0) alongside cars actually several laps further into the race. With
-        // no way to correct for the lap difference, comparing them produced a small, plausible-looking
-        // but meaningless gap. Cars genuinely on the same lap should still compare normally.
+        // The race's first lap: no laps yet this session, but qualifying has the class's times
+        // (median 100s). Practice, further back, is passed over for the latest session with times.
+        var practice = new SessionEntry
+        {
+            SessionNum = 0, SessionType = "Practice",
+            ResultsPositions = [new SessionResultPosition { CarIdx = 0, FastestTime = 120 }],
+        };
+        var qualifying = new SessionEntry
+        {
+            SessionNum = 1, SessionType = "Lone Qualify",
+            ResultsPositions =
+            [
+                new SessionResultPosition { CarIdx = 0, FastestTime = 99 },
+                new SessionResultPosition { CarIdx = 1, FastestTime = 100 },
+                new SessionResultPosition { CarIdx = 2, FastestTime = 104 },
+            ],
+        };
+
+        var rows = RelativeRows(NoLapTimesYetOnDifferentLaps(), ThreeCarsWithEarlierSessions(practice, qualifying));
+
+        Assert.Equal([1, 0, 2], rows.Select(r => r.CarIdx));
+        Assert.Equal([-29.0, 0.0, 6.0], rows.Select(r => Math.Round(r.GapSeconds, 2)));
+    }
+
+    [Fact]
+    public void BuildRelative_PlayerNotInTheWorld_ShowsOnlyThemselves()
+    {
+        // In the garage iRacing reports -1 for the player's own lap and track position: there is
+        // nothing to measure anyone else against.
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
-            w.SetIntArray("CarIdxLap", [0, 12, 0, 0]); // car 1 is 12 laps ahead of the player
-            w.SetFloatArray("CarIdxEstTime", [1.0f, 30.5f, 0, 0]);
-            // no CarIdxLastLapTime/CarIdxBestLapTime set for the player -> refLapTime stays 0
+            w.SetIntArray("CarIdxLap", [-1, 12, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [-1f, 0.30f, 0, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [0, 100f, 0, 0]);
         });
 
-        var session = new IracingSessionInfo
-        {
-            DriverInfo = new DriverInfoSection
-            {
-                DriverCarIdx = 0,
-                Drivers =
-                [
-                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
-                    new DriverEntry { CarIdx = 1, UserName = "LapsAhead", CarNumber = "42" },
-                ],
-            },
-        };
-
-        var rows = RelativeRows(snapshot, session);
-
-        Assert.DoesNotContain(rows, r => r.CarIdx == 1);
-        Assert.Contains(rows, r => r.IsPlayer);
+        var row = Assert.Single(RelativeRows(snapshot, PlayerAndRival()));
+        Assert.True(row.IsPlayer);
     }
 
     [Fact]
@@ -157,33 +209,18 @@ public class StandingsBuilderTests
     {
         // Regression test for the reported "in the first lap it doesn't pick anything" bug: the
         // player hasn't completed a lap yet (no CarIdxLastLapTime/CarIdxBestLapTime of their own),
-        // but another car in the session already has one. The reference lap time should fall back to
-        // that car's, rather than leaving refLapTime at 0 and excluding everyone on a different lap.
+        // but another car in the session already has one. Its pace prices the gap.
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [0, 15, 0, 0]); // rival has circulated many more laps
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 10.5f, 0, 0]); // but is right next to the player
+            w.SetFloatArray("CarIdxLapDistPct", [0.100f, 0.105f, 0, 0]); // but is right next to the player
             w.SetFloatArray("CarIdxLastLapTime", [0, 90.0f, 0, 0]); // only the rival has a lap time
         });
 
-        var session = new IracingSessionInfo
-        {
-            DriverInfo = new DriverInfoSection
-            {
-                DriverCarIdx = 0,
-                Drivers =
-                [
-                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
-                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
-                ],
-            },
-        };
+        var rows = RelativeRows(snapshot, PlayerAndRival());
 
-        var rows = RelativeRows(snapshot, session);
-
-        var rivalRow = rows.Single(r => r.CarIdx == 1);
-        Assert.Equal(-0.5, rivalRow.GapSeconds, precision: 3);
+        Assert.Equal(-0.45, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
     }
 
     [Fact]
@@ -197,27 +234,13 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [2, 40, 0, 0]); // rival is 38 laps further into the session
-            w.SetFloatArray("CarIdxEstTime", [12.0f, 11.0f, 0, 0]); // but only 1s away on track
-            w.SetFloatArray("CarIdxLastLapTime", [90.0f, 90.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.12f, 0.11f, 0, 0]); // but only 1% of a lap back
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100f, 0, 0]);
         });
 
-        var session = new IracingSessionInfo
-        {
-            DriverInfo = new DriverInfoSection
-            {
-                DriverCarIdx = 0,
-                Drivers =
-                [
-                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
-                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42" },
-                ],
-            },
-        };
+        var rows = RelativeRows(snapshot, PlayerAndRival());
 
-        var rows = RelativeRows(snapshot, session);
-
-        var rivalRow = rows.Single(r => r.CarIdx == 1);
-        Assert.Equal(1.0, rivalRow.GapSeconds, precision: 3);
+        Assert.Equal(1.0, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
     }
 
     [Fact]
@@ -226,8 +249,8 @@ public class StandingsBuilderTests
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
-            w.SetIntArray("CarIdxLap", [1, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [1.0f, 0, 0, 0]);
+            w.SetIntArray("CarIdxLap", [1, 1, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.01f, 0.2f, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -248,8 +271,9 @@ public class StandingsBuilderTests
         Assert.Single(rows);
     }
 
-    // CarIdxEstTime below is what iRacing reports: each car on its own CarClassEstLapTime clock (ours: 100s).
-    private static IracingSessionInfo PlayerAndCarWithEstLap(double otherEstLapTime) => new()
+    // We run a 100s class; the other car's class laps in 80s or 120s, and iRacing's estimate for it
+    // says so too. Neither may change what a given separation on track reads as.
+    private static IracingSessionInfo PlayerAndCarOfAnotherClass(double otherLapTime) => new()
     {
         DriverInfo = new DriverInfoSection
         {
@@ -257,42 +281,46 @@ public class StandingsBuilderTests
             Drivers =
             [
                 new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassID = 1, CarClassEstLapTime = 100 },
-                new DriverEntry { CarIdx = 1, UserName = "Other Car", CarNumber = "42", CarClassID = 2, CarClassEstLapTime = otherEstLapTime },
+                new DriverEntry { CarIdx = 1, UserName = "Other Car", CarNumber = "42", CarClassID = 2, CarClassEstLapTime = otherLapTime },
             ],
         },
     };
 
     [Theory]
-    [InlineData(90.0f, 72.0f, 80, 0.0)] // side by side at 90% of the lap (raw difference: 18s)
-    [InlineData(50.0f, 37.6f, 80, 3.0)] // faster car 3% of a lap back (raw: 12.4s)
-    [InlineData(45.0f, 56.4f, 120, -2.0)] // slower car 2% of a lap ahead (raw: 11.4s)
-    [InlineData(0.5f, 79.8f, 80, 0.75)] // across S/F from us, 0.75% of a lap back (raw, folded: 20.7s)
-    public void BuildRelative_DifferentCar_GapIsTimedAtOurPace(
-        float playerEstTime, float otherEstTime, double otherEstLapTime, double expectedGap)
+    [InlineData(0.90f, 0.90f, 80, 0.0)] // side by side
+    [InlineData(0.90f, 0.90f, 120, 0.0)]
+    [InlineData(0.50f, 0.47f, 80, 3.0)] // 3% of a lap back
+    [InlineData(0.50f, 0.47f, 120, 3.0)]
+    [InlineData(0.45f, 0.47f, 80, -2.0)] // 2% of a lap ahead
+    [InlineData(0.45f, 0.47f, 120, -2.0)]
+    [InlineData(0.005f, 0.9975f, 80, 0.75)] // across S/F from us, 0.75% of a lap back
+    [InlineData(0.9975f, 0.005f, 120, -0.75)] // across S/F the other way, 0.75% ahead
+    public void BuildRelative_OtherClass_SameSeparationReadsAsTheSameGap(
+        float playerPct, float otherPct, double otherLapTime, double expectedGap)
     {
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [playerEstTime, otherEstTime, 0, 0]);
-            w.SetFloatArray("CarIdxLastLapTime", [100f, (float)otherEstLapTime, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [playerPct, otherPct, 0, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [100f, (float)otherLapTime, 0, 0]);
         });
 
-        var rows = RelativeRows(snapshot, PlayerAndCarWithEstLap(otherEstLapTime));
+        var rows = RelativeRows(snapshot, PlayerAndCarOfAnotherClass(otherLapTime));
 
         Assert.Equal(expectedGap, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 2);
     }
 
     [Fact]
-    public void BuildRelative_DifferentCarsBehind_StayInTrackOrder()
+    public void BuildRelative_CarsOfDifferentClassesBehind_StayInTrackOrder()
     {
-        // Both behind us: a 120s-clock car 3% of a lap back and an 80s-clock car 4% back.
-        // The raw difference even put the slower car 6.4s *ahead*.
+        // Both behind us: a 120s-class car 3% of a lap back and an 80s-class car 4% back. Reading
+        // each off its own class clock is what used to put them out of order and out of scale.
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 5, 0]);
-            w.SetFloatArray("CarIdxEstTime", [50.0f, 56.4f, 36.8f, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.47f, 0.46f, 0]);
             w.SetFloatArray("CarIdxLastLapTime", [100f, 120f, 80f, 0]);
         });
         var session = new IracingSessionInfo
@@ -315,13 +343,100 @@ public class StandingsBuilderTests
         Assert.Equal([0.0, 3.0, 4.0], rows.Select(r => Math.Round(r.GapSeconds, 2)));
     }
 
+    [Fact]
+    public void BuildRelative_GapsArePricedAtTheClassRecentPace_NotAnInLap()
+    {
+        // Our class's latest laps are 100s and 102s, plus a 140s in-lap from car 2 that says nothing
+        // about how fast the class is going. The 80s prototype is another class's pace entirely.
+        // 101s a lap, so the car 1% back is 1.01s back.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.49f, 0.30f, 0.70f]);
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 102f, 140f, 80f]);
+            w.SetFloatArray("CarIdxBestLapTime", [99f, 100f, 100f, 79f]);
+        });
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 1, UserName = "Close", CarNumber = "8", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 2, UserName = "Pitting", CarNumber = "9", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 3, UserName = "Prototype", CarNumber = "1", CarClassID = 2 },
+                ],
+            },
+        };
+
+        var rows = RelativeRows(snapshot, session);
+
+        Assert.Equal(1.01, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
+        Assert.Equal(-20.2, rows.Single(r => r.CarIdx == 3).GapSeconds, precision: 3); // 20% ahead, at our pace
+    }
+
+    [Fact]
+    public void BuildRelative_ClassPaceIsTheMedianLap_SoOneSlowLapDoesNotDragIt()
+    {
+        // Latest laps of 100, 100.5 and 105s — the last lost in traffic, but inside 7% of the best,
+        // so still a racing lap. The median holds at 100.5s where a mean would read 101.83s.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.49f, 0.30f, 0.70f]);
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100.5f, 105f, 80f]);
+            w.SetFloatArray("CarIdxBestLapTime", [99f, 100f, 100f, 79f]);
+        });
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 1, UserName = "Close", CarNumber = "8", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 2, UserName = "In Traffic", CarNumber = "9", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 3, UserName = "Prototype", CarNumber = "1", CarClassID = 2 },
+                ],
+            },
+        };
+
+        var rows = RelativeRows(snapshot, session);
+
+        Assert.Equal(1.005, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void BuildRelative_WholeClassOnACautionLap_KeepsPricingAtRacingPace()
+    {
+        // Every latest lap is a caution lap, well off the class best: none says how fast the cars
+        // actually race, so the best lap stands in rather than inflating every gap.
+        var builder = RelativeVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.48f, 0, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [150f, 152f, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [100f, 101f, 0, 0]);
+        });
+
+        var rows = RelativeRows(snapshot, PlayerAndRival());
+
+        Assert.Equal(2.0, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
+    }
+
     private static SyntheticMemoryBuilder StandingsVars()
     {
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("CarIdxPosition", IrsdkVarType.Int, count: 4);
         builder.AddVar("CarIdxClassPosition", IrsdkVarType.Int, count: 4);
         builder.AddVar("CarIdxLap", IrsdkVarType.Int, count: 4);
-        builder.AddVar("CarIdxEstTime", IrsdkVarType.Float, count: 4);
+        builder.AddVar("CarIdxLapDistPct", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxF2Time", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxLastLapTime", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxBestLapTime", IrsdkVarType.Float, count: 4);
@@ -339,7 +454,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [3, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [12.5f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -370,7 +485,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [1, 2, 3, 0]);
             w.SetIntArray("CarIdxLap", [5, -1, -1, 0]);
-            w.SetFloatArray("CarIdxEstTime", [12.5f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -401,7 +516,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 15.0f, 0, 0]); // car 1 is further into the lap
+            w.SetFloatArray("CarIdxLapDistPct", [0.1f, 0.15f, 0, 0]); // car 1 is further into the lap
         });
 
         var session = new IracingSessionInfo
@@ -427,14 +542,14 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildStandings_MultipleClasses_FlagsMultiClassAndTracksClassPosition()
     {
-        // Position/class position now come from the continuous CarIdxLap+CarIdxEstTime ordering
+        // Position/class position now come from the continuous CarIdxLap+CarIdxLapDistPct ordering
         // (see BuildStandings doc comment), not the quantized official CarIdxPosition/ClassPosition —
         // car 0 is further along the same lap, so it leads overall and leads its own (only) class member.
         var builder = StandingsVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [20.0f, 15.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.2f, 0.15f, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [90.0f, 95.0f, 0, 0]);
         });
 
@@ -467,7 +582,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5]);
-            w.SetFloatArray("CarIdxEstTime", [20.0f, 15.0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.2f, 0.15f]);
         });
 
         var session = new IracingSessionInfo
@@ -496,7 +611,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [20.0f, 15.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.2f, 0.15f, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -522,7 +637,7 @@ public class StandingsBuilderTests
     public void BuildStandings_UpdatesContinuouslyMidLap_NotJustAtLapBoundaries()
     {
         // Regression test for the reported "standings only updates when finishing a lap" bug: gap
-        // and order must change as CarIdxEstTime changes mid-lap, not just when CarIdxLap increments.
+        // and order must change as the cars move round the lap, not just when CarIdxLap increments.
         var builder = StandingsVars();
         var session = new IracingSessionInfo
         {
@@ -542,12 +657,14 @@ public class StandingsBuilderTests
         var early = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [3, 3, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 20.0f, 0, 0]); // player 10s behind the rival
+            w.SetFloatArray("CarIdxLapDistPct", [0.10f, 0.20f, 0, 0]); // player 10% of a lap behind the rival
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100f, 0, 0]);
         });
         var laterSameLap = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [3, 3, 0, 0]); // still the same lap
-            w.SetFloatArray("CarIdxEstTime", [18.0f, 20.0f, 0, 0]); // player has closed to 2s behind
+            w.SetFloatArray("CarIdxLapDistPct", [0.18f, 0.20f, 0, 0]); // player has closed to 2% behind
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100f, 0, 0]);
         });
 
         var earlyPlayer = StandingsBuilder.BuildStandings(early, session).Single(r => r.CarIdx == 0);
@@ -564,7 +681,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [1, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [1.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.01f, 0, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -587,7 +704,7 @@ public class StandingsBuilderTests
     public void BuildStandings_TiedTrackPositionAtRaceStart_OrdersByOfficialGridPosition()
     {
         // Regression test for what live testing surfaced: right at a race's start, every car can
-        // have identical (Lap 0, EstTime 0) track position — a genuine driver who started last in
+        // have identical (Lap 0, same LapDistPct) track position — a genuine driver who started last in
         // their class was showing ahead of faster-starting classmates purely because
         // OrderByDescending's stable-sort tie-break fell back to DriverInfo's roster order, which has
         // nothing to do with the actual starting grid. Official CarIdxPosition — assigned at grid
@@ -597,7 +714,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]); // player is officially last of the three
             w.SetIntArray("CarIdxLap", [0, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [0, 0, 0, 0]); // identical track position for everyone
+            w.SetFloatArray("CarIdxLapDistPct", [0, 0, 0, 0]); // identical track position for everyone
         });
 
         var session = new IracingSessionInfo
@@ -630,7 +747,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [10, 10, 10, 0]);
-            w.SetFloatArray("CarIdxEstTime", [30.0f, 20.0f, 10.0f, 0]); // car 0 leads on track
+            w.SetFloatArray("CarIdxLapDistPct", [0.3f, 0.2f, 0.1f, 0]); // car 0 leads on track
             // Car 2 (running P3) actually set the fastest lap of the session, not the leader.
             w.SetFloatArray("CarIdxBestLapTime", [92.0f, 91.0f, 89.5f, 0]);
         });
@@ -688,7 +805,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [2, -1, 0, 0]); // car 1 parked back in the pits, "reset" to -1
-            w.SetFloatArray("CarIdxEstTime", [15.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.15f, 0, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [92.0f, 90.5f, 0, 0]); // car 1 is actually faster
         });
 
@@ -718,7 +835,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [1, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [5.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.05f, 0, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [90.0f, 0, 0, 0]); // car 1 hasn't set a time yet
         });
 
@@ -763,7 +880,7 @@ public class StandingsBuilderTests
         var duringHotLap = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [1, 2, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [5.0f, 5.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.05f, 0.05f, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [95.0f, 90.5f, 0, 0]); // car 1 sets a fast lap
         });
         StandingsBuilder.BuildStandings(duringHotLap, session, tracker);
@@ -771,7 +888,7 @@ public class StandingsBuilderTests
         var parkedInPits = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [1, -1, 0, 0]); // car 1 now parked, lap reset
-            w.SetFloatArray("CarIdxEstTime", [8.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.08f, 0, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [95.0f, 0, 0, 0]); // and its best lap telemetry zeroed out
         });
 
@@ -790,7 +907,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [3, -1, 0, 0]); // car 1 parked after a fast lap
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.1f, 0, 0, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [92.0f, 89.0f, 0, 0]);
         });
 
@@ -851,7 +968,7 @@ public class StandingsBuilderTests
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [0, 8, 7, 7]);
             // Car 1 has just crossed the line onto lap 8; car 2 is nearly all the way round lap 7.
-            w.SetFloatArray("CarIdxEstTime", [0f, 1.0f, 95.0f, 40.0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0f, 0.01f, 0.95f, 0.4f]);
             w.SetFloatArray("CarIdxLastLapTime", [0f, 100.0f, 98.0f, 60.0f]);
             w.SetFloatArray("CarIdxBestLapTime", [0f, 99.0f, 97.0f, 60.0f]);
         });
@@ -889,7 +1006,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [4, 1, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [5.0f, 80.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.05f, 0.8f, 0, 0]);
             w.SetFloatArray("CarIdxLastLapTime", [0f, 0f, 0f, 0f]);
             w.SetFloatArray("CarIdxBestLapTime", [0f, 0f, 0f, 0f]);
         });
@@ -913,6 +1030,34 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_NoLapTimesAnywhereYet_LeavesTheGapBlankRatherThanZero()
+    {
+        var snapshot = TestSnapshotFactory.Build(StandingsVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [4, 4, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.30f, 0.20f, 0, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassEstLapTime = 90 },
+                    new DriverEntry { CarIdx = 1, UserName = "Rival", CarNumber = "42", CarClassEstLapTime = 90 },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.Equal([0, 1], rows.Select(r => r.CarIdx));
+        Assert.Equal("—", rows.Single(r => r.CarIdx == 1).GapDisplay);
+    }
+
+    [Fact]
     public void BuildStandings_MultiClass_FasterClassLapTimeDoesNotOutrankACarALapAhead()
     {
         // Same root cause, permanent rather than transient: in multiclass the reference lap time can
@@ -923,7 +1068,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [10, 9, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [2.0f, 110.0f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.02f, 0.95f, 0, 0]);
             // Player runs the fast class (90s); the car a lap down runs a 115s class.
             w.SetFloatArray("CarIdxLastLapTime", [90.0f, 115.0f, 0f, 0f]);
             w.SetFloatArray("CarIdxBestLapTime", [90.0f, 115.0f, 0f, 0f]);
@@ -953,7 +1098,7 @@ public class StandingsBuilderTests
         builder.AddVar("SessionNum", IrsdkVarType.Int);
         builder.AddVar("CarIdxPosition", IrsdkVarType.Int, count: 4);
         builder.AddVar("CarIdxLap", IrsdkVarType.Int, count: 4);
-        builder.AddVar("CarIdxEstTime", IrsdkVarType.Float, count: 4);
+        builder.AddVar("CarIdxLapDistPct", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxLastLapTime", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxBestLapTime", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxOnPitRoad", IrsdkVarType.Bool, count: 4);
@@ -999,7 +1144,7 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 2); // the race
             w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]);
             w.SetIntArray("CarIdxLap", [2, 3, 3, -1]); // car 3 never left the garage
-            w.SetFloatArray("CarIdxEstTime", [40.0f, 10.0f, 5.0f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.1f, 0.05f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [-1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [-1f, -1f, -1f, -1f]);
         });
@@ -1018,7 +1163,7 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 2);
             w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]);
             w.SetIntArray("CarIdxLap", [8, 9, 9, -1]);
-            w.SetFloatArray("CarIdxEstTime", [40.0f, 10.0f, 5.0f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.1f, 0.05f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [93.5f, 91.2f, 92.0f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [93.0f, 90.4f, 91.5f, -1f]);
         });
@@ -1039,7 +1184,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", sessionNum);
             w.SetIntArray("CarIdxLap", [5, 6, 7, 0]);
-            w.SetFloatArray("CarIdxEstTime", [40.0f, 10.0f, 5.0f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.1f, 0.05f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [93.5f, 91.2f, 92.0f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [93.0f, 90.4f, 91.5f, -1f]);
         });
@@ -1087,7 +1232,7 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]);
             w.SetIntArray("CarIdxLap", [7, 9, 8, 0]);
-            w.SetFloatArray("CarIdxEstTime", [10f, 20f, 30f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.1f, 0.2f, 0.3f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [-1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [-1f, -1f, -1f, -1f]);
         });
@@ -1127,7 +1272,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [7, 9, 8, 0]);
-            w.SetFloatArray("CarIdxEstTime", [10f, 20f, 30f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.1f, 0.2f, 0.3f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [-1f, 89.0f, -1f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [-1f, 89.0f, -1f, -1f]);
         });
@@ -1145,7 +1290,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [7, 9, 8, 0]);
-            w.SetFloatArray("CarIdxEstTime", [10f, 20f, 30f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.1f, 0.2f, 0.3f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [93.5f, 91.2f, 92.0f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [93.0f, 90.4f, 91.5f, -1f]);
         });
@@ -1160,17 +1305,16 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildRelative_OpenedMidSession_KeepsCarsOnOtherLapNumbers()
     {
-        // Same root cause as the standings BEST column, different symptom. Relative needs a
-        // reference lap length to fold gaps into a half-lap window, and without one it drops every
-        // car that isn't on the player's exact lap number — which in an open practice, where
-        // everyone joined at a different time, is almost the whole field. On a mid-session attach
-        // the telemetry lap times are all -1, so the length has to come from the scoring table.
+        // Same root cause as the standings BEST column, different symptom. In an open practice,
+        // where everyone joined at a different time, lap counts differ wildly while the cars run
+        // close together. On a mid-session attach the telemetry lap times are all -1, so the pace
+        // that prices the gaps has to come from the scoring table: the mean of the latest laps,
+        // 95, 91 and 93s.
         var builder = RelativeVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [8, 20, 12, 0]); // wildly different lap counts...
-            w.SetFloatArray("CarIdxEstTime", [40.0f, 45.0f, 36.0f, 0f]); // ...but all close on track
-            w.SetFloatArray("CarIdxLapDistPct", [0.44f, 0.5f, 0.4f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.44f, 0.5f, 0.4f, 0f]); // ...but all close on track
             w.SetFloatArray("CarIdxLastLapTime", [-1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [-1f, -1f, -1f, -1f]);
         });
@@ -1208,8 +1352,8 @@ public class StandingsBuilderTests
 
         var rows = RelativeRows(snapshot, session);
 
-        Assert.Equal(3, rows.Count);
-        Assert.All(rows, r => Assert.InRange(r.GapSeconds, -10, 10));
+        Assert.Equal([1, 0, 2], rows.Select(r => r.CarIdx));
+        Assert.Equal([-5.58, 0.0, 3.72], rows.Select(r => Math.Round(r.GapSeconds, 2)));
     }
 
     /// <summary>Overall order with mixed classes, exactly the shape BuildStandings emits.</summary>
@@ -1401,7 +1545,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [10, 10, 10, 10]);
-            w.SetFloatArray("CarIdxEstTime", [90f, 80f, 50f, 44f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.9f, 0.8f, 0.5f, 0.44f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 95f, 100f, 100f]);
             w.SetFloatArray("CarIdxBestLapTime", [94f, 94f, 99f, 99f]);
         });
@@ -1410,8 +1554,8 @@ public class StandingsBuilderTests
 
         Assert.Equal("Leader", rows.Single(r => r.CarIdx == 0).GapDisplay); // GTP leader
         Assert.Equal("Leader", rows.Single(r => r.CarIdx == 2).GapDisplay); // GT3 leader
-        Assert.Equal("+10.0", rows.Single(r => r.CarIdx == 1).GapDisplay); // behind the GTP leader
-        Assert.Equal("+6.0", rows.Single(r => r.CarIdx == 3).GapDisplay);  // behind the GT3 leader
+        Assert.Equal("+9.5", rows.Single(r => r.CarIdx == 1).GapDisplay); // 10% of a 95s GTP lap
+        Assert.Equal("+6.0", rows.Single(r => r.CarIdx == 3).GapDisplay); // 6% of a 100s GT3 lap
     }
 
     [Fact]
@@ -1421,7 +1565,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [10, 10, 10, 10]);
-            w.SetFloatArray("CarIdxEstTime", [90f, 80f, 50f, 44f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.9f, 0.8f, 0.5f, 0.44f]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 91f, 100f, 101.5f]);
             w.SetFloatArray("CarIdxBestLapTime", [90f, 91f, 100f, 101.5f]);
         });
@@ -1439,7 +1583,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [10, 10, 10, 10]);
-            w.SetFloatArray("CarIdxEstTime", [90f, 80f, 50f, 44f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.9f, 0.8f, 0.5f, 0.44f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 94f, 101f, 100f]);
             w.SetFloatArray("CarIdxBestLapTime", [94f, 93f, 100.5f, 99.8f]);
         });
@@ -1464,14 +1608,16 @@ public class StandingsBuilderTests
     }
 
     [Fact]
-    public void BuildStandings_SameClassDifferentMakes_OrdersByTrackPositionNotRawEstTime()
+    public void BuildStandings_SameClassDifferentMakes_OneSeparationOnePrice()
     {
-        // Two GT3s with different BoP est laps (115.97s, 114.60s): the rival is 0.5% of a lap ahead,
-        // yet reads 0.11s *less* EstTime than us on its shorter clock.
+        // Two GT3s whose BoP'd est laps differ (115.97s, 114.60s). The rival is half a percent of a lap
+        // ahead, and that reads as half a percent of the class's measured 100s lap — not as a figure on
+        // either car's own est clock, which is how cars of one class used to be timed differently.
         var snapshot = TestSnapshotFactory.Build(StandingsVars(), w =>
         {
             w.SetIntArray("CarIdxLap", [10, 10, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [57.985f, 57.873f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.500f, 0.505f, 0, 0]);
+            w.SetFloatArray("CarIdxLastLapTime", [100f, 100f, 0, 0]);
         });
         var session = new IracingSessionInfo
         {
@@ -1489,18 +1635,19 @@ public class StandingsBuilderTests
         var rows = StandingsBuilder.BuildStandings(snapshot, session);
 
         Assert.Equal([1, 0], rows.Select(r => r.CarIdx));
-        Assert.Equal(0.58, rows.Single(r => r.CarIdx == 0).GapToLeaderSeconds, precision: 2);
+        Assert.Equal(0.5, rows.Single(r => r.CarIdx == 0).GapToLeaderSeconds, precision: 2);
     }
 
     [Fact]
-    public void BuildStandings_Multiclass_LapsDownArePricedOnTheClassesOwnClock()
+    public void BuildStandings_Multiclass_LapsDownArePricedAtTheClassesOwnPace()
     {
-        // A GTP (80s est lap) exactly a lap down on its class leader while we run a 100s GT4. That lap
-        // used to be priced at our own best lap, and raw EstTime ranked us ahead of a GTP further round.
+        // A GTP (80s laps) exactly a lap down on its class leader while we run a 100s GT4. That lap
+        // reads as one GTP lap, never one of ours, and the GT4 a bit further round than the lapped
+        // GTP is ahead of it in the race.
         var snapshot = TestSnapshotFactory.Build(StandingsVars(), w =>
         {
             w.SetIntArray("CarIdxLap", [10, 9, 10, 0]);
-            w.SetFloatArray("CarIdxEstTime", [76f, 76f, 90f, 0]); // 95%, 95% and 90% of their laps
+            w.SetFloatArray("CarIdxLapDistPct", [0.95f, 0.95f, 0.90f, 0]);
             w.SetFloatArray("CarIdxBestLapTime", [80f, 80f, 100f, 0]);
         });
         var session = new IracingSessionInfo
@@ -1510,9 +1657,9 @@ public class StandingsBuilderTests
                 DriverCarIdx = 2,
                 Drivers =
                 [
-                    new DriverEntry { CarIdx = 0, UserName = "GTP Leader", CarNumber = "1", CarClassID = 1, CarClassEstLapTime = 80 },
-                    new DriverEntry { CarIdx = 1, UserName = "GTP Lapped", CarNumber = "2", CarClassID = 1, CarClassEstLapTime = 80 },
-                    new DriverEntry { CarIdx = 2, UserName = "Me", CarNumber = "7", CarClassID = 3, CarClassEstLapTime = 100 },
+                    new DriverEntry { CarIdx = 0, UserName = "GTP Leader", CarNumber = "1", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 1, UserName = "GTP Lapped", CarNumber = "2", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 2, UserName = "Me", CarNumber = "7", CarClassID = 3 },
                 ],
             },
         };
@@ -1524,15 +1671,16 @@ public class StandingsBuilderTests
     }
 
     [Fact]
-    public void BuildStandings_LeaderJustCrossedTheLine_GapDoesNotJumpByTheLapTimeDifference()
+    public void BuildStandings_LeaderJustCrossedTheLine_GapDoesNotJump()
     {
-        // EstTime wraps at the 90s est lap, not the 92.3s best lap: 1.5s behind stays 1.5s whichever
-        // side of the line the leader is on (it used to read 3.8s just after the leader crossed).
+        // Race distance runs straight on across the line: 1.5% of a lap behind stays 1.5s whichever
+        // side of it the leader is, with no wrap to get wrong (it once read 3.8s just after the leader
+        // crossed).
         var snapshot = TestSnapshotFactory.Build(StandingsVars(), w =>
         {
             w.SetIntArray("CarIdxLap", [11, 10, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [0.5f, 89.0f, 0, 0]);
-            w.SetFloatArray("CarIdxBestLapTime", [92.3f, 92.3f, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.005f, 0.99f, 0, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [100f, 100f, 0, 0]);
         });
         var session = new IracingSessionInfo
         {
@@ -1541,14 +1689,15 @@ public class StandingsBuilderTests
                 DriverCarIdx = 1,
                 Drivers =
                 [
-                    new DriverEntry { CarIdx = 0, UserName = "Leader", CarNumber = "1", CarClassID = 1, CarClassEstLapTime = 90 },
-                    new DriverEntry { CarIdx = 1, UserName = "Me", CarNumber = "7", CarClassID = 1, CarClassEstLapTime = 90 },
+                    new DriverEntry { CarIdx = 0, UserName = "Leader", CarNumber = "1", CarClassID = 1 },
+                    new DriverEntry { CarIdx = 1, UserName = "Me", CarNumber = "7", CarClassID = 1 },
                 ],
             },
         };
 
         var rows = StandingsBuilder.BuildStandings(snapshot, session);
 
+        Assert.Equal([0, 1], rows.Select(r => r.CarIdx));
         Assert.Equal(1.5, rows.Single(r => r.CarIdx == 1).GapToLeaderSeconds, precision: 3);
     }
 
@@ -1562,7 +1711,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [-1, -1, 4, -1]);
-            w.SetFloatArray("CarIdxEstTime", [0f, 0f, 30f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0f, 0f, 0.3f, 0f]);
             w.SetFloatArray("CarIdxLastLapTime", [-1f, -1f, 95f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [-1f, -1f, 94f, -1f]);
         });
@@ -1590,7 +1739,7 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxPosition", [1, 2, 3, 0]);
             w.SetIntArray("CarIdxLap", [0, 0, 0, -1]);
-            w.SetFloatArray("CarIdxEstTime", [0f, 0f, 0f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0f, 0f, 0f, 0f]);
         });
 
         var rows = StandingsBuilder.BuildStandings(snapshot, SessionWithScoring("Race", []), new SessionBestLapTracker());
@@ -1648,7 +1797,6 @@ public class StandingsBuilderTests
         b.AddVar("CarIdxPosition", IrsdkVarType.Int, count: cars);
         b.AddVar("CarIdxLap", IrsdkVarType.Int, count: cars);
         b.AddVar("CarIdxLapDistPct", IrsdkVarType.Float, count: cars);
-        b.AddVar("CarIdxEstTime", IrsdkVarType.Float, count: cars);
         b.AddVar("CarIdxLastLapTime", IrsdkVarType.Float, count: cars);
         b.AddVar("CarIdxBestLapTime", IrsdkVarType.Float, count: cars);
         b.AddVar("CarIdxOnPitRoad", IrsdkVarType.Bool, count: cars);
@@ -1680,7 +1828,7 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxPosition", [1, 2, 3, 4, 5, 6, 7, 8, 9]);
             w.SetIntArray("CarIdxLap", [10, 10, 10, 10, 10, 10, 10, 10, 10]);
-            w.SetFloatArray("CarIdxEstTime", [80f, 70f, 60f, 50f, 40f, 30f, 20f, 10f, 5f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.8f, 0.7f, 0.6f, 0.5f, 0.4f, 0.3f, 0.2f, 0.1f, 0.05f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 95f, 95f, 95f, 95f, 95f, 95f, 95f, 95f]);
             w.SetFloatArray("CarIdxBestLapTime", [94f, 93f, 92f, 91f, 90f, 94f, 94f, 94f, 94f]);
         });
@@ -1716,7 +1864,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [10, 10, 10, -1, -1, -1, -1, -1, -1]);
-            w.SetFloatArray("CarIdxEstTime", [60f, 50f, 40f, 0f, 0f, 0f, 0f, 0f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.6f, 0.5f, 0.4f, -1f, -1f, -1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 95f, 95f, -1f, -1f, -1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [94f, 93f, 92f, -1f, -1f, -1f, -1f, -1f, -1f]);
         });
@@ -1736,7 +1884,7 @@ public class StandingsBuilderTests
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [10, 10, -1, -1, -1, -1, -1, -1, -1]);
-            w.SetFloatArray("CarIdxEstTime", [50f, 40f, 0f, 0f, 0f, 0f, 0f, 0f, 0f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.5f, 0.4f, -1f, -1f, -1f, -1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 95f, -1f, -1f, -1f, -1f, -1f, -1f, -1f]);
             w.SetFloatArray("CarIdxBestLapTime", [94f, 93f, -1f, -1f, -1f, -1f, -1f, -1f, -1f]);
         });
@@ -1777,7 +1925,7 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxPosition", [0, 0, 0, 0, 0]); // unscored, exactly as practice reports
             w.SetIntArray("CarIdxLap", [10, 10, 10, 10, 10]);
-            w.SetFloatArray("CarIdxEstTime", [80f, 60f, 40f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.8f, 0.6f, 0.4f, 0.2f, 0.1f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 96f, 97f, 98f, 99f]);
             w.SetFloatArray("CarIdxBestLapTime", [90f, 91f, 92f, 93f, 94f]);
         });
@@ -1797,19 +1945,24 @@ public class StandingsBuilderTests
     }
 
     [Fact]
-    public void BuildRelative_WithNoStandingsOrderYet_FallsBackToIracingsOwnPosition()
+    public void BuildRelative_OutsideARaceWithNoStandingsOrderYet_FallsBackToIracingsOwnPosition()
     {
+        // In a race Relative works the order out itself; in qualifying it is the fastest-lap ranking,
+        // which only Standings has, so before its first rebuild iRacing's own figure stands in.
         var snapshot = TestSnapshotFactory.Build(FieldVars(5), w =>
         {
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxPosition", [3, 1, 2, 4, 5]);
             w.SetIntArray("CarIdxLap", [10, 10, 10, 10, 10]);
-            w.SetFloatArray("CarIdxEstTime", [80f, 60f, 40f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.8f, 0.6f, 0.4f, 0.2f, 0.1f]);
             w.SetFloatArray("CarIdxLastLapTime", [95f, 96f, 97f, 98f, 99f]);
             w.SetFloatArray("CarIdxBestLapTime", [90f, 91f, 92f, 93f, 94f]);
         });
 
-        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(5, 2), maxEachSide: 4)
+        var session = FieldOf(5, 2);
+        session.SessionInfo!.Sessions[0].SessionType = "Lone Qualify";
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, session, maxEachSide: 4)
             .OfType<RelativeRow>().ToList();
 
         Assert.Equal("1", relative.Single(r => r.CarIdx == 1).PositionDisplay);
@@ -1822,7 +1975,6 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [11, 10, 10, 9, 10]);
             w.SetFloatArray("CarIdxLapDistPct", [0.3f, 0.9f, 0.5f, 0.8f, 0.1f]);
-            w.SetFloatArray("CarIdxEstTime", [27f, 81f, 45f, 72f, 9f]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f, 90f]);
             w.SetFloatArray("CarIdxBestLapTime", [90f, 90f, 90f, 90f, 90f]);
         });
@@ -1838,6 +1990,61 @@ public class StandingsBuilderTests
         Assert.Equal(LapRelation.SameLap, relative[2]); // the player
         Assert.Equal(LapRelation.Lapped, relative[3]);  // -0.7: up the road, a lap down
         Assert.Equal(LapRelation.SameLap, relative[4]); // -0.4
+    }
+
+    [Fact]
+    public void BuildRelative_InARace_PositionsFollowThisTickNotAStaleStandingsOrder()
+    {
+        // Standings rebuilds about once a second. A second ago car 1 led the player; since then the
+        // player has gone by. Relative already shows the player ahead on the road, so its POS column
+        // must say so too rather than wait for the next standings rebuild.
+        var aSecondAgo = TestSnapshotFactory.Build(FieldVars(3), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 10, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.51f, 0.30f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f]);
+        });
+        var now = TestSnapshotFactory.Build(FieldVars(3), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 10, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.53f, 0.52f, 0.31f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f]);
+        });
+        var session = FieldOf(3, playerCarIdx: 0);
+        var staleStandings = StandingsBuilder.BuildStandings(aSecondAgo, session, new SessionBestLapTracker());
+
+        var relative = StandingsBuilder.BuildRelative(now, session, maxEachSide: 4, staleStandings)
+            .OfType<RelativeRow>().ToList();
+
+        Assert.Equal([0, 1, 2], relative.Select(r => r.CarIdx));
+        Assert.Equal(["1", "2", "3"], relative.Select(r => r.PositionDisplay));
+        Assert.Equal(
+            StandingsBuilder.BuildStandings(now, session, new SessionBestLapTracker()).Select(s => s.CarIdx),
+            relative.Select(r => r.CarIdx));
+    }
+
+    [Fact]
+    public void BuildRelative_LappedCarRightBehind_SitsBehindOnTheRoadButALapDownInTheRace()
+    {
+        // Car 1 is 2% of a lap behind the player on the road, a lap down. The fold puts it right
+        // behind; its position and lap relation still come from race distance.
+        var snapshot = TestSnapshotFactory.Build(FieldVars(3), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 9, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.48f, 0.20f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f]);
+        });
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(3, playerCarIdx: 0), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx);
+
+        Assert.Equal(1.8, relative[1].GapSeconds, precision: 3); // just behind on the road
+        Assert.Equal(LapRelation.Lapped, relative[1].LapRelation);
+        Assert.Equal(3, relative[1].Position); // behind car 2, which is on the lead lap
+        Assert.Equal(2, relative[2].Position);
     }
 
     [Fact]
@@ -2080,7 +2287,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [1, 2, 3, 0]);
             w.SetIntArray("CarIdxLap", [5, 5, 5, 0]);
-            w.SetFloatArray("CarIdxEstTime", [30.0f, 20.0f, 10.0f, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.3f, 0.2f, 0.1f, 0]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 0]);
         });
 
@@ -2115,7 +2322,7 @@ public class StandingsBuilderTests
         {
             w.SetIntArray("CarIdxPosition", [1, 0, 0, 0]);
             w.SetIntArray("CarIdxLap", [5, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [30.0f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.3f, 0, 0, 0]);
         });
 
         var session = new IracingSessionInfo
@@ -2157,7 +2364,7 @@ public class StandingsBuilderTests
         return TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
-            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.3f, 0.2f, 0.1f]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f]);
             w.SetIntArray("CarIdxSessionFlags", [0, unchecked((int)BlackFlagBit), unchecked((int)MeatballBit), unchecked((int)(BlackFlagBit | MeatballBit))]);
             w.SetBitField("SessionFlags", ownFlags);
@@ -2182,7 +2389,7 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildRelative_PerCarPenaltyFlags_BothShowAtOnce()
     {
-        var rows = RelativeRows(PenaltySnapshot(RelativeVars()), PenaltySession());
+        var rows = RelativeRows(PenaltySnapshot(StandingsVars()), PenaltySession());
 
         var both = rows.Single(r => r.CarIdx == 3);
         Assert.True(both.HasBlackFlag);
@@ -2209,7 +2416,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(StandingsVars(), w =>
         {
             w.SetIntArray("CarIdxLap", [5, 0, 0, 0]);
-            w.SetFloatArray("CarIdxEstTime", [30f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.3f, 0, 0, 0]);
         });
 
         var row = Assert.Single(StandingsBuilder.BuildStandings(snapshot, PenaltySession()));
@@ -2229,7 +2436,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
-            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.3f, 0.2f, 0.1f]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f]);
             w.SetIntArray("CarIdxSessionFlags",
             [
@@ -2256,7 +2463,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
-            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.3f, 0.2f, 0.1f]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f]);
             w.SetBitField("SessionFlags", FurledFlagBit);
         });
@@ -2276,7 +2483,6 @@ public class StandingsBuilderTests
             w.SetInt("SessionNum", 0);
             w.SetIntArray("CarIdxLap", [10, 9, 10, 9, 10]);
             w.SetFloatArray("CarIdxLapDistPct", [0.45f, 0.53f, 0.5f, 0.8f, 0.1f]);
-            w.SetFloatArray("CarIdxEstTime", [40.5f, 48f, 45f, 72f, 9f]);
             w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f, 90f]);
             w.SetFloatArray("CarIdxBestLapTime", [90f, 90f, 90f, 90f, 90f]);
         });
@@ -2297,7 +2503,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
-            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.3f, 0.2f, 0.1f]);
             w.SetIntArray("CarIdxTireCompound", [0, 1, 3, -1]);
         });
         var session = PenaltySession();
@@ -2323,7 +2529,7 @@ public class StandingsBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
-            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.3f, 0.2f, 0.1f]);
             w.SetIntArray("CarIdxTireCompound", [0, 0, 0, 0]);
         });
 

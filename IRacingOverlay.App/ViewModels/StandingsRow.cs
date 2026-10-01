@@ -6,13 +6,16 @@ namespace IRacingOverlay.App.ViewModels;
 /// measured to the leader of this driver's own class.</summary>
 public sealed class StandingsRow : DriverRow
 {
+    /// <summary>NaN while no lap time is known to price the distance with; the order still stands.</summary>
     public required double GapToLeaderSeconds { get; init; }
 
     // Formatted with InvariantCulture: this machine's locale uses a comma decimal separator, which
     // silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
     public override string GapDisplay => RankInOwnRace == 1
         ? "Leader"
-        : $"+{GapToLeaderSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
+        : double.IsNaN(GapToLeaderSeconds)
+            ? "—"
+            : $"+{GapToLeaderSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
 
     // "Leader" takes the same accent as the leader's position number.
     public override string GapForeground => RankInOwnRace == 1 ? "#FFD24D" : base.GapForeground;

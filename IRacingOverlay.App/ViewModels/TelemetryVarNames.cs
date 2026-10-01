@@ -43,9 +43,6 @@ internal static class TelemetryVarNames
     public const string CarIdxF2Time = "CarIdxF2Time";
     public const string CarIdxBestLapTime = "CarIdxBestLapTime";
     public const string CarIdxLastLapTime = "CarIdxLastLapTime";
-    /// <summary>float[], seconds — "estimated time to reach current location on track" per car, on that
-    /// car's own CarClassEstLapTime clock: not comparable between classes (or BoP'd models) unscaled.</summary>
-    public const string CarIdxEstTime = "CarIdxEstTime";
     /// <summary>int[] — each car's current tyre, an index into DriverInfo.DriverTires; -1 when unknown.</summary>
     public const string CarIdxTireCompound = "CarIdxTireCompound";
 

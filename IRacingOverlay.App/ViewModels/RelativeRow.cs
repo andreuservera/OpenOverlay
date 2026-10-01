@@ -6,11 +6,13 @@ namespace IRacingOverlay.App.ViewModels;
 /// measured to the player rather than to a leader — negative ahead, positive behind.</summary>
 public sealed class RelativeRow : DriverRow
 {
+    /// <summary>NaN while no lap time is known to price the distance with; the row still sits in
+    /// its place on track.</summary>
     public required double GapSeconds { get; init; }
 
     // Formatted with InvariantCulture: this machine's locale uses a comma decimal separator, which
     // silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
-    public override string GapDisplay => IsPlayer
+    public override string GapDisplay => IsPlayer || double.IsNaN(GapSeconds)
         ? "—"
         : (GapSeconds <= 0
             ? $"-{Math.Abs(GapSeconds).ToString("0.0", CultureInfo.InvariantCulture)}"
