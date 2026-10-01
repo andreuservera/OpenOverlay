@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using IRacingOverlay.App.About;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 
@@ -373,10 +374,13 @@ public sealed class ActionSetting : SettingItem
 {
     private string _buttonText;
 
-    public ActionSetting(string label, string? hint, string buttonText, Action invoke)
+    /// <param name="isEnabled">False for an action that is planned but not available yet: the row
+    /// still says what it will do, and the disabled button says so.</param>
+    public ActionSetting(string label, string? hint, string buttonText, Action invoke, bool isEnabled = true)
         : base(label, hint)
     {
         _buttonText = buttonText;
+        IsEnabled = isEnabled;
         InvokeCommand = new RelayCommand(() =>
         {
             Trace("run");
@@ -385,6 +389,8 @@ public sealed class ActionSetting : SettingItem
     }
 
     public ICommand InvokeCommand { get; }
+
+    public bool IsEnabled { get; }
 
     public string ButtonText
     {
@@ -547,6 +553,91 @@ public sealed class HotkeySetting : SettingItem
     }
 }
 
+/// <summary>A read-only fact — a version, a date — where a control would be. The value can change
+/// while the page is open, as the update status does.</summary>
+public sealed class InfoSetting : SettingItem
+{
+    private string _value;
+
+    public InfoSetting(string label, string? hint, string value)
+        : base(label, hint)
+    {
+        _value = value;
+    }
+
+    public string Value
+    {
+        get => _value;
+        set
+        {
+            if (_value == value)
+            {
+                return;
+            }
+
+            _value = value;
+            OnPropertyChanged();
+        }
+    }
+}
+
+/// <summary>One line of release notes, with the lines nested under it.</summary>
+public sealed class BulletSetting : SettingItem
+{
+    public BulletSetting(ChangelogItem item)
+        : base(item.Text, null)
+    {
+        Item = item;
+    }
+
+    public ChangelogItem Item { get; }
+}
+
+/// <summary>A heading and its lines inside a <see cref="ReleaseSetting"/>.</summary>
+public sealed record NoteSection(string Heading, IReadOnlyList<ChangelogItem> Items, bool IsWarning = false);
+
+/// <summary>One release in the changelog: a header row that expands to its changes, so a long
+/// history reads as a list of versions until one is opened.</summary>
+public sealed class ReleaseSetting : SettingItem
+{
+    private bool _isExpanded;
+
+    public ReleaseSetting(string title, string? date, string? badge, string? summary, IReadOnlyList<NoteSection> sections, bool isExpanded)
+        : base(title, null)
+    {
+        Date = date;
+        Badge = badge;
+        Summary = summary;
+        Sections = sections;
+        _isExpanded = isExpanded;
+    }
+
+    public string? Date { get; }
+
+    /// <summary>"YOUR VERSION", "LATEST" and the like, or null.</summary>
+    public string? Badge { get; }
+
+    public string? Summary { get; }
+
+    public IReadOnlyList<NoteSection> Sections { get; }
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set
+        {
+            if (_isExpanded == value)
+            {
+                return;
+            }
+
+            _isExpanded = value;
+            OnPropertyChanged();
+            Trace(value ? "expanded" : "collapsed");
+        }
+    }
+}
+
 /// <summary>A titled block of related settings — the unit the configuration pane is built from.</summary>
 public sealed class SettingsGroup
 {
@@ -558,6 +649,10 @@ public sealed class SettingsGroup
 
     public string Title { get; }
     public string? Subtitle { get; }
+
+    /// <summary>Draws the title in the danger colour, for a block that asks for attention.</summary>
+    public bool IsWarning { get; init; }
+
     public ObservableCollection<SettingItem> Items { get; } = [];
 
     public SettingsGroup With(params SettingItem[] items)

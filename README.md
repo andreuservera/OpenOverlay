@@ -75,6 +75,9 @@ last-pit-stop column:
 - **Three dashboard themes** — Classic, Digital HUD, and Raw DIY.
 - **Control Panel** — every widget has its own page with a live preview: visible columns and
   elements, themes, units and sizes, plus opacity and auto-hide when you're not driving.
+- **What's New, Changelog and About** — the version you're running (always in the status bar), its
+  build and update channel, what changed in it, and every earlier release. After an update, a short
+  notice says what's new, once.
 - Every widget and dashboard panel is independently movable and scalable through five preset sizes
   (XS · S · M · L · XL).
 
@@ -165,24 +168,36 @@ the app into a `Setup.exe`, creates the Desktop/Start Menu shortcuts on install,
 copies check GitHub Releases and self-update in the background — see `App.xaml.cs` for the
 update-check code and `IRacingOverlay.App.csproj` for how Velopack hooks into a custom `Main`.
 
-**Automatically (recommended):** push a version tag and GitHub Actions
+**Automatically (recommended):** add the release's entry at the top of
+[CHANGELOG.md](CHANGELOG.md), then push a matching version tag and GitHub Actions
 (`.github/workflows/release.yml`) builds and publishes the release for you:
 
 ```powershell
+# CHANGELOG.md starts with "### [0.2.0] - 2026-10-01" and its changes, then:
+git commit -am "Release 0.2.0"
 git tag v0.2.0
-git push origin v0.2.0
+git push origin main v0.2.0
 ```
+
+The workflow stops if the tag doesn't match the newest entry.
 
 **Manually**, if you want to build/test an installer locally first:
 
 ```powershell
-.\pack-installer.ps1 -Version 0.2.0            # builds Setup.exe under .\Releases, doesn't publish
-.\pack-installer.ps1 -Version 0.2.0 -Publish   # also uploads it as a GitHub release (needs $env:GITHUB_TOKEN)
+.\pack-installer.ps1            # builds Setup.exe under .\Releases, doesn't publish
+.\pack-installer.ps1 -Publish   # also uploads it as a GitHub release (needs $env:GITHUB_TOKEN)
 ```
 
 The first time you ever cut a Velopack release, `vpk download github` will warn that there's no
 previous release to diff against — that's expected, it just means there's no delta patch to
 compute yet; every release after that will ship a small delta update instead of a full download.
+
+### Versions
+
+[CHANGELOG.md](CHANGELOG.md) is the only source of versions and release notes. Every build takes
+its version from the newest `[X.Y.Z]` entry, and that entry is what the app shows as What's New and
+what the release says on GitHub; the Changelog page shows the whole file. Headings without a
+version, such as `[Unreleased]`, are ignored.
 
 ## Contributing
 

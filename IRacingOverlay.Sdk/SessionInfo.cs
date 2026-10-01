@@ -67,6 +67,8 @@ public sealed class DriverEntry
     public int CarNumberRaw { get; set; }
     public int CarClassID { get; set; }
     public string CarClassShortName { get; set; } = "";
+    /// <summary>Seconds. Per car, not per class (BoP'd models of one class differ); CarIdxEstTime runs on this clock.</summary>
+    public double CarClassEstLapTime { get; set; }
     public int CarID { get; set; }
     public string CarScreenNameShort { get; set; } = "";
     public int CarIsPaceCar { get; set; }

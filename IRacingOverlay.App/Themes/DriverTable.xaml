@@ -130,6 +130,7 @@
                      never louder than the data on top of it. -->
                 <Border x:Name="ClassWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"
                         Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.22}"/>
+                <Border x:Name="LapWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"/>
                 <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Row}" BorderThickness="1"/>
                 <Border x:Name="EdgeBar" Width="3" HorizontalAlignment="Left" CornerRadius="{StaticResource Radius.RowEdge}"/>
                 <Grid x:Name="Cells" Margin="{StaticResource CellInset}">
@@ -153,19 +154,30 @@
 
                     <!-- Neutral plate: the class is already on the row's edge, so a filled chip in the
                          class colour would only repeat it at full volume. -->
-                    <Border Grid.Column="1" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
+                    <Border x:Name="CarChip" Grid.Column="1" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}"
                             Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <TextBlock Text="{Binding CarNumberDisplay}" Style="{StaticResource ChipText}"/>
                     </Border>
 
-                    <!-- The PIT badge takes its room out of the name, never out of another column. -->
+                    <!-- Status badges take their room out of the name, never out of another column. -->
                     <DockPanel Grid.Column="2" Margin="0,0,8,0"
                                Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
                                 Visibility="{Binding OnPitRoad, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="PIT" Style="{StaticResource StatusBadgeText}"/>
                         </Border>
+                        <!-- One penalty flag slot, same footprint in every state: black, meatball, or
+                             both at once split down the middle (black | meatball). See the triggers. -->
+                        <Grid x:Name="PenaltyFlag" DockPanel.Dock="Right" Width="22" Height="14" Margin="6,0,0,0"
+                              VerticalAlignment="Center" Visibility="Collapsed">
+                            <Border Background="{StaticResource Badge.FlagFill}" BorderBrush="{StaticResource Badge.FlagEdge}"
+                                    BorderThickness="1" CornerRadius="2"/>
+                            <Ellipse x:Name="MeatballDot" Width="8" Height="8" Fill="{StaticResource Badge.MeatballInk}"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                            <Rectangle x:Name="FlagSplit" Width="1" Margin="0,1" Fill="{StaticResource Badge.FlagEdge}"
+                                       HorizontalAlignment="Center" Visibility="Collapsed"/>
+                        </Grid>
                         <TextBlock x:Name="NameText" Text="{Binding NameDisplay}" Style="{StaticResource DataCell}"
                                    FontFamily="{DynamicResource Theme.NumericFontFamily}"
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
@@ -238,7 +250,7 @@
                                Foreground="{Binding LastLapForeground}"
                                Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="10" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
+                    <TextBlock x:Name="GapText" Grid.Column="10" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
                                Foreground="{Binding GapForeground}"
                                Visibility="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 </Grid>
@@ -253,6 +265,22 @@
             <DataTrigger Binding="{Binding OnPitRoad}" Value="True">
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Pit}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+            </DataTrigger>
+            <!-- Lapped (blue) / lapping you (red): name, number and gap take the tone, the class bar
+                 and wash stay the class colour. -->
+            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.Lapped}">
+                <Setter TargetName="LapWash" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="LapWash" Property="Background" Value="{StaticResource Row.LappedWash}"/>
+                <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
+                <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
+                <Setter TargetName="CarChip" Property="BorderBrush" Value="{StaticResource Row.LappedInk}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.Lapping}">
+                <Setter TargetName="LapWash" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="LapWash" Property="Background" Value="{StaticResource Row.LappingWash}"/>
+                <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
+                <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
+                <Setter TargetName="CarChip" Property="BorderBrush" Value="{StaticResource Row.LappingInk}"/>
             </DataTrigger>
             <!-- Declared after the others so it wins: the player's row is always full strength,
                  even in the pits, and its own wash replaces the class one (the class bar stays). -->
@@ -276,6 +304,24 @@
             <DataTrigger Binding="{Binding IRatingTrend}" Value="0">
                 <Setter TargetName="TrendArrow" Property="Visibility" Value="Collapsed"/>
             </DataTrigger>
+            <DataTrigger Binding="{Binding HasBlackFlag}" Value="True">
+                <Setter TargetName="PenaltyFlag" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding HasMeatballFlag}" Value="True">
+                <Setter TargetName="PenaltyFlag" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="MeatballDot" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding HasBlackFlag}" Value="True"/>
+                    <Condition Binding="{Binding HasMeatballFlag}" Value="True"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="FlagSplit" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="MeatballDot" Property="Width" Value="7"/>
+                <Setter TargetName="MeatballDot" Property="Height" Value="7"/>
+                <Setter TargetName="MeatballDot" Property="HorizontalAlignment" Value="Right"/>
+                <Setter TargetName="MeatballDot" Property="Margin" Value="0,0,2,0"/>
+            </MultiDataTrigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
                     <Condition Binding="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>

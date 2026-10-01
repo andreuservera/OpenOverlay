@@ -129,6 +129,36 @@ public class CockpitBuilderTests
     }
 
     [Fact]
+    public void Build_AbsSetting_ReportsConfiguredLevelIndependentlyOfActivation()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("BrakeABSactive", IrsdkVarType.Bool);
+        builder.AddVar("dcABS", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBool("BrakeABSactive", false);
+            w.SetFloat("dcABS", 4f);
+        });
+
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+
+        Assert.Equal(4, state.AbsLevel);
+        Assert.False(state.AbsActive);
+    }
+
+    [Fact]
+    public void Build_NoAbsSetting_LevelIsNull()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("BrakeABSactive", IrsdkVarType.Bool);
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetBool("BrakeABSactive", true));
+
+        var state = CockpitBuilder.Build(snapshot, SessionWithShiftLights());
+
+        Assert.Null(state.AbsLevel);
+    }
+
+    [Fact]
     public void Build_Speed_ConvertsMetersPerSecondToKph()
     {
         var builder = new SyntheticMemoryBuilder();
@@ -180,17 +210,24 @@ public class CockpitBuilderTests
         Assert.Equal(0, state.Rpm);
     }
 
+    private const double TrackMeters = 4000;
+
     private static SyntheticMemoryBuilder ProximityVars()
     {
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("CarLeftRight", IrsdkVarType.Int); // confirmed Int live, despite what the docs say
+        builder.AddVar("CarIdxLapDistPct", IrsdkVarType.Float, count: 4);
         builder.AddVar("CarIdxEstTime", IrsdkVarType.Float, count: 4);
         builder.AddVar("Speed", IrsdkVarType.Float);
         return builder;
     }
 
+    /// <summary>CarIdxLapDistPct of a car <paramref name="meters"/> along the track from mid-lap.</summary>
+    private static float At(double meters) => (float)(0.5 + meters / TrackMeters);
+
     private static IracingSessionInfo TwoCarSession() => new()
     {
+        WeekendInfo = new WeekendInfoSection { TrackLength = "4.0000 km" },
         DriverInfo = new DriverInfoSection
         {
             DriverCarIdx = 0,
@@ -202,6 +239,23 @@ public class CockpitBuilderTests
         },
     };
 
+    // Every car has its own CarClassEstLapTime: GT3 (BoP) 114.60s, other-make GT3 115.97s, prototype 100s.
+    private static IracingSessionInfo MulticlassSession() => new()
+    {
+        WeekendInfo = new WeekendInfoSection { TrackLength = "4.0000 km" },
+        DriverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassID = 100, CarID = 1 },
+                new DriverEntry { CarIdx = 1, UserName = "GT3 Rival", CarNumber = "9", CarClassID = 100, CarID = 2 },
+                new DriverEntry { CarIdx = 2, UserName = "Prototype", CarNumber = "1", CarClassID = 200, CarID = 3 },
+                new DriverEntry { CarIdx = 3, UserName = "In Garage", CarNumber = "44", CarClassID = 100, CarID = 1 },
+            ],
+        },
+    };
+
     [Fact]
     public void Build_CarLeftWithCloseGap_FillsLeftProximityOnly()
     {
@@ -209,8 +263,8 @@ public class CockpitBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("CarLeftRight", 2); // irsdk_LRCarLeft
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 10.02f, 0, 0]); // 0.02s gap
-            w.SetFloat("Speed", 50); // m/s -> ~1m gap, well inside a car length
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(1), 0, 0]); // 1m gap, well inside a car length
+            w.SetFloat("Speed", 50);
         });
 
         var state = CockpitBuilder.Build(snapshot, TwoCarSession());
@@ -226,7 +280,7 @@ public class CockpitBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("CarLeftRight", 1); // irsdk_LRClear
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 10.02f, 0, 0]); // ~1m gap, but CarLeftRight says clear
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(1), 0, 0]); // 1m gap, but CarLeftRight says clear
             w.SetFloat("Speed", 50);
         });
 
@@ -243,7 +297,7 @@ public class CockpitBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("CarLeftRight", 3); // irsdk_LRCarRight
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 5.0f, 0, 0]); // 5s gap — nowhere near alongside
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(-250), 0, 0]); // 250m back — nowhere near alongside
             w.SetFloat("Speed", 50);
         });
 
@@ -255,15 +309,15 @@ public class CockpitBuilderTests
     [Fact]
     public void Build_OvertakingCarBehindPullingClear_BandShrinksTowardBottom()
     {
-        // Player is well ahead in EstTime (further along track) than the car alongside — its front
+        // Player is further along the track than the car alongside — its front
         // is behind ours, so the overlap should sit at the BOTTOM of our bar (near our rear), not
         // spread evenly, and should shrink toward the very bottom as the gap opens further.
         var builder = ProximityVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("CarLeftRight", 2); // irsdk_LRCarLeft
-            w.SetFloatArray("CarIdxEstTime", [10.02f, 10.0f, 0, 0]); // player ahead by 0.02s
-            w.SetFloat("Speed", 50); // ~1m gap, within a car length
+            w.SetFloatArray("CarIdxLapDistPct", [At(1), At(0), 0, 0]); // player ahead by 1m, within a car length
+            w.SetFloat("Speed", 50);
         });
 
         var state = CockpitBuilder.Build(snapshot, TwoCarSession());
@@ -276,13 +330,13 @@ public class CockpitBuilderTests
     [Fact]
     public void Build_BeingOvertakenCarPullingAhead_BandShrinksTowardTop()
     {
-        // Player is behind in EstTime — the other car's front is ahead of ours, so the overlap
+        // Player is behind — the other car's front is ahead of ours, so the overlap
         // should sit at the TOP of our bar (near our front/nose), not the bottom.
         var builder = ProximityVars();
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("CarLeftRight", 3); // irsdk_LRCarRight
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 10.02f, 0, 0]); // player behind by 0.02s
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(1), 0, 0]); // player behind by 1m
             w.SetFloat("Speed", 50);
         });
 
@@ -300,7 +354,7 @@ public class CockpitBuilderTests
         var snapshot = TestSnapshotFactory.Build(builder, w =>
         {
             w.SetInt("CarLeftRight", 2);
-            w.SetFloatArray("CarIdxEstTime", [10.0f, 10.0f, 0, 0]); // dead even
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(0), 0, 0]); // dead even
             w.SetFloat("Speed", 50);
         });
 
@@ -311,4 +365,101 @@ public class CockpitBuilderTests
         Assert.Equal(1, state.LeftProximity.BandEnd, precision: 5);
     }
 
+    // Multiclass regressions: CarIdxEstTime below is what iRacing reports (position × each car's own
+    // CarClassEstLapTime), which the old EstTime-difference check misread as tens to hundreds of metres.
+
+    [Fact]
+    public void Build_Multiclass_SameClassCarAlongside_Lights()
+    {
+        var builder = ProximityVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("CarLeftRight", 2); // irsdk_LRCarLeft
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(0), At(1000), -1]); // GT3 rival dead even
+            w.SetFloatArray("CarIdxEstTime", [57.30f, 57.98f, 75.0f, 0]); // 0.68s "apart" = 34m at 50 m/s
+            w.SetFloat("Speed", 50);
+        });
+
+        var state = CockpitBuilder.Build(snapshot, MulticlassSession());
+
+        Assert.Equal(1, state.LeftProximity.Amount, precision: 5);
+        Assert.Equal(0, state.RightProximity.Amount);
+    }
+
+    [Fact]
+    public void Build_Multiclass_FasterClassCarOvertaking_LightsAtOurFront()
+    {
+        var builder = ProximityVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("CarLeftRight", 3); // irsdk_LRCarRight
+            w.SetFloatArray("CarIdxLapDistPct", [At(0), At(-300), At(2), -1]); // prototype's front 2m ahead of ours
+            w.SetFloatArray("CarIdxEstTime", [57.30f, 49.29f, 50.05f, 0]); // prototype 7.25s "behind"
+            w.SetFloat("Speed", 50);
+        });
+
+        var state = CockpitBuilder.Build(snapshot, MulticlassSession());
+
+        Assert.Equal(0, state.LeftProximity.Amount);
+        Assert.Equal(0, state.RightProximity.BandStart, precision: 5);
+        Assert.Equal((4.8 - 2) / 4.8, state.RightProximity.BandEnd, precision: 3);
+    }
+
+    [Fact]
+    public void Build_CarAlongsideAcrossStartFinishLine_Lights()
+    {
+        var builder = ProximityVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("CarLeftRight", 2); // irsdk_LRCarLeft
+            w.SetFloatArray("CarIdxLapDistPct", [0.0001f, 0.9999f, 0, 0]); // we've crossed the line, they haven't: 0.8m
+            w.SetFloatArray("CarIdxEstTime", [0.01f, 114.59f, 0, 0]);
+            w.SetFloat("Speed", 50);
+        });
+
+        var state = CockpitBuilder.Build(snapshot, TwoCarSession());
+
+        Assert.True(state.LeftProximity.Amount > 0);
+        Assert.Equal(1, state.LeftProximity.BandEnd, precision: 5); // their front is behind ours
+    }
+
+    [Fact]
+    public void Build_CarNotInWorld_IsNotMistakenForCarAlongside()
+    {
+        // Just past S/F, where a garage car's -1 position (or 0 EstTime) would read as right beside us.
+        var builder = ProximityVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("CarLeftRight", 2); // irsdk_LRCarLeft
+            w.SetFloatArray("CarIdxLapDistPct", [0.0001f, 0.00085f, -1, -1]); // GT3 rival 3m ahead
+            w.SetFloatArray("CarIdxEstTime", [0.0115f, 0.0986f, 0, 0]);
+            w.SetFloat("Speed", 50);
+        });
+
+        var state = CockpitBuilder.Build(snapshot, MulticlassSession());
+
+        Assert.Equal(0, state.LeftProximity.BandStart, precision: 5);
+        Assert.Equal((4.8 - 3) / 4.8, state.LeftProximity.BandEnd, precision: 3);
+    }
+
+    [Theory]
+    [InlineData("4.0000 km", true)] // 0.001 of a lap = 4.0m: alongside
+    [InlineData("5.7536 km", false)] // same fraction of a longer lap = 5.75m: clear
+    [InlineData(null, false)] // unknown length: dark rather than a guess
+    public void Build_GapIsMeasuredWithTheSessionTrackLength(string? trackLength, bool lit)
+    {
+        var builder = ProximityVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("CarLeftRight", 2); // irsdk_LRCarLeft
+            w.SetFloatArray("CarIdxLapDistPct", [0.5f, 0.501f, 0, 0]);
+            w.SetFloat("Speed", 50);
+        });
+        var session = TwoCarSession();
+        session.WeekendInfo!.TrackLength = trackLength;
+
+        var state = CockpitBuilder.Build(snapshot, session);
+
+        Assert.Equal(lit, state.LeftProximity.Amount > 0);
+    }
 }

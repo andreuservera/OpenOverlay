@@ -10,7 +10,7 @@
             <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="RELATIVE" Style="{StaticResource PanelTitle}"/>
-                    <TextBlock x:Name="CarNameText" Text="" Style="{StaticResource ColumnHeader}"
+                    <TextBlock x:Name="ClassNameText" Text="" Style="{StaticResource ColumnHeader}"
                                Margin="9,0,12,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

@@ -9,14 +9,15 @@ internal static class StandingsBuilder
 {
     /// <summary>
     /// Relative gap uses CarIdxEstTime — iRacing's own "estimated time to reach current location on
-    /// track" per car — which is precise within a lap and class-agnostic (each car's progress is
-    /// measured in its own seconds, so it works the same for a GT3 car as a slower class). The gap
-    /// is the raw CarIdxEstTime difference folded into the nearest ±half-lap-time window (a shared
-    /// reference lap time, not each car's individually — using each car's own lap time here was an
-    /// earlier bug), rather than corrected by each car's own *total completed laps*: CarIdxLap only
-    /// tracks laps-since-session-start, which is meaningless for "how far apart on track are we
-    /// right now" in Practice/Qualifying — cars don't start together there, so a car that joined
-    /// earlier can be dozens of laps ahead in count while still running right next to the player.
+    /// track" per car. That runs on each car's own CarClassEstLapTime clock (per class, and per BoP'd
+    /// model within one), so each is read as a fraction of its car's lap; the difference is folded to
+    /// the nearest half lap and timed at the player's own pace. (Without est lap times:
+    /// the raw difference folded into a ±half-lap window of one shared reference lap time — using
+    /// each car's own recorded lap time there was an earlier bug.) The fold replaces a correction by
+    /// each car's own *total completed laps*: CarIdxLap only tracks laps-since-session-start, which
+    /// is meaningless for "how far apart on track are we right now" in Practice/Qualifying — cars
+    /// don't start together there, so a car that joined earlier can be dozens of laps ahead in count
+    /// while still running right next to the player.
     /// Multiplying that raw lap-count difference by a lap time (the earlier approach) produced gaps
     /// of thousands of seconds for cars that were genuinely side by side (reported live). Folding to
     /// the nearest half-lap instead answers the question a Relative widget actually needs to: what's
@@ -55,6 +56,8 @@ internal static class StandingsBuilder
             return [];
         }
 
+        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
+
         // Fall back to ANY car's recorded lap time, not just the player's own — otherwise the whole
         // field disappears from Relative for the player's entire first lap of every session (reported
         // live), even though by then other cars in a live session have almost always already set one.
@@ -73,9 +76,17 @@ internal static class StandingsBuilder
             refLapTime = laps.ReferenceLapOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.CarIdx));
         }
 
-        double GapTo(int carIdx)
+        var playerEstLapTime = driverInfo.Drivers.FirstOrDefault(d => d.CarIdx == playerCarIdx)?.CarClassEstLapTime ?? 0;
+
+        double GapTo(DriverEntry driver)
         {
-            var gap = (double)carIdxEstTime[playerCarIdx] - carIdxEstTime[carIdx];
+            if (playerEstLapTime > 0 && driver.CarClassEstLapTime > 0)
+            {
+                var lapsBehind = carIdxEstTime[playerCarIdx] / playerEstLapTime - carIdxEstTime[driver.CarIdx] / driver.CarClassEstLapTime;
+                return (lapsBehind - Math.Round(lapsBehind)) * playerEstLapTime;
+            }
+
+            var gap = (double)carIdxEstTime[playerCarIdx] - carIdxEstTime[driver.CarIdx];
             if (refLapTime > 0)
             {
                 gap %= refLapTime;
@@ -101,7 +112,7 @@ internal static class StandingsBuilder
         var currentLaps = carIdxLap;
         var results = CurrentSession.Results(telemetry, session);
         var positions = TryGetIntArray(telemetry, TelemetryVarNames.CarIdxPosition);
-        var sessionFastestLap = laps.FastestOf(racing.Select(d => d.CarIdx));
+        var fastestLapByClass = FastestLapByClass(racing, laps.Best);
 
         int LapCountOf(int carIdx)
         {
@@ -156,6 +167,35 @@ internal static class StandingsBuilder
         double IRatingDeltaOf(int carIdx) =>
             standingsByCarIdx.TryGetValue(carIdx, out var ranked) ? ranked.IRatingDelta : 0;
 
+        // Race distance, not track position: laps plus the fraction of the current one. Lapping only
+        // means something in a race; in practice and qualifying lap counts are just time on track.
+        var isRace = IsRaceSession(telemetry, session);
+
+        double? RaceDistanceOf(int carIdx) =>
+            carIdxLapDistPct is not null && carIdx < carIdxLapDistPct.Length && carIdx < carIdxLap.Length &&
+            carIdxLap[carIdx] >= 0 && carIdxLapDistPct[carIdx] >= 0
+                ? carIdxLap[carIdx] + carIdxLapDistPct[carIdx]
+                : null;
+
+        var playerDistance = RaceDistanceOf(playerCarIdx);
+
+        // Half a lap is where the folded Relative order flips: a car more than half a lap up on the
+        // player sits behind them on track only because it is about to lap them.
+        LapRelation LapRelationOf(int carIdx)
+        {
+            if (!isRace || carIdx == playerCarIdx || playerDistance is not { } mine || RaceDistanceOf(carIdx) is not { } theirs)
+            {
+                return LapRelation.SameLap;
+            }
+
+            return (theirs - mine) switch
+            {
+                > 0.5 => LapRelation.Lapping,
+                < -0.5 => LapRelation.Lapped,
+                _ => LapRelation.SameLap,
+            };
+        }
+
         foreach (var driver in driverInfo.Drivers)
         {
             if (driver.IsPaceCar || driver.CarIdx < 0 || driver.CarIdx >= carIdxLap.Length)
@@ -194,6 +234,8 @@ internal static class StandingsBuilder
                 continue;
             }
 
+            var bestLapTime = laps.Best(driver.CarIdx);
+            var penalties = penaltiesOf(driver.CarIdx);
             rows.Add(new RelativeRow
             {
                 CarIdx = driver.CarIdx,
@@ -202,20 +244,23 @@ internal static class StandingsBuilder
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
-                GapSeconds = GapTo(driver.CarIdx),
+                GapSeconds = GapTo(driver),
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                HasBlackFlag = penalties.Black,
+                HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
-                BestLapTime = laps.Best(driver.CarIdx),
+                BestLapTime = bestLapTime,
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
                 IRatingDelta = IRatingDeltaOf(driver.CarIdx),
-                IsSessionFastestLap = laps.Best(driver.CarIdx) > 0 && laps.Best(driver.CarIdx) <= sessionFastestLap,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
-                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+                CarClassName = driver.CarClassShortName,
+                LapRelation = LapRelationOf(driver.CarIdx),
             });
         }
 
@@ -256,16 +301,16 @@ internal static class StandingsBuilder
     /// made the whole table look frozen mid-lap. CarIdxPosition is still used as one signal for "has
     /// this car actually started," just not for the displayed position/gap numbers themselves.
     ///
-    /// The running order is a straight lexicographic comparison of (laps completed, progress around
-    /// the current lap) and deliberately involves no lap-time estimate at all. It used to collapse
-    /// both into one scalar, laps * referenceLapTime + estTime, which is only a valid ordering while
-    /// referenceLapTime is at least as long as any car's lap — and that reference came from the
-    /// player's own last lap. Attach the overlay to a race already in progress and the player has no
-    /// lap time yet, so it fell back to whichever car sat lowest in the telemetry array; too small a
-    /// value (a faster class, or simply a quicker car) let cars a lap down outrank cars a lap ahead,
-    /// and no value at all reduced the whole sort to within-lap position, which is what "it ignores
-    /// every lap run before I joined" looks like on screen. Laps and track position answer the
-    /// question on their own.
+    /// The running order is a straight lexicographic comparison of (laps completed, fraction of the
+    /// current lap covered), so no lap-time estimate ever weighs laps against track position. It used
+    /// to collapse both into one scalar, laps * referenceLapTime + estTime, which is only a valid
+    /// ordering while referenceLapTime is at least as long as any car's lap — and that reference came
+    /// from the player's own last lap. Attach the overlay to a race already in progress and the
+    /// player has no lap time yet, so it fell back to whichever car sat lowest in the telemetry array;
+    /// too small a value (a faster class, or simply a quicker car) let cars a lap down outrank cars a
+    /// lap ahead, and no value at all reduced the whole sort to within-lap position, which is what "it
+    /// ignores every lap run before I joined" looks like on screen. Laps and track position answer
+    /// the question on their own.
     /// </summary>
     public static List<StandingsRow> BuildStandings(
         TelemetrySnapshot telemetry,
@@ -291,6 +336,7 @@ internal static class StandingsBuilder
         var bestLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxBestLapTime);
         var onPitRoad = TryGetBoolArray(telemetry, TelemetryVarNames.CarIdxOnPitRoad);
         var playerCarIdx = driverInfo.DriverCarIdx;
+        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
 
         var distinctClasses = driverInfo.Drivers
             .Where(d => !d.IsPaceCar)
@@ -327,15 +373,13 @@ internal static class StandingsBuilder
         if (IsPracticeOrQualifyingSession(telemetry, session))
         {
             return BuildFastestLapStandings(
-                driverInfo, LapCountOf, laps, onPitRoad, playerCarIdx, isMultiClass,
+                driverInfo, LapCountOf, laps, onPitRoad, penaltiesOf, playerCarIdx, isMultiClass,
                 bestLapTracker ?? new SessionBestLapTracker(),
                 CurrentSession.Number(telemetry, session),
                 lastPitStops);
         }
 
-        // Only the gap *display* needs a lap length, to turn "a lap down" into seconds. The running
-        // order below deliberately doesn't use it, so a bad estimate can misprice a gap but can never
-        // reshuffle the table.
+        // Stand-in lap length for cars without an est lap time in the session info.
         var refLapTime = laps.Best(playerCarIdx);
         if (refLapTime <= 0)
         {
@@ -344,11 +388,25 @@ internal static class StandingsBuilder
 
         int LapOf(int carIdx) => carIdx < currentLaps.Length ? currentLaps[carIdx] : 0;
 
-        // Seconds from the start/finish line to where the car is right now, so within one lap a
-        // bigger number is simply further round the track.
-        double TrackProgress(int carIdx) => carIdx < carIdxEstTime.Length ? carIdxEstTime[carIdx] : 0;
+        double EstTimeOf(int carIdx) => carIdx < carIdxEstTime.Length ? carIdxEstTime[carIdx] : 0;
 
-        double TimePosition(int carIdx) => LapOf(carIdx) * refLapTime + TrackProgress(carIdx);
+        // CarIdxEstTime runs on each car's own CarClassEstLapTime clock, and wraps when it runs out.
+        double ClockOf(DriverEntry driver) => driver.CarClassEstLapTime > 0 ? driver.CarClassEstLapTime : refLapTime;
+
+        double TrackProgress(DriverEntry driver) =>
+            ClockOf(driver) > 0 ? EstTimeOf(driver.CarIdx) / ClockOf(driver) : EstTimeOf(driver.CarIdx);
+
+        // Laps down plus the time the car needs to reach where the leader is now, at its own pace.
+        double GapBehind(DriverEntry leader, DriverEntry driver)
+        {
+            var clock = ClockOf(driver);
+            if (clock <= 0)
+            {
+                return EstTimeOf(leader.CarIdx) - EstTimeOf(driver.CarIdx);
+            }
+
+            return (LapOf(leader.CarIdx) + TrackProgress(leader) - LapOf(driver.CarIdx) - TrackProgress(driver)) * clock;
+        }
 
         var eligible = new List<DriverEntry>();
         foreach (var driver in driverInfo.Drivers)
@@ -398,7 +456,7 @@ internal static class StandingsBuilder
 
         var ordered = eligible
             .OrderByDescending(d => LapOf(d.CarIdx))
-            .ThenByDescending(d => TrackProgress(d.CarIdx))
+            .ThenByDescending(d => TrackProgress(d))
             .ThenBy(d => TieBreakPosition(d.CarIdx))
             .ToList();
 
@@ -406,18 +464,13 @@ internal static class StandingsBuilder
         // driver they are 45s behind a prototype is a number they can do nothing with. `ordered` is
         // in overall order, so the first car seen for a class is that class's leader. In a
         // single-class session this is simply the race leader.
-        var classLeaderTimePosition = new Dictionary<int, double>();
+        var classLeader = new Dictionary<int, DriverEntry>();
         foreach (var driver in ordered)
         {
-            if (!classLeaderTimePosition.ContainsKey(driver.CarClassID))
-            {
-                classLeaderTimePosition[driver.CarClassID] = TimePosition(driver.CarIdx);
-            }
+            classLeader.TryAdd(driver.CarClassID, driver);
         }
 
-        // The single fastest lap set by anyone in the session, across every car — not just the
-        // player's own best. 0 (no valid lap yet) never counts.
-        var sessionFastestLap = laps.FastestOf(ordered.Select(d => d.CarIdx));
+        var fastestLapByClass = FastestLapByClass(ordered, laps.Best);
 
         var iRatingDeltaByCarIdx = EstimateIRatingDeltas(ordered);
 
@@ -432,6 +485,7 @@ internal static class StandingsBuilder
             classRank[driver.CarClassID] = rank;
 
             var bestLapTime = laps.Best(driver.CarIdx);
+            var penalties = penaltiesOf(driver.CarIdx);
 
             rows.Add(new StandingsRow
             {
@@ -442,22 +496,23 @@ internal static class StandingsBuilder
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                HasBlackFlag = penalties.Black,
+                HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
-                GapToLeaderSeconds = classLeaderTimePosition[driver.CarClassID] - TimePosition(driver.CarIdx),
+                GapToLeaderSeconds = GapBehind(classLeader[driver.CarClassID], driver),
                 LastLapTime = laps.Last(driver.CarIdx),
                 BestLapTime = bestLapTime,
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
                 IRatingDelta = iRatingDeltaByCarIdx.GetValueOrDefault(driver.CarIdx, 0),
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
-                // iRacing leaves CarClassShortName blank for fixed/spec series (a "class" of one car
-                // model, e.g. Porsche Cup) — it's only populated for genuine multi-car classes like
-                // GT3. Falling back to the car's own name keeps the header informative either way.
-                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+                // The category, never the car: blank for a spec series, where the header falls back
+                // to the class id.
+                CarClassName = driver.CarClassShortName,
             });
         }
 
@@ -759,9 +814,9 @@ internal static class StandingsBuilder
         }
     }
 
-    /// <summary>The car the player is racing, for the panel header. Empty in multiclass, where the
-    /// per-class headers already say what each block is driving.</summary>
-    public static string SingleClassCarName(IracingSessionInfo? session)
+    /// <summary>The category (class) the player races in, for the panel header — e.g. "GT3". Never
+    /// the car's name: iRacing leaves the class name blank for a spec series, and then so is this.</summary>
+    public static string PlayerClassName(IracingSessionInfo? session)
     {
         if (session?.DriverInfo is not { } driverInfo)
         {
@@ -769,15 +824,18 @@ internal static class StandingsBuilder
         }
 
         var racing = driverInfo.Drivers.Where(d => !d.IsPaceCar).ToList();
-        if (racing.Count == 0 || racing.Select(d => d.CarClassID).Distinct().Count() > 1)
+        if (racing.Count == 0)
         {
             return "";
         }
 
-        // Spectating has no player entry, and with one class any car in the field is the same one.
+        // Spectating has no player entry: the first car's class stands in.
         var car = racing.FirstOrDefault(d => d.CarIdx == driverInfo.DriverCarIdx) ?? racing[0];
-        return string.IsNullOrWhiteSpace(car.CarScreenNameShort) ? car.CarClassShortName : car.CarScreenNameShort;
+        return car.CarClassShortName?.Trim() ?? "";
     }
+
+    private static bool IsRaceSession(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+        (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsPracticeOrQualifyingSession(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
@@ -802,6 +860,7 @@ internal static class StandingsBuilder
         Func<int, int> lapCountOf,
         LapTimeSource laps,
         bool[]? onPitRoad,
+        Func<int, CarPenalties> penaltiesOf,
         int playerCarIdx,
         bool isMultiClass,
         SessionBestLapTracker bestLapTracker,
@@ -816,14 +875,7 @@ internal static class StandingsBuilder
         // Drivers with no time yet sort to the bottom (double.MaxValue), stable-tied by CarIdx.
         var ordered = drivers.OrderBy(QualTime).ThenBy(d => d.CarIdx).ToList();
 
-        var sessionFastestLap = 0.0;
-        foreach (var t in cachedBest.Values)
-        {
-            if (t > 0 && (sessionFastestLap <= 0 || t < sessionFastestLap))
-            {
-                sessionFastestLap = t;
-            }
-        }
+        var fastestLapByClass = FastestLapByClass(drivers, carIdx => cachedBest.GetValueOrDefault(carIdx, 0));
 
         // Same reasoning as the race path: the benchmark is the class's own pole, not the outright
         // fastest car in the session. `ordered` is sorted fastest-first, so the first car seen for a
@@ -849,6 +901,7 @@ internal static class StandingsBuilder
             var bestLapTime = cachedBest.GetValueOrDefault(driver.CarIdx, 0);
             var thisTime = QualTime(driver);
             var poleTime = classPoleTime[driver.CarClassID];
+            var penalties = penaltiesOf(driver.CarIdx);
 
             rows.Add(new StandingsRow
             {
@@ -859,6 +912,8 @@ internal static class StandingsBuilder
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                HasBlackFlag = penalties.Black,
+                HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 CurrentLap = lapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = thisTime < double.MaxValue && poleTime < double.MaxValue ? thisTime - poleTime : 0,
@@ -869,14 +924,32 @@ internal static class StandingsBuilder
                 LicString = driver.LicString,
                 // A single pairwise-duel iRating estimate makes no sense against a fastest-lap order.
                 IRatingDelta = 0,
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= sessionFastestLap,
+                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
-                CarClassName = string.IsNullOrWhiteSpace(driver.CarClassShortName) ? driver.CarScreenNameShort : driver.CarClassShortName,
+                CarClassName = driver.CarClassShortName,
             });
         }
 
         return rows;
+    }
+
+    /// <summary>Each class's fastest lap, keyed by CarClassID. Purple marks the best of every class, not
+    /// only the field's overall fastest: a GT4 never out-laps a GTP, yet its drivers still need to see
+    /// who is quickest among them. 0 (no valid lap yet) never counts.</summary>
+    private static Dictionary<int, double> FastestLapByClass(IEnumerable<DriverEntry> drivers, Func<int, double> bestLapOf)
+    {
+        var fastest = new Dictionary<int, double>();
+        foreach (var driver in drivers)
+        {
+            var best = bestLapOf(driver.CarIdx);
+            if (best > 0 && (!fastest.TryGetValue(driver.CarClassID, out var classBest) || best < classBest))
+            {
+                fastest[driver.CarClassID] = best;
+            }
+        }
+
+        return fastest;
     }
 
     private static PitStop? LastPitStopOf(IReadOnlyDictionary<int, PitStop>? lastPitStops, int carIdx) =>

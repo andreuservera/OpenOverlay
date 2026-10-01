@@ -48,6 +48,8 @@ public abstract class CockpitDashboard : FrameworkElement
     // runs while something is actually flashing.
     private readonly DispatcherTimer _flashTimer = new() { Interval = TimeSpan.FromMilliseconds(30) };
 
+    private readonly Dictionary<(string Text, Typeface Face, double Size, Brush Brush, double X, double Y, HAlign H, VAlign V), (Drawing Drawing, Rect Bounds)> _labels = new();
+
     protected CockpitDashboard()
     {
         SnapsToDevicePixels = true;
@@ -119,6 +121,13 @@ public abstract class CockpitDashboard : FrameworkElement
 
     protected bool AbsActive => State.AbsActive;
 
+    /// <summary>"ABS 3" — the configured level, or plain "ABS" when the car doesn't report one.
+    /// Never "OFF": intervention is shown by colour/flash, not by this text.</summary>
+    protected string AbsLabel => State.AbsLevel is { } level ? $"ABS {level}" : "ABS";
+
+    /// <summary>The configured level alone, for themes that label the value separately.</summary>
+    protected string AbsLevel => State.AbsLevel is { } level ? level.ToString(CultureInfo.InvariantCulture) : "—";
+
     /// <summary>Bright half of the ABS flash while active.</summary>
     protected bool AbsFlashOn => State.AbsActive && Environment.TickCount64 / AbsFlashHalfPeriodMs % 2 == 0;
 
@@ -178,6 +187,38 @@ public abstract class CockpitDashboard : FrameworkElement
         var origin = Anchor(formatted, size, x, y, h, v);
         dc.DrawText(formatted, origin);
         return new Rect(origin, new Size(formatted.WidthIncludingTrailingWhitespace, formatted.Height));
+    }
+
+    /// <summary>Same as <see cref="Text"/>, for text that repeats frame after frame at the same place:
+    /// laid out once, then redrawn from a frozen drawing.</summary>
+    protected Rect CachedText(DrawingContext dc, string text, Typeface face, double size, Brush brush,
+        double x, double y, HAlign h = HAlign.Left, VAlign v = VAlign.Top)
+    {
+        var key = (text, face, size, brush, x, y, h, v);
+        if (!_labels.TryGetValue(key, out var label))
+        {
+            var formatted = Measure(text, face, size, brush);
+            var origin = Anchor(formatted, size, x, y, h, v);
+            var drawing = new DrawingGroup();
+            using (var context = drawing.Open())
+            {
+                context.DrawText(formatted, origin);
+            }
+
+            drawing.Freeze();
+            label = (drawing, new Rect(origin, new Size(formatted.WidthIncludingTrailingWhitespace, formatted.Height)));
+            _labels[key] = label;
+        }
+
+        dc.DrawDrawing(label.Drawing);
+        return label.Bounds;
+    }
+
+    // Cached labels were laid out for the old pixels-per-dip.
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        _labels.Clear();
+        base.OnDpiChanged(oldDpi, newDpi);
     }
 
     private static Point Anchor(FormattedText formatted, double size, double x, double y, HAlign h, VAlign v)

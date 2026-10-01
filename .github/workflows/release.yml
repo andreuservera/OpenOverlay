@@ -1,7 +1,8 @@
 name: Release
 
-# Cutting a release is just: git tag vX.Y.Z && git push origin vX.Y.Z — this workflow builds a
-# self-contained installer via Velopack and publishes it to GitHub Releases automatically.
+# Cutting a release: put the version's entry at the top of CHANGELOG.md, commit it, then
+# git tag vX.Y.Z && git push origin vX.Y.Z — this workflow builds a self-contained installer via
+# Velopack and publishes it to GitHub Releases automatically.
 on:
   push:
     tags:
@@ -16,21 +17,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract version from tag
-        id: get-version
-        shell: bash
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
+      # The build stamps the version of the newest CHANGELOG.md entry and that entry is the release
+      # notes; the tag only starts the release, so it has to name the same version.
+      - name: Read the version from CHANGELOG.md
+        id: version
+        shell: bash
+        env:
+          DOTNET_NOLOGO: true
+        run: |
+          version=$(dotnet msbuild IRacingOverlay.App/IRacingOverlay.App.csproj -getProperty:Version | tr -d '\r')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match the newest CHANGELOG.md entry ($version)."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          awk '/^###?[ \t]+\[?v?[0-9]+\.[0-9]+\.[0-9]+/ { n++; next } n == 1 && !/^[ \t]*---+[ \t]*$/' CHANGELOG.md > release-notes.md
+
       - name: Run tests
         run: dotnet test --configuration Release
 
       - name: Publish self-contained build
-        run: dotnet publish IRacingOverlay.App/IRacingOverlay.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.get-version.outputs.version }} -o publish-selfcontained
+        run: dotnet publish IRacingOverlay.App/IRacingOverlay.App.csproj -c Release -r win-x64 --self-contained true -o publish-selfcontained
 
       - name: Install vpk
         run: dotnet tool install -g vpk
@@ -43,13 +55,14 @@ jobs:
         run: >
           vpk pack
           --packId OpenOverlay
-          --packVersion ${{ steps.get-version.outputs.version }}
+          --packVersion ${{ steps.version.outputs.version }}
           --packDir publish-selfcontained
           --packTitle "OpenOverlay"
           --packAuthors "OpenOverlay contributors"
           --mainExe OpenOverlay.exe
           --icon IRacingOverlay.App/Assets/icon.ico
           --shortcuts Desktop,StartMenuRoot
+          --releaseNotes release-notes.md
 
       - name: Publish to GitHub Releases
         run: >

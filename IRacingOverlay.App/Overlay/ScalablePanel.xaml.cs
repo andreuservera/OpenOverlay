@@ -12,14 +12,14 @@ namespace IRacingOverlay.App.Overlay;
 /// The single sizing standard for every widget and dashboard panel.
 ///
 /// Content is laid out once at its design size (<see cref="DesignWidth"/>/<see cref="DesignHeight"/>,
-/// or its natural measured size when those are left unset) and then scaled as a whole by one of five
+/// or its natural measured size when those are left unset) and then scaled as a whole by one of the
 /// fixed <see cref="ScaleLevel"/>s. Because the scale is a LayoutTransform, this control always
 /// reports the *scaled* size to its parent, so the container tracks the content rather than the
 /// other way round — a panel can never be given less room than it needs, which is exactly what
 /// free-form drag-resizing used to allow (clipped text, overlapping rows, broken layouts).
 ///
 /// Every proportion inside the content — padding, margins, gaps, type scale, stroke widths — is
-/// multiplied by the same factor, so a widget looks identical at XS and XL apart from its size.
+/// multiplied by the same factor, so a widget looks identical at XXS and 3XL apart from its size.
 /// </summary>
 [ContentProperty(nameof(ScalableContent))]
 public partial class ScalablePanel : UserControl

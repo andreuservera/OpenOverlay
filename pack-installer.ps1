@@ -12,13 +12,12 @@
     The build is self-contained (bundles the .NET runtime) so installer users never have to separately
     install the .NET Desktop Runtime - worth the larger download for a real "download and run" installer.
 
+    The version and the release notes are the newest entry in CHANGELOG.md.
+
     Requires the vpk CLI (installed automatically below if missing) and, the first time you package a
     version, downloads the previous GitHub release so Velopack can compute a small delta patch instead
     of shipping a full download for every update - this step is skipped harmlessly if there is no
     previous Velopack-packaged release yet (e.g. the very first one).
-
-.PARAMETER Version
-    Version number for this release, e.g. "0.2.0". Must be a valid version (no leading "v").
 
 .PARAMETER Publish
     Also upload the packaged release directly to GitHub as a published release (tag vVERSION).
@@ -27,12 +26,10 @@
     inspect/test/upload by hand.
 
 .EXAMPLE
-    .\pack-installer.ps1 -Version 0.2.0
-    .\pack-installer.ps1 -Version 0.2.0 -Publish
+    .\pack-installer.ps1
+    .\pack-installer.ps1 -Publish
 #>
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$Version,
     [switch]$Publish
 )
 
@@ -42,6 +39,7 @@ $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $project = Join-Path $repoRoot "IRacingOverlay.App\IRacingOverlay.App.csproj"
 $publishDir = Join-Path $repoRoot "publish-selfcontained"
 $iconPath = Join-Path $repoRoot "IRacingOverlay.App\Assets\icon.ico"
+$releaseNotes = Join-Path $repoRoot "IRacingOverlay.App\obj\release-notes.md"
 $repoUrl = "https://github.com/andreuservera/OpenOverlay"
 
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
@@ -50,9 +48,21 @@ if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-Write-Host "Publishing self-contained build (v$Version)..." -ForegroundColor Cyan
-& dotnet publish $project -c Release -r win-x64 --self-contained true -p:Version=$Version -o $publishDir
+$Version = "$(& dotnet msbuild $project -getProperty:Version)".Trim()
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "Publishing self-contained build (v$Version)..." -ForegroundColor Cyan
+& dotnet publish $project -c Release -r win-x64 --self-contained true -o $publishDir
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+# The newest entry's lines, without its heading or the rule that closes it.
+$entry = 0
+$notes = switch -Regex -File (Join-Path $repoRoot "CHANGELOG.md") {
+    '^###?\s+\[?v?\d+\.\d+\.\d+' { $entry++; continue }
+    '^\s*-{3,}\s*$' { continue }
+    default { if ($entry -eq 1) { $_ } }
+}
+Set-Content -Path $releaseNotes -Value $notes -Encoding utf8
 
 Write-Host "Fetching previous release for delta patching (skips harmlessly if none exists)..." -ForegroundColor Cyan
 vpk download github --repoUrl $repoUrl
@@ -68,7 +78,8 @@ Write-Host "Packing installer..." -ForegroundColor Cyan
     --packAuthors "OpenOverlay contributors" `
     --mainExe OpenOverlay.exe `
     --icon $iconPath `
-    --shortcuts Desktop,StartMenuRoot
+    --shortcuts Desktop,StartMenuRoot `
+    --releaseNotes $releaseNotes
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""

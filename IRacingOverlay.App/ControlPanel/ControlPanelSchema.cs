@@ -4,6 +4,7 @@ using System.IO;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.App.Widgets;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -20,7 +21,7 @@ namespace IRacingOverlay.App.ControlPanel;
 /// </summary>
 public sealed partial class ControlPanelViewModel
 {
-    private static readonly string[] SizeLadder = ["XS", "S", "M", "L", "XL"];
+    private static readonly string[] SizeLadder = ScaleLevels.Labels;
 
     private void BuildSettings(NavItem item)
     {
@@ -57,6 +58,9 @@ public sealed partial class ControlPanelViewModel
                 PerformancePageKey => PerformancePage(),
                 UnitsPageKey => UnitsPage(),
                 HotkeysPageKey => HotkeysPage(),
+                WhatsNewPageKey => WhatsNewPage(),
+                ChangelogPageKey => ChangelogPage(),
+                AboutPageKey => AboutPage(),
                 _ => [],
             };
         }
@@ -85,7 +89,7 @@ public sealed partial class ControlPanelViewModel
         .With(
             new SegmentedSetting(
                 "Size",
-                "Five fixed steps. Everything inside scales together, so the widget looks the same at every size.",
+                "Eight fixed steps. Everything inside scales together, so the widget looks the same at every size.",
                 SizeLadder,
                 (int)slot.Scale,
                 index => slot.Scale = (ScaleLevel)index),
@@ -160,7 +164,7 @@ public sealed partial class ControlPanelViewModel
                     StandingsOptions.ShowMulticlass = value;
                     DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value);
                 }),
-            CarNameToggle(StandingsOptions),
+            ClassNameToggle(StandingsOptions),
             SessionIdToggle(StandingsOptions));
 
     private SettingsGroup RelativeTable() => new SettingsGroup("TABLE")
@@ -175,17 +179,17 @@ public sealed partial class ControlPanelViewModel
                 "0",
                 null,
                 value => SetFocusSize(RelativeOptions, value)),
-            CarNameToggle(RelativeOptions),
+            ClassNameToggle(RelativeOptions),
             SessionIdToggle(RelativeOptions));
 
-    private ToggleSetting CarNameToggle(DriverTableOptions options) => new(
-        "Show car name",
-        "Next to the title. Single-class sessions only — in multiclass the class headers already say it.",
-        options.ShowCarName,
+    private ToggleSetting ClassNameToggle(DriverTableOptions options) => new(
+        "Show category name",
+        "Your car's class (category), e.g. GT3, next to the title. Blank in a spec series, where iRacing names no class.",
+        options.ShowClassName,
         value =>
         {
-            options.ShowCarName = value;
-            DriverTableOptionsStore.SaveCarName(options.Table, value);
+            options.ShowClassName = value;
+            DriverTableOptionsStore.SaveClassName(options.Table, value);
             TableHeaderChanged?.Invoke(options.Table);
         });
 
@@ -290,6 +294,7 @@ public sealed partial class ControlPanelViewModel
                 WeatherChip("Wind arrow", WeatherOptions.ShowWindArrow, v => WeatherOptions.ShowWindArrow = v),
                 WeatherChip("Forecast icon", WeatherOptions.ShowForecast, v => WeatherOptions.ShowForecast = v),
                 WeatherChip("Rain chance", WeatherOptions.ShowRainProbability, v => WeatherOptions.ShowRainProbability = v),
+                WeatherChip("Track surface", WeatherOptions.ShowTrackWetness, v => WeatherOptions.ShowTrackWetness = v),
             ]));
 
     private ChipSetting WeatherChip(string label, bool value, Action<bool> assign) =>
@@ -301,7 +306,7 @@ public sealed partial class ControlPanelViewModel
         .With(
             new ToggleSetting(
                 "Show labels",
-                "AIR, TRACK, WIND and RAIN captions. Off leaves only the values and icons.",
+                "AIR, TRACK, WIND, RAIN and SURFACE captions. Off leaves only the values and icons.",
                 WeatherOptions.ShowLabels,
                 value => SaveWeather(() => WeatherOptions.ShowLabels = value)),
             new ToggleSetting(
@@ -572,6 +577,20 @@ public sealed partial class ControlPanelViewModel
                     _criticalRefreshIndex = index;
                     CriticalRefreshStore.Save(index);
                     CriticalRefreshChanged?.Invoke(CriticalRefreshIntervalMs);
+                })),
+        new SettingsGroup(
+            "WIND COMPASS",
+            "The wind arrow in the Weather widget. The wind changes over minutes, but the dial turns with the car through every corner, so animating it redraws the widget for most of the lap.")
+            .With(new ChoiceSetting(
+                "Refresh rate",
+                "Fixed rates jump straight to the new angle instead of animating. Slower is less GPU work.",
+                ["Smooth (animated)", "10 Hz", "5 Hz", "2 Hz", "1 Hz"],
+                _compassRefreshIndex,
+                index =>
+                {
+                    _compassRefreshIndex = index;
+                    CompassRefreshStore.Save(index);
+                    WidgetOf<WeatherWidget>(WidgetCatalog.Weather)?.SetCompassInterval(CompassRefreshIntervalMs);
                 })),
     ];
 

@@ -90,6 +90,30 @@ public sealed class IRacingConnectionResilienceTests
     }
 
     [Fact]
+    public void FrozenBlockLeftByKilledSim_IsNotPublished_UntilTheSimTicksAgain()
+    {
+        using var sim = new FakeSim(Yaml);
+        for (var i = 0; i < 5; i++)
+        {
+            sim.Tick();
+        }
+
+        using var connection = sim.Connect();
+        var faults = Collect(connection);
+
+        // Longer than ReconnectAfterStale: the reader lets go and reopens without calling it a failure.
+        Thread.Sleep(900);
+        Assert.False(connection.IsConnected);
+        Assert.Null(connection.Latest);
+        Assert.Null(connection.Session);
+        Assert.Equal(ConnectionState.Disconnected, connection.Health.State);
+        Assert.Empty(faults);
+
+        WaitUntil(() => sim.TickAnd(() => connection.IsConnected));
+        Assert.Equal(0, connection.Health.Reconnects);
+    }
+
+    [Fact]
     public void StatusBitCleared_DisconnectsAndDropsSessionData_ThenReconnects()
     {
         using var sim = new FakeSim(Yaml);

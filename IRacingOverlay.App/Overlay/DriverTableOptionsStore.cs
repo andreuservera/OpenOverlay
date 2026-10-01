@@ -10,7 +10,8 @@ internal static class DriverTableOptionsStore
 {
     private const string FocusSizeKey = "FocusSize";
     private const string ShowSessionIdKey = "ShowSessionId";
-    private const string ShowCarNameKey = "ShowCarName";
+    // Stored under its original name, so the setting survives the car-name → class-name change.
+    private const string ShowClassNameKey = "ShowCarName";
     private const string ShowMulticlassKey = "ShowMulticlass";
 
     private static readonly string FilePath = Path.Combine(
@@ -27,8 +28,8 @@ internal static class DriverTableOptionsStore
     public static void SaveSessionId(DriverTable table, bool isVisible) =>
         Set(table, ShowSessionIdKey, isVisible ? 1 : 0);
 
-    public static void SaveCarName(DriverTable table, bool isVisible) =>
-        Set(table, ShowCarNameKey, isVisible ? 1 : 0);
+    public static void SaveClassName(DriverTable table, bool isVisible) =>
+        Set(table, ShowClassNameKey, isVisible ? 1 : 0);
 
     public static void SaveMulticlass(DriverTable table, bool isEnabled) =>
         Set(table, ShowMulticlassKey, isEnabled ? 1 : 0);
@@ -45,7 +46,7 @@ internal static class DriverTableOptionsStore
         }
 
         options.ShowSessionId = Get(options.Table, ShowSessionIdKey, 0) != 0;
-        options.ShowCarName = Get(options.Table, ShowCarNameKey, 1) != 0;
+        options.ShowClassName = Get(options.Table, ShowClassNameKey, 1) != 0;
         options.ShowMulticlass = Get(options.Table, ShowMulticlassKey, 1) != 0;
         options.FocusSize = Get(options.Table, FocusSizeKey, options.Table == DriverTable.Standings
             ? DriverTableOptions.DefaultStandingsFocusSize

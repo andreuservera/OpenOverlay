@@ -54,7 +54,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showBestLap = true;
     private bool _showGap = true;
     private bool _showSessionId;
-    private bool _showCarName = true;
+    private bool _showClassName = true;
     private bool _showMulticlass = true;
     private int _focusSize;
 
@@ -146,11 +146,11 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         set => SetField(ref _showSessionId, value);
     }
 
-    /// <summary>Shows the car being raced next to the panel title. Single-class sessions only.</summary>
-    public bool ShowCarName
+    /// <summary>Shows the player's class (category) name next to the panel title.</summary>
+    public bool ShowClassName
     {
-        get => _showCarName;
-        set => SetField(ref _showCarName, value);
+        get => _showClassName;
+        set => SetField(ref _showClassName, value);
     }
 
     /// <summary>Standings only. Splits the widget into one block per car class, each with its own

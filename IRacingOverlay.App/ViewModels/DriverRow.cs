@@ -2,6 +2,16 @@ using System.Globalization;
 
 namespace IRacingOverlay.App.ViewModels;
 
+/// <summary>Where a car is in the race relative to the player, whatever their order on track.</summary>
+public enum LapRelation
+{
+    SameLap,
+    /// <summary>A lap or more down on the player: the player is lapping them.</summary>
+    Lapped,
+    /// <summary>A lap or more up on the player: they are lapping, or have lapped, the player.</summary>
+    Lapping,
+}
+
 /// <summary>
 /// One driver's line in a timing table, with every column's formatting. Shared by Standings and
 /// Relative so the two tables can't drift apart: they render from the same template against the
@@ -20,6 +30,8 @@ public abstract class DriverRow
     public required string CarNumber { get; init; }
     public required bool IsPlayer { get; init; }
     public required bool OnPitRoad { get; init; }
+    public bool HasBlackFlag { get; init; }
+    public bool HasMeatballFlag { get; init; }
     public required int CurrentLap { get; init; }
     public required double LastLapTime { get; init; }
     public required double BestLapTime { get; init; }
@@ -27,10 +39,14 @@ public abstract class DriverRow
     public required int IRating { get; init; }
     public required string LicString { get; init; }
     public required double IRatingDelta { get; init; }
+    /// <summary>Fastest lap of the session within the driver's own class.</summary>
     public required bool IsSessionFastestLap { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
     public int CarClassID { get; init; }
     public string CarClassName { get; init; } = "";
+
+    /// <summary>Only Relative sets this; the row template tints lapped cars blue and lapping cars red.</summary>
+    public LapRelation LapRelation { get; init; }
 
     /// <summary>Most recent completed pit stop this session; null until the car has made one.</summary>
     public PitStop? LastPitStop { get; init; }
@@ -75,12 +91,12 @@ public abstract class DriverRow
 
     public string BestLapDisplay => FormatLapTime(BestLapTime);
 
-    // Purple is reserved for the single fastest lap of the session, across all cars — the one lap
-    // time worth colouring. Every other best lap is just secondary data.
+    // Purple is reserved for the fastest lap of each class — the one lap time worth colouring.
+    // Every other best lap is just secondary data.
     public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#C4CCD4";
 
     // Broadcast convention: green when the lap just completed is the driver's personal best, purple
-    // when that personal best is also the fastest lap of the session.
+    // when that personal best is also the fastest lap of their class.
     public string LastLapForeground => !IsLastLapPersonalBest
         ? "#C4CCD4"
         : IsSessionFastestLap ? "#B58CFF" : "#34D399";

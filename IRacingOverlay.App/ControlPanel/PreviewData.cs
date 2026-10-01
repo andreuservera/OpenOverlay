@@ -7,7 +7,7 @@ namespace IRacingOverlay.App.ControlPanel;
 ///
 /// The values are chosen to exercise the things a user is actually deciding between when they open
 /// this panel: a mid-pack player rather than the leader (so the podium/focus split is visible), one
-/// car in the pits and one purple session-best lap (so both row states show up), a spread of
+/// car in the pits and a purple fastest lap in each class (so both row states show up), a spread of
 /// iRatings and licences (so those columns are worth their width), and a fuel picture that is
 /// genuinely short of the finish (so the strategy figures aren't all neutral grey). A preview where
 /// everything is nominal teaches nothing.
@@ -87,6 +87,9 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
+                // Black, meatball (pitting for repairs) and both at once, so every penalty flag shows.
+                HasBlackFlag = i == 6 || i == 10,
+                HasMeatballFlag = i == 10 || i == 12,
                 // Every third car has stopped, plus the one in the lane now, so both pit states show.
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 CurrentLap = i < 3 ? 18 : 17,
@@ -99,7 +102,8 @@ public static class PreviewData
                 IRating = entry.IRating,
                 LicString = entry.Licence,
                 IRatingDelta = 46 - (i * 4.7),
-                IsSessionFastestLap = i == 0,
+                // Pace only grows down the field, so each class's first car holds its fastest lap.
+                IsSessionFastestLap = classPositions[classIndex] == 1,
                 ClassColor = multiClass ? Classes[entry.ClassIndex].Color : "#B9C4CF",
                 CarClassID = multiClass ? entry.ClassIndex + 1 : 1,
                 CarClassName = multiClass ? Classes[entry.ClassIndex].Name : "GT3 CLASS",
@@ -134,6 +138,8 @@ public static class PreviewData
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
+                HasBlackFlag = source.HasBlackFlag,
+                HasMeatballFlag = source.HasMeatballFlag,
                 LastPitStop = source.LastPitStop,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
@@ -149,6 +155,11 @@ public static class PreviewData
                 // Cars ahead of the player read negative, behind positive — the sign is the whole
                 // point of the column, so both have to appear in the preview.
                 GapSeconds = (source.GapToLeaderSeconds - playerPace) * 0.42,
+                // Traffic from both directions: a backmarker up the road, a faster car closing to lap you.
+                LapRelation = source.IsPlayer ? LapRelation.SameLap
+                    : i == first ? LapRelation.Lapped
+                    : i == last ? LapRelation.Lapping
+                    : LapRelation.SameLap,
             });
         }
 
@@ -162,6 +173,7 @@ public static class PreviewData
         ShiftLightsLit = 9,
         ShiftBlink = false,
         AbsActive = false,
+        AbsLevel = 3,
         SpeedKph = 214,
         Rpm = 7180,
         // One car half-alongside on the left, nothing on the right: shows both the lit and unlit
@@ -187,7 +199,7 @@ public static class PreviewData
     public sealed record FlagScenario(string Label, IReadOnlyList<ActiveFlag> Flags);
 
     /// <summary>What the flag preview can simulate: a busy moment first (a primary flag with two
-    /// advisories, so the stacking and the size hierarchy both show), then every flag and variant in
+    /// advisories, so the stacking shows), then every flag and variant in
     /// the catalog — generated from it, so a newly added flag is previewable with no change here.</summary>
     public static IReadOnlyList<FlagScenario> FlagScenarios { get; } = BuildFlagScenarios();
 
@@ -335,6 +347,7 @@ public static class PreviewData
         HeadingDeg = 60,
         Condition = WeatherCondition.PartlyCloudy,
         RainChancePct = 40,
+        TrackWetness = 2,
     };
 
     public static TrackInfoState TrackInfo() => new()
@@ -381,5 +394,5 @@ public static class PreviewData
 
     public static int SubSessionId => 68412907;
 
-    public static string CarName => "IMSA OPEN";
+    public static string ClassName => "GT3";
 }

@@ -56,12 +56,12 @@ public sealed class CasualCockpit : CockpitDashboard
         {
             var amber = AbsFlashOn ? "#E0A030" : "#7A5A20";
             dc.DrawRectangle(B("#26E0A030"), P(amber, 1.5), absRect);
-            Text(dc, "ABS", Impact, 13, B(amber), absRect.X + 23, absRect.Y + 9, HAlign.Center, VAlign.Center);
+            Text(dc, AbsLabel, Impact, 13, B(amber), absRect.X + 23, absRect.Y + 9, HAlign.Center, VAlign.Center);
         }
         else
         {
             dc.DrawRectangle(null, P("#3A3D42", 1.5), absRect);
-            Text(dc, "ABS", Impact, 13, B("#6B7280"), absRect.X + 23, absRect.Y + 9, HAlign.Center, VAlign.Center);
+            Text(dc, AbsLabel, Impact, 13, B("#6B7280"), absRect.X + 23, absRect.Y + 9, HAlign.Center, VAlign.Center);
         }
 
         dc.Pop();

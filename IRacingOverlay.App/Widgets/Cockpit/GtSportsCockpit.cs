@@ -13,8 +13,8 @@ namespace IRacingOverlay.App.Widgets.Cockpit;
 /// modules on a black screen, each outlined in its own code colour. Colour: the F1 wheel convention
 /// (green, red, blue LEDs) and colour-coded module outlines. Hierarchy: gear module (tallest, centre)
 /// → speed / RPM modules → status modules. Alerts: the gear module fills red at the shift point; the
-/// ABS module reads ON in amber and the two yellow lamps each side of the rail flash; side LEDs on
-/// the grips light for cars alongside.
+/// ABS module (which shows the configured level) turns amber and the two yellow lamps each side of
+/// the rail flash while ABS intervenes; side LEDs on the grips light for cars alongside.
 /// </summary>
 public sealed class GtSportsCockpit : CockpitDashboard
 {
@@ -78,7 +78,7 @@ public sealed class GtSportsCockpit : CockpitDashboard
         var absColor = AbsActive ? (AbsFlashOn ? "#F5A524" : "#8A5D18") : "#4B5563";
         dc.DrawRoundedRectangle(AbsActive ? B("#26F5A524") : null, P(absColor, 1.5), absRect, 3, 3);
         Text(dc, "ABS", MonoLight, 9, B(AbsActive ? absColor : "#6B7280"), absRect.X + 5, absRect.Y + 4);
-        Text(dc, AbsActive ? "ON" : "OFF", Mono, 14, B(AbsActive ? absColor : "#6B7280"), absRect.Right - 5, absRect.Y + 24, HAlign.Right, VAlign.Center);
+        Text(dc, AbsLevel, Mono, 14, B(AbsActive ? absColor : "#FFFFFF"), absRect.Right - 5, absRect.Y + 24, HAlign.Right, VAlign.Center);
 
         Module(dc, new Rect(208, 106, 62, 36), "#8B5CF6", "FUEL");
         var fuelUnit = Text(dc, FuelUnit.ToUpperInvariant(), MonoLight, 9, B("#6B7280"), 266, 130, HAlign.Right, VAlign.Center);

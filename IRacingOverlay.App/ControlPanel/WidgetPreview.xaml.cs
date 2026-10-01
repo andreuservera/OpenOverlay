@@ -203,7 +203,7 @@ public partial class WidgetPreview : UserControl
                         ? StandingsBuilder.BuildMulticlassView(field, focusSize)
                         : StandingsBuilder.BuildFocusedView(field, focusSize));
                     standings.SetSof(PreviewData.StrengthOfField());
-                    standings.SetCarName(PreviewData.CarName);
+                    standings.SetClassName(PreviewData.ClassName);
                     standings.SetSessionId(PreviewData.SubSessionId);
                     break;
                 }
@@ -212,7 +212,7 @@ public partial class WidgetPreview : UserControl
                 {
                     var focusSize = _relativeOptions?.FocusSize ?? DriverTableOptions.DefaultRelativeFocusSize;
                     relative.SetRows(PreviewData.RelativeRows(focusSize));
-                    relative.SetCarName(PreviewData.CarName);
+                    relative.SetClassName(PreviewData.ClassName);
                     relative.SetSessionId(PreviewData.SubSessionId);
                     break;
                 }

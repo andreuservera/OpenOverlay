@@ -51,8 +51,8 @@ public partial class StandingsPanel : UserControl
 
     public void SetSof(double sof) => SofText.Text = sof > 0 ? $"SOF {Math.Round(sof):N0}" : "";
 
-    public void SetCarName(string carName) =>
-        CarNameText.Text = Options.ShowCarName ? carName.ToUpperInvariant() : "";
+    public void SetClassName(string className) =>
+        ClassNameText.Text = Options.ShowClassName ? className.ToUpperInvariant() : "";
 
     public void SetSessionId(int subSessionId) =>
         SessionIdText.Text = Options.ShowSessionId && subSessionId > 0 ? $"#{subSessionId}" : "";

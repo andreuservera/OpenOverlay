@@ -52,17 +52,17 @@ public sealed class DefaultCockpit : CockpitDashboard
         Text(dc, Rpm, Numeric, 26, B("#C4CCD4"), 250, 56, v: VAlign.Center);
         Text(dc, "RPM", Label, 10, B("#8E99A5"), 250, 72);
 
-        var absRect = new Rect(318, 54, 38, 20);
+        var absRect = new Rect(312, 54, 44, 20);
         if (AbsActive)
         {
             var amber = AbsFlashOn ? "#F5A524" : "#8A5D18";
             dc.DrawRoundedRectangle(B("#2EF5A524"), P(amber, 1), absRect, 3, 3);
-            Text(dc, "ABS", Label, 11, B(amber), absRect.X + 19, absRect.Y + 10, HAlign.Center, VAlign.Center);
+            Text(dc, AbsLabel, Label, 11, B(amber), absRect.X + 22, absRect.Y + 10, HAlign.Center, VAlign.Center);
         }
         else
         {
             dc.DrawRoundedRectangle(B("#1CFFFFFF"), P("#14FFFFFF", 1), absRect, 3, 3);
-            Text(dc, "ABS", Label, 11, B("#8E99A5"), absRect.X + 19, absRect.Y + 10, HAlign.Center, VAlign.Center);
+            Text(dc, AbsLabel, Label, 11, B("#8E99A5"), absRect.X + 22, absRect.Y + 10, HAlign.Center, VAlign.Center);
         }
     }
 }

@@ -16,7 +16,7 @@ public partial class RelativeWidget : OverlayWindowBase
 
     public void UpdateRows(IReadOnlyList<object> rows) => _panel.SetRows(rows);
 
-    public void SetCarName(string carName) => _panel.SetCarName(carName);
+    public void SetClassName(string className) => _panel.SetClassName(className);
 
     public void SetSessionId(int subSessionId) => _panel.SetSessionId(subSessionId);
 

@@ -35,6 +35,10 @@ internal static class WeatherBuilder
             HeadingDeg = Heading(telemetry),
             Condition = ConditionOf(telemetry, raining),
             RainChancePct = chance,
+            TrackWetness = telemetry.HasVariable(TelemetryVarNames.TrackWetness) &&
+                telemetry.GetInt(TelemetryVarNames.TrackWetness) is var wetness and >= 1 and <= 7
+                    ? wetness
+                    : null,
             UnitSystem = Units.Read(telemetry),
         };
     }

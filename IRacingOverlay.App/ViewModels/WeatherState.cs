@@ -36,6 +36,9 @@ public sealed class WeatherState
     public WeatherCondition Condition { get; init; }
     public double? RainChancePct { get; init; }
 
+    /// <summary>iRacing's track wetness, 1 dry to 7 extremely wet; null when not reported.</summary>
+    public int? TrackWetness { get; init; }
+
     public UnitSystem UnitSystem { get; init; }
 
     public static WeatherState Empty { get; } = new();
@@ -64,6 +67,30 @@ public sealed class WeatherState
         < 60 => ViewModels.RainRisk.Medium,
         _ => ViewModels.RainRisk.High,
     };
+
+    public string TrackWetnessDisplay => TrackWetness switch
+    {
+        1 => "DRY",
+        2 => "MOSTLY DRY",
+        3 => "DAMP",
+        4 => "LIGHTLY WET",
+        5 => "WET",
+        6 => "VERY WET",
+        7 => "SOAKED",
+        _ => "—",
+    };
+
+    /// <summary>Same three-colour scale as the rain chance: dry, damp, properly wet.</summary>
+    public RainRisk? TrackWetnessRisk => TrackWetness switch
+    {
+        1 or 2 => ViewModels.RainRisk.Low,
+        3 or 4 or 5 => ViewModels.RainRisk.Medium,
+        6 or 7 => ViewModels.RainRisk.High,
+        _ => null,
+    };
+
+    /// <summary>The sky in words, under the forecast icon.</summary>
+    public string ConditionLabel => Condition == WeatherCondition.Unknown ? "—" : ConditionDescription.ToUpperInvariant();
 
     public string WindDirectionDescription => WindFromRelativeDeg switch
     {

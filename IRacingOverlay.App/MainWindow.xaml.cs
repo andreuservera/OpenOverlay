@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using IRacingOverlay.App.About;
 using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Dashboard;
 using IRacingOverlay.App.Diagnostics;
@@ -45,6 +46,7 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _dashboardGuard;
     private readonly ComponentGuard _standingsGuard;
     private readonly ComponentGuard _pitStopGuard;
+    private readonly ComponentGuard _penaltyGuard;
     private readonly ComponentGuard _statusGuard;
     private readonly ComponentGuard _autoHideGuard;
     private readonly ComponentGuard _healthGuard;
@@ -110,6 +112,41 @@ public partial class MainWindow : Window
         Topmost = true;
         Topmost = false;
         Focus();
+        ShowUpdateNoticeIfPending();
+    }
+
+    /// <summary>
+    /// The one-time notice after an update, over the control panel. It waits for the panel to be on
+    /// screen — from the tray, the next time it's opened — and is marked shown before it appears,
+    /// so not even a crash brings it back a second time.
+    /// </summary>
+    private void ShowUpdateNoticeIfPending()
+    {
+        if (!InstallHistory.NoticePending || !IsVisible || WindowState == WindowState.Minimized)
+        {
+            return;
+        }
+
+        InstallHistory.MarkNoticeShown();
+        try
+        {
+            var notice = new UpdateNoticeWindow(UpdateNotice.For(BuildInfo.Version, ReleaseCatalog.Current))
+            {
+                Owner = this,
+                ShowActivated = IsActive,
+            };
+            notice.DetailsRequested += () =>
+            {
+                RestoreFromTray();
+                _vm.ShowWhatsNew();
+            };
+            notice.Show();
+            AppLog.Info("Updates", "Update notice shown", new Dictionary<string, string> { ["version"] = BuildInfo.Version });
+        }
+        catch (Exception e) when (!ExceptionPolicy.IsFatal(e))
+        {
+            AppLog.Warn("Updates", "Update notice could not be shown", e);
+        }
     }
 
     private void ExitApplication()
@@ -162,6 +199,7 @@ public partial class MainWindow : Window
     private FuelCalculatorBuilder _fuelCalculatorBuilder = new();
     private SessionBestLapTracker _sessionBestLapTracker = new();
     private PitStopTracker _pitStopTracker = new();
+    private PenaltyFlagTracker _penaltyTracker = new();
     private int _tickCount;
 
     // Perf diagnostics for the reported "stutter, even at low Hz" — both timers share one UI thread
@@ -180,6 +218,9 @@ public partial class MainWindow : Window
     private int _criticalTickSamples;
     private long _lastCriticalTickTimestampMs = -1;
     private double _criticalTickMaxGapMs;
+
+    // What the cockpit was last fed; a repeat means a frame with no new sim tick, so nothing to redraw.
+    private (int Tick, CockpitWidget? Widget, DashboardWindow? Dashboard)? _lastCockpitFeed;
 
     private DashboardWindow? _dashboard;
 
@@ -214,6 +255,7 @@ public partial class MainWindow : Window
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
         _standingsGuard = _health.CreateGuard("Standings model", _ => _sessionBestLapTracker = new());
         _pitStopGuard = _health.CreateGuard("Pit stop tracker", _ => _pitStopTracker = new());
+        _penaltyGuard = _health.CreateGuard("Penalty flag log", _ => _penaltyTracker = new());
         _statusGuard = _health.CreateGuard("Status line");
         _autoHideGuard = _health.CreateGuard("Auto-hide");
         _healthGuard = _health.CreateGuard("Health report");
@@ -301,6 +343,7 @@ public partial class MainWindow : Window
             }
         };
         Closing += OnClosing;
+        ContentRendered += (_, _) => ShowUpdateNoticeIfPending();
         // Signing out or shutting down must never be held up by the close-to-tray behavior.
         System.Windows.Application.Current.SessionEnding += (_, _) => _exiting = true;
 
@@ -353,6 +396,7 @@ public partial class MainWindow : Window
     private void ClearWidgets()
     {
         _latestStandings = [];
+        _lastCockpitFeed = null;
         _vm.TelemetryLine = "Waiting for iRacing";
 
         Clear(WidgetCatalog.Relative, Relative, w => w.UpdateRows([]));
@@ -486,6 +530,20 @@ public partial class MainWindow : Window
         _tickCount++;
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        _penaltyGuard.Run(() =>
+        {
+            foreach (var (driver, penalties) in _penaltyTracker.Update(telemetry, session))
+            {
+                AppLog.Activity("Flags", "Penalty flags changed", new Dictionary<string, string>
+                {
+                    ["car"] = driver.CarNumber,
+                    ["carIdx"] = driver.CarIdx.ToString(CultureInfo.InvariantCulture),
+                    ["player"] = (driver.CarIdx == session?.DriverInfo?.DriverCarIdx).ToString(),
+                    ["black"] = penalties.Black.ToString(),
+                    ["meatball"] = penalties.Meatball.ToString(),
+                });
+            }
+        }, GuardStage.Build);
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
@@ -511,12 +569,12 @@ public partial class MainWindow : Window
                         ? StandingsBuilder.BuildMulticlassView(_latestStandings, _vm.StandingsOptions.FocusSize)
                         : StandingsBuilder.BuildFocusedView(_latestStandings, _vm.StandingsOptions.FocusSize),
                     Sof: StandingsBuilder.ComputeStrengthOfField(session),
-                    CarName: StandingsBuilder.SingleClassCarName(session)),
+                    ClassName: StandingsBuilder.PlayerClassName(session)),
                 (widget, view) =>
                 {
                     widget.UpdateRows(view.Rows);
                     widget.SetSof(view.Sof);
-                    widget.SetCarName(view.CarName);
+                    widget.SetClassName(view.ClassName);
                     widget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
                 },
                 null);
@@ -525,14 +583,14 @@ public partial class MainWindow : Window
                     () => (
                         Rows: StandingsBuilder.GroupForDisplay(_latestStandings),
                         Sof: StandingsBuilder.ComputeStrengthOfField(session),
-                        CarName: StandingsBuilder.SingleClassCarName(session)),
+                        ClassName: StandingsBuilder.PlayerClassName(session)),
                     out var full))
             {
                 _dashboardGuard.Run(() =>
                 {
                     dashboard.UpdateStandingsRows(full.Rows);
                     dashboard.UpdateStandingsSof(full.Sof);
-                    dashboard.UpdateStandingsCarName(full.CarName);
+                    dashboard.UpdateStandingsClassName(full.ClassName);
                 });
             }
         }
@@ -546,7 +604,7 @@ public partial class MainWindow : Window
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);
-                widget.SetCarName(StandingsBuilder.SingleClassCarName(session));
+                widget.SetClassName(StandingsBuilder.PlayerClassName(session));
                 widget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
@@ -679,8 +737,14 @@ public partial class MainWindow : Window
         }
 
         var session = _connection.Session;
-        Feed(WidgetCatalog.Cockpit, Cockpit, () => CockpitBuilder.Build(telemetry, session),
-            (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateCockpit(state));
+        var cockpit = Cockpit;
+        var cockpitFeed = (telemetry.TickCount, cockpit, _dashboard);
+        if (cockpitFeed != _lastCockpitFeed)
+        {
+            _lastCockpitFeed = cockpitFeed;
+            Feed(WidgetCatalog.Cockpit, cockpit, () => CockpitBuilder.Build(telemetry, session),
+                (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateCockpit(state));
+        }
 
         Feed(WidgetCatalog.PedalTrace, Pedals, () => _pedalTraceBuilder.Build(telemetry),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdatePedalTrace(state));
@@ -736,14 +800,14 @@ public partial class MainWindow : Window
     private void PushTableHeader(DriverTable table)
     {
         var session = _connection.Session;
-        var carName = StandingsBuilder.SingleClassCarName(session);
+        var className = StandingsBuilder.PlayerClassName(session);
         var subSessionId = session?.WeekendInfo?.SubSessionID ?? 0;
 
         if (table == DriverTable.Standings)
         {
             Clear(WidgetCatalog.Standings, Standings, w =>
             {
-                w.SetCarName(carName);
+                w.SetClassName(className);
                 w.SetSessionId(subSessionId);
             });
         }
@@ -751,7 +815,7 @@ public partial class MainWindow : Window
         {
             Clear(WidgetCatalog.Relative, Relative, w =>
             {
-                w.SetCarName(carName);
+                w.SetClassName(className);
                 w.SetSessionId(subSessionId);
             });
         }
@@ -915,11 +979,15 @@ public partial class MainWindow : Window
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();
+            _penaltyTracker = new();
             _flagPresenter = new();
             _latestStandings = [];
         }
 
-        AppLog.Info("Session", isNewEvent ? "New event; per-session state reset" : "Session detected");
+        AppLog.Info("Session", isNewEvent ? "New event; per-session state reset" : "Session detected", new Dictionary<string, string>
+        {
+            ["perCarFlags"] = telemetry.HasVariable(TelemetryVarNames.CarIdxSessionFlags).ToString(),
+        });
     }
 
     private void OnConnectionFault(object? sender, ConnectionFault fault)
@@ -994,6 +1062,7 @@ public partial class MainWindow : Window
             _updates.Detail,
             failures: _updates.Failures,
             lastErrorRef: _updates.LastErrorRef);
+        _vm.UpdateStatus = _updates.Detail;
 
         var uiProblem = GlobalExceptionHandler.LastHandledUtc is { } uiFailure && now - uiFailure < RecentProblemWindow;
         _health.Report(

@@ -43,7 +43,7 @@
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Chrome" Property="Background" Value="#47FFFFFF"/>
                             </Trigger>
-                            <!-- At XS/XL the corresponding button stays in place but inert: the
+                            <!-- At either end of the ladder the corresponding button stays in place but inert: the
                                  control never changes shape, and the greyed glyph says "end of the
                                  ladder" instead of leaving a press looking broken. -->
                             <Trigger Property="IsEnabled" Value="False">

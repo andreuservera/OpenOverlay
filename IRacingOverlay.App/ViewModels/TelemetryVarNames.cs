@@ -11,7 +11,9 @@ internal static class TelemetryVarNames
     public const string Gear = "Gear";
     public const string Throttle = "Throttle";
     public const string Brake = "Brake";
-    public const string Clutch = "Clutch";
+    /// <summary>The player's clutch pedal alone. "Clutch" is what the physics applied, including
+    /// iRacing's auto-clutch, anti-stall and launch assists.</summary>
+    public const string ClutchRaw = "ClutchRaw";
     public const string Lap = "Lap";
     public const string LapDistPct = "LapDistPct";
     public const string SessionTime = "SessionTime";
@@ -37,11 +39,13 @@ internal static class TelemetryVarNames
     public const string CarIdxF2Time = "CarIdxF2Time";
     public const string CarIdxBestLapTime = "CarIdxBestLapTime";
     public const string CarIdxLastLapTime = "CarIdxLastLapTime";
-    /// <summary>float[], seconds — "estimated time to reach current location on track" per car.
-    /// The precise, class-agnostic building block for relative gaps (confirmed via iRacing SDK docs).</summary>
+    /// <summary>float[], seconds — "estimated time to reach current location on track" per car, on that
+    /// car's own CarClassEstLapTime clock: not comparable between classes (or BoP'd models) unscaled.</summary>
     public const string CarIdxEstTime = "CarIdxEstTime";
 
     public const string BrakeAbsActive = "BrakeABSactive";
+    /// <summary>float — the in-car ABS setting. Only present on cars with adjustable ABS.</summary>
+    public const string AbsSetting = "dcABS";
     /// <summary>Enum irsdk_CarLeftRight, confirmed live to be typed as a plain Int (not a bitfield,
     /// despite what the docs say): 0=off,1=clear,2=car left,3=car right,4=car both sides,
     /// 5=two cars left,6=two cars right.</summary>
@@ -49,6 +53,8 @@ internal static class TelemetryVarNames
 
     /// <summary>uint bitfield, irsdk_Flags — see FlagBuilder for the bit layout.</summary>
     public const string SessionFlags = "SessionFlags";
+    /// <summary>uint bitfield[] per CarIdx, same irsdk_Flags layout as <see cref="SessionFlags"/>.</summary>
+    public const string CarIdxSessionFlags = "CarIdxSessionFlags";
 
     /// <summary>
     /// Tire variable name for one corner ("LF"/"RF"/"LR"/"RR"). Confirmed via iRacing's own published
@@ -143,6 +149,8 @@ internal static class TelemetryVarNames
     /// <summary>Sun angle above the horizon in radians; below zero is night.</summary>
     public const string SolarAltitude = "SolarAltitude";
     public const string WeatherDeclaredWet = "WeatherDeclaredWet";
+    /// <summary>int — irsdk_TrackWetness: 0 unknown, 1 dry … 7 extremely wet.</summary>
+    public const string TrackWetness = "TrackWetness";
     /// <summary>int — the sim's unit setting: 0 = English (imperial), 1 = metric.</summary>
     public const string DisplayUnits = "DisplayUnits";
 }

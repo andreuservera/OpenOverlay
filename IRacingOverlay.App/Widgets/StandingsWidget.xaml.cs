@@ -18,7 +18,7 @@ public partial class StandingsWidget : OverlayWindowBase
 
     public void SetSof(double sof) => _panel.SetSof(sof);
 
-    public void SetCarName(string carName) => _panel.SetCarName(carName);
+    public void SetClassName(string className) => _panel.SetClassName(className);
 
     public void SetSessionId(int subSessionId) => _panel.SetSessionId(subSessionId);
 

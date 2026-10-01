@@ -66,6 +66,8 @@ public sealed class TelemetrySnapshot
 
     public bool[] GetBoolArray(string name) => GetArray(name, IrsdkVarType.Bool, 1, (data, offset) => data[offset] != 0);
 
+    public uint[] GetBitFieldArray(string name) => GetArray(name, IrsdkVarType.BitField, 4, BitConverter.ToUInt32);
+
     private T[] GetArray<T>(string name, IrsdkVarType expectedType, int elementSize, Func<byte[], int, T> convert)
     {
         if (_arrayCache is not null && _arrayCache.TryGetValue(name, out var cached))

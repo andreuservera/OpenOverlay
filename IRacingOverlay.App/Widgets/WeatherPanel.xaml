@@ -8,6 +8,8 @@
          section/divider flags are derived in WeatherOptions, so hiding anything closes the gap. -->
     <UserControl.Resources>
         <Style x:Key="Caption" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
+            <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
             <Setter Property="Visibility" Value="{Binding Options.ShowLabels, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}"/>
         </Style>
         <Style x:Key="StackedCaption" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
@@ -24,8 +26,8 @@
         <Style x:Key="AirValue" TargetType="TextBlock" BasedOn="{StaticResource DisplayValueSmall}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
-                    <Setter Property="FontSize" Value="{StaticResource Type.Value}"/>
-                    <Setter Property="LineHeight" Value="{StaticResource Line.Value}"/>
+                    <Setter Property="FontSize" Value="{StaticResource Type.ValueLarge}"/>
+                    <Setter Property="LineHeight" Value="{StaticResource Line.ValueLarge}"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -74,7 +76,7 @@
                     <Border Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Chip}" Padding="6,1,5,1">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource ValueText}"/>
+                            <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource ValueTextLarge}"/>
                             <TextBlock x:Name="TrackUnitText" Text="°C" Style="{StaticResource Unit}"/>
                         </StackPanel>
                     </Border>
@@ -98,14 +100,14 @@
                     <StackPanel Orientation="Horizontal" ToolTip="Wind speed"
                                 Visibility="{Binding Options.ShowWindSpeed, ElementName=Root, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="WIND" Style="{StaticResource InlineCaption}"/>
-                        <TextBlock x:Name="WindSpeedText" Text="—" Style="{StaticResource ValueTextSmall}"/>
+                        <TextBlock x:Name="WindSpeedText" Text="—" Style="{StaticResource ValueText}"/>
                         <TextBlock x:Name="WindUnitText" Text="km/h" Style="{StaticResource Unit}" Margin="3,0,0,1"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" ToolTip="Relative humidity"
                                 Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
                         <Path Data="M5,0 C6.5,2.5 10,6.2 10,9 A5,5 0 0 1 0,9 C0,6.2 3.5,2.5 5,0 Z" Fill="{StaticResource Text.Muted}"
-                              Width="9" Height="12" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource ValueTextSmall}"/>
+                              Width="11" Height="15" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource ValueText}"/>
                     </StackPanel>
                 </w:SpacedStackPanel>
             </w:SpacedStackPanel>
@@ -113,20 +115,42 @@
             <Border Style="{StaticResource Divider}"
                     Visibility="{Binding Options.ShowSecondDivider, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
 
-            <!-- Forecast: the sky icon with the chance of rain directly beneath it. -->
-            <w:SpacedStackPanel Spacing="3" Style="{StaticResource Section}"
+            <!-- Forecast: the sky icon beside what it means — the sky in words, the chance of rain with
+                 a meter, and how wet the track already is — so the row fills the panel's width
+                 instead of a lone icon floating in the middle of it. -->
+            <w:SpacedStackPanel Orientation="Horizontal" Spacing="12" Style="{StaticResource Section}"
                                 Visibility="{Binding Options.ShowForecastSection, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <w:WeatherIcon x:Name="ForecastIcon" HorizontalAlignment="Center"
+                <w:WeatherIcon x:Name="ForecastIcon" VerticalAlignment="Center"
                                Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
                                SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
                                CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
                                RainBrush="{StaticResource State.Info}"
                                Visibility="{Binding Options.ShowForecast, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" ToolTip="Chance of rain"
-                            Visibility="{Binding Options.ShowRainProbability, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="RAIN" Style="{StaticResource InlineCaption}"/>
-                    <TextBlock x:Name="RainChanceText" Text="—" Style="{StaticResource ValueTextSmall}"/>
-                </StackPanel>
+                <w:SpacedStackPanel Spacing="4" VerticalAlignment="Center">
+                    <TextBlock x:Name="ConditionText" Text="—" Style="{StaticResource FieldLabel}"
+                               FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"
+                               Foreground="{StaticResource Text.Secondary}"
+                               Visibility="{Binding Options.ShowForecast, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
+                    <StackPanel ToolTip="Chance of rain"
+                                Visibility="{Binding Options.ShowRainProbability, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="RAIN" Style="{StaticResource InlineCaption}"/>
+                            <TextBlock x:Name="RainChanceText" Text="—" Style="{StaticResource ValueText}"/>
+                        </StackPanel>
+                        <Border Style="{StaticResource MeterTrack}" Height="4" Margin="0,3,0,0">
+                            <Rectangle x:Name="RainFill" RadiusX="2" RadiusY="2" RenderTransformOrigin="0,0.5">
+                                <Rectangle.RenderTransform>
+                                    <ScaleTransform x:Name="RainFillScale" ScaleX="0"/>
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" ToolTip="Track surface"
+                                Visibility="{Binding Options.ShowTrackWetness, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="SURFACE" Style="{StaticResource InlineCaption}"/>
+                        <TextBlock x:Name="WetnessText" Text="—" Style="{StaticResource ValueText}"/>
+                    </StackPanel>
+                </w:SpacedStackPanel>
             </w:SpacedStackPanel>
         </w:SpacedStackPanel>
     </Border>

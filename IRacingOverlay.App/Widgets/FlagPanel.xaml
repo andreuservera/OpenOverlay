@@ -6,8 +6,9 @@
              x:Name="Root">
     <UserControl.Resources>
         <Style x:Key="FlagName" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
-            <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
-            <Setter Property="LineHeight" Value="{StaticResource Line.Body}"/>
+            <Setter Property="FontSize" Value="{StaticResource Type.Value}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Value}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -22,7 +23,7 @@
         </Style>
 
         <!-- One flag: the same bar-and-wash row as the timing tables, in the flag's accent colour,
-             with the flag graphic beside its name. The first (most important) flag is a size up. -->
+             with the flag graphic beside its name. Every flag is the same size, first or not. -->
         <DataTemplate DataType="{x:Type vm:FlagState}">
             <Grid Margin="2">
                 <Border Background="{StaticResource Row.Base}" CornerRadius="{StaticResource Radius.Row}"/>
@@ -31,7 +32,7 @@
                 <Border Width="3" HorizontalAlignment="Left" CornerRadius="{StaticResource Radius.RowEdge}"
                         Background="{Binding AccentColor}"/>
                 <DockPanel x:Name="Content" Margin="11,7,12,7">
-                    <w:FlagIcon x:Name="Icon" DockPanel.Dock="Left" Flag="{Binding}" Width="36" Height="24"
+                    <w:FlagIcon x:Name="Icon" DockPanel.Dock="Left" Flag="{Binding}" Width="48" Height="32"
                                 VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     <StackPanel x:Name="Text" Width="200" Margin="10,0,0,0" VerticalAlignment="Center"
                                 Visibility="{Binding Options.ShowText, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
@@ -43,13 +44,6 @@
                 </DockPanel>
             </Grid>
             <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsPrimary}" Value="True">
-                    <Setter TargetName="Icon" Property="Width" Value="48"/>
-                    <Setter TargetName="Icon" Property="Height" Value="32"/>
-                    <Setter TargetName="NameText" Property="FontSize" Value="{StaticResource Type.Value}"/>
-                    <Setter TargetName="NameText" Property="LineHeight" Value="{StaticResource Line.Value}"/>
-                    <Setter TargetName="NameText" Property="FontWeight" Value="Bold"/>
-                </DataTrigger>
                 <DataTrigger Binding="{Binding Options.IconOnTop, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                     <Setter TargetName="Icon" Property="DockPanel.Dock" Value="Top"/>
                     <Setter TargetName="Text" Property="Width" Value="136"/>

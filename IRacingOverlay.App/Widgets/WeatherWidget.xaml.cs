@@ -16,5 +16,7 @@ public partial class WeatherWidget : OverlayWindowBase
 
     public void SetOptions(WeatherOptions options) => _panel.Options = options;
 
+    public void SetCompassInterval(int intervalMs) => _panel.CompassIntervalMs = intervalMs;
+
     public void UpdateState(WeatherState state) => _panel.UpdateState(state);
 }

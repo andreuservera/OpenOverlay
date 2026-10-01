@@ -2,6 +2,9 @@ using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
 
+/// <summary>The driver-directed penalties a timing table shows on a car's row.</summary>
+internal readonly record struct CarPenalties(bool Black, bool Meatball);
+
 /// <summary>
 /// Decodes iRacing's SessionFlags bitfield (irsdk_Flags) into every flag currently out. Pure
 /// decoding: which of them are shown, and how, is <see cref="FlagPresenter"/>'s job. Bit values
@@ -130,6 +133,28 @@ internal static class FlagBuilder
         }
     }
 
+    /// <summary>
+    /// Black and meatball flags per CarIdx, from CarIdxSessionFlags. The player's own SessionFlags
+    /// is folded into their car, so their row is right even when the per-car array is missing.
+    /// </summary>
+    public static Func<int, CarPenalties> ReadCarPenalties(TelemetrySnapshot telemetry, int playerCarIdx)
+    {
+        var perCar = telemetry.HasVariable(TelemetryVarNames.CarIdxSessionFlags) ? ReadCarFlagsBits(telemetry) : null;
+        var own = telemetry.HasVariable(TelemetryVarNames.SessionFlags) ? ReadFlagsBits(telemetry) : 0u;
+
+        return carIdx =>
+        {
+            var bits = perCar is not null && carIdx >= 0 && carIdx < perCar.Length ? perCar[carIdx] : 0u;
+            if (carIdx == playerCarIdx)
+            {
+                bits |= own;
+            }
+
+            var flags = (IrsdkFlags)bits;
+            return new(flags.HasFlag(IrsdkFlags.Black), flags.HasFlag(IrsdkFlags.Repair));
+        };
+    }
+
     /// <summary>Decode and present with default options and no timing — what a fresh widget would
     /// show the instant these flags came out.</summary>
     public static IReadOnlyList<FlagState> Build(TelemetrySnapshot telemetry) =>
@@ -147,6 +172,18 @@ internal static class FlagBuilder
         catch (InvalidOperationException)
         {
             return unchecked((uint)telemetry.GetInt(TelemetryVarNames.SessionFlags));
+        }
+    }
+
+    private static uint[] ReadCarFlagsBits(TelemetrySnapshot telemetry)
+    {
+        try
+        {
+            return telemetry.GetBitFieldArray(TelemetryVarNames.CarIdxSessionFlags);
+        }
+        catch (InvalidOperationException)
+        {
+            return Array.ConvertAll(telemetry.GetIntArray(TelemetryVarNames.CarIdxSessionFlags), v => unchecked((uint)v));
         }
     }
 }

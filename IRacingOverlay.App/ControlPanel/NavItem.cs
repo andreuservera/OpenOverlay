@@ -39,6 +39,6 @@ public sealed class NavItem
     public static NavItem ForWidget(WidgetSlot slot) => new(
         slot.Key, slot.Descriptor.Name, slot.Descriptor.Blurb, slot.Descriptor.IconData, "WIDGETS", slot);
 
-    public static NavItem ForPage(string key, string title, string blurb, string iconData) =>
-        new(key, title, blurb, iconData, "APPLICATION", widget: null);
+    public static NavItem ForPage(string key, string title, string blurb, string iconData, string group = "APPLICATION") =>
+        new(key, title, blurb, iconData, group, widget: null);
 }

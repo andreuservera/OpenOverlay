@@ -194,8 +194,20 @@
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="7" Height="7" Fill="{StaticResource Cp.Live}" Margin="0,0,8,0"
-                                     VerticalAlignment="Center"/>
-                            <TextBlock Text="LIVE PREVIEW" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
+                                     VerticalAlignment="Center"
+                                     Visibility="{Binding IsInfoPage, Converter={StaticResource Cp.NotBoolToVis}}"/>
+                            <TextBlock VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
+                                        <Setter Property="Text" Value="LIVE PREVIEW"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
+                                                <Setter Property="Text" Value="OPENOVERLAY"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                         <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Style="{StaticResource Cp.Eyebrow}"
@@ -209,11 +221,28 @@
                     <cp:WidgetPreview x:Name="Preview" Slot="{Binding SelectedWidget}"
                                       Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}"/>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="280"
-                                Visibility="{Binding HasPreview, Converter={StaticResource Cp.NotBoolToVis}}">
+                                Visibility="{Binding ShowsPreviewPlaceholder, Converter={StaticResource Cp.BoolToVis}}">
                         <TextBlock Text="Nothing to preview" Style="{StaticResource Cp.Title}"
                                    Foreground="{StaticResource Cp.TextMuted}" HorizontalAlignment="Center"/>
                         <TextBlock Text="This page configures the application rather than a single widget."
                                    Style="{StaticResource Cp.Hint}" TextAlignment="Center" Margin="0,6,0,0"/>
+                    </StackPanel>
+
+                    <!-- The ABOUT pages describe the product, so the side panel shows it. -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300"
+                                Visibility="{Binding IsInfoPage, Converter={StaticResource Cp.BoolToVis}}">
+                        <Border Width="72" Height="72" CornerRadius="20" Background="{StaticResource Cp.Accent}"
+                                HorizontalAlignment="Center">
+                            <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="18"
+                                  Stroke="#101316" StrokeThickness="6"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Border>
+                        <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Display}" HorizontalAlignment="Center"
+                                   Margin="0,18,0,0"/>
+                        <TextBlock Text="{Binding VersionHeadline}" Style="{StaticResource Cp.Mono}"
+                                   HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                        <TextBlock Text="A free, open-source telemetry overlay for iRacing." Style="{StaticResource Cp.Hint}"
+                                   TextAlignment="Center" Margin="0,12,0,0"/>
                     </StackPanel>
                 </Grid>
             </DockPanel>
@@ -228,6 +257,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{Binding TelemetryLine}" Style="{StaticResource Cp.Mono}"
@@ -257,6 +287,10 @@
                 <TextBlock Grid.Column="2" Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
                            Foreground="{StaticResource Cp.TextFaint}" Margin="18,0,0,0"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <!-- The running version, always in the same corner: the first thing a bug report needs. -->
+                <Button Grid.Column="3" Style="{StaticResource Cp.TextButton}" Content="{Binding VersionLabel}"
+                        ToolTip="{Binding VersionToolTip}" Command="{Binding ShowAboutCommand}"
+                        Margin="18,0,0,0" VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

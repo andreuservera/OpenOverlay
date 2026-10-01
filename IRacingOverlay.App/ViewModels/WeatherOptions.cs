@@ -29,6 +29,7 @@ public sealed class WeatherOptions : INotifyPropertyChanged
     private bool _showWindArrow = true;
     private bool _showForecast = true;
     private bool _showRainProbability = true;
+    private bool _showTrackWetness = true;
     private bool _showLabels = true;
     private bool _compact;
     private WeatherGraphicSize _iconSize = WeatherGraphicSize.Medium;
@@ -49,6 +50,8 @@ public sealed class WeatherOptions : INotifyPropertyChanged
     public bool ShowForecast { get => _showForecast; set => Set(ref _showForecast, value); }
 
     public bool ShowRainProbability { get => _showRainProbability; set => Set(ref _showRainProbability, value); }
+
+    public bool ShowTrackWetness { get => _showTrackWetness; set => Set(ref _showTrackWetness, value); }
 
     public bool ShowLabels { get => _showLabels; set => Set(ref _showLabels, value); }
 
@@ -97,7 +100,7 @@ public sealed class WeatherOptions : INotifyPropertyChanged
 
     public bool ShowWindSection => ShowWindArrow || ShowWindSpeed || ShowHumidity;
 
-    public bool ShowForecastSection => ShowForecast || ShowRainProbability;
+    public bool ShowForecastSection => ShowForecast || ShowRainProbability || ShowTrackWetness;
 
     public bool ShowFirstDivider => ShowTemperatures && (ShowWindSection || ShowForecastSection);
 

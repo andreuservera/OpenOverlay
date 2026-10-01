@@ -18,7 +18,9 @@ internal static class WeatherOptionsStore
         bool ShowLabels,
         bool Compact,
         WeatherGraphicSize IconSize,
-        WeatherGraphicSize ArrowSize);
+        WeatherGraphicSize ArrowSize,
+        // Added later: files written before it have no value, and those users get it on.
+        bool ShowTrackWetness = true);
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -39,6 +41,7 @@ internal static class WeatherOptionsStore
         options.ShowWindArrow = saved.ShowWindArrow;
         options.ShowForecast = saved.ShowForecast;
         options.ShowRainProbability = saved.ShowRainProbability;
+        options.ShowTrackWetness = saved.ShowTrackWetness;
         options.ShowLabels = saved.ShowLabels;
         options.Compact = saved.Compact;
         options.IconSize = saved.IconSize;
@@ -58,7 +61,8 @@ internal static class WeatherOptionsStore
             options.ShowLabels,
             options.Compact,
             options.IconSize,
-            options.ArrowSize);
+            options.ArrowSize,
+            options.ShowTrackWetness);
 
         SettingsFile.WriteJson(FilePath, snapshot);
     }
