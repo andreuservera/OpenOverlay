@@ -99,6 +99,12 @@ public partial class DashboardWindow : Window
 
     public void UpdateRelativeRows(IReadOnlyList<object> relative) => _relativePanel.SetRows(relative);
 
+    public void UpdateSessionProgress(SessionProgress progress)
+    {
+        _standingsPanel.SetProgress(progress);
+        _relativePanel.SetProgress(progress);
+    }
+
     public void UpdateCockpit(CockpitState state) => _cockpitPanel.UpdateState(state);
 
     public void SetFlagOptions(FlagOptions options) => _flagPanel.Options = options;

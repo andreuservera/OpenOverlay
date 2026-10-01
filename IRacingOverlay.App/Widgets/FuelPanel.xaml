@@ -3,9 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Name="Root">
     <UserControl.Resources>
-        <!-- Same cell shape as FuelCalculatorPanel, so the two fuel readouts read as one family. -->
+        <!-- Same cell shape as FuelCalculatorPanel, a type step up: this panel has two readouts
+             where the calculator has eight, and they were reading smaller than the widgets beside it. -->
         <Style x:Key="StatCell" TargetType="StackPanel">
-            <Setter Property="MinWidth" Value="70"/>
+            <Setter Property="MinWidth" Value="84"/>
             <Setter Property="Margin" Value="0,0,18,0"/>
         </Style>
         <Style x:Key="CellLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
@@ -13,7 +14,7 @@
             <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
             <Setter Property="Margin" Value="0,0,0,2"/>
         </Style>
-        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
+        <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource ValueTextLarge}">
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -24,10 +25,11 @@
         <StackPanel>
             <TextBlock Text="FUEL" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
             <StackPanel Orientation="Horizontal">
-                <StackPanel VerticalAlignment="Center" MinWidth="112" Margin="0,0,16,0">
+                <StackPanel VerticalAlignment="Center" MinWidth="132" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="LapsOfFuelText" Text="—" Style="{StaticResource DisplayValue}"/>
-                        <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+                        <TextBlock x:Name="LapsOfFuelText" Text="—" Style="{StaticResource DisplayValueLarge}"/>
+                        <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,8"
+                                   FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"/>
                     </StackPanel>
                     <Border x:Name="LevelTrack" Style="{StaticResource MeterTrack}" Height="8" Margin="0,6,0,0">
                         <Rectangle x:Name="LevelFill" Fill="{StaticResource State.Info}" HorizontalAlignment="Left" Width="0"

@@ -55,7 +55,20 @@ public sealed class DriverInfoSection
     /// restriction, so this is not always 1.0 and the two have to be multiplied to get the real
     /// usable capacity.</summary>
     public double DriverCarMaxFuelPct { get; set; }
+
+    /// <summary>The compounds the player's car can run, indexed the way CarIdxTireCompound reports
+    /// them. Only the player's car is described: another model may number its tyres differently.</summary>
+    public List<DriverTireEntry> DriverTires { get; set; } = [];
+
     public List<DriverEntry> Drivers { get; set; } = [];
+}
+
+public sealed class DriverTireEntry
+{
+    public int TireIndex { get; set; }
+
+    /// <summary>e.g. "Hard", "Soft", "Wet".</summary>
+    public string TireCompoundType { get; set; } = "";
 }
 
 public sealed class DriverEntry

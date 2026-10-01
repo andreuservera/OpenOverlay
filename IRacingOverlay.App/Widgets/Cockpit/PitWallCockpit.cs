@@ -10,8 +10,8 @@ namespace IRacingOverlay.App.Widgets.Cockpit;
 ///
 /// Philosophy: be the driver and the engineer at once; every value exposed, labelled and gridded.
 /// Target: data-driven drivers, setup tinkerers, league engineers. Silhouette: a long flat
-/// instrument table — a header bar over one row of labelled cells — bracketed by two vertical
-/// proximity bars, one each side.
+/// instrument table — one row of labelled cells — bracketed by two vertical proximity bars, one
+/// each side.
 /// Typography: Tahoma — the dense UI face of classic telemetry software; small caps labels, bold
 /// values. Containers: a strict grid with ruled cells and no rounding. Colour: workstation grey;
 /// green/amber/red only on values that carry a state. Hierarchy: flat by design — every cell weighs
@@ -32,12 +32,11 @@ public sealed class PitWallCockpit : CockpitDashboard
         ("FUEL", 74), ("INPUTS", 56), ("TEMPS", 72),
     ];
 
-    private const double DashHeight = 84;
+    private const double DashHeight = 68;
     private const double BarWidth = 8;
     private const double BarGap = 4;
     private const double TableX = BarWidth + BarGap;
     private static readonly double TableWidth = Columns.Sum(c => c.Width);
-    private static readonly string ChannelsLabel = $"CH 1–{Columns.Length}";
     private static readonly Dictionary<UnitSystem, string[]> ColumnLabels =
         Enum.GetValues<UnitSystem>().ToDictionary(units => units, units => Columns.Select((column, c) => c switch
         {
@@ -55,18 +54,15 @@ public sealed class PitWallCockpit : CockpitDashboard
         VerticalBand(dc, State.RightProximity, new Rect(tableRight + BarGap, 0, BarWidth, DashHeight), B("#E6101214"), B("#FBBF24"), 0);
 
         dc.DrawRectangle(B("#F2101214"), P("#3A3F45", 1), new Rect(TableX + 0.5, 0.5, TableWidth - 1, DashHeight - 1));
-        dc.DrawRectangle(B("#1B1F24"), null, new Rect(TableX + 1, 1, TableWidth - 2, 15));
-        CachedText(dc, "DRIVER TELEMETRY", Bold, 9, B("#9CA3AF"), TableX + 6, 8.5, v: VAlign.Center);
-        CachedText(dc, ChannelsLabel, Regular, 9, B("#6B7280"), tableRight - 6, 8.5, HAlign.Right, VAlign.Center);
 
         var labels = ColumnLabels[State.UnitSystem];
         var x = TableX;
         for (var c = 0; c < Columns.Length; c++)
         {
-            var cell = new Rect(x, 16, Columns[c].Width, DashHeight - 16);
+            var cell = new Rect(x, 1, Columns[c].Width, DashHeight - 1);
             if (c > 0)
             {
-                dc.DrawLine(P("#2A2F35", 1), new Point(x + 0.5, 16), new Point(x + 0.5, DashHeight));
+                dc.DrawLine(P("#2A2F35", 1), new Point(x + 0.5, 0), new Point(x + 0.5, DashHeight));
             }
 
             DrawCell(dc, c, cell);

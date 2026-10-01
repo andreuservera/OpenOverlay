@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Data;
+using System.Windows.Input;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
@@ -39,6 +40,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private DeltaReference _deltaReference = DeltaReference.SessionBest;
     private int _criticalRefreshIndex;
     private int _compassRefreshIndex;
+    private Dictionary<NavItem, string>? _searchIndex;
+    private RelayCommand? _closeAllWidgets;
 
     public ControlPanelViewModel()
     {
@@ -73,24 +76,12 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
 
         NavItems.Add(NavItem.ForPage(
-            GeneralPageKey, "General", "How the app runs: closing, the tray and where settings live.",
+            GeneralPageKey, "General", "Units, performance, hotkeys, the tray and diagnostics.",
             "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9"));
 
         NavItems.Add(NavItem.ForPage(
             DashboardPageKey, "Dashboard", "The fullscreen layout for a second monitor.",
             "M3,4 H21 V16 H3 Z M9,20 H15 M12,16 V20"));
-
-        NavItems.Add(NavItem.ForPage(
-            PerformancePageKey, "Performance", "How hard the overlay works for the displays that need it.",
-            "M4,20 A9,9 0 1 1 20,20 M12,14 L16,9"));
-
-        NavItems.Add(NavItem.ForPage(
-            UnitsPageKey, "Units", "Metric or imperial, for every overlay at once.",
-            "M3,17 L17,3 L21,7 L7,21 Z M7,13 L9,15 M10,10 L12,12 M13,7 L15,9"));
-
-        NavItems.Add(NavItem.ForPage(
-            HotkeysPageKey, "Hotkeys", "Control the overlay from inside iRacing, without Alt+Tab.",
-            "M3,6 H21 V18 H3 Z M6,9 H7 M9.5,9 H10.5 M13,9 H14 M16.5,9 H17.5 M6,12 H7 M17,12 H18 M8,15 H16"));
 
         AddAboutPages();
 
@@ -107,8 +98,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     private const string DashboardPageKey = "app.dashboard";
     private const string GeneralPageKey = "app.general";
-    private const string PerformancePageKey = "app.performance";
-    private const string UnitsPageKey = "app.units";
 
     // ===== Shared option objects =====
     // These are the same instances handed to the widgets and to the preview, which is what makes a
@@ -146,7 +135,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     /// <summary>Filters the rail. Matching on the blurb as well as the name is deliberate: it lets
     /// someone find the widget by what it does ("fuel", "gap", "weather") when they don't yet know
-    /// what this application decided to call it.</summary>
+    /// what this application decided to call it. Every option on every page counts too — its
+    /// label, hint and choices, hotkeys included — and the open page narrows to the groups that
+    /// matched, so "imperial" lands on the units setting rather than somewhere on General.</summary>
     public string SearchText
     {
         get => _searchText;
@@ -159,12 +150,36 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _searchText = value;
             var term = value.Trim();
-            NavView.Filter = term.Length == 0
-                ? null
-                : item => item is NavItem nav &&
-                          (nav.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                           nav.Blurb.Contains(term, StringComparison.OrdinalIgnoreCase));
+            if (term.Length == 0)
+            {
+                _searchIndex = null;
+                NavView.Filter = null;
+            }
+            else
+            {
+                // Built once per search, not per keystroke: every page's options, as plain text.
+                _searchIndex ??= BuildSearchIndex();
+                NavView.Filter = item => item is NavItem nav && Matches(nav, term);
+            }
+
             OnPropertyChanged();
+            if (_selected is { } page)
+            {
+                BuildSettings(page);
+            }
+        }
+    }
+
+    /// <summary>Switches every widget off at once — the same switch as each widget's own, so it's
+    /// remembered, and each comes back from its page.</summary>
+    public ICommand CloseAllWidgetsCommand => _closeAllWidgets ??= new RelayCommand(TurnOffAllWidgets);
+
+    public void TurnOffAllWidgets()
+    {
+        AppLog.Activity("Control Panel", "All widgets closed");
+        foreach (var slot in _slots.Values)
+        {
+            slot.IsEnabled = false;
         }
     }
 
@@ -293,7 +308,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public DeltaReference DeltaReference => _deltaReference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
-    /// bars and the pedal trace. Index order matches the labels the Performance page offers.</summary>
+    /// bars and the pedal trace. Index order matches the labels General › Performance offers.</summary>
     public int CriticalRefreshIntervalMs => _criticalRefreshIndex switch
     {
         0 => 16,
@@ -304,7 +319,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     };
 
     /// <summary>Redraw period for the Weather wind compass; 0 = follow every update, animated.
-    /// Index order matches the labels the Performance page offers.</summary>
+    /// Index order matches the labels General › Performance offers.</summary>
     public int CompassRefreshIntervalMs => _compassRefreshIndex switch
     {
         0 => 0,

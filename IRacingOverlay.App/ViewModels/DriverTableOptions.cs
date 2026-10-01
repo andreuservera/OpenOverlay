@@ -11,6 +11,7 @@ public enum DriverTableColumn
     CarNumber,
     Driver,
     LastPitStop,
+    TireCompound,
     IRating,
     IRatingDelta,
     License,
@@ -46,6 +47,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showCarNumber = true;
     private bool _showDriver = true;
     private bool _showLastPitStop;
+    private bool _showTireCompound = true;
     private bool _showIRating = true;
     private bool _showIRatingDelta = true;
     private bool _showLicense = true;
@@ -56,6 +58,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showSessionId;
     private bool _showClassName = true;
     private bool _showMulticlass = true;
+    private bool _showSessionLaps = true;
+    private bool _showSessionTime = true;
     private int _focusSize;
 
     public DriverTableOptions(DriverTable table)
@@ -91,6 +95,13 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showLastPitStop;
         set => SetField(ref _showLastPitStop, value);
+    }
+
+    /// <summary>The tyre each car is on, as a ringed compound letter, next to the last pit stop.</summary>
+    public bool ShowTireCompound
+    {
+        get => _showTireCompound;
+        set => SetField(ref _showTireCompound, value);
     }
 
     public bool ShowIRating
@@ -162,6 +173,31 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         set => SetField(ref _showMulticlass, value);
     }
 
+    /// <summary>Footer: the player's lap out of the session's laps — estimated from their pace in a
+    /// timed race. One value for the whole table, so a footer rather than a column.</summary>
+    public bool ShowSessionLaps
+    {
+        get => _showSessionLaps;
+        set
+        {
+            SetField(ref _showSessionLaps, value);
+            OnPropertyChanged(nameof(ShowFooter));
+        }
+    }
+
+    /// <summary>Footer: elapsed session time over the session's length.</summary>
+    public bool ShowSessionTime
+    {
+        get => _showSessionTime;
+        set
+        {
+            SetField(ref _showSessionTime, value);
+            OnPropertyChanged(nameof(ShowFooter));
+        }
+    }
+
+    public bool ShowFooter => _showSessionLaps || _showSessionTime;
+
     /// <summary>How much of the field to show around the player. Standings reads it as the total
     /// size of the block below the pinned podium; Relative reads it as the number of cars on each
     /// side. The two are genuinely different questions, which is why the defaults differ.</summary>
@@ -189,6 +225,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
             case DriverTableColumn.CarNumber: ShowCarNumber = visible; break;
             case DriverTableColumn.Driver: ShowDriver = visible; break;
             case DriverTableColumn.LastPitStop: ShowLastPitStop = visible; break;
+            case DriverTableColumn.TireCompound: ShowTireCompound = visible; break;
             case DriverTableColumn.IRating: ShowIRating = visible; break;
             case DriverTableColumn.IRatingDelta: ShowIRatingDelta = visible; break;
             case DriverTableColumn.License: ShowLicense = visible; break;

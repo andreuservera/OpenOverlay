@@ -189,7 +189,11 @@ public sealed partial class ControlPanelViewModel
 
     private IEnumerable<SettingsGroup> AboutPage()
     {
-        _updateStatusRow = new InfoSetting("Updates", "The last automatic check for a new version.", _updateStatus);
+        var updateStatusRow = new InfoSetting("Updates", "The last automatic check for a new version.", _updateStatus);
+        if (!_buildingIndex)
+        {
+            _updateStatusRow = updateStatusRow;
+        }
 
         ActionSetting? copy = null;
         copy = new ActionSetting(
@@ -219,7 +223,7 @@ public sealed partial class ControlPanelViewModel
                         InstallHistory.PreviousVersion is { } previous ? $"Previously {previous} on this PC." : "When this version first ran on this PC.",
                         InstallHistory.InstalledUtc is { } installed ? FormatDate(installed) : "Unknown"),
                     new InfoSetting("Update channel", ChannelHint(), BuildInfo.Channel.ToString()),
-                    _updateStatusRow,
+                    updateStatusRow,
                     copy),
             new SettingsGroup("RELEASE NOTES").With(
                 new ActionSetting("What's new", "The changes in the version you're running.", "Open", ShowWhatsNew),

@@ -7,6 +7,10 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 internal static class StandingsBuilder
 {
+    /// <summary>How close up the road a lapped car has to be for Relative to flag it as about to be
+    /// lapped. Close enough to act on, far enough out to see it coming.</summary>
+    private const double BeingLappedWithinSeconds = 5;
+
     /// <summary>
     /// Relative gap uses CarIdxEstTime — iRacing's own "estimated time to reach current location on
     /// track" per car. That runs on each car's own CarClassEstLapTime clock (per class, and per BoP'd
@@ -57,6 +61,7 @@ internal static class StandingsBuilder
         }
 
         var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
+        var compoundOf = TireCompoundsOf(telemetry, driverInfo);
 
         // Fall back to ANY car's recorded lap time, not just the player's own — otherwise the whole
         // field disappears from Relative for the player's entire first lap of every session (reported
@@ -180,8 +185,9 @@ internal static class StandingsBuilder
         var playerDistance = RaceDistanceOf(playerCarIdx);
 
         // Half a lap is where the folded Relative order flips: a car more than half a lap up on the
-        // player sits behind them on track only because it is about to lap them.
-        LapRelation LapRelationOf(int carIdx)
+        // player sits behind them on track only because it is about to lap them. A lapped car just up
+        // the road is the one the player is about to lap.
+        LapRelation LapRelationOf(int carIdx, double gapSeconds)
         {
             if (!isRace || carIdx == playerCarIdx || playerDistance is not { } mine || RaceDistanceOf(carIdx) is not { } theirs)
             {
@@ -191,6 +197,7 @@ internal static class StandingsBuilder
             return (theirs - mine) switch
             {
                 > 0.5 => LapRelation.Lapping,
+                < -0.5 when gapSeconds is < 0 and >= -BeingLappedWithinSeconds => LapRelation.BeingLapped,
                 < -0.5 => LapRelation.Lapped,
                 _ => LapRelation.SameLap,
             };
@@ -236,6 +243,7 @@ internal static class StandingsBuilder
 
             var bestLapTime = laps.Best(driver.CarIdx);
             var penalties = penaltiesOf(driver.CarIdx);
+            var gapSeconds = GapTo(driver);
             rows.Add(new RelativeRow
             {
                 CarIdx = driver.CarIdx,
@@ -244,11 +252,13 @@ internal static class StandingsBuilder
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
-                GapSeconds = GapTo(driver),
+                GapSeconds = gapSeconds,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
+                HasFurledFlag = penalties.Furled,
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
+                TireCompound = compoundOf(driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
                 BestLapTime = bestLapTime,
@@ -260,7 +270,7 @@ internal static class StandingsBuilder
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 CarClassName = driver.CarClassShortName,
-                LapRelation = LapRelationOf(driver.CarIdx),
+                LapRelation = LapRelationOf(driver.CarIdx, gapSeconds),
             });
         }
 
@@ -337,6 +347,7 @@ internal static class StandingsBuilder
         var onPitRoad = TryGetBoolArray(telemetry, TelemetryVarNames.CarIdxOnPitRoad);
         var playerCarIdx = driverInfo.DriverCarIdx;
         var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
+        var compoundOf = TireCompoundsOf(telemetry, driverInfo);
 
         var distinctClasses = driverInfo.Drivers
             .Where(d => !d.IsPaceCar)
@@ -373,7 +384,7 @@ internal static class StandingsBuilder
         if (IsPracticeOrQualifyingSession(telemetry, session))
         {
             return BuildFastestLapStandings(
-                driverInfo, LapCountOf, laps, onPitRoad, penaltiesOf, playerCarIdx, isMultiClass,
+                driverInfo, LapCountOf, laps, onPitRoad, penaltiesOf, compoundOf, playerCarIdx, isMultiClass,
                 bestLapTracker ?? new SessionBestLapTracker(),
                 CurrentSession.Number(telemetry, session),
                 lastPitStops);
@@ -497,8 +508,10 @@ internal static class StandingsBuilder
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
+                HasFurledFlag = penalties.Furled,
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
+                TireCompound = compoundOf(driver.CarIdx),
                 CurrentLap = LapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = GapBehind(classLeader[driver.CarClassID], driver),
                 LastLapTime = laps.Last(driver.CarIdx),
@@ -861,6 +874,7 @@ internal static class StandingsBuilder
         LapTimeSource laps,
         bool[]? onPitRoad,
         Func<int, CarPenalties> penaltiesOf,
+        Func<int, TireCompound?> compoundOf,
         int playerCarIdx,
         bool isMultiClass,
         SessionBestLapTracker bestLapTracker,
@@ -913,8 +927,10 @@ internal static class StandingsBuilder
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
+                HasFurledFlag = penalties.Furled,
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
+                TireCompound = compoundOf(driver.CarIdx),
                 CurrentLap = lapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = thisTime < double.MaxValue && poleTime < double.MaxValue ? thisTime - poleTime : 0,
                 LastLapTime = laps.Last(driver.CarIdx),
@@ -950,6 +966,35 @@ internal static class StandingsBuilder
         }
 
         return fastest;
+    }
+
+    /// <summary>Each car's current tyre, from CarIdxTireCompound named through the session's
+    /// compound table. Resolved once per compound index per build.</summary>
+    private static Func<int, TireCompound?> TireCompoundsOf(TelemetrySnapshot telemetry, DriverInfoSection driverInfo)
+    {
+        var compounds = TryGetIntArray(telemetry, TelemetryVarNames.CarIdxTireCompound);
+        if (compounds is null)
+        {
+            return _ => null;
+        }
+
+        var named = new Dictionary<int, TireCompound?>();
+        return carIdx =>
+        {
+            if (carIdx < 0 || carIdx >= compounds.Length)
+            {
+                return null;
+            }
+
+            var index = compounds[carIdx];
+            if (!named.TryGetValue(index, out var compound))
+            {
+                compound = TireCompound.Resolve(index, driverInfo.DriverTires);
+                named[index] = compound;
+            }
+
+            return compound;
+        };
     }
 
     private static PitStop? LastPitStopOf(IReadOnlyDictionary<int, PitStop>? lastPitStops, int carIdx) =>

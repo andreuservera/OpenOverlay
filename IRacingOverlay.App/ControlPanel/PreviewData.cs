@@ -62,6 +62,19 @@ public static class PreviewData
 
     private const double BaseLapTime = 92.418;
 
+    private static readonly TireCompound PreviewHard = TireCompound.FromName("Hard");
+    private static readonly TireCompound PreviewSoft = TireCompound.FromName("Soft");
+    private static readonly TireCompound PreviewWet = TireCompound.FromName("Wet");
+
+    /// <summary>A timed race a third of the way in: the lap total is the estimate from pace.</summary>
+    public static SessionProgress Progress() => new()
+    {
+        CurrentLap = 7,
+        EstimatedTotalLaps = 23.8,
+        ElapsedSeconds = 1395,
+        TotalSeconds = 3600,
+    };
+
     /// <summary>The full field in running order, ready for the same builders the live widget uses.
     /// Feeding synthetic rows through <c>StandingsBuilder</c> rather than hand-assembling the
     /// display list is what makes the preview trustworthy: class headers, the podium split and the
@@ -87,11 +100,14 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
-                // Black, meatball (pitting for repairs) and both at once, so every penalty flag shows.
+                // Every penalty tag: black, furled black, meatball, and two at once split down the middle.
                 HasBlackFlag = i == 6 || i == 10,
-                HasMeatballFlag = i == 10 || i == 12,
+                HasFurledFlag = i == 5 || i == 15,
+                HasMeatballFlag = i == 10 || i == 12 || i == 15,
                 // Every third car has stopped, plus the one in the lane now, so both pit states show.
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
+                // Mostly slicks, a few gambling on wets, one on softs: every ring colour shows.
+                TireCompound = i % 7 == 4 ? PreviewWet : i % 11 == 2 ? PreviewSoft : PreviewHard,
                 CurrentLap = i < 3 ? 18 : 17,
                 // Car 8 has just set a personal best, so the green last-lap state shows too.
                 LastLapTime = i == 7
@@ -139,8 +155,10 @@ public static class PreviewData
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
                 HasBlackFlag = source.HasBlackFlag,
+                HasFurledFlag = source.HasFurledFlag,
                 HasMeatballFlag = source.HasMeatballFlag,
                 LastPitStop = source.LastPitStop,
+                TireCompound = source.TireCompound,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,
@@ -155,8 +173,10 @@ public static class PreviewData
                 // Cars ahead of the player read negative, behind positive — the sign is the whole
                 // point of the column, so both have to appear in the preview.
                 GapSeconds = (source.GapToLeaderSeconds - playerPace) * 0.42,
-                // Traffic from both directions: a backmarker up the road, a faster car closing to lap you.
+                // Traffic from both directions: a backmarker up the road, the one you're about to
+                // lap just ahead, and a faster car closing to lap you.
                 LapRelation = source.IsPlayer ? LapRelation.SameLap
+                    : i == playerIndex - 1 ? LapRelation.BeingLapped
                     : i == first ? LapRelation.Lapped
                     : i == last ? LapRelation.Lapping
                     : LapRelation.SameLap,
@@ -362,7 +382,7 @@ public static class PreviewData
         WindDirRad = 2.1,
         HumidityPct = 54,
         TimeRemainingSeconds = 1284,
-        LapsRemaining = 14,
+        Progress = new SessionProgress { CurrentLap = 7, TotalLaps = 23 },
     };
 
     /// <summary>Cars spread around the lap with the pack bunched where it usually is — behind the

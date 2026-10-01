@@ -225,7 +225,7 @@ public class TrackInfoBuilderTests
         var state = TrackInfoBuilder.Build(snapshot, session: null);
 
         Assert.Equal("—", state.TimeRemainingDisplay);
-        Assert.Equal("12", state.LapsRemainingDisplay);
+        Assert.Equal("—", state.LapDisplay); // laps left alone don't say which lap this is
     }
 
     [Fact]
@@ -241,7 +241,7 @@ public class TrackInfoBuilderTests
         var state = TrackInfoBuilder.Build(snapshot, session: null);
 
         Assert.Equal("5:00", state.TimeRemainingDisplay);
-        Assert.Equal("—", state.LapsRemainingDisplay);
+        Assert.Equal("—", state.LapDisplay);
     }
 
     [Fact]

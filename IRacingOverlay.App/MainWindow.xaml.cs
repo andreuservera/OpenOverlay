@@ -47,6 +47,7 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _standingsGuard;
     private readonly ComponentGuard _pitStopGuard;
     private readonly ComponentGuard _penaltyGuard;
+    private readonly ComponentGuard _lapLogGuard;
     private readonly ComponentGuard _statusGuard;
     private readonly ComponentGuard _autoHideGuard;
     private readonly ComponentGuard _healthGuard;
@@ -195,8 +196,13 @@ public partial class MainWindow : Window
         _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
     }
     private PedalTraceBuilder _pedalTraceBuilder = new();
-    private FuelBuilder _fuelBuilder = new();
-    private FuelCalculatorBuilder _fuelCalculatorBuilder = new();
+    // The player's racing laps, observed every tick whatever is open: both fuel readouts average it
+    // and the session clock prices a lap with it. Set up by ResetLapHistory.
+    private LapLog _lapLog = null!;
+    private FuelBuilder _fuelBuilder = null!;
+    private FuelCalculatorBuilder _fuelCalculatorBuilder = null!;
+    // Filled on the telemetry thread, where every tick is seen: PlayerIncidents may last just one.
+    private readonly IncidentReportLatch _incidentReports = new();
     private SessionBestLapTracker _sessionBestLapTracker = new();
     private PitStopTracker _pitStopTracker = new();
     private PenaltyFlagTracker _penaltyTracker = new();
@@ -256,6 +262,8 @@ public partial class MainWindow : Window
         _standingsGuard = _health.CreateGuard("Standings model", _ => _sessionBestLapTracker = new());
         _pitStopGuard = _health.CreateGuard("Pit stop tracker", _ => _pitStopTracker = new());
         _penaltyGuard = _health.CreateGuard("Penalty flag log", _ => _penaltyTracker = new());
+        _lapLogGuard = _health.CreateGuard("Lap log", _ => ResetLapHistory());
+        ResetLapHistory();
         _statusGuard = _health.CreateGuard("Status line");
         _autoHideGuard = _health.CreateGuard("Auto-hide");
         _healthGuard = _health.CreateGuard("Health report");
@@ -269,6 +277,7 @@ public partial class MainWindow : Window
         _vm.TableHeaderChanged += PushTableHeader;
 
         _connection.Fault += OnConnectionFault;
+        _connection.TelemetryUpdated += (_, snapshot) => _incidentReports.Observe(snapshot);
         _connection.Connected += (_, _) =>
         {
             AppLog.Info("Telemetry", "Connected to iRacing");
@@ -277,6 +286,7 @@ public partial class MainWindow : Window
         _connection.Disconnected += (_, _) =>
         {
             AppLog.Info("Telemetry", "Disconnected from iRacing");
+            _incidentReports.Reset();
             Dispatcher.BeginInvoke(() =>
             {
                 _vm.IsConnected = false;
@@ -399,11 +409,16 @@ public partial class MainWindow : Window
         _lastCockpitFeed = null;
         _vm.TelemetryLine = "Waiting for iRacing";
 
-        Clear(WidgetCatalog.Relative, Relative, w => w.UpdateRows([]));
+        Clear(WidgetCatalog.Relative, Relative, w =>
+        {
+            w.UpdateRows([]);
+            w.SetProgress(SessionProgress.Empty);
+        });
         Clear(WidgetCatalog.Standings, Standings, w =>
         {
             w.UpdateRows([]);
             w.SetSof(0);
+            w.SetProgress(SessionProgress.Empty);
         });
         Clear(WidgetCatalog.Cockpit, Cockpit, w => w.UpdateState(CockpitState.Empty));
         Clear(WidgetCatalog.Flag, Flags, w => w.UpdateState([FlagState.None]));
@@ -424,6 +439,7 @@ public partial class MainWindow : Window
                 dashboard.UpdateStandingsRows([]);
                 dashboard.UpdateStandingsSof(0);
                 dashboard.UpdateRelativeRows([]);
+                dashboard.UpdateSessionProgress(SessionProgress.Empty);
                 dashboard.UpdateCockpit(CockpitState.Empty);
                 dashboard.UpdateFlag([FlagState.None]);
                 dashboard.UpdateTireInfo(TireInfoState.Empty);
@@ -530,6 +546,7 @@ public partial class MainWindow : Window
         _tickCount++;
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        _lapLogGuard.Run(() => _lapLog.Observe(telemetry), GuardStage.Build);
         _penaltyGuard.Run(() =>
         {
             foreach (var (driver, penalties) in _penaltyTracker.Update(telemetry, session))
@@ -540,6 +557,7 @@ public partial class MainWindow : Window
                     ["carIdx"] = driver.CarIdx.ToString(CultureInfo.InvariantCulture),
                     ["player"] = (driver.CarIdx == session?.DriverInfo?.DriverCarIdx).ToString(),
                     ["black"] = penalties.Black.ToString(),
+                    ["furled"] = penalties.Furled.ToString(),
                     ["meatball"] = penalties.Meatball.ToString(),
                 });
             }
@@ -609,6 +627,20 @@ public partial class MainWindow : Window
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
 
+        // The tables' footer: the clock moves every tick, so not on the once-a-second standings beat.
+        Feed(
+            WidgetCatalog.Standings,
+            Standings,
+            () => SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
+            (widget, progress) => widget.SetProgress(progress),
+            (dashboard, progress) => dashboard.UpdateSessionProgress(progress));
+        Feed(
+            WidgetCatalog.Relative,
+            Relative,
+            () => SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
+            (widget, progress) => widget.SetProgress(progress),
+            null);
+
         Feed(
             WidgetCatalog.Flag,
             Flags,
@@ -628,10 +660,10 @@ public partial class MainWindow : Window
         Feed(WidgetCatalog.FuelCalculator, FuelCalculator, () => _fuelCalculatorBuilder.Build(telemetry, session, _vm.FuelCalculatorOptions),
             (widget, state) => widget.UpdateState(state), null);
 
-        Feed(WidgetCatalog.Incident, Incidents, () => IncidentBuilder.Build(telemetry, session),
+        Feed(WidgetCatalog.Incident, Incidents, () => IncidentBuilder.Build(telemetry, session, _incidentReports.Latest),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateIncident(state));
 
-        Feed(WidgetCatalog.TrackInfo, TrackInfo, () => TrackInfoBuilder.Build(telemetry, session),
+        Feed(WidgetCatalog.TrackInfo, TrackInfo, () => TrackInfoBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateTrackInfo(state));
 
         // Every tick: the wind arrow follows the car's heading, which changes through every corner.
@@ -881,10 +913,10 @@ public partial class MainWindow : Window
         switch (key)
         {
             case WidgetCatalog.Fuel:
-                _fuelBuilder = new();
+                _fuelBuilder = new(_lapLog);
                 break;
             case WidgetCatalog.FuelCalculator:
-                _fuelCalculatorBuilder = new();
+                _fuelCalculatorBuilder = new(_lapLog);
                 break;
             case WidgetCatalog.PedalTrace:
                 _pedalTraceBuilder = new();
@@ -932,6 +964,13 @@ public partial class MainWindow : Window
         RecoverDashboard();
     }
 
+    private void ResetLapHistory()
+    {
+        _lapLog = new();
+        _fuelBuilder = new(_lapLog);
+        _fuelCalculatorBuilder = new(_lapLog);
+    }
+
     /// <summary>
     /// Keys the per-session trackers (fuel history, pit stops, best laps, flag timers) to the event
     /// they were built from. A different event resets them, so a restarted sim never shows another
@@ -974,8 +1013,7 @@ public partial class MainWindow : Window
         _awaitingReconnect = false;
         if (isNewEvent)
         {
-            _fuelBuilder = new();
-            _fuelCalculatorBuilder = new();
+            ResetLapHistory();
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();

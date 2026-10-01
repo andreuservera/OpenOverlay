@@ -2216,4 +2216,117 @@ public class StandingsBuilderTests
         Assert.False(row.HasBlackFlag);
         Assert.False(row.HasMeatballFlag);
     }
+
+    private const uint FurledFlagBit = 0x00080000;
+
+    [Fact]
+    public void BuildStandings_EachPenaltyBit_MapsToItsOwnFlag()
+    {
+        // A slow-down penalty raises the furled black flag, not the black one: the two are separate.
+        var builder = StandingsVars();
+        builder.AddVar("CarIdxSessionFlags", IrsdkVarType.BitField, count: 4);
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f]);
+            w.SetIntArray("CarIdxSessionFlags",
+            [
+                0,
+                unchecked((int)FurledFlagBit),
+                unchecked((int)(BlackFlagBit | FurledFlagBit)),
+                unchecked((int)(BlackFlagBit | FurledFlagBit | MeatballBit)),
+            ]);
+        });
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, PenaltySession()).ToDictionary(r => r.CarIdx);
+
+        Assert.Equal((false, false, false), (rows[0].HasBlackFlag, rows[0].HasFurledFlag, rows[0].HasMeatballFlag));
+        Assert.Equal((false, true, false), (rows[1].HasBlackFlag, rows[1].HasFurledFlag, rows[1].HasMeatballFlag));
+        Assert.Equal((true, true, false), (rows[2].HasBlackFlag, rows[2].HasFurledFlag, rows[2].HasMeatballFlag));
+        Assert.Equal((true, true, true), (rows[3].HasBlackFlag, rows[3].HasFurledFlag, rows[3].HasMeatballFlag));
+    }
+
+    [Fact]
+    public void BuildRelative_PlayersOwnSlowDown_ShowsTheFurledFlag()
+    {
+        var builder = RelativeVars();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f]);
+            w.SetBitField("SessionFlags", FurledFlagBit);
+        });
+
+        var me = RelativeRows(snapshot, PenaltySession()).Single(r => r.IsPlayer);
+        Assert.True(me.HasFurledFlag);
+        Assert.False(me.HasBlackFlag);
+    }
+
+    [Fact]
+    public void BuildRelative_LappedCarJustAhead_IsAboutToBeLapped()
+    {
+        // Player (2) at 10.5 laps. Car 1 is up the road by 3 s but almost a lap down: the player is
+        // about to lap it. Car 3 is a lap down too, but 27 s up the road: just lapped traffic.
+        var snapshot = TestSnapshotFactory.Build(FieldVars(5), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 9, 10, 9, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.45f, 0.53f, 0.5f, 0.8f, 0.1f]);
+            w.SetFloatArray("CarIdxEstTime", [40.5f, 48f, 45f, 72f, 9f]);
+            w.SetFloatArray("CarIdxLastLapTime", [90f, 90f, 90f, 90f, 90f]);
+            w.SetFloatArray("CarIdxBestLapTime", [90f, 90f, 90f, 90f, 90f]);
+        });
+
+        var relation = StandingsBuilder.BuildRelative(snapshot, FieldOf(5, 2), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.BeingLapped, relation[1]);
+        Assert.Equal(LapRelation.Lapped, relation[3]);
+        Assert.Equal(LapRelation.SameLap, relation[0]);
+    }
+
+    [Fact]
+    public void BuildStandings_TireCompound_NamedFromTheSessionTable()
+    {
+        var builder = StandingsVars();
+        builder.AddVar("CarIdxTireCompound", IrsdkVarType.Int, count: 4);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetIntArray("CarIdxTireCompound", [0, 1, 3, -1]);
+        });
+        var session = PenaltySession();
+        session.DriverInfo!.DriverTires =
+        [
+            new DriverTireEntry { TireIndex = 0, TireCompoundType = "Hard" },
+            new DriverTireEntry { TireIndex = 1, TireCompoundType = "Wet" },
+        ];
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session).ToDictionary(r => r.CarIdx);
+
+        Assert.Equal("H", rows[0].TireCompoundLetter);
+        Assert.Equal("W", rows[1].TireCompoundLetter);
+        Assert.Equal("4", rows[2].TireCompoundLetter); // not in the player's table: the number, not a guess
+        Assert.False(rows[3].HasTireCompound);
+    }
+
+    [Fact]
+    public void BuildStandings_NoCompoundTable_ShowsNoTire()
+    {
+        var builder = StandingsVars();
+        builder.AddVar("CarIdxTireCompound", IrsdkVarType.Int, count: 4);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 5]);
+            w.SetFloatArray("CarIdxEstTime", [40f, 30f, 20f, 10f]);
+            w.SetIntArray("CarIdxTireCompound", [0, 0, 0, 0]);
+        });
+
+        Assert.All(StandingsBuilder.BuildStandings(snapshot, PenaltySession()), r => Assert.False(r.HasTireCompound));
+    }
 }

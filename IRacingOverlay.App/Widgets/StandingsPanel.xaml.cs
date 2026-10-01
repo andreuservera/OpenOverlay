@@ -56,4 +56,10 @@ public partial class StandingsPanel : UserControl
 
     public void SetSessionId(int subSessionId) =>
         SessionIdText.Text = Options.ShowSessionId && subSessionId > 0 ? $"#{subSessionId}" : "";
+
+    public void SetProgress(SessionProgress progress)
+    {
+        SessionLapsText.Text = progress.LapDisplay;
+        SessionTimeText.Text = progress.TimeDisplay;
+    }
 }

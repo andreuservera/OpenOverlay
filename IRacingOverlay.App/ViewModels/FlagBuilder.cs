@@ -2,8 +2,8 @@ using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
 
-/// <summary>The driver-directed penalties a timing table shows on a car's row.</summary>
-internal readonly record struct CarPenalties(bool Black, bool Meatball);
+/// <summary>The driver-directed penalties a timing table shows on a car's row, each its own bit.</summary>
+internal readonly record struct CarPenalties(bool Black, bool Meatball, bool Furled = false);
 
 /// <summary>
 /// Decodes iRacing's SessionFlags bitfield (irsdk_Flags) into every flag currently out. Pure
@@ -134,8 +134,8 @@ internal static class FlagBuilder
     }
 
     /// <summary>
-    /// Black and meatball flags per CarIdx, from CarIdxSessionFlags. The player's own SessionFlags
-    /// is folded into their car, so their row is right even when the per-car array is missing.
+    /// Black, furled black and meatball flags per CarIdx, from CarIdxSessionFlags. The player's own
+    /// SessionFlags is folded into their car, so their row is right even when the per-car array is missing.
     /// </summary>
     public static Func<int, CarPenalties> ReadCarPenalties(TelemetrySnapshot telemetry, int playerCarIdx)
     {
@@ -151,7 +151,7 @@ internal static class FlagBuilder
             }
 
             var flags = (IrsdkFlags)bits;
-            return new(flags.HasFlag(IrsdkFlags.Black), flags.HasFlag(IrsdkFlags.Repair));
+            return new(flags.HasFlag(IrsdkFlags.Black), flags.HasFlag(IrsdkFlags.Repair), flags.HasFlag(IrsdkFlags.Furled));
         };
     }
 

@@ -205,6 +205,7 @@ public partial class WidgetPreview : UserControl
                     standings.SetSof(PreviewData.StrengthOfField());
                     standings.SetClassName(PreviewData.ClassName);
                     standings.SetSessionId(PreviewData.SubSessionId);
+                    standings.SetProgress(PreviewData.Progress());
                     break;
                 }
 
@@ -214,6 +215,7 @@ public partial class WidgetPreview : UserControl
                     relative.SetRows(PreviewData.RelativeRows(focusSize));
                     relative.SetClassName(PreviewData.ClassName);
                     relative.SetSessionId(PreviewData.SubSessionId);
+                    relative.SetProgress(PreviewData.Progress());
                     break;
                 }
 

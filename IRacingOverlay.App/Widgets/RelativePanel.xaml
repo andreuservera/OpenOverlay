@@ -24,6 +24,7 @@
                     <ColumnDefinition Width="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Driver}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowLastPitStop, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.LastPit}}"/>
+                    <ColumnDefinition Width="{Binding Options.ShowTireCompound, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Tire}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRating}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDelta}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.License}}"/>
@@ -40,21 +41,45 @@
                            Visibility="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="3" Text="LAST PIT" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowLastPitStop, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="4" Grid.ColumnSpan="2" Text="iR" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="4" Text="TIRE" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowTireCompound, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="5" Grid.ColumnSpan="2" Text="iR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="6" Text="SR" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="7" Text="SR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowLicense, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="7" Text="LAP" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="8" Text="LAP" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="8" Text="BEST" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="9" Text="BEST" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowBestLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="9" Text="LAST" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="10" Text="LAST" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="10" Text="GAP" Style="{StaticResource HeadNumeric}"
+                <TextBlock Grid.Column="11" Text="GAP" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowGap, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
             </Grid>
 
             <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Surface.DividerFade}" Margin="0,0,0,4"/>
+
+            <!-- Session progress: one value each for the whole field, so a footer rather than a
+                 column — the player's lap out of the race's laps (estimated from their pace in a
+                 timed race) and the clock. Docked before the rows so it never scrolls with them. -->
+            <Grid DockPanel.Dock="Bottom" Margin="0,5,0,0"
+                  Visibility="{Binding Options.ShowFooter, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                <Border Height="1" VerticalAlignment="Top" Background="{StaticResource Surface.DividerFade}"/>
+                <Grid Margin="8,6,4,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,18,0"
+                                Visibility="{Binding Options.ShowSessionLaps, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="LAP" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="SessionLapsText" Text="—" Style="{StaticResource DataCell}"
+                                   FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                Visibility="{Binding Options.ShowSessionTime, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="TIME" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="SessionTimeText" Text="—" Style="{StaticResource DataCell}"
+                                   FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
 
             <Grid>
                 <TextBlock Text="Waiting for iRacing telemetry…">

@@ -1,92 +1,112 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.TireInfoPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
              x:Name="Root">
     <UserControl.Resources>
-        <!-- Corner block: label, pressure, the three carcass temps, wear bar. Four identical
-             sub-layouts, so the shared pieces live here instead of being retyped per corner. -->
-        <Style x:Key="CornerLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+        <!-- One corner: label, pressure, then the tread in three zones (left, centre, right) — the
+             carcass temperature over the remaining wear, with a bar per zone. The four corners are
+             the same template. Type sits on the same steps as the other widgets: captions at label
+             size, readings at body size, pressure a value step up. -->
+        <Style x:Key="CornerLabel" TargetType="TextBlock" BasedOn="{StaticResource PanelTitle}">
             <Setter Property="Margin" Value="0,0,0,1"/>
         </Style>
-        <!-- Carcass temps are supporting data under the pressure, so secondary ink rather than
-             a colour that would suggest a state they don't carry. -->
-        <Style x:Key="CornerTemp" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
-            <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
-            <Setter Property="LineHeight" Value="{StaticResource Line.Micro}"/>
-            <Setter Property="Width" Value="30"/>
+        <Style x:Key="ZoneHeader" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
             <Setter Property="HorizontalAlignment" Value="Left"/>
-            <Setter Property="TextAlignment" Value="Left"/>
         </Style>
-        <Style x:Key="WearTrack" TargetType="Border" BasedOn="{StaticResource MeterTrack}">
-            <Setter Property="Height" Value="6"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
+        <Style x:Key="ZoneTemp" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
+            <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
+        <Style x:Key="ZoneWear" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
+            <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style x:Key="ZoneTrack" TargetType="Border" BasedOn="{StaticResource MeterTrack}">
+            <Setter Property="Height" Value="5"/>
+            <Setter Property="Margin" Value="0,3,6,0"/>
+        </Style>
+        <Style x:Key="ZoneFill" TargetType="Rectangle">
+            <Setter Property="RadiusX" Value="2"/>
+            <Setter Property="RadiusY" Value="2"/>
+            <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
+        </Style>
+
+        <DataTemplate x:Key="CornerTemplate" DataType="{x:Type vm:TireCornerInfo}">
+            <StackPanel>
+                <TextBlock Text="{Binding Label}" Style="{StaticResource CornerLabel}"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding PressureDisplay}" Style="{StaticResource ValueTextLarge}"/>
+                    <TextBlock Text="{Binding PressureUnit}" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom"
+                               Margin="4,0,0,3" Visibility="{Binding HasPressure, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="42"/>
+                        <ColumnDefinition Width="42"/>
+                        <ColumnDefinition Width="42"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="L" Style="{StaticResource ZoneHeader}"/>
+                    <TextBlock Grid.Column="1" Text="C" Style="{StaticResource ZoneHeader}"/>
+                    <TextBlock Grid.Column="2" Text="R" Style="{StaticResource ZoneHeader}"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding TempLeftDisplay}" Style="{StaticResource ZoneTemp}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TempMiddleDisplay}" Style="{StaticResource ZoneTemp}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TempRightDisplay}" Style="{StaticResource ZoneTemp}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding WearLeftDisplay}" Foreground="{Binding WearLeftColor}" Style="{StaticResource ZoneWear}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WearMiddleDisplay}" Foreground="{Binding WearMiddleColor}" Style="{StaticResource ZoneWear}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding WearRightDisplay}" Foreground="{Binding WearRightColor}" Style="{StaticResource ZoneWear}"/>
+
+                    <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource ZoneTrack}">
+                        <Rectangle Fill="{Binding WearLeftColor}" Style="{StaticResource ZoneFill}">
+                            <Rectangle.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding WearLeftFill}"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                    </Border>
+                    <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource ZoneTrack}">
+                        <Rectangle Fill="{Binding WearMiddleColor}" Style="{StaticResource ZoneFill}">
+                            <Rectangle.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding WearMiddleFill}"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                    </Border>
+                    <Border Grid.Row="3" Grid.Column="2" Style="{StaticResource ZoneTrack}">
+                        <Rectangle Fill="{Binding WearRightColor}" Style="{StaticResource ZoneFill}">
+                            <Rectangle.RenderTransform>
+                                <ScaleTransform ScaleX="{Binding WearRightFill}"/>
+                            </Rectangle.RenderTransform>
+                        </Rectangle>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </DataTemplate>
     </UserControl.Resources>
-    <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
+    <Border Style="{StaticResource OverlayPanel}" Padding="12,9">
         <StackPanel>
-            <TextBlock Text="TIRES" Style="{StaticResource PanelTitle}" Margin="0,0,0,4"/>
+            <TextBlock Text="TIRES" Style="{StaticResource PanelTitle}" Margin="0,0,0,5"/>
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Grid.Column="0" Margin="2,3,8,3">
-                    <TextBlock Text="LF" Style="{StaticResource CornerLabel}"/>
-                    <TextBlock x:Name="LFPressureText" Text="—" Style="{StaticResource ValueText}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                        <TextBlock x:Name="LFTempLeftText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="LFTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="LFTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
-                    </StackPanel>
-                    <Border x:Name="LFWearTrack" Style="{StaticResource WearTrack}">
-                        <Rectangle x:Name="LFWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
-                                   RadiusX="3" RadiusY="3"/>
-                    </Border>
-                </StackPanel>
-                <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,3,2,3">
-                    <TextBlock Text="RF" Style="{StaticResource CornerLabel}"/>
-                    <TextBlock x:Name="RFPressureText" Text="—" Style="{StaticResource ValueText}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                        <TextBlock x:Name="RFTempLeftText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="RFTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="RFTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
-                    </StackPanel>
-                    <Border x:Name="RFWearTrack" Style="{StaticResource WearTrack}">
-                        <Rectangle x:Name="RFWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
-                                   RadiusX="3" RadiusY="3"/>
-                    </Border>
-                </StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="0" Margin="2,3,8,3">
-                    <TextBlock Text="LR" Style="{StaticResource CornerLabel}"/>
-                    <TextBlock x:Name="LRPressureText" Text="—" Style="{StaticResource ValueText}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                        <TextBlock x:Name="LRTempLeftText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="LRTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="LRTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
-                    </StackPanel>
-                    <Border x:Name="LRWearTrack" Style="{StaticResource WearTrack}">
-                        <Rectangle x:Name="LRWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
-                                   RadiusX="3" RadiusY="3"/>
-                    </Border>
-                </StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,3,2,3">
-                    <TextBlock Text="RR" Style="{StaticResource CornerLabel}"/>
-                    <TextBlock x:Name="RRPressureText" Text="—" Style="{StaticResource ValueText}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                        <TextBlock x:Name="RRTempLeftText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="RRTempMiddleText" Text="—" Style="{StaticResource CornerTemp}"/>
-                        <TextBlock x:Name="RRTempRightText" Text="—" Style="{StaticResource CornerTemp}"/>
-                    </StackPanel>
-                    <Border x:Name="RRWearTrack" Style="{StaticResource WearTrack}">
-                        <Rectangle x:Name="RRWearFill" Fill="{StaticResource State.Positive}" HorizontalAlignment="Left" Width="0"
-                                   RadiusX="3" RadiusY="3"/>
-                    </Border>
-                </StackPanel>
+                <ContentControl x:Name="LFCorner" Grid.Row="0" Grid.Column="0" Margin="2,3,12,6" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
+                <ContentControl x:Name="RFCorner" Grid.Row="0" Grid.Column="1" Margin="6,3,2,6" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
+                <ContentControl x:Name="LRCorner" Grid.Row="1" Grid.Column="0" Margin="2,3,12,3" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
+                <ContentControl x:Name="RRCorner" Grid.Row="1" Grid.Column="1" Margin="6,3,2,3" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
             </Grid>
         </StackPanel>
     </Border>

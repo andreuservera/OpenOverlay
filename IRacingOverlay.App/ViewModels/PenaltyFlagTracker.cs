@@ -2,7 +2,7 @@ using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
 
-/// <summary>Reports each car's black/meatball flags whenever they change, for the activity log.</summary>
+/// <summary>Reports each car's black/furled/meatball flags whenever they change, for the activity log.</summary>
 internal sealed class PenaltyFlagTracker
 {
     private readonly Dictionary<int, CarPenalties> _last = new();

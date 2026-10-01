@@ -278,27 +278,30 @@ public class FuelCalculatorBuilderTests
     }
 
     [Fact]
-    public void Build_OutLapAfterGarageFuelling_IsCounted()
+    public void Build_OutLapAfterGarageFuelling_IsExcludedButTheNextLapCounts()
     {
-        // Reported live: nothing showed up until the first flying lap was complete. The baseline was
-        // being taken on the garage screen before race fuel was loaded, so finishing the out-lap
-        // looked like the tank had gained fuel and the lap was thrown away as a refuel.
+        // The out lap starts in the pit stall, so it never stands for a racing lap. The baseline is
+        // still taken once fuelled in the car, not on the garage screen, so the first flying lap is
+        // measured from the right level.
         var builder = OnTrackFuelVars();
         var fuelBuilder = new FuelCalculatorBuilder();
         var options = new FuelCalculatorOptions();
 
         SampleOnTrack(builder, fuelBuilder, options, lap: 0, fuelLevel: 5f, isOnTrack: false); // garage
         SampleOnTrack(builder, fuelBuilder, options, lap: 0, fuelLevel: 50f, isOnTrack: true); // in the car, fuelled
-        var state = SampleOnTrack(builder, fuelBuilder, options, lap: 1, fuelLevel: 47f, isOnTrack: true); // out-lap done
+        var outLap = SampleOnTrack(builder, fuelBuilder, options, lap: 1, fuelLevel: 47f, isOnTrack: true); // out-lap done
 
-        Assert.Equal(3.0, state.LastLapLiters, precision: 3);
-        Assert.Equal(3.0, state.AverageLiters, precision: 3);
-        Assert.Equal(3.0, state.MinLiters, precision: 3);
+        Assert.False(outLap.HasUsageEstimate);
+
+        var state = SampleOnTrack(builder, fuelBuilder, options, lap: 2, fuelLevel: 44.5f, isOnTrack: true);
+
+        Assert.Equal(2.5, state.LastLapLiters, precision: 3);
+        Assert.Equal(2.5, state.AverageLiters, precision: 3);
         Assert.True(state.HasUsageEstimate);
     }
 
     [Fact]
-    public void Build_GarageFuelReducedBeforeDriving_DoesNotInflateOutLap()
+    public void Build_GarageFuelReducedBeforeDriving_DoesNotInflateTheAverage()
     {
         // The mirror image: dropping the fuel load in the garage before heading out would otherwise
         // be charged to the out-lap as an enormous consumption figure.
@@ -309,9 +312,11 @@ public class FuelCalculatorBuilderTests
         SampleOnTrack(builder, fuelBuilder, options, lap: 0, fuelLevel: 80f, isOnTrack: false);
         SampleOnTrack(builder, fuelBuilder, options, lap: 0, fuelLevel: 20f, isOnTrack: false); // trimmed in the garage
         SampleOnTrack(builder, fuelBuilder, options, lap: 0, fuelLevel: 20f, isOnTrack: true);
-        var state = SampleOnTrack(builder, fuelBuilder, options, lap: 1, fuelLevel: 18f, isOnTrack: true);
+        SampleOnTrack(builder, fuelBuilder, options, lap: 1, fuelLevel: 18f, isOnTrack: true); // out lap
+        var state = SampleOnTrack(builder, fuelBuilder, options, lap: 2, fuelLevel: 16f, isOnTrack: true);
 
         Assert.Equal(2.0, state.LastLapLiters, precision: 3);
+        Assert.Equal(2.0, state.MaxLiters, precision: 3);
     }
 
     [Fact]
