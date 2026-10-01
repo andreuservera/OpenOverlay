@@ -23,11 +23,28 @@ public sealed partial class ControlPanelViewModel
 {
     private static readonly string[] SizeLadder = ScaleLevels.Labels;
 
+    // Set while pages are built only to be searched: their settings are read and thrown away, so
+    // nothing that wires a live setting up (hotkey rows, the dashboard button) may happen then.
+    private bool _buildingIndex;
+
     private void BuildSettings(NavItem item)
     {
         item.Settings.Clear();
 
-        foreach (var group in BuildGroups(item))
+        var groups = BuildGroups(item).ToList();
+        var term = _searchText.Trim();
+        if (term.Length > 0 && !Contains(item.Title, term))
+        {
+            // Searching: the page shows just the groups that matched, whole, so each keeps its context.
+            // A page found by its name shows everything; one found by its blurb still narrows.
+            var matching = groups.Where(group => SearchTermsOf(group).Any(text => Contains(text, term))).ToList();
+            if (matching.Count > 0)
+            {
+                groups = matching;
+            }
+        }
+
+        foreach (var group in groups)
         {
             // Names every change in the activity trail after where the user made it.
             var path = $"{item.Title} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
@@ -55,9 +72,6 @@ public sealed partial class ControlPanelViewModel
             {
                 DashboardPageKey => DashboardPage(),
                 GeneralPageKey => GeneralPage(),
-                PerformancePageKey => PerformancePage(),
-                UnitsPageKey => UnitsPage(),
-                HotkeysPageKey => HotkeysPage(),
                 WhatsNewPageKey => WhatsNewPage(),
                 ChangelogPageKey => ChangelogPage(),
                 AboutPageKey => AboutPage(),
@@ -78,6 +92,65 @@ public sealed partial class ControlPanelViewModel
             _ => [Placement(slot)],
         };
     }
+
+    // ===== Search =====
+
+    private bool Matches(NavItem item, string term) =>
+        Contains(item.Title, term) ||
+        Contains(item.Blurb, term) ||
+        (_searchIndex?.TryGetValue(item, out var text) == true && Contains(text, term));
+
+    private Dictionary<NavItem, string> BuildSearchIndex()
+    {
+        _buildingIndex = true;
+        try
+        {
+            return NavItems.ToDictionary(item => item, item => string.Join('\n', BuildGroups(item).SelectMany(SearchTermsOf)));
+        }
+        finally
+        {
+            _buildingIndex = false;
+        }
+    }
+
+    private static IEnumerable<string> SearchTermsOf(SettingsGroup group)
+    {
+        yield return group.Title;
+        if (group.Subtitle is { } subtitle)
+        {
+            yield return subtitle;
+        }
+
+        foreach (var item in group.Items)
+        {
+            // Release notes are prose about the app, not options in it.
+            if (item is BulletSetting or ReleaseSetting)
+            {
+                continue;
+            }
+
+            yield return item.Label;
+            if (item.Hint is { } hint)
+            {
+                yield return hint;
+            }
+
+            IEnumerable<string> extra = item switch
+            {
+                ChoiceSetting choice => choice.Options,
+                SegmentedSetting segmented => segmented.Options,
+                ChipGroupSetting chips => chips.Chips.SelectMany(chip => new[] { chip.Label, chip.Hint ?? "" }),
+                HotkeySetting hotkey => [hotkey.Display],
+                _ => [],
+            };
+            foreach (var text in extra)
+            {
+                yield return text;
+            }
+        }
+    }
+
+    private static bool Contains(string text, string term) => text.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     // ===== Shared =====
 
@@ -127,6 +200,7 @@ public sealed partial class ControlPanelViewModel
             Column("Car #", DriverTableColumn.CarNumber, options.ShowCarNumber, options),
             Column("Driver", DriverTableColumn.Driver, options.ShowDriver, options),
             Column("Last pit", DriverTableColumn.LastPitStop, options.ShowLastPitStop, options),
+            Column("Tire", DriverTableColumn.TireCompound, options.ShowTireCompound, options),
             Column("iR", DriverTableColumn.IRating, options.ShowIRating, options),
             Column("iRΔ", DriverTableColumn.IRatingDelta, options.ShowIRatingDelta, options),
             Column("SR", DriverTableColumn.License, options.ShowLicense, options),
@@ -165,7 +239,9 @@ public sealed partial class ControlPanelViewModel
                     DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value);
                 }),
             ClassNameToggle(StandingsOptions),
-            SessionIdToggle(StandingsOptions));
+            SessionIdToggle(StandingsOptions),
+            SessionLapsToggle(StandingsOptions),
+            SessionTimeToggle(StandingsOptions));
 
     private SettingsGroup RelativeTable() => new SettingsGroup("TABLE")
         .With(
@@ -180,7 +256,9 @@ public sealed partial class ControlPanelViewModel
                 null,
                 value => SetFocusSize(RelativeOptions, value)),
             ClassNameToggle(RelativeOptions),
-            SessionIdToggle(RelativeOptions));
+            SessionIdToggle(RelativeOptions),
+            SessionLapsToggle(RelativeOptions),
+            SessionTimeToggle(RelativeOptions));
 
     private ToggleSetting ClassNameToggle(DriverTableOptions options) => new(
         "Show category name",
@@ -202,6 +280,26 @@ public sealed partial class ControlPanelViewModel
             options.ShowSessionId = value;
             DriverTableOptionsStore.SaveSessionId(options.Table, value);
             TableHeaderChanged?.Invoke(options.Table);
+        });
+
+    private static ToggleSetting SessionLapsToggle(DriverTableOptions options) => new(
+        "Show laps",
+        "Your lap out of the race's, at the bottom of the table. In a timed race the total is estimated from your recent racing laps, e.g. 7/23.8.",
+        options.ShowSessionLaps,
+        value =>
+        {
+            options.ShowSessionLaps = value;
+            DriverTableOptionsStore.SaveSessionLaps(options.Table, value);
+        });
+
+    private static ToggleSetting SessionTimeToggle(DriverTableOptions options) => new(
+        "Show session time",
+        "Elapsed time over the session's length, at the bottom of the table.",
+        options.ShowSessionTime,
+        value =>
+        {
+            options.ShowSessionTime = value;
+            DriverTableOptionsStore.SaveSessionTime(options.Table, value);
         });
 
     private static void SetFocusSize(DriverTableOptions options, double value)
@@ -262,7 +360,7 @@ public sealed partial class ControlPanelViewModel
                 }),
             new NumberSetting(
                 "Extra reserve",
-                "In your selected units (see the Units page).",
+                "In your selected units (see General › Units).",
                 Units.Volume(FuelCalculatorOptions.MarginLiters, Units.Current),
                 0,
                 Units.Current == UnitSystem.Imperial ? 13 : 50,
@@ -302,7 +400,7 @@ public sealed partial class ControlPanelViewModel
 
     private SettingsGroup WeatherDisplay() => new SettingsGroup(
         "DISPLAY",
-        "The compass turns with your car; the arrow runs from where the wind comes from to where it blows. Units are set on the Units page.")
+        "The compass turns with your car; the arrow runs from where the wind comes from to where it blows. Units are set in General › Units.")
         .With(
             new ToggleSetting(
                 "Show labels",
@@ -469,8 +567,10 @@ public sealed partial class ControlPanelViewModel
 
     private SettingsGroup HighRateNote() => new SettingsGroup(
         "UPDATE RATE",
-        "This widget reads telemetry on its own timer — set it on the Performance page.");
+        "This widget reads telemetry on its own timer — set it in General › Performance.");
 
+    /// <summary>Everything about the application rather than one widget, on one page: the window,
+    /// units, performance, hotkeys and diagnostics.</summary>
     private IEnumerable<SettingsGroup> GeneralPage() =>
     [
         new SettingsGroup(
@@ -488,6 +588,9 @@ public sealed partial class ControlPanelViewModel
                     "Where layouts, options and hotkeys are saved.",
                     "Open folder",
                     OpenConfigFolder)),
+        .. UnitsGroups(),
+        .. PerformanceGroups(),
+        .. HotkeyGroups(),
         DiagnosticsGroup(),
     ];
 
@@ -542,7 +645,7 @@ public sealed partial class ControlPanelViewModel
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{TrayPreferencesStore.ConfigFolder}\"") { UseShellExecute = true });
     }
 
-    private IEnumerable<SettingsGroup> UnitsPage() =>
+    private IEnumerable<SettingsGroup> UnitsGroups() =>
     [
         new SettingsGroup(
             "UNITS",
@@ -562,10 +665,10 @@ public sealed partial class ControlPanelViewModel
                 })),
     ];
 
-    private IEnumerable<SettingsGroup> PerformancePage() =>
+    private IEnumerable<SettingsGroup> PerformanceGroups() =>
     [
         new SettingsGroup(
-            "HIGH-RATE DISPLAYS",
+            "PERFORMANCE · HIGH-RATE DISPLAYS",
             "The proximity bars, the ABS light and the pedal trace are the displays where update rate is the whole point. They run on their own timer, independent of everything else.")
             .With(new ChoiceSetting(
                 "Refresh rate",
@@ -579,7 +682,7 @@ public sealed partial class ControlPanelViewModel
                     CriticalRefreshChanged?.Invoke(CriticalRefreshIntervalMs);
                 })),
         new SettingsGroup(
-            "WIND COMPASS",
+            "PERFORMANCE · WIND COMPASS",
             "The wind arrow in the Weather widget. The wind changes over minutes, but the dial turns with the car through every corner, so animating it redraws the widget for most of the lap.")
             .With(new ChoiceSetting(
                 "Refresh rate",
@@ -596,11 +699,15 @@ public sealed partial class ControlPanelViewModel
 
     private IEnumerable<SettingsGroup> DashboardPage()
     {
-        DashboardButton = new ActionSetting(
+        var button = new ActionSetting(
             "Second-monitor dashboard",
             "A fullscreen layout with every panel at once, separate from the floating widgets.",
             "Show dashboard",
             () => DashboardToggleRequested?.Invoke());
+        if (!_buildingIndex)
+        {
+            DashboardButton = button;
+        }
 
         return
         [
@@ -623,7 +730,7 @@ public sealed partial class ControlPanelViewModel
                             DashboardThemeStore.Save(_dashboardTheme);
                             DashboardThemeChanged?.Invoke(_dashboardTheme);
                         }),
-                    DashboardButton),
+                    button),
         ];
     }
 }

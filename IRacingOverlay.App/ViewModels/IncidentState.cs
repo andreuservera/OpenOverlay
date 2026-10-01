@@ -16,6 +16,9 @@ public sealed class IncidentState
     /// <summary>Incident points before disqualification; null when the session has no limit.</summary>
     public int? Limit { get; init; }
 
+    /// <summary>The latest incident as iRacing logged it; null on builds without PlayerIncidents.</summary>
+    public IncidentReport? LatestReport { get; init; }
+
     public static IncidentState Empty { get; } = new() { MyIncidentCount = 0, TeamIncidentCount = null };
 
     /// <summary>The total the limit applies to: the team's in a team race, otherwise your own.</summary>

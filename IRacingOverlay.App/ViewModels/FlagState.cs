@@ -52,7 +52,8 @@ public enum FlagVisualStyle
     Meatball,
     DebrisStripes,
     BlueWithOrangeStripe,
-    DiagonalSplit,
+    /// <summary>Furled black: all black, with a white X running corner to corner.</summary>
+    CornerCross,
     BlackWithCross,
     CrossedFlags,
     LapBoard,

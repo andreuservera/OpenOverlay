@@ -10,6 +10,17 @@ public enum LapRelation
     Lapped,
     /// <summary>A lap or more up on the player: they are lapping, or have lapped, the player.</summary>
     Lapping,
+    /// <summary>A lapped car just up the road: the player is about to put it a(nother) lap down.</summary>
+    BeingLapped,
+}
+
+/// <summary>A penalty flag a driver-table row can show.</summary>
+public enum PenaltyFlag
+{
+    None,
+    Black,
+    Meatball,
+    Furled,
 }
 
 /// <summary>
@@ -31,7 +42,25 @@ public abstract class DriverRow
     public required bool IsPlayer { get; init; }
     public required bool OnPitRoad { get; init; }
     public bool HasBlackFlag { get; init; }
+    /// <summary>The furled black flag: a warning, or a slow-down penalty to serve on track.</summary>
+    public bool HasFurledFlag { get; init; }
     public bool HasMeatballFlag { get; init; }
+
+    /// <summary>The row's tag holds two flags at most, the more serious first: black (serve a
+    /// penalty in the pits), meatball (pit for repairs), furled black (slow down).</summary>
+    public PenaltyFlag PrimaryPenalty => HasBlackFlag ? PenaltyFlag.Black
+        : HasMeatballFlag ? PenaltyFlag.Meatball
+        : HasFurledFlag ? PenaltyFlag.Furled
+        : PenaltyFlag.None;
+
+    public PenaltyFlag SecondaryPenalty => PrimaryPenalty switch
+    {
+        PenaltyFlag.Black when HasMeatballFlag => PenaltyFlag.Meatball,
+        PenaltyFlag.Black or PenaltyFlag.Meatball when HasFurledFlag => PenaltyFlag.Furled,
+        _ => PenaltyFlag.None,
+    };
+
+    public bool HasPenaltyFlag => PrimaryPenalty != PenaltyFlag.None;
     public required int CurrentLap { get; init; }
     public required double LastLapTime { get; init; }
     public required double BestLapTime { get; init; }
@@ -50,6 +79,15 @@ public abstract class DriverRow
 
     /// <summary>Most recent completed pit stop this session; null until the car has made one.</summary>
     public PitStop? LastPitStop { get; init; }
+
+    /// <summary>The tyre the car is on; null when iRacing doesn't say.</summary>
+    public TireCompound? TireCompound { get; init; }
+
+    public bool HasTireCompound => TireCompound is not null;
+
+    public string TireCompoundLetter => TireCompound?.Letter ?? "";
+
+    public string TireCompoundColor => TireCompound?.Color ?? "#8E99A5";
 
     /// <summary>What the GAP column shows. The one thing the two tables genuinely disagree on:
     /// Standings measures to the class leader, Relative to the player.</summary>

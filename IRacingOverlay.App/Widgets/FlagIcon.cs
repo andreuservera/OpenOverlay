@@ -69,8 +69,13 @@ public sealed class FlagIcon : FrameworkElement
                 dc.DrawRectangle(foreground, null, new Rect(-w, (h / 2) - (h * 0.11), w * 3, h * 0.22));
                 dc.Pop();
                 break;
-            case FlagVisualStyle.DiagonalSplit:
-                dc.DrawGeometry(foreground, null, Triangle(new Point(0, 0), new Point(w, 0), new Point(0, h)));
+            case FlagVisualStyle.CornerCross:
+                var thickness = Math.Max(1.5, h * 0.13);
+                var diagonal = new Pen(foreground, thickness);
+                // Run past the corners: the clip then squares each arm off exactly at the flag's edge.
+                var reach = new Vector(w, h) * (thickness / Math.Sqrt((w * w) + (h * h)));
+                dc.DrawLine(diagonal, new Point(-reach.X, -reach.Y), new Point(w + reach.X, h + reach.Y));
+                dc.DrawLine(diagonal, new Point(w + reach.X, -reach.Y), new Point(-reach.X, h + reach.Y));
                 break;
             case FlagVisualStyle.BlackWithCross:
                 var cross = new Pen(foreground, h * 0.13) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
@@ -157,20 +162,6 @@ public sealed class FlagIcon : FrameworkElement
             new Typeface(family, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
             h * 0.66, ink, VisualTreeHelper.GetDpi(this).PixelsPerDip);
         dc.DrawText(text, new Point((w - text.Width) / 2, (h - text.Height) / 2));
-    }
-
-    private static Geometry Triangle(Point a, Point b, Point c)
-    {
-        var geometry = new StreamGeometry();
-        using (var context = geometry.Open())
-        {
-            context.BeginFigure(a, isFilled: true, isClosed: true);
-            context.LineTo(b, isStroked: false, isSmoothJoin: false);
-            context.LineTo(c, isStroked: false, isSmoothJoin: false);
-        }
-
-        geometry.Freeze();
-        return geometry;
     }
 
     private static Brush BrushOf(string hex) => BrushCache.GetOrAdd(hex, static value =>

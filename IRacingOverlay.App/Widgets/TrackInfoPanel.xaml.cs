@@ -30,7 +30,7 @@ public partial class TrackInfoPanel : UserControl
         TrackUsageText.Text = state.TrackUsageDisplay;
         SetUsageBar(state.TrackUsageLevel);
         TimeRemainingText.Text = state.TimeRemainingDisplay;
-        LapsRemainingText.Text = state.LapsRemainingDisplay;
+        LapText.Text = state.LapDisplay;
     }
 
     private void SetUsageBar(int? level)

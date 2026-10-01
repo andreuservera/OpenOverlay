@@ -65,7 +65,7 @@ public static class WidgetCatalog
         new(Flag, "Flags", "Every flag currently being shown to you.",
             "M5,3 V21 M5,4 H18 L15.5,8.5 L18,13 H5"),
 
-        new(TireInfo, "Tires", "Pressures, carcass temperatures and remaining tread, corner by corner.",
+        new(TireInfo, "Tires", "Pressures, carcass temperatures and remaining tread, zone by zone on every corner.",
             "M12,3 A9,9 0 1 0 12.01,3 Z M12,8 A4,4 0 1 0 12.01,8 Z"),
 
         new(Delta, "Delta", "Live gap to your reference lap.",
@@ -77,7 +77,7 @@ public static class WidgetCatalog
         new(PedalTrace, "Pedal trace", "Throttle, brake and clutch, with ABS activity marked.",
             "M3,17 L8,9 L12,14 L16,6 L21,12"),
 
-        new(Incident, "Incidents", "Your incident count, and your team's in a team race.",
+        new(Incident, "Incidents", "Your incident count and what each one was; your team's too in a team race.",
             "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8"),
 
         new(TrackInfo, "Track & session", "Weather, track state and what's left of the session.",

@@ -27,6 +27,10 @@ internal static class TelemetryVarNames
     /// track. This is "is the driver actually driving," not "is the car on pit road" (CarIdxOnPitRoad
     /// covers that, per-car, elsewhere below).</summary>
     public const string IsOnTrack = "IsOnTrack";
+    /// <summary>bool — the player's car is on pit road, between the cones.</summary>
+    public const string OnPitRoad = "OnPitRoad";
+    /// <summary>int — laps completed by the player (Lap is laps started).</summary>
+    public const string LapCompleted = "LapCompleted";
     public const string PlayerLastLapTime = "LapLastLapTime";
     public const string PlayerBestLapTime = "LapBestLapTime";
 
@@ -42,6 +46,8 @@ internal static class TelemetryVarNames
     /// <summary>float[], seconds — "estimated time to reach current location on track" per car, on that
     /// car's own CarClassEstLapTime clock: not comparable between classes (or BoP'd models) unscaled.</summary>
     public const string CarIdxEstTime = "CarIdxEstTime";
+    /// <summary>int[] — each car's current tyre, an index into DriverInfo.DriverTires; -1 when unknown.</summary>
+    public const string CarIdxTireCompound = "CarIdxTireCompound";
 
     public const string BrakeAbsActive = "BrakeABSactive";
     /// <summary>float — the in-car ABS setting. Only present on cars with adjustable ABS.</summary>
@@ -125,9 +131,16 @@ internal static class TelemetryVarNames
     /// large as "no limit" rather than a real number of laps.</summary>
     public const string SessionLapsRemain = "SessionLapsRemainEx";
     public const string SessionTimeRemain = "SessionTimeRemain";
+    /// <summary>int — the session's lap count; the same no-limit sentinel as the laps remaining.</summary>
+    public const string SessionLapsTotal = "SessionLapsTotal";
+    /// <summary>double, seconds — the session's length; the same 7-day sentinel when it has none.</summary>
+    public const string SessionTimeTotal = "SessionTimeTotal";
 
     public const string PlayerCarMyIncidentCount = "PlayerCarMyIncidentCount";
     public const string PlayerCarTeamIncidentCount = "PlayerCarTeamIncidentCount";
+    /// <summary>bitfield, irsdk_IncidentFlags — "log incidents that the player received": what
+    /// happened in the low byte, what it cost in the next. See <see cref="IncidentReport"/>.</summary>
+    public const string PlayerIncidents = "PlayerIncidents";
 
     /// <summary>All measured "at the start/finish line" per iRacing's own variable descriptions —
     /// live weather, unlike WeekendInfo's YAML fields which only reflect conditions at session start.</summary>

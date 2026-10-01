@@ -137,8 +137,8 @@
                             <TextBlock Text="RAIN" Style="{StaticResource InlineCaption}"/>
                             <TextBlock x:Name="RainChanceText" Text="—" Style="{StaticResource ValueText}"/>
                         </StackPanel>
-                        <Border Style="{StaticResource MeterTrack}" Height="4" Margin="0,3,0,0">
-                            <Rectangle x:Name="RainFill" RadiusX="2" RadiusY="2" RenderTransformOrigin="0,0.5">
+                        <Border Style="{StaticResource MeterTrack}" Height="6" Margin="0,3,0,0">
+                            <Rectangle x:Name="RainFill" RadiusX="3" RadiusY="3" RenderTransformOrigin="0,0.5">
                                 <Rectangle.RenderTransform>
                                     <ScaleTransform x:Name="RainFillScale" ScaleX="0"/>
                                 </Rectangle.RenderTransform>

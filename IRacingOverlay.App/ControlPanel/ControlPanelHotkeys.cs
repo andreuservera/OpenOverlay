@@ -4,13 +4,12 @@ using IRacingOverlay.App.Overlay;
 namespace IRacingOverlay.App.ControlPanel;
 
 /// <summary>
-/// Global hotkeys: the saved bindings, the actions they trigger, and the Hotkeys page. Registration
-/// with Windows lives in MainWindow's <see cref="GlobalHotkeyManager"/>; this side only says what the
-/// bindings are and reports back which ones Windows refused.
+/// Global hotkeys: the saved bindings, the actions they trigger, and their groups on the General
+/// page. Registration with Windows lives in MainWindow's <see cref="GlobalHotkeyManager"/>; this side
+/// only says what the bindings are and reports back which ones Windows refused.
 /// </summary>
 public sealed partial class ControlPanelViewModel
 {
-    private const string HotkeysPageKey = "app.hotkeys";
     private const string HotkeyTakenMessage = "Windows or another app is already using this shortcut.";
 
     private List<HotkeyBinding> _hotkeys = HotkeyStore.Load(AllHotkeyActions()).ToList();
@@ -151,18 +150,21 @@ public sealed partial class ControlPanelViewModel
     private static IEnumerable<string> AllHotkeyActions() =>
         HotkeyActions.Global.Concat(WidgetCatalog.All.Select(d => HotkeyActions.ToggleWidget(d.Key)));
 
-    private IEnumerable<SettingsGroup> HotkeysPage()
+    private IEnumerable<SettingsGroup> HotkeyGroups()
     {
         // A rebuild while a field was recording removes that field; make sure hotkeys come back.
-        SetHotkeyRecording(false);
-        _hotkeySettings.Clear();
+        if (!_buildingIndex)
+        {
+            SetHotkeyRecording(false);
+            _hotkeySettings.Clear();
+        }
 
         var global = new SettingsGroup(
-            "SHORTCUTS",
+            "HOTKEYS",
             "Work in any app, iRacing included. Click a shortcut and press the new combination; Esc cancels. " +
             "A shortcut is reserved for this app while it runs, so pick ones iRacing doesn't use.");
         var widgets = new SettingsGroup(
-            "WIDGETS",
+            "HOTKEYS · WIDGETS",
             "Turn a single widget on or off — the same switch as in its own page. Unassigned until you pick a key.");
         foreach (var binding in _hotkeys)
         {
@@ -176,7 +178,10 @@ public sealed partial class ControlPanelViewModel
                 enabled => UpdateHotkey(action, b => b with { Enabled = enabled }),
                 SetHotkeyRecording);
             setting.SetStatus(_hotkeyFailures.Contains(action) ? HotkeyTakenMessage : null);
-            _hotkeySettings[action] = setting;
+            if (!_buildingIndex)
+            {
+                _hotkeySettings[action] = setting;
+            }
             (HotkeyActions.TryGetWidget(action, out _) ? widgets : global).Items.Add(setting);
         }
 
@@ -184,7 +189,7 @@ public sealed partial class ControlPanelViewModel
         [
             global,
             widgets,
-            new SettingsGroup("RESET")
+            new SettingsGroup("HOTKEYS · RESET")
                 .With(
                     new ActionSetting(
                         "Default shortcuts",

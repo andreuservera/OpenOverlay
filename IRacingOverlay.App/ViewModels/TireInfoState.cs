@@ -25,9 +25,25 @@ public sealed class TireCornerInfo
         : "—";
 
     public string PressureUnit => Units.PressureUnit(UnitSystem);
+    public bool HasPressure => PressureKPa > 0;
     public string TempLeftDisplay => FormatTemp(TempLeft);
     public string TempMiddleDisplay => FormatTemp(TempMiddle);
     public string TempRightDisplay => FormatTemp(TempRight);
+
+    /// <summary>Remaining tread per zone as a whole percentage, "—" when the car doesn't report wear.
+    /// iRacing only refreshes these while the car sits in its pit stall, like the carcass temps.</summary>
+    public string WearLeftDisplay => FormatWear(WearLeft);
+    public string WearMiddleDisplay => FormatWear(WearMiddle);
+    public string WearRightDisplay => FormatWear(WearRight);
+
+    public string WearLeftColor => WearColor(WearLeft);
+    public string WearMiddleColor => WearColor(WearMiddle);
+    public string WearRightColor => WearColor(WearRight);
+
+    /// <summary>How full each zone's bar is, 0–1; empty without wear data.</summary>
+    public double WearLeftFill => WearFill(WearLeft);
+    public double WearMiddleFill => WearFill(WearMiddle);
+    public double WearRightFill => WearFill(WearRight);
 
     /// <summary>Worst (lowest-tread) zone of the three — the number that actually matters for "do I
     /// need to pit," since a tire fails at its thinnest point, not its average.</summary>
@@ -36,6 +52,17 @@ public sealed class TireCornerInfo
     // Just the degree sign: three zone temps side by side have no room for the unit letter.
     private string FormatTemp(double c) =>
         c > 0 ? Units.Temperature(c, UnitSystem).ToString("0", CultureInfo.InvariantCulture) + "°" : "—";
+
+    private string FormatWear(double fraction) => HasWearData
+        ? (Math.Clamp(fraction, 0, 1) * 100).ToString("0", CultureInfo.InvariantCulture) + "%"
+        : "—";
+
+    // Same three bands the single worst-zone bar used: plenty, getting thin, change them.
+    private string WearColor(double fraction) => !HasWearData
+        ? "#8E99A5"
+        : fraction > 0.6 ? "#34D399" : fraction > 0.3 ? "#F5A524" : "#F04438";
+
+    private double WearFill(double fraction) => HasWearData ? Math.Clamp(fraction, 0, 1) : 0;
 }
 
 public sealed class TireInfoState

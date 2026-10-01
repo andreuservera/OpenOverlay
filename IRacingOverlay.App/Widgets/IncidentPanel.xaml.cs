@@ -29,9 +29,16 @@ public partial class IncidentPanel : UserControl
             _alerts.Reset();
             StopAlert();
         }
-        else if (_alerts.Observe(state.MyIncidentCount, TimeSpan.FromMilliseconds(Environment.TickCount64)) is { } alert)
+        else if (_alerts.Observe(state.MyIncidentCount, TimeSpan.FromMilliseconds(Environment.TickCount64), state.LatestReport) is { } alert)
         {
-            ShowAlert(alert);
+            if (alert.IsCorrection)
+            {
+                AlertText.Text = alert.Display;
+            }
+            else
+            {
+                ShowAlert(alert);
+            }
         }
 
         var isTeamRace = state.TeamIncidentCount is not null;
@@ -59,6 +66,7 @@ public partial class IncidentPanel : UserControl
     {
         var brush = alert.Points switch
         {
+            0 => StatePalette.TextMuted,
             1 => StatePalette.Accent,
             2 => StatePalette.Warning,
             _ => StatePalette.Critical,
@@ -72,6 +80,12 @@ public partial class IncidentPanel : UserControl
         AlertText.BeginAnimation(OpacityProperty, Envelope(0, 1, total));
         TitleText.BeginAnimation(OpacityProperty, Envelope(1, 0, total));
         AlertWash.BeginAnimation(OpacityProperty, Envelope(0, 1, FadeIn + TimeSpan.FromSeconds(1) + FadeOut * 2));
+
+        // A light contact costs nothing: named, but the count it didn't change doesn't pulse.
+        if (alert.Points == 0)
+        {
+            return;
+        }
 
         var pulse = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(600) };
         pulse.KeyFrames.Add(new EasingDoubleKeyFrame(1.22, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(160)), new SineEase { EasingMode = EasingMode.EaseOut }));

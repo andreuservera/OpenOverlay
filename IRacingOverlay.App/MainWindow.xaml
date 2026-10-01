@@ -79,6 +79,10 @@
                         </StackPanel>
                     </Border>
 
+                    <Button Style="{StaticResource Cp.Button}" Content="Close all widgets" Margin="0,0,10,0"
+                            Command="{Binding CloseAllWidgetsCommand}"
+                            ToolTip="Switches every widget off. Each one comes back from its own switch in the list."/>
+
                     <ToggleButton Style="{StaticResource Cp.ToggleButton}" Content="{Binding EditModeLabel}"
                                   IsChecked="{Binding IsEditMode, Mode=TwoWay}"
                                   ToolTip="Drag a widget to move it. Hover it for the − M + size control, or hold Ctrl and scroll."/>
@@ -110,7 +114,7 @@
                             <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,10,0"
                                      FontFamily="{DynamicResource Theme.FontFamily}"
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Search widgets" IsHitTestVisible="False" Margin="33,0,0,0"
+                            <TextBlock Text="Search options" IsHitTestVisible="False" Margin="33,0,0,0"
                                        VerticalAlignment="Center" Foreground="{StaticResource Cp.TextFaint}"
                                        FontSize="{StaticResource Cp.Size.Body}">
                                 <TextBlock.Style>

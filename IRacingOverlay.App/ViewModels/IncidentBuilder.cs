@@ -8,7 +8,7 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 internal static class IncidentBuilder
 {
-    public static IncidentState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session = null)
+    public static IncidentState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session = null, IncidentReport? latestReport = null)
     {
         if (!telemetry.HasVariable(TelemetryVarNames.PlayerCarMyIncidentCount))
         {
@@ -24,6 +24,6 @@ internal static class IncidentBuilder
             ? parsed
             : null;
 
-        return new IncidentState { MyIncidentCount = mine, TeamIncidentCount = team, Limit = limit };
+        return new IncidentState { MyIncidentCount = mine, TeamIncidentCount = team, Limit = limit, LatestReport = latestReport };
     }
 }

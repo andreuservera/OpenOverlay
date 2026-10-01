@@ -187,6 +187,15 @@ public class FlagBuilderTests
         Assert.Equal(FlagVisualStyle.DebrisStripes, Assert.Single(Shown(Debris)).Style);
         Assert.Equal(FlagVisualStyle.BlueWithOrangeStripe, Assert.Single(Shown(Blue)).Style);
         Assert.Equal(FlagVisualStyle.BlackWithCross, Assert.Single(Shown(Disqualify)).Style);
-        Assert.Equal(FlagVisualStyle.DiagonalSplit, Assert.Single(Shown(Furled)).Style);
+        Assert.Equal(FlagVisualStyle.CornerCross, Assert.Single(Shown(Furled)).Style);
+    }
+
+    [Fact]
+    public void FurledBlack_IsAllBlackWithAWhiteCross()
+    {
+        var furled = Assert.Single(Shown(Furled));
+
+        Assert.Equal("#0B0D10", furled.BackgroundColor);
+        Assert.Equal("#F2F5F8", furled.ForegroundColor);
     }
 }

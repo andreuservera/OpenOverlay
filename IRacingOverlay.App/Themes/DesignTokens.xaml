@@ -113,29 +113,25 @@
          them rather than by lines. State is carried by the band, not by extra ink on top of it. -->
     <SolidColorBrush x:Key="Row.Base" Color="#0DFFFFFF"/>
     <SolidColorBrush x:Key="Row.Placeholder" Color="#06FFFFFF"/>
-    <!-- The one row you must find without reading: a self-blue wash that fades across the row,
-         with a crisp outline so it survives a bright track behind a translucent overlay. -->
+    <!-- The one row you must find without reading. Neutral white, never a hue: every colour is
+         some class's colour somewhere. A lighter band fading across the row, and a crisp outline
+         so it survives a bright track behind a translucent overlay. -->
     <LinearGradientBrush x:Key="Row.Player" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#664C9AFF" Offset="0"/>
-        <GradientStop Color="#2E4C9AFF" Offset="0.6"/>
-        <GradientStop Color="#1F4C9AFF" Offset="1"/>
+        <GradientStop Color="#3DFFFFFF" Offset="0"/>
+        <GradientStop Color="#24FFFFFF" Offset="0.6"/>
+        <GradientStop Color="#1AFFFFFF" Offset="1"/>
     </LinearGradientBrush>
-    <SolidColorBrush x:Key="Row.PlayerOutline" Color="#A64C9AFF"/>
+    <SolidColorBrush x:Key="Row.PlayerOutline" Color="#D9F2F5F8"/>
+    <!-- The player's name: pure white, a notch brighter than the off-white every other name uses. -->
+    <SolidColorBrush x:Key="Row.PlayerInk" Color="#FFFFFF"/>
     <!-- In the pits: a warm band, a PIT badge, and the row's content recedes (see the row template). -->
     <SolidColorBrush x:Key="Row.Pit" Color="#1FF5A524"/>
     <sys:Double x:Key="Row.PitOpacity">0.7</sys:Double>
-    <!-- Relative: a car a lap down (blue) or a lap up (red). Washes in from the right so the class
-         colour keeps the left edge and the two never mix. -->
+    <!-- Relative: a lapped car isn't in your race, so it steps back further than a car in the pits.
+         Lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
+    <sys:Double x:Key="Row.LappedOpacity">0.55</sys:Double>
     <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Row.LappingInk" Color="#FF6B6B"/>
-    <LinearGradientBrush x:Key="Row.LappedWash" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#006CB8FF" Offset="0.3"/>
-        <GradientStop Color="#476CB8FF" Offset="1"/>
-    </LinearGradientBrush>
-    <LinearGradientBrush x:Key="Row.LappingWash" StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#00FF6B6B" Offset="0.3"/>
-        <GradientStop Color="#47FF6B6B" Offset="1"/>
-    </LinearGradientBrush>
 
     <!-- ===== Status badges =====
          Short live states (PIT) as a tinted, outlined pill: the same shape as the licence chip, so
@@ -160,10 +156,6 @@
         <Setter Property="Foreground" Value="{StaticResource State.Warning}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
-    <!-- Penalty flags (black, meatball) drawn as tiny flags; the edge keeps the black readable on a dark row. -->
-    <SolidColorBrush x:Key="Badge.FlagFill" Color="#0B0D10"/>
-    <SolidColorBrush x:Key="Badge.FlagEdge" Color="#B3F2F5F8"/>
-    <SolidColorBrush x:Key="Badge.MeatballInk" Color="#FF7A1A"/>
 
     <!-- ===== Radii ===== -->
     <CornerRadius x:Key="Radius.Chip">3</CornerRadius>

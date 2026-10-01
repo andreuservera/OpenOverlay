@@ -14,8 +14,9 @@ public sealed class TrackInfoState
     public required double HumidityPct { get; init; }
     /// <summary>Null when the session has no time limit (lap-limited instead).</summary>
     public required double? TimeRemainingSeconds { get; init; }
-    /// <summary>Null when the session has no lap limit (time-limited instead).</summary>
-    public required int? LapsRemaining { get; init; }
+
+    /// <summary>The player's lap out of the session's laps, the same reading as the tables' footer.</summary>
+    public SessionProgress Progress { get; init; } = SessionProgress.Empty;
 
     public UnitSystem UnitSystem { get; init; }
 
@@ -33,7 +34,6 @@ public sealed class TrackInfoState
         WindDirRad = 0,
         HumidityPct = 0,
         TimeRemainingSeconds = null,
-        LapsRemaining = null,
         HasData = false,
     };
 
@@ -115,7 +115,9 @@ public sealed class TrackInfoState
 
     public string TimeRemainingDisplay => TimeRemainingSeconds is { } seconds ? FormatCountdown(seconds) : "—";
 
-    public string LapsRemainingDisplay => LapsRemaining is { } laps ? laps.ToString(CultureInfo.InvariantCulture) : "—";
+    /// <summary>"7/23": the lap you're on out of the race's laps. A timed race's total is estimated
+    /// from your pace and carries a decimal, "7/23.8".</summary>
+    public string LapDisplay => Progress.LapDisplay;
 
     private static string FormatCountdown(double seconds)
     {

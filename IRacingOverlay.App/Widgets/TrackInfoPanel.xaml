@@ -82,16 +82,16 @@
 
             <Rectangle Style="{StaticResource BarSeparator}"/>
 
-            <!-- Time/laps remaining are what a driver actually glances up for mid-stint, so they end
-                 the bar in primary ink rather than the secondary the weather fields use. -->
+            <!-- Time left and the lap count are what a driver actually glances up for mid-stint, so
+                 they end the bar in primary ink rather than the secondary the weather fields use. -->
             <StackPanel Style="{StaticResource BarField}">
                 <TextBlock Text="TIME LEFT" Style="{StaticResource BarCaption}"/>
                 <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <StackPanel Style="{StaticResource BarField}" Margin="0">
-                <TextBlock Text="LAPS LEFT" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
+                <TextBlock Text="LAP" Style="{StaticResource BarCaption}"/>
+                <TextBlock x:Name="LapText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
             </StackPanel>
         </StackPanel>
     </Border>

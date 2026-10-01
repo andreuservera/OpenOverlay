@@ -22,5 +22,7 @@ public partial class StandingsWidget : OverlayWindowBase
 
     public void SetSessionId(int subSessionId) => _panel.SetSessionId(subSessionId);
 
+    public void SetProgress(SessionProgress progress) => _panel.SetProgress(progress);
+
     public void SetOptions(DriverTableOptions options) => _panel.Options = options;
 }

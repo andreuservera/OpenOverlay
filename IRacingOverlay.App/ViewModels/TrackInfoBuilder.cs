@@ -9,12 +9,9 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 internal static class TrackInfoBuilder
 {
-    // Same sentinel-handling approach as FuelBuilder: iRacing reports an implausibly large number
-    // rather than a null/-1 when a session has no lap or time limit.
-    private const int NoLapLimitThreshold = 20_000;
-    private const double NoTimeLimitThresholdSeconds = 1_000_000;
-
-    public static TrackInfoState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session)
+    /// <param name="recentRacingLapSeconds">The player's recent racing pace (<see cref="LapLog"/>), for
+    /// the lap total of a timed session; 0 falls back to their last/best lap.</param>
+    public static TrackInfoState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session, double recentRacingLapSeconds = 0)
     {
         var trackName = session?.WeekendInfo?.TrackDisplayShortName;
         if (string.IsNullOrWhiteSpace(trackName))
@@ -40,26 +37,6 @@ internal static class TrackInfoBuilder
             trackUsage = current.SessionTrackRubberState ?? "";
         }
 
-        double? timeRemaining = null;
-        if (telemetry.HasVariable(TelemetryVarNames.SessionTimeRemain))
-        {
-            var raw = telemetry.GetDouble(TelemetryVarNames.SessionTimeRemain);
-            if (raw >= 0 && raw < NoTimeLimitThresholdSeconds)
-            {
-                timeRemaining = raw;
-            }
-        }
-
-        int? lapsRemaining = null;
-        if (telemetry.HasVariable(TelemetryVarNames.SessionLapsRemain))
-        {
-            var raw = telemetry.GetInt(TelemetryVarNames.SessionLapsRemain);
-            if (raw is > 0 and < NoLapLimitThreshold)
-            {
-                lapsRemaining = raw;
-            }
-        }
-
         return new TrackInfoState
         {
             TrackName = trackName ?? "",
@@ -71,8 +48,8 @@ internal static class TrackInfoBuilder
             WindDirRad = GetFloatOrZero(telemetry, TelemetryVarNames.WindDir),
             // iRacing's "%" unit is a 0-1 fraction (same as Throttle/FuelLevelPct), so 38% arrives as 0.38.
             HumidityPct = GetFloatOrZero(telemetry, TelemetryVarNames.RelativeHumidity) * 100,
-            TimeRemainingSeconds = timeRemaining,
-            LapsRemaining = lapsRemaining,
+            TimeRemainingSeconds = SessionClock.TimeRemaining(telemetry),
+            Progress = SessionProgressBuilder.Build(telemetry, session, recentRacingLapSeconds),
             UnitSystem = Units.Read(telemetry),
         };
     }

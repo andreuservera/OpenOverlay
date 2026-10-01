@@ -2,7 +2,7 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.8.0] - 2026-09-30
+### [0.8.0] - 2026-10-01
 
 #### Added
 - New ABOUT section in the Control Panel with What's New, Changelog and About OpenOverlay pages.
@@ -16,12 +16,17 @@ All notable changes to OpenOverlay, newest first.
   - One-click copy of the version details for bug reports
   - Links to GitHub, the documentation, issue reporting and the license
 - Clutch pedal trace added to the Pedal Trace widget for complete pedal input monitoring.
+- Tire compound indicators.
 - Build and update channel included in diagnostics reports.
 
 #### Improved
 - Relative calculations refined for more accurate gap tracking throughout a session.
 - Standings calculations improved for greater consistency during session transitions and live updates.
 - Cockpit dashboard proximity detection improved, providing a more reliable view of nearby cars.
+- Relative and Standings visuals redesigned for improved readability and quicker identification of important race information.
+- Clearer handling of lapped cars, blue-flag situations and driver highlighting in Relative and Standings.
+- Track & Session widget now displays lap progress as current lap versus total laps for easier race tracking.
+- Penalty indicators redesigned with distinct visuals for black, furled black and meatball flags.
 - General UI polish across all widgets with improved readability and visual consistency.
 - Additional widget sizing options for greater flexibility when building custom layouts.
 - Performance optimizations across the application resulting in smoother updates and lower resource usage.

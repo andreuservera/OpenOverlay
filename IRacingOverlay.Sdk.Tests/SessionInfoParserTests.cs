@@ -56,6 +56,25 @@ public class SessionInfoParserTests
     }
 
     [Fact]
+    public void Parse_ReadsTheTireCompoundTable()
+    {
+        var yaml = ValidYaml.Replace(
+            " DriverCarIdx: 0\n",
+            " DriverCarIdx: 0\n DriverTires:\n - TireIndex: 0\n   TireCompoundType: \"Hard\"\n - TireIndex: 1\n   TireCompoundType: \"Wet\"\n");
+
+        var tires = SessionInfoParser.Parse(yaml).Session.DriverInfo!.DriverTires;
+
+        Assert.Equal(["Hard", "Wet"], tires.Select(t => t.TireCompoundType));
+        Assert.Equal([0, 1], tires.Select(t => t.TireIndex));
+    }
+
+    [Fact]
+    public void Parse_NoTireCompoundTable_IsEmpty()
+    {
+        Assert.Empty(SessionInfoParser.Parse(ValidYaml).Session.DriverInfo!.DriverTires);
+    }
+
+    [Fact]
     public void Parse_EmptyValues_BecomeEmptyCollectionsAndStrings()
     {
         var result = SessionInfoParser.Parse(ValidYaml);

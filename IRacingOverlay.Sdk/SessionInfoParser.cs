@@ -141,6 +141,12 @@ public static class SessionInfoParser
         {
             driverInfo.Drivers ??= [];
             driverInfo.Drivers.RemoveAll(d => d is null);
+            driverInfo.DriverTires ??= [];
+            driverInfo.DriverTires.RemoveAll(t => t is null);
+            foreach (var tire in driverInfo.DriverTires)
+            {
+                tire.TireCompoundType ??= "";
+            }
             foreach (var driver in driverInfo.Drivers)
             {
                 driver.UserName ??= "";
