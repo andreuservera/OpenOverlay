@@ -58,7 +58,8 @@ public class SessionInfoParserTests
     [Fact]
     public void Parse_ReadsTheTireCompoundTable()
     {
-        var yaml = ValidYaml.Replace(
+        // The raw literal takes the checkout's line endings: CRLF on the Windows CI runner.
+        var yaml = ValidYaml.ReplaceLineEndings("\n").Replace(
             " DriverCarIdx: 0\n",
             " DriverCarIdx: 0\n DriverTires:\n - TireIndex: 0\n   TireCompoundType: \"Hard\"\n - TireIndex: 1\n   TireCompoundType: \"Wet\"\n");
 
