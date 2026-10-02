@@ -1855,6 +1855,62 @@ public class StandingsBuilderTests
         Assert.Equal(2, relative[2].Position);
     }
 
+    /// <summary>The player (0) has just passed car 1 mid-lap; car 2, another class, leads. iRacing's
+    /// official order still has the player behind car 1 until the line.</summary>
+    private static TelemetrySnapshot PassBeforeTheLine(int sessionState)
+    {
+        var builder = FieldVars(3);
+        builder.AddVar("SessionState", IrsdkVarType.Int);
+        return TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetInt("SessionState", sessionState);
+            w.SetIntArray("CarIdxPosition", [3, 2, 1]);
+            w.SetIntArray("CarIdxLap", [10, 10, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.53f, 0.52f, 0.80f]);
+        });
+    }
+
+    private static IracingSessionInfo PassSession()
+    {
+        var session = FieldOf(3, playerCarIdx: 0);
+        session.DriverInfo!.Drivers[2].CarClassID = 200;
+        return session;
+    }
+
+    [Fact]
+    public void BuildRelative_WhileRacing_PositionFollowsAPassBeforeTheLine()
+    {
+        var snapshot = PassBeforeTheLine(sessionState: 4);
+        var session = PassSession();
+        var standings = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker());
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, session, maxEachSide: 4, standings)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx);
+
+        Assert.Equal((2, 1), (relative[0].Position, relative[0].ClassPosition));
+        Assert.Equal((3, 2), (relative[1].Position, relative[1].ClassPosition));
+        Assert.Equal((1, 1), (relative[2].Position, relative[2].ClassPosition));
+        // Standings keeps the official order until the line.
+        Assert.Equal([2, 1, 0], standings.Select(s => s.CarIdx));
+    }
+
+    [Theory]
+    [InlineData(3)] // formation lap
+    [InlineData(5)] // chequered flag
+    public void BuildRelative_OutsideRacing_PositionIsTheOfficialOne(int sessionState)
+    {
+        var snapshot = PassBeforeTheLine(sessionState);
+        var session = PassSession();
+        var standings = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker());
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, session, maxEachSide: 4, standings)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx);
+
+        Assert.Equal(3, relative[0].Position);
+        Assert.Equal(2, relative[1].Position);
+    }
+
     [Fact]
     public void BuildRelative_OutsideARace_MarksNobodyAsLapped()
     {

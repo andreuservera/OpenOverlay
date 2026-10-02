@@ -29,7 +29,8 @@ internal static class StandingsBuilder
     ///
     /// Folded to the nearest half lap rather than counting laps: CarIdxLap only counts laps since the
     /// session started, so in Practice/Qualifying a car dozens of laps ahead in count can be running
-    /// right alongside. Lapped and lapping come from race distance, position from Standings.
+    /// right alongside. Lapped and lapping come from race distance. Position is live while the race
+    /// is running (<see cref="LiveRaceRanks"/>) and Standings' official one otherwise.
     ///
     /// Always includes the player, even alone with no one else on track.
     /// </summary>
@@ -87,12 +88,19 @@ internal static class StandingsBuilder
             return results.TryGetValue(carIdx, out var scored) && scored.LapsComplete > 0 ? scored.LapsComplete : live;
         }
 
-        // Race position comes from the standings order when it's available. iRacing's own
+        // While the race is running, position follows the cars on track: a pass shows the moment it
+        // happens, as RaceLab does, instead of waiting for the line like Standings and iRacing's own
+        // relative. Everything else in the row is untouched by it.
+        var liveRanks = isRace && IsRacing(telemetry)
+            ? LiveRaceRanks(racing, carIdxLap, carIdxLapDistPct, results, positions)
+            : null;
+
+        // Otherwise race position comes from the standings order when it's available. iRacing's own
         // CarIdxPosition is only assigned in scored sessions — it sits at 0 through practice and
         // test sessions, which is why this column read "0" while Standings, which computes its own
-        // order, had it right. Sharing that order also keeps the two widgets from ever disagreeing
-        // about the same driver, and carries the iRating estimate across, which needs the whole
-        // field to compute and so can't be derived here.
+        // order, had it right. Sharing that order also keeps the two widgets from disagreeing about
+        // the same driver, and carries the iRating estimate across, which needs the whole field to
+        // compute and so can't be derived here.
         var standingsByCarIdx = new Dictionary<int, StandingsRow>();
         foreach (var row in standings ?? [])
         {
@@ -101,6 +109,11 @@ internal static class StandingsBuilder
 
         int PositionOf(int carIdx)
         {
+            if (liveRanks is not null && liveRanks.TryGetValue(carIdx, out var live))
+            {
+                return live.Position;
+            }
+
             if (standingsByCarIdx.TryGetValue(carIdx, out var ranked))
             {
                 return ranked.Position;
@@ -116,6 +129,11 @@ internal static class StandingsBuilder
 
         int ClassPositionOf(int carIdx)
         {
+            if (liveRanks is not null && liveRanks.TryGetValue(carIdx, out var live))
+            {
+                return live.ClassPosition;
+            }
+
             if (standingsByCarIdx.TryGetValue(carIdx, out var ranked))
             {
                 return ranked.ClassPosition;
@@ -513,6 +531,56 @@ internal static class StandingsBuilder
 
         return rows;
     }
+
+    /// <summary>
+    /// Every car's place in the race right now, overall and in its class, by how far round the race
+    /// it is (<see cref="TrackPosition.RaceDistance"/>). It knows only where cars are, not what
+    /// official scoring decides on its own — that catches up as each car crosses the line. A car
+    /// iRacing can't place this tick (towed) is counted at the start of the lap after its last
+    /// scored one; one that has never been out isn't counted. Grid ties fall to official order.
+    /// </summary>
+    private static Dictionary<int, (int Position, int ClassPosition)> LiveRaceRanks(
+        IReadOnlyList<DriverEntry> racing,
+        int[] laps,
+        float[] lapDistPct,
+        IReadOnlyDictionary<int, SessionResultPosition> results,
+        int[]? positions)
+    {
+        var placed = new List<(DriverEntry Driver, double RaceDistance)>();
+        foreach (var driver in racing)
+        {
+            var raceDistance = TrackPosition.Read(laps, lapDistPct, driver.CarIdx)?.RaceDistance
+                ?? (results.TryGetValue(driver.CarIdx, out var scored) && scored.LapsComplete > 0 ? scored.LapsComplete + 1 : null);
+            if (raceDistance is { } distance)
+            {
+                placed.Add((driver, distance));
+            }
+        }
+
+        int Official(int carIdx) =>
+            positions is not null && carIdx < positions.Length && positions[carIdx] > 0 ? positions[carIdx] : int.MaxValue;
+
+        var ranks = new Dictionary<int, (int, int)>();
+        var classRank = new Dictionary<int, int>();
+        var position = 0;
+        foreach (var (driver, _) in placed.OrderByDescending(p => p.RaceDistance).ThenBy(p => Official(p.Driver.CarIdx)))
+        {
+            var inClass = classRank.GetValueOrDefault(driver.CarClassID) + 1;
+            classRank[driver.CarClassID] = inClass;
+            ranks[driver.CarIdx] = (++position, inClass);
+        }
+
+        return ranks;
+    }
+
+    /// <summary>Green flag to chequered: the stretch where cars are actually racing for position.
+    /// On the grid, in formation and after the finish the official order is the one that counts.</summary>
+    private static bool IsRacing(TelemetrySnapshot telemetry) =>
+        telemetry.HasVariable(TelemetryVarNames.SessionState) &&
+        telemetry.GetInt(TelemetryVarNames.SessionState) == SessionStateRacing;
+
+    /// <summary>irsdk_SessionState: 4 = racing.</summary>
+    private const int SessionStateRacing = 4;
 
     private static List<DriverEntry> Racing(DriverInfoSection driverInfo) =>
         driverInfo.Drivers.Where(d => !d.IsPaceCar && d.CarIdx >= 0).ToList();
