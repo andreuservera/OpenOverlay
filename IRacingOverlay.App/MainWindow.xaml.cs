@@ -26,11 +26,8 @@ namespace IRacingOverlay.App;
 /// </summary>
 public partial class MainWindow : Window
 {
-    // Standings only needs to feel "live," not sub-second precise — recomputing every 100ms was
-    // wasted work (and, before the continuous-ordering fix, it happened to disguise a bug: since the
-    // underlying data barely changed within a lap either way, it *looked* like updates only landed
-    // at lap boundaries). This throttles it to roughly once a second without a second timer.
-    private const int StandingsUpdateEveryNTicks = 10;
+    // Roughly once a second, without a second timer.
+    private const int DiagnosticsUpdateEveryNTicks = 10;
     private const int HealthUpdateEveryNTicks = 10;
     private static readonly TimeSpan RecentProblemWindow = TimeSpan.FromMinutes(10);
 
@@ -46,6 +43,8 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _dashboardGuard;
     private readonly ComponentGuard _standingsGuard;
     private readonly ComponentGuard _pitStopGuard;
+    private readonly ComponentGuard _lineCrossingGuard;
+    private readonly ComponentGuard _estTimeProfileGuard;
     private readonly ComponentGuard _penaltyGuard;
     private readonly ComponentGuard _lapLogGuard;
     private readonly ComponentGuard _statusGuard;
@@ -205,6 +204,8 @@ public partial class MainWindow : Window
     private readonly IncidentReportLatch _incidentReports = new();
     private SessionBestLapTracker _sessionBestLapTracker = new();
     private PitStopTracker _pitStopTracker = new();
+    private LineCrossingTracker _lineCrossings = new();
+    private EstTimeProfile _estTimeProfile = new();
     private PenaltyFlagTracker _penaltyTracker = new();
     private int _tickCount;
 
@@ -261,6 +262,8 @@ public partial class MainWindow : Window
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
         _standingsGuard = _health.CreateGuard("Standings model", _ => _sessionBestLapTracker = new());
         _pitStopGuard = _health.CreateGuard("Pit stop tracker", _ => _pitStopTracker = new());
+        _lineCrossingGuard = _health.CreateGuard("Line crossing timing", _ => _lineCrossings = new());
+        _estTimeProfileGuard = _health.CreateGuard("Relative time curve", _ => _estTimeProfile = new());
         _penaltyGuard = _health.CreateGuard("Penalty flag log", _ => _penaltyTracker = new());
         _lapLogGuard = _health.CreateGuard("Lap log", _ => ResetLapHistory());
         ResetLapHistory();
@@ -546,6 +549,10 @@ public partial class MainWindow : Window
         _tickCount++;
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        // Every tick too: a crossing is timed from the ticks either side of the line, and the time
+        // curve is learned from wherever the cars are each tick.
+        _lineCrossingGuard.Run(() => _lineCrossings.Update(telemetry, session), GuardStage.Build);
+        _estTimeProfileGuard.Run(() => _estTimeProfile.Update(telemetry, session), GuardStage.Build);
         _lapLogGuard.Run(() => _lapLog.Observe(telemetry), GuardStage.Build);
         _penaltyGuard.Run(() =>
         {
@@ -564,12 +571,15 @@ public partial class MainWindow : Window
         }, GuardStage.Build);
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
+        // Every tick: the classification itself only moves as cars cross the line, but pit road,
+        // flags and tyres are live and should show the moment they change.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
-        if (needsStandings && _tickCount % StandingsUpdateEveryNTicks == 0)
+        if (needsStandings)
         {
-            // A failed rebuild keeps the last good order: a table a second old beats an empty one.
+            // A failed rebuild keeps the last good order: a table a tick old beats an empty one.
             if (_standingsGuard.TryRun(
-                    () => StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops),
+                    () => StandingsBuilder.BuildStandings(
+                        telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings),
                     out var standings))
             {
                 _latestStandings = standings;
@@ -613,12 +623,13 @@ public partial class MainWindow : Window
             }
         }
 
-        // Built every tick, unlike standings: Relative is about where cars are right now, and a
-        // once-a-second refresh is visibly laggy when someone is alongside you.
+        // Built every tick: Relative is about where cars are right now, and a once-a-second refresh
+        // is visibly laggy when someone is alongside you.
         Feed(
             WidgetCatalog.Relative,
             Relative,
-            () => StandingsBuilder.BuildRelative(telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops),
+            () => StandingsBuilder.BuildRelative(
+                telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops, _estTimeProfile),
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);
@@ -673,9 +684,8 @@ public partial class MainWindow : Window
         Feed(WidgetCatalog.TrackMap, TrackMap, () => TrackMapBuilder.Build(telemetry, session),
             (widget, markers) => widget.UpdateState(markers), (dashboard, markers) => dashboard.UpdateTrackMap(markers));
 
-        // Memory usage barely changes tick to tick — reuse the same once-a-second cadence as
-        // Standings rather than recomputing it on every 100ms tick.
-        if (_tickCount % StandingsUpdateEveryNTicks == 0)
+        // Memory usage barely changes tick to tick: once a second rather than on every 100ms tick.
+        if (_tickCount % DiagnosticsUpdateEveryNTicks == 0)
         {
             _statusGuard.Run(UpdateDiagnostics);
         }
@@ -804,7 +814,7 @@ public partial class MainWindow : Window
             $"UI {uiAvg:0.0}/{_uiTickMaxMs:0.0} ms · " +
             $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0})";
 
-        // Rolling ~1s window (this is called once every StandingsUpdateEveryNTicks UI ticks) rather
+        // Rolling ~1s window (this is called once every DiagnosticsUpdateEveryNTicks UI ticks) rather
         // than a since-launch average — a stutter from 10 minutes ago shouldn't still be dragging
         // down what the user sees right now.
         _uiTickTotalMs = 0;
@@ -1017,6 +1027,8 @@ public partial class MainWindow : Window
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();
+            _lineCrossings = new();
+            _estTimeProfile = new();
             _penaltyTracker = new();
             _flagPresenter = new();
             _latestStandings = [];

@@ -6,8 +6,8 @@ namespace IRacingOverlay.App.ViewModels;
 /// measured to the player rather than to a leader — negative ahead, positive behind.</summary>
 public sealed class RelativeRow : DriverRow
 {
-    /// <summary>NaN while no lap time is known to price the distance with; the row still sits in
-    /// its place on track.</summary>
+    /// <summary>NaN when there is no clock to read it on (no estimated lap time for the player's car);
+    /// the row still sits in its place on track.</summary>
     public required double GapSeconds { get; init; }
 
     // Formatted with InvariantCulture: this machine's locale uses a comma decimal separator, which

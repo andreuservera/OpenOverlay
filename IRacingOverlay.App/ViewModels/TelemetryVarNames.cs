@@ -43,6 +43,14 @@ internal static class TelemetryVarNames
     public const string CarIdxF2Time = "CarIdxF2Time";
     public const string CarIdxBestLapTime = "CarIdxBestLapTime";
     public const string CarIdxLastLapTime = "CarIdxLastLapTime";
+    /// <summary>int[] — laps each car has completed; steps up as it crosses the line.</summary>
+    public const string CarIdxLapCompleted = "CarIdxLapCompleted";
+    /// <summary>float[], seconds — iRacing's estimate of how long each car takes to get from the line to
+    /// where it is now. It follows the car's speed round the lap, not just the distance — a car on a
+    /// straight covers far more track per second than one in a hairpin — which is what makes a gap
+    /// built from it read like iRacing's own relative. Each car runs on its own CarClassEstLapTime
+    /// clock, so two cars' values only compare directly when they are the same car.</summary>
+    public const string CarIdxEstTime = "CarIdxEstTime";
     /// <summary>int[] — each car's current tyre, an index into DriverInfo.DriverTires; -1 when unknown.</summary>
     public const string CarIdxTireCompound = "CarIdxTireCompound";
 

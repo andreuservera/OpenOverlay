@@ -2,15 +2,13 @@ namespace IRacingOverlay.App.ViewModels;
 
 /// <summary>
 /// Where a car physically is on the circuit: laps started (CarIdxLap) plus how far round the current
-/// one it is (CarIdxLapDistPct). The app's one definition of track position — Standings, Relative and
-/// the Cockpit's proximity bars all read it from here. It carries no lap time on purpose, so an order
-/// taken from it can't depend on how fast any class runs; turning a separation into seconds is a
-/// separate, later step (<see cref="ReferencePace"/>).
+/// one it is (CarIdxLapDistPct). Relative and the Cockpit's proximity bars read track position from
+/// here. It carries no time: a distance on track says nothing about how long it takes to cover, which
+/// depends on where on the lap it is — Relative reads seconds off CarIdxEstTime instead.
 ///
 /// It answers two different questions, kept apart deliberately. <see cref="RaceDistance"/> is the
-/// absolute one — running order, laps up and down, gaps to a leader. <see cref="OnTrackGapTo"/> is
-/// folded around one car and only says who is near it on the road; folding throws whole laps away, so
-/// it must never decide an order or count a lap.
+/// absolute one — who is a lap up or down. <see cref="OnTrackGapTo"/> is folded around one car and
+/// only says who is near it on the road; folding throws whole laps away, so it must never count a lap.
 /// </summary>
 internal readonly record struct TrackPosition(int Lap, double LapDistPct)
 {
