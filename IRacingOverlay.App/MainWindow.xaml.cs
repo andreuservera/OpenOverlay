@@ -66,12 +66,19 @@ public partial class MainWindow : Window
     // itself the whole point — they're read on their own timer, decoupled from the general 100ms
     // tick, so the user can push them faster (lower latency, more CPU) or slower independently of
     // everything else.
-    // Frame-synchronised rather than a DispatcherTimer: at 16 ms a DispatcherTimer lands on the
-    // Windows timer grid (15.6/31.2 ms) at background priority, so the pedal trace sampled unevenly
-    // and visibly stuttered. CompositionTarget.Rendering fires once per displayed frame.
+    // Driven by the telemetry reader rather than a DispatcherTimer: at 16 ms a DispatcherTimer lands
+    // on the Windows timer grid (15.6/31.2 ms) at background priority, so the pedal trace sampled
+    // unevenly and visibly stuttered. Not CompositionTarget.Rendering either: any handler there keeps
+    // WPF's render thread composing on every monitor refresh for the life of the process, widgets
+    // open or not — GPU time taken from iRacing. Each new telemetry tick posts at most one update.
     private readonly System.Diagnostics.Stopwatch _criticalClock = System.Diagnostics.Stopwatch.StartNew();
     private double _criticalIntervalMs = 100;
     private double _nextCriticalMs;
+    private int _criticalTickPending;
+
+    // TEMPORARY (performance A/B test): marks this build in the title bar, tray tooltip and status
+    // line so it can't be mistaken for one that still hooks CompositionTarget.Rendering.
+    internal const string FrameHookTestTag = "TEST sin bucle por frame";
     private GlobalHotkeyManager? _hotkeys;
     private TrayIcon? _tray;
     private WindowState _restoreState = WindowState.Normal;
@@ -192,7 +199,7 @@ public partial class MainWindow : Window
                 : _vm.OverlaysHidden
                     ? (TrayStatus.OverlaysHidden, "Connected · overlays hidden")
                     : (TrayStatus.Running, "Connected · overlays on");
-        _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
+        _tray.Update(status, $"OpenOverlay [{FrameHookTestTag}] — {text}", _vm.OverlaysHidden);
     }
     private PedalTraceBuilder _pedalTraceBuilder = new();
     // The player's racing laps, observed every tick whatever is open: both fuel readouts average it
@@ -281,6 +288,7 @@ public partial class MainWindow : Window
 
         _connection.Fault += OnConnectionFault;
         _connection.TelemetryUpdated += (_, snapshot) => _incidentReports.Observe(snapshot);
+        _connection.TelemetryUpdated += (_, _) => PostCriticalTick();
         _connection.Connected += (_, _) =>
         {
             AppLog.Info("Telemetry", "Connected to iRacing");
@@ -305,7 +313,7 @@ public partial class MainWindow : Window
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
 
-        CompositionTarget.Rendering += OnFrame;
+        Title = $"{Title} · {FrameHookTestTag}";
 
         // Registered against this window's handle, which stays alive while the window is hidden.
         SourceInitialized += (_, _) =>
@@ -365,7 +373,6 @@ public partial class MainWindow : Window
             // The watchdog first: once the loop stops beating, a live watchdog would call it a hang.
             _watchdog.Dispose();
             _uiTimer.Stop();
-            CompositionTarget.Rendering -= OnFrame;
             GlobalExceptionHandler.StormRecovery = null;
             _updates.Dispose();
             _hotkeys?.Dispose();
@@ -732,9 +739,23 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnFrame(object? sender, EventArgs e)
+    /// <summary>Called on the telemetry thread for every new tick. Coalesced: while one update is
+    /// still queued on the UI thread, later ticks don't pile up behind it.</summary>
+    private void PostCriticalTick()
     {
-        // A few ms of slack, so a 16 ms target runs on every 60 Hz frame (16.7 ms apart).
+        if (Interlocked.Exchange(ref _criticalTickPending, 1) == 1)
+        {
+            return;
+        }
+
+        Dispatcher.InvokeAsync(OnTelemetryTick, DispatcherPriority.Render);
+    }
+
+    private void OnTelemetryTick()
+    {
+        Volatile.Write(ref _criticalTickPending, 0);
+
+        // A few ms of slack, so a 16 ms target runs on every 60 Hz telemetry tick (16.7 ms apart).
         var now = _criticalClock.Elapsed.TotalMilliseconds;
         if (now < _nextCriticalMs - 3)
         {
@@ -742,7 +763,7 @@ public partial class MainWindow : Window
         }
 
         _nextCriticalMs = now + _criticalIntervalMs;
-        CriticalTimer_Tick(sender, e);
+        CriticalTimer_Tick(this, EventArgs.Empty);
     }
 
     private void CriticalTimer_Tick(object? sender, EventArgs e)
@@ -812,7 +833,7 @@ public partial class MainWindow : Window
         _vm.DiagnosticsLine =
             $"{megabytes:0} MB · GC {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)} · " +
             $"UI {uiAvg:0.0}/{_uiTickMaxMs:0.0} ms · " +
-            $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0})";
+            $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0}) · {FrameHookTestTag}";
 
         // Rolling ~1s window (this is called once every DiagnosticsUpdateEveryNTicks UI ticks) rather
         // than a since-launch average — a stutter from 10 minutes ago shouldn't still be dragging
