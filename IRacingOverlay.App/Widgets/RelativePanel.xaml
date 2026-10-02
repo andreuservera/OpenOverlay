@@ -94,7 +94,15 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <ItemsControl ItemsSource="{Binding Rows, ElementName=Root}"/>
+                <ItemsControl ItemsSource="{Binding Rows, ElementName=Root}">
+                    <ItemsControl.ItemTemplate>
+                        <!-- Rows sit in fixed RowSlots; the implicit per-DataType templates pick the
+                             visual for whatever row the slot holds this tick. -->
+                        <DataTemplate>
+                            <ContentPresenter Content="{Binding Value}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </DockPanel>
     </Border>

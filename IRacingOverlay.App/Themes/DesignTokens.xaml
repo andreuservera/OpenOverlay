@@ -14,6 +14,7 @@
 
     <conv:ClassGradientConverter x:Key="ClassGradientConverter"/>
     <conv:ColorAlphaConverter x:Key="ColorAlphaConverter"/>
+    <conv:CachedBrushConverter x:Key="CachedBrushConverter"/>
 
     <!-- ===== Type scale =====
          One step up from the previous scale across the board. The growth is absorbed by the

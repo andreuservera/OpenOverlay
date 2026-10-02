@@ -75,10 +75,14 @@ public partial class MainWindow : Window
     private double _criticalIntervalMs = 100;
     private double _nextCriticalMs;
     private int _criticalTickPending;
+    // PerfProbe (temporary): when the pending critical tick was posted, and the post-tick idle probe.
+    private long _criticalPostedTicks;
+    private PerfProbe.Mark _afterTickMark;
+    private readonly Dictionary<string, (string Build, string Apply, string Dashboard)> _perfNames = new();
 
     // TEMPORARY (performance A/B test): marks this build in the title bar, tray tooltip and status
     // line so it can't be mistaken for one that still hooks CompositionTarget.Rendering.
-    internal const string FrameHookTestTag = "TEST sin bucle por frame";
+    internal const string FrameHookTestTag = "TEST optimizaciones UI v3 + perf log";
     private GlobalHotkeyManager? _hotkeys;
     private TrayIcon? _tray;
     private WindowState _restoreState = WindowState.Normal;
@@ -490,20 +494,33 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!_perfNames.TryGetValue(key, out var names))
+        {
+            names = ($"{key}.build", $"{key}.apply", $"{key}.dashboard");
+            _perfNames[key] = names;
+        }
+
         var guard = _widgetGuards[key];
+        var mark = PerfProbe.Begin();
         if (!guard.TryRun(build, out var state))
         {
             return;
         }
 
+        PerfProbe.End(names.Build, mark);
+
         if (widget is not null)
         {
+            mark = PerfProbe.Begin();
             guard.Run(() => toWidget(widget, state));
+            PerfProbe.End(names.Apply, mark);
         }
 
         if (dashboard is not null)
         {
+            mark = PerfProbe.Begin();
             _dashboardGuard.Run(() => toDashboard!(dashboard, state));
+            PerfProbe.End(names.Dashboard, mark);
         }
     }
 
@@ -511,12 +528,23 @@ public partial class MainWindow : Window
     {
         _watchdog.Beat();
         _uiTickStopwatch.Restart();
+        var perfMark = PerfProbe.Begin();
         try
         {
             UiTimer_TickCore();
         }
         finally
         {
+            PerfProbe.End("ui.tick", perfMark);
+            if (PerfProbe.Enabled)
+            {
+                // Whatever the tick queued (layout, render, input) runs before ContextIdle: the gap
+                // to this callback is the WPF work the tick itself doesn't see.
+                _afterTickMark = PerfProbe.Begin();
+                Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () => PerfProbe.End("ui.after-tick (layout+render)", _afterTickMark));
+                PerfProbe.MaybeFlush();
+            }
+
             RecordTickDuration(_uiTickStopwatch.Elapsed.TotalMilliseconds, ref _uiTickTotalMs, ref _uiTickMaxMs, ref _uiTickSamples);
             if (++_healthTicks % HealthUpdateEveryNTicks == 0)
             {
@@ -554,6 +582,7 @@ public partial class MainWindow : Window
         }, GuardStage.Build);
 
         _tickCount++;
+        var trackersMark = PerfProbe.Begin();
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
         // Every tick too: a crossing is timed from the ticks either side of the line, and the time
@@ -576,6 +605,7 @@ public partial class MainWindow : Window
                 });
             }
         }, GuardStage.Build);
+        PerfProbe.End("trackers", trackersMark);
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
         // Every tick: the classification itself only moves as cars cross the line, but pit road,
@@ -584,6 +614,7 @@ public partial class MainWindow : Window
         if (needsStandings)
         {
             // A failed rebuild keeps the last good order: a table a tick old beats an empty one.
+            var standingsMark = PerfProbe.Begin();
             if (_standingsGuard.TryRun(
                     () => StandingsBuilder.BuildStandings(
                         telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings),
@@ -591,6 +622,8 @@ public partial class MainWindow : Window
             {
                 _latestStandings = standings;
             }
+
+            PerfProbe.End("standings.order", standingsMark);
 
             // The floating widget gets the compact focused view (podium + a block around the
             // player); the Dashboard has the room for the whole field, grouped by class. Only these
@@ -748,12 +781,20 @@ public partial class MainWindow : Window
             return;
         }
 
+        Volatile.Write(ref _criticalPostedTicks, System.Diagnostics.Stopwatch.GetTimestamp());
+
         Dispatcher.InvokeAsync(OnTelemetryTick, DispatcherPriority.Render);
     }
 
     private void OnTelemetryTick()
     {
         Volatile.Write(ref _criticalTickPending, 0);
+        if (PerfProbe.Enabled)
+        {
+            // How long the UI thread kept a new telemetry tick waiting: the source of the gaps.
+            var waited = System.Diagnostics.Stopwatch.GetElapsedTime(Volatile.Read(ref _criticalPostedTicks));
+            PerfProbe.Record("critical.queue-wait", waited.TotalMilliseconds);
+        }
 
         // A few ms of slack, so a 16 ms target runs on every 60 Hz telemetry tick (16.7 ms apart).
         var now = _criticalClock.Elapsed.TotalMilliseconds;
@@ -781,12 +822,14 @@ public partial class MainWindow : Window
         _lastCriticalTickTimestampMs = nowMs;
 
         _criticalTickStopwatch.Restart();
+        var perfMark = PerfProbe.Begin();
         try
         {
             CriticalTimer_TickCore();
         }
         finally
         {
+            PerfProbe.End("critical.tick", perfMark);
             RecordTickDuration(_criticalTickStopwatch.Elapsed.TotalMilliseconds, ref _criticalTickTotalMs, ref _criticalTickMaxMs, ref _criticalTickSamples);
         }
     }

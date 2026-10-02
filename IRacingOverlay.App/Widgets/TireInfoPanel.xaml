@@ -34,11 +34,11 @@
 
         <DataTemplate x:Key="CornerTemplate" DataType="{x:Type vm:TireCornerInfo}">
             <StackPanel>
-                <TextBlock Text="{Binding Label}" Style="{StaticResource CornerLabel}"/>
+                <TextBlock Text="{Binding Label, Mode=OneTime}" Style="{StaticResource CornerLabel}"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding PressureDisplay}" Style="{StaticResource ValueTextLarge}"/>
-                    <TextBlock Text="{Binding PressureUnit}" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom"
-                               Margin="4,0,0,3" Visibility="{Binding HasPressure, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="{Binding PressureDisplay, Mode=OneTime}" Style="{StaticResource ValueTextLarge}"/>
+                    <TextBlock Text="{Binding PressureUnit, Mode=OneTime}" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom"
+                               Margin="4,0,0,3" Visibility="{Binding HasPressure, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>
                 <Grid Margin="0,4,0,0">
                     <Grid.ColumnDefinitions>
@@ -57,32 +57,32 @@
                     <TextBlock Grid.Column="1" Text="C" Style="{StaticResource ZoneHeader}"/>
                     <TextBlock Grid.Column="2" Text="R" Style="{StaticResource ZoneHeader}"/>
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding TempLeftDisplay}" Style="{StaticResource ZoneTemp}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TempMiddleDisplay}" Style="{StaticResource ZoneTemp}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TempRightDisplay}" Style="{StaticResource ZoneTemp}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding TempLeftDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TempMiddleDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TempRightDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding WearLeftDisplay}" Foreground="{Binding WearLeftColor}" Style="{StaticResource ZoneWear}"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WearMiddleDisplay}" Foreground="{Binding WearMiddleColor}" Style="{StaticResource ZoneWear}"/>
-                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding WearRightDisplay}" Foreground="{Binding WearRightColor}" Style="{StaticResource ZoneWear}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding WearLeftDisplay, Mode=OneTime}" Foreground="{Binding WearLeftColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WearMiddleDisplay, Mode=OneTime}" Foreground="{Binding WearMiddleColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding WearRightDisplay, Mode=OneTime}" Foreground="{Binding WearRightColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
 
                     <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource ZoneTrack}">
-                        <Rectangle Fill="{Binding WearLeftColor}" Style="{StaticResource ZoneFill}">
+                        <Rectangle Fill="{Binding WearLeftColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneFill}">
                             <Rectangle.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding WearLeftFill}"/>
+                                <ScaleTransform ScaleX="{Binding WearLeftFill, Mode=OneTime}"/>
                             </Rectangle.RenderTransform>
                         </Rectangle>
                     </Border>
                     <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource ZoneTrack}">
-                        <Rectangle Fill="{Binding WearMiddleColor}" Style="{StaticResource ZoneFill}">
+                        <Rectangle Fill="{Binding WearMiddleColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneFill}">
                             <Rectangle.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding WearMiddleFill}"/>
+                                <ScaleTransform ScaleX="{Binding WearMiddleFill, Mode=OneTime}"/>
                             </Rectangle.RenderTransform>
                         </Rectangle>
                     </Border>
                     <Border Grid.Row="3" Grid.Column="2" Style="{StaticResource ZoneTrack}">
-                        <Rectangle Fill="{Binding WearRightColor}" Style="{StaticResource ZoneFill}">
+                        <Rectangle Fill="{Binding WearRightColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneFill}">
                             <Rectangle.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding WearRightFill}"/>
+                                <ScaleTransform ScaleX="{Binding WearRightFill, Mode=OneTime}"/>
                             </Rectangle.RenderTransform>
                         </Rectangle>
                     </Border>
