@@ -131,8 +131,12 @@
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="Disc" CornerRadius="4" Background="{StaticResource Cp.Field}"
                                                 BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+                                            <!-- A fixed box in the icon's own proportions (about 15 × 16), centred:
+                                                 with a margin instead, the uniform stretch left it pinned to the
+                                                 top-left of a square box, a little off-centre. -->
                                             <Path x:Name="Icon" Data="M12,3 V11 M6.6,6.4 A7.5,7.5 0 1 0 17.4,6.4"
-                                                  Stretch="Uniform" Margin="6" Stroke="{StaticResource Cp.TextMuted}"
+                                                  Width="11" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Stretch="Uniform" Stroke="{StaticResource Cp.TextMuted}"
                                                   StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
