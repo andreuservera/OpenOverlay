@@ -133,6 +133,11 @@ public sealed class LayoutEditorModel
         Layout.GridSize = Math.Clamp(gridSize, 1, 500);
     });
 
+    /// <summary>Changes the grid size as it is typed: the keystrokes of one value ("2", "25") are a
+    /// single undo step.</summary>
+    public void SetGridSize(int gridSize) =>
+        Change(() => Layout.GridSize = Math.Clamp(gridSize, 1, 500), mergeKey: "gridSize");
+
     /// <summary>Changes the target monitor and resolution; see <see cref="IRacingOverlay.App.Layouts.Layout.Retarget"/>.</summary>
     public void ChangeTarget(MonitorRef monitor, int width, int height, bool scalePositions)
     {

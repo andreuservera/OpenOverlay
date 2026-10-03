@@ -410,6 +410,17 @@ public partial class LayoutEditorWindow : Window
     private void OnSnapToggled(object sender, RoutedEventArgs e) =>
         _model.SetSnap(SnapToggle.IsChecked == true, _model.Layout.GridSize);
 
+    /// <summary>Applied while typing, so the grid redraws at once; leaving the field only tidies its
+    /// text. Partial or invalid text (empty, "0") is left alone until it becomes a size.</summary>
+    private void OnGridSizeTyped(object sender, TextChangedEventArgs e)
+    {
+        if (GridSizeBox.IsKeyboardFocusWithin &&
+            int.TryParse(GridSizeBox.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var size) && size > 0)
+        {
+            _model.SetGridSize(size);
+        }
+    }
+
     private void OnGridSizeCommitted(object sender, RoutedEventArgs e)
     {
         if (int.TryParse(GridSizeBox.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var size) && size > 0)
@@ -589,6 +600,17 @@ public partial class LayoutEditorWindow : Window
 
     /// <summary>A click that reached the canvas missed every widget (theirs are handled): deselect.</summary>
     private void OnSurfaceMouseDown(object sender, MouseButtonEventArgs e) => Select(null);
+
+    /// <summary>Any click on the canvas takes the focus off the property fields: what was typed in
+    /// X or Y is applied, and the fields follow the widget again as it is dragged (a focused field
+    /// is never overwritten, so it would otherwise keep its old value until clicked away).</summary>
+    private void OnSurfacePreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!Surface.IsKeyboardFocused)
+        {
+            Surface.Focus();
+        }
+    }
 
     private void OnItemMouseDown(object sender, MouseButtonEventArgs e)
     {

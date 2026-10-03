@@ -260,6 +260,23 @@ public sealed class LayoutEditorModelTests
     }
 
     [Fact]
+    public void TypingAGridSize_IsOneStep()
+    {
+        var now = new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc);
+        var model = NewModel(() => now);
+
+        model.SetGridSize(2);
+        now += TimeSpan.FromMilliseconds(200);
+        model.SetGridSize(25);
+        Assert.Equal(25, model.Layout.GridSize);
+        Assert.True(model.Layout.SnapEnabled);
+
+        model.Undo();
+        Assert.Equal(10, model.Layout.GridSize);
+        Assert.False(model.CanUndo);
+    }
+
+    [Fact]
     public void ConfigOpacityAndAutoHide_AreUndoableSteps()
     {
         var model = NewModel(WidgetCatalog.Relative);

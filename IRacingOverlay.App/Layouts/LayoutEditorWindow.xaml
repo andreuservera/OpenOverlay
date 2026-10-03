@@ -233,7 +233,7 @@
                                   Click="OnSnapToggled"/>
                     <Border Style="{StaticResource Ed.Field}" Width="58" Margin="6,0,0,0" ToolTip="Grid size in pixels">
                         <TextBox x:Name="GridSizeBox" Style="{StaticResource Cp.TextBox}" TextAlignment="Center"
-                                 MaxLength="3" LostFocus="OnGridSizeCommitted"/>
+                                 MaxLength="3" LostFocus="OnGridSizeCommitted" TextChanged="OnGridSizeTyped"/>
                     </Border>
                     <TextBlock Text="px" Style="{StaticResource Cp.Hint}" VerticalAlignment="Center" Margin="6,0,0,0"/>
                     <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
@@ -281,7 +281,8 @@
                         </Border.LayoutTransform>
                         <Grid x:Name="Surface" Background="#090C0F" AllowDrop="True"
                               DragOver="OnSurfaceDragOver" DragLeave="OnSurfaceDragLeave" Drop="OnSurfaceDrop"
-                              MouseLeftButtonDown="OnSurfaceMouseDown">
+                              MouseLeftButtonDown="OnSurfaceMouseDown" PreviewMouseDown="OnSurfacePreviewMouseDown"
+                              Focusable="True" FocusVisualStyle="{x:Null}">
                             <cp:PreviewBackdrop/>
                             <Rectangle x:Name="GridLines" IsHitTestVisible="False"/>
                             <ItemsControl x:Name="Items" ItemTemplate="{StaticResource Ed.ItemTemplate}">
