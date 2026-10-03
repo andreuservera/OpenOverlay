@@ -221,4 +221,8 @@ public sealed record CatalogEntry(WidgetDescriptor Descriptor, bool IsAvailable)
     public string Status => IsAvailable ? "" : "IN LAYOUT";
 
     public double EntryOpacity => IsAvailable ? 1 : 0.45;
+
+    public string Hint => IsAvailable
+        ? "Drag onto the screen, or double-click to add."
+        : "Already in this layout. Use the bin to remove it.";
 }

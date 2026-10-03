@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -24,6 +25,9 @@ public partial class LayoutEditorWindow : Window
     /// <summary>How close, in screen pixels, an edge has to come to another before it snaps to it.</summary>
     private const double AlignThreshold = 6;
 
+    /// <summary>How long after a bin click a double-click in the catalog is ignored, in ms.</summary>
+    private const long CatalogRemoveGrace = 600;
+
     private readonly LayoutStore _store;
     private readonly MonitorCatalog _monitors;
     private readonly Func<string, LayoutWidget> _newWidget;
@@ -39,6 +43,7 @@ public partial class LayoutEditorWindow : Window
     private bool _applyingSettings;
 
     private Point? _catalogPress;
+    private long _catalogRemovedAt = long.MinValue / 2;
     private Gesture? _gesture;
 
     /// <param name="newWidget">Builds the entry for a widget type added to the layout: the
@@ -417,7 +422,74 @@ public partial class LayoutEditorWindow : Window
 
     // ===== Adding from the catalog =====
 
-    private void OnCatalogMouseDown(object sender, MouseButtonEventArgs e) => _catalogPress = e.GetPosition(Catalog);
+    private void OnCatalogMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _catalogPress = e.GetPosition(Catalog);
+        if (e.ClickCount != 2 || (e.OriginalSource as DependencyObject)?.FindAncestor<ButtonBase>() is not null)
+        {
+            return;
+        }
+
+        // The second click of a quick double-click on the bin lands on the row the removal just
+        // freed; it must not put the widget straight back.
+        if (Environment.TickCount64 - _catalogRemovedAt < CatalogRemoveGrace)
+        {
+            return;
+        }
+
+        _catalogPress = null;
+        if ((e.OriginalSource as DependencyObject)?.FindAncestorDataContext<CatalogEntry>() is not { } entry)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (!entry.IsAvailable)
+        {
+            Status($"{entry.Descriptor.Name} is already in this layout. Each widget can be added once.");
+            return;
+        }
+
+        AddAtCentre(entry.Descriptor.Key);
+    }
+
+    /// <summary>Adds a widget centred on the part of the canvas in view: what a double-click does.
+    /// It is placed once its real size is known, so it lands centred and not hanging off its
+    /// top-left corner.</summary>
+    private void AddAtCentre(string type)
+    {
+        var centre = Viewport.TranslatePoint(new Point(Viewport.ViewportWidth / 2, Viewport.ViewportHeight / 2), Surface);
+        var x = Math.Clamp(centre.X, 0, _model.Layout.Width - 1);
+        var y = Math.Clamp(centre.Y, 0, _model.Layout.Height - 1);
+        if (!TryAdd(type, x, y))
+        {
+            return;
+        }
+
+        Items.UpdateLayout();
+        if (_model.Layout.WidgetOf(type) is { Width: > 0, Height: > 0 } widget)
+        {
+            // Part of the same step as the add: undo takes the widget away, redo brings it back here.
+            _model.PreviewMove(type,
+                Snap(Math.Clamp(Math.Round(x - widget.Width / 2), 0, Math.Max(0, _model.Layout.Width - widget.Width))),
+                Snap(Math.Clamp(Math.Round(y - widget.Height / 2), 0, Math.Max(0, _model.Layout.Height - widget.Height))));
+        }
+    }
+
+    private double Snap(double value) =>
+        _model.Layout.SnapEnabled ? Math.Round(value / _model.Layout.GridSize) * _model.Layout.GridSize : value;
+
+    private void OnCatalogRemove(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not CatalogEntry entry)
+        {
+            return;
+        }
+
+        _catalogRemovedAt = Environment.TickCount64;
+        _model.Remove(entry.Descriptor.Key);
+        Status($"Removed {entry.Descriptor.Name}. Undo brings it back.");
+    }
 
     private void OnCatalogMouseMove(object sender, MouseEventArgs e)
     {
@@ -446,16 +518,35 @@ public partial class LayoutEditorWindow : Window
             return;
         }
 
-        DragDrop.DoDragDrop(Catalog, new DataObject(DragFormat, entry.Descriptor.Key), DragDropEffects.Copy);
+        DragGhostIcon.Data = Geometry.Parse(entry.Descriptor.IconData);
+        DragGhostName.Text = entry.Descriptor.Name;
+        DragGhostScale.ScaleX = DragGhostScale.ScaleY = 1 / _scale;
+        DropZoneText.Text = $"Drop {entry.Descriptor.Name} anywhere on the screen";
+        DropZone.Visibility = Visibility.Visible;
+        try
+        {
+            DragDrop.DoDragDrop(Catalog, new DataObject(DragFormat, entry.Descriptor.Key), DragDropEffects.Copy);
+        }
+        finally
+        {
+            DropZone.Visibility = Visibility.Collapsed;
+            DragGhost.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void OnSurfaceDragOver(object sender, DragEventArgs e)
     {
-        e.Effects = e.Data.GetData(DragFormat) is string type && !_model.Layout.Contains(type)
-            ? DragDropEffects.Copy
-            : DragDropEffects.None;
+        var accepted = e.Data.GetData(DragFormat) is string type && !_model.Layout.Contains(type);
+        e.Effects = accepted ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
+
+        DragGhost.Visibility = accepted ? Visibility.Visible : Visibility.Collapsed;
+        var point = e.GetPosition(Surface);
+        Canvas.SetLeft(DragGhost, Snap(Math.Clamp(point.X, 0, _model.Layout.Width - 1)));
+        Canvas.SetTop(DragGhost, Snap(Math.Clamp(point.Y, 0, _model.Layout.Height - 1)));
     }
+
+    private void OnSurfaceDragLeave(object sender, DragEventArgs e) => DragGhost.Visibility = Visibility.Collapsed;
 
     private void OnSurfaceDrop(object sender, DragEventArgs e)
     {
@@ -464,25 +555,29 @@ public partial class LayoutEditorWindow : Window
             return;
         }
 
+        DragGhost.Visibility = Visibility.Collapsed;
         var point = e.GetPosition(Surface);
+        TryAdd(type, point.X, point.Y);
+    }
+
+    /// <summary>Adds a widget with its top-left corner at a canvas point (snapped if snap is on).</summary>
+    private bool TryAdd(string type, double x, double y)
+    {
         var widget = _newWidget(type);
-        widget.X = Math.Round(Math.Clamp(point.X, 0, _model.Layout.Width - 1));
-        widget.Y = Math.Round(Math.Clamp(point.Y, 0, _model.Layout.Height - 1));
-        if (_model.Layout.SnapEnabled)
-        {
-            widget.X = Math.Round(widget.X / _model.Layout.GridSize) * _model.Layout.GridSize;
-            widget.Y = Math.Round(widget.Y / _model.Layout.GridSize) * _model.Layout.GridSize;
-        }
+        widget.X = Snap(Math.Round(Math.Clamp(x, 0, _model.Layout.Width - 1)));
+        widget.Y = Snap(Math.Round(Math.Clamp(y, 0, _model.Layout.Height - 1)));
 
         try
         {
             _model.Add(widget);
             Select(type);
             Status($"Added {NameOf(type)}.");
+            return true;
         }
         catch (LayoutRuleException rule)
         {
             Status(rule.Message);
+            return false;
         }
     }
 
@@ -838,6 +933,24 @@ internal static class VisualTreeExtensions
         while (node is not null)
         {
             if (node is FrameworkElement { DataContext: T found })
+            {
+                return found;
+            }
+
+            node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(node)
+                : LogicalTreeHelper.GetParent(node);
+        }
+
+        return null;
+    }
+
+    /// <summary>The nearest element of type <typeparamref name="T"/> at or above an element.</summary>
+    public static T? FindAncestor<T>(this DependencyObject? node) where T : DependencyObject
+    {
+        while (node is not null)
+        {
+            if (node is T found)
             {
                 return found;
             }

@@ -142,20 +142,62 @@
                 </DataTemplate.Triggers>
             </DataTemplate>
 
+            <!-- Available widgets carry a grip, the cue that they can be dragged out; the ones already in
+                 the layout carry a bin that takes them out again, one click and undoable. -->
             <DataTemplate x:Key="Ed.CatalogTemplate" DataType="{x:Type lay:CatalogEntry}">
-                <Grid Opacity="{Binding EntryOpacity}" Background="Transparent" Margin="0,1">
+                <Grid Background="Transparent" Margin="0,1" ToolTip="{Binding Hint}">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsAvailable}" Value="True">
+                                    <Setter Property="Cursor" Value="SizeAll"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Path Width="16" Height="16" Stretch="Uniform" Data="{Binding Descriptor.IconData}"
+                          Opacity="{Binding EntryOpacity}"
                           Stroke="{StaticResource Cp.Accent}" StrokeThickness="1.6" VerticalAlignment="Center"
                           StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                     <TextBlock Grid.Column="1" Text="{Binding Descriptor.Name}" Style="{StaticResource Cp.Body}"
+                               Opacity="{Binding EntryOpacity}"
                                Foreground="{StaticResource Cp.Text}" Margin="10,0,6,0" VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Cp.Eyebrow}"
+                               Opacity="{Binding EntryOpacity}"
                                FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"/>
+
+                    <!-- Grip: two columns of dots. -->
+                    <Path Grid.Column="3" Width="8" Height="14" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,4,0"
+                          Fill="{StaticResource Cp.TextFaint}"
+                          Visibility="{Binding IsAvailable, Converter={StaticResource Cp.BoolToVis}}"
+                          Data="M0,0 H2 V2 H0 Z M4,0 H6 V2 H4 Z M0,4 H2 V6 H0 Z M4,4 H6 V6 H4 Z M0,8 H2 V10 H0 Z M4,8 H6 V10 H4 Z"/>
+
+                    <Button Grid.Column="3" Width="24" Height="24" Margin="6,0,0,0" Cursor="Hand" Focusable="False"
+                            Click="OnCatalogRemove" ToolTip="Remove from layout"
+                            Visibility="{Binding IsAvailable, Converter={StaticResource Cp.NotBoolToVis}}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Chrome" CornerRadius="4" Background="Transparent">
+                                    <Path x:Name="Bin" Width="13" Height="14" Stretch="Uniform"
+                                          Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.7"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Data="M3,6 H21 M8,6 V4 A1,1 0 0 1 9,3 H15 A1,1 0 0 1 16,4 V6 M19,6 L18,20 A1,1 0 0 1 17,21 H7 A1,1 0 0 1 6,20 L5,6 M10,11 V17 M14,11 V17"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                                        <Setter TargetName="Bin" Property="Stroke" Value="{StaticResource Cp.Danger}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </Grid>
             </DataTemplate>
         </ResourceDictionary>
@@ -218,7 +260,7 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="WIDGETS" Style="{StaticResource Ed.PaneTitle}"/>
                     <TextBlock DockPanel.Dock="Top" Style="{StaticResource Cp.Hint}" TextWrapping="Wrap" Margin="16,0,16,8"
-                               Text="Drag a widget onto the screen. Each one can be added once."/>
+                               Text="Drag a widget onto the screen, or double-click it to add it. Each one can be added once."/>
                     <TextBlock x:Name="CatalogLimit" DockPanel.Dock="Bottom" Style="{StaticResource Cp.Hint}"
                                TextWrapping="Wrap" Margin="16,8,16,14"/>
                     <ListBox x:Name="Catalog" Style="{StaticResource Cp.NavList}" ItemTemplate="{StaticResource Ed.CatalogTemplate}"
@@ -238,7 +280,7 @@
                             <ScaleTransform x:Name="CanvasScale" ScaleX="1" ScaleY="1"/>
                         </Border.LayoutTransform>
                         <Grid x:Name="Surface" Background="#090C0F" AllowDrop="True"
-                              DragOver="OnSurfaceDragOver" Drop="OnSurfaceDrop"
+                              DragOver="OnSurfaceDragOver" DragLeave="OnSurfaceDragLeave" Drop="OnSurfaceDrop"
                               MouseLeftButtonDown="OnSurfaceMouseDown">
                             <cp:PreviewBackdrop/>
                             <Rectangle x:Name="GridLines" IsHitTestVisible="False"/>
@@ -257,10 +299,39 @@
                                 </ItemsControl.ItemContainerStyle>
                             </ItemsControl>
                             <Canvas x:Name="GuideLayer" IsHitTestVisible="False"/>
+                            <!-- What is being dragged in from the catalog, its top-left corner where it
+                                 will land. Drawn at screen size: the transform undoes the canvas scale. -->
+                            <Canvas IsHitTestVisible="False">
+                                <Border x:Name="DragGhost" Visibility="Collapsed" CornerRadius="6" Padding="10,7"
+                                        Background="#E6181D22" BorderBrush="{StaticResource Cp.Accent}" BorderThickness="1.5">
+                                    <Border.LayoutTransform>
+                                        <ScaleTransform x:Name="DragGhostScale"/>
+                                    </Border.LayoutTransform>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Path x:Name="DragGhostIcon" Width="16" Height="16" Stretch="Uniform"
+                                              Stroke="{StaticResource Cp.Accent}" StrokeThickness="1.6" VerticalAlignment="Center"
+                                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        <TextBlock x:Name="DragGhostName" Style="{StaticResource Cp.Body}" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource Cp.Text}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Canvas>
                         </Grid>
                     </Border>
                 </Grid>
             </ScrollViewer>
+
+            <!-- Shown for as long as a widget is being dragged from the catalog, so it is obvious where
+                 it can go. Never hit-testable: the drop itself lands on the canvas underneath. -->
+            <Grid x:Name="DropZone" Grid.Column="1" Visibility="Collapsed" IsHitTestVisible="False">
+                <Rectangle Margin="10" RadiusX="8" RadiusY="8" Fill="{StaticResource Cp.AccentWash}"
+                           Stroke="{StaticResource Cp.Accent}" StrokeThickness="2" StrokeDashArray="5 4"/>
+                <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" Padding="14,7"
+                        CornerRadius="6" Background="{StaticResource Cp.Accent}">
+                    <TextBlock x:Name="DropZoneText" Foreground="#101316" FontWeight="SemiBold"
+                               FontSize="{StaticResource Cp.Size.Body}"/>
+                </Border>
+            </Grid>
 
             <!-- ===== Properties ===== -->
             <Border Grid.Column="2" Background="{StaticResource Cp.Rail}" BorderBrush="{StaticResource Cp.Border}"
