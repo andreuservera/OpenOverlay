@@ -2,6 +2,22 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.9.0] - 2026-10-04
+
+#### Added
+- Layouts: save your widgets as presets, with their own position, size and settings, and switch between them in one click.
+  - New Layouts page in the Control Panel to create, edit, rename, duplicate and delete layouts, with a preview of each one.
+  - Canvas at the real resolution of the chosen monitor, with a zoom bar (fit, 100% and steps in between)
+  - Drag widgets from the catalog onto the screen, or double-click them to add them
+  - Each widget's own settings, independent of its individual setup
+  - Layout selector in the Control Panel toolbar: pick a layout and switch it on; while one is open, picking another switches to it directly.
+  - Export layouts to a file and import them, choosing the monitor they go on.
+
+#### Changed
+- Control Panel UI changes
+
+---
+
 ### [0.8.0] - 2026-10-03
 
 #### Added
