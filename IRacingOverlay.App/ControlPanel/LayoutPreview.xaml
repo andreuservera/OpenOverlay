@@ -1,0 +1,68 @@
+<UserControl x:Class="IRacingOverlay.App.ControlPanel.LayoutPreview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
+             IsHitTestVisible="False"
+             SizeChanged="OnSizeChanged">
+    <!-- Merged here too: StaticResource lookups run while this control is built, before it has a
+         parent window to find the theme in. -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ControlPanelTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <!--
+      The Layouts page's preview: the selected layout's monitor, scaled down to fit the pane, with its
+      widgets drawn by the real panels from the layout's own settings, as the editor's canvas draws
+      them. Read-only; editing happens in the editor.
+
+      The frame is scaled through a LayoutTransform rather than a Viewbox so the grid around it takes
+      the frame's on-screen size, which is what lets the resolution badge sit in the frame's corner
+      at a readable size instead of shrinking with the canvas.
+    -->
+    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Border x:Name="Frame" BorderThickness="1" BorderBrush="{StaticResource Cp.BorderStrong}">
+            <Border.LayoutTransform>
+                <ScaleTransform x:Name="FrameScale" ScaleX="1" ScaleY="1"/>
+            </Border.LayoutTransform>
+            <Grid x:Name="Surface" ClipToBounds="True">
+                <cp:PreviewBackdrop/>
+                <ItemsControl x:Name="Items">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                            <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            <Setter Property="Panel.ZIndex" Value="{Binding ZIndex}"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ContentPresenter Content="{Binding Panel}" Opacity="{Binding PanelOpacity}">
+                                <ContentPresenter.LayoutTransform>
+                                    <ScaleTransform ScaleX="{Binding Factor}" ScaleY="{Binding Factor}"/>
+                                </ContentPresenter.LayoutTransform>
+                            </ContentPresenter>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="EmptyText" Text="No widgets yet — add them in the editor."
+                   Style="{StaticResource Cp.Hint}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   TextAlignment="Center" Margin="12" Visibility="Collapsed"/>
+
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
+                Background="#99000000" CornerRadius="5" Padding="8,4">
+            <TextBlock x:Name="ResolutionText" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="10.5"
+                       FontWeight="Bold" Foreground="#8A949E"/>
+        </Border>
+    </Grid>
+</UserControl>

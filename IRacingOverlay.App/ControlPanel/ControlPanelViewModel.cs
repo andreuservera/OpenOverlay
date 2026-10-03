@@ -394,6 +394,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedWidget));
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsInfoPage));
+        OnPropertyChanged(nameof(PreviewLayout));
+        OnPropertyChanged(nameof(HasLayoutPreview));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
     }
 

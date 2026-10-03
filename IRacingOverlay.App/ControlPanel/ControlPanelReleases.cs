@@ -39,7 +39,7 @@ public sealed partial class ControlPanelViewModel
     /// <summary>An ABOUT page: nothing to preview, so the side panel shows the product instead.</summary>
     public bool IsInfoPage => _selected?.Group == AboutGroup;
 
-    public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage;
+    public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage && !HasLayoutPreview;
 
     /// <summary>The update check's latest state, pushed by MainWindow once a second.</summary>
     public string UpdateStatus

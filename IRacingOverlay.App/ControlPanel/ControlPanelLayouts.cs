@@ -24,6 +24,7 @@ public sealed partial class ControlPanelViewModel
     private LayoutEditorWindow? _layoutEditor;
     private LayoutSession? _layoutSession;
     private bool _stackingPending;
+    private Layout? _previewLayout;
 
     // Created on first use: nothing about layouts should cost anything until the page is opened.
     internal LayoutStore LayoutStore => _layoutStore ??= new LayoutStore();
@@ -39,6 +40,27 @@ public sealed partial class ControlPanelViewModel
         : null;
 
     public bool HasOpenLayout => LayoutStore.Open is not null;
+
+    /// <summary>The layout picked on the Layouts page, for the preview pane; null on any other page,
+    /// so its panels are let go when the page is left.</summary>
+    public Layout? PreviewLayout => Selected?.Key == LayoutsPageKey ? _previewLayout : null;
+
+    public bool HasLayoutPreview => PreviewLayout is not null;
+
+    /// <summary>Points the preview at the page's selected layout. A rebuild of the page that finds
+    /// the same layout unchanged keeps the preview as is, rather than rebuilding every panel.</summary>
+    private void SetPreviewLayout(Layout? layout)
+    {
+        if (layout?.Id == _previewLayout?.Id && layout?.ModifiedUtc == _previewLayout?.ModifiedUtc)
+        {
+            return;
+        }
+
+        _previewLayout = layout;
+        OnPropertyChanged(nameof(PreviewLayout));
+        OnPropertyChanged(nameof(HasLayoutPreview));
+        OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
+    }
 
     /// <summary>The page notice for a widget the open layout controls, or null.</summary>
     private SettingsGroup? LayoutNotice(string type)
@@ -80,6 +102,11 @@ public sealed partial class ControlPanelViewModel
 
         if (layouts.Count == 0)
         {
+            if (!_buildingIndex)
+            {
+                SetPreviewLayout(null);
+            }
+
             return
             [
                 new SettingsGroup(
@@ -93,6 +120,7 @@ public sealed partial class ControlPanelViewModel
         if (!_buildingIndex)
         {
             _selectedLayoutId = selected.Id;
+            SetPreviewLayout(selected);
         }
 
         var openId = LayoutStore.Open?.LayoutId;

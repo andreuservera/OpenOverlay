@@ -220,6 +220,9 @@
                                             <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
                                                 <Setter Property="Text" Value="OPENOVERLAY"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasLayoutPreview}" Value="True">
+                                                <Setter Property="Text" Value="LAYOUT PREVIEW"/>
+                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
@@ -236,6 +239,8 @@
                 <Grid>
                     <cp:WidgetPreview x:Name="Preview" Slot="{Binding SelectedWidget}"
                                       Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}"/>
+                    <cp:LayoutPreview Layout="{Binding PreviewLayout}"
+                                      Visibility="{Binding HasLayoutPreview, Converter={StaticResource Cp.BoolToVis}}"/>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="280"
                                 Visibility="{Binding ShowsPreviewPlaceholder, Converter={StaticResource Cp.BoolToVis}}">
                         <TextBlock Text="Nothing to preview" Style="{StaticResource Cp.Title}"
