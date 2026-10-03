@@ -29,7 +29,7 @@ public partial class RelativePanel : UserControl
         InitializeComponent();
     }
 
-    public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows);
+    public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Relative");
 
     public void SetClassName(string className) =>
         ClassNameText.Text = Options.ShowClassName ? className.ToUpperInvariant() : "";

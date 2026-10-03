@@ -15,6 +15,7 @@ internal static class PerfProbe
     private const int WindowSeconds = 5;
 
     private static readonly Dictionary<string, Stat> Sections = new();
+    private static readonly Dictionary<string, RowStat> RowTables = new();
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
     private static double _windowStartMs;
     private static int _gen0;
@@ -64,6 +65,38 @@ internal static class PerfProbe
         }
     }
 
+    /// <summary>One driver-table update: how many rows arrived identical to the one their slot
+    /// already shows, and the first property that differed for each row that changed.</summary>
+    public static void TallyRows(string table, int rows, int unchanged, IReadOnlyList<string>? differences)
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        if (!RowTables.TryGetValue(table, out var stat))
+        {
+            stat = new RowStat();
+            RowTables[table] = stat;
+        }
+
+        stat.Updates++;
+        stat.Rows += rows;
+        stat.Unchanged += unchanged;
+        if (unchanged == rows)
+        {
+            stat.AllUnchanged++;
+        }
+
+        if (differences is not null)
+        {
+            foreach (var difference in differences)
+            {
+                stat.Differences[difference] = stat.Differences.GetValueOrDefault(difference) + 1;
+            }
+        }
+    }
+
     /// <summary>Called once per UI tick; writes and resets the window when it is due.</summary>
     public static void MaybeFlush()
     {
@@ -105,9 +138,23 @@ internal static class PerfProbe
                 (stat.Over50 > 0 ? $" >50ms={stat.Over50}" : "");
         }
 
+        // "n=updates rows/update, % of rows identical to what was shown, % of updates with every row
+        // identical, then the properties that most often made a row differ (first difference only)."
+        foreach (var (table, stat) in RowTables)
+        {
+            var top = string.Join(" ", stat.Differences
+                .OrderByDescending(d => d.Value)
+                .Take(6)
+                .Select(d => $"{d.Key}={d.Value}"));
+            data[$"rows {table}"] =
+                $"n={stat.Updates} {F((double)stat.Rows / stat.Updates)} rows unchanged={F(100.0 * stat.Unchanged / Math.Max(1, stat.Rows))}% " +
+                $"all-unchanged={F(100.0 * stat.AllUnchanged / stat.Updates)}% diff: {top}";
+        }
+
         // Numbered: the log drops a line identical to one from the last minute.
         AppLog.Info("Perf", $"UI thread window {++_window}", data);
         Sections.Clear();
+        RowTables.Clear();
         StartWindow(now);
     }
 
@@ -130,5 +177,14 @@ internal static class PerfProbe
         public double MaxMs;
         public long TotalBytes;
         public int Over50;
+    }
+
+    private sealed class RowStat
+    {
+        public int Updates;
+        public int Rows;
+        public int Unchanged;
+        public int AllUnchanged;
+        public readonly Dictionary<string, int> Differences = new();
     }
 }

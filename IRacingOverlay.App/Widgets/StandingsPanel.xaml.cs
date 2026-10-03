@@ -35,7 +35,7 @@ public partial class StandingsPanel : UserControl
         InitializeComponent();
     }
 
-    public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows);
+    public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Standings");
 
     public void SetSof(double sof) => SofText.Text = sof > 0 ? $"SOF {Math.Round(sof):N0}" : "";
 

@@ -82,7 +82,7 @@ public partial class MainWindow : Window
 
     // TEMPORARY (performance A/B test): marks this build in the title bar, tray tooltip and status
     // line so it can't be mistaken for one that still hooks CompositionTarget.Rendering.
-    internal const string FrameHookTestTag = "TEST optimizaciones UI v3 + perf log";
+    internal const string FrameHookTestTag = "TEST v4 filas sin cambios + perf log";
     private GlobalHotkeyManager? _hotkeys;
     private TrayIcon? _tray;
     private WindowState _restoreState = WindowState.Normal;
