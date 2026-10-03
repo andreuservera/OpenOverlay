@@ -15,7 +15,7 @@ namespace IRacingOverlay.App.Layouts;
 ///
 /// Only what the widget's page offers and persists belongs here. Size, opacity and auto-hide are
 /// fields of <see cref="LayoutWidget"/> in their own right; application-wide settings (units, refresh
-/// rates) and anything never persisted (the Delta reference, the flag preview) stay out.
+/// rates) and the flag preview stay out.
 /// </summary>
 public interface IWidgetConfigCodec
 {
@@ -41,14 +41,17 @@ public sealed record WidgetConfigPersistence(
     Action<FlagOptions> Flag,
     Action<CockpitTheme> Cockpit,
     Action<WeatherOptions> Weather,
-    Action<FuelCalculatorOptions> FuelCalculator)
+    Action<FuelCalculatorOptions> FuelCalculator,
+    Action<DeltaOptions> Delta)
 {
     public static WidgetConfigPersistence Stores { get; } = new(
         DriverTableOptionsStore.Save,
         FlagOptionsStore.Save,
         CockpitThemeStore.Save,
         WeatherOptionsStore.Save,
-        FuelCalculatorOptionsStore.Save);
+        FuelCalculatorOptionsStore.Save,
+        // The Delta reference is deliberately never saved for the individual widget.
+        _ => { });
 }
 
 /// <summary>The live options objects the codecs read and write — the same instances the widgets,
@@ -60,6 +63,7 @@ public sealed record WidgetConfigTargets(
     CockpitOptions Cockpit,
     WeatherOptions Weather,
     FuelCalculatorOptions FuelCalculator,
+    DeltaOptions Delta,
     WidgetConfigPersistence Persist,
     Action<DriverTable> TableHeaderChanged);
 
@@ -77,8 +81,7 @@ public static class WidgetConfigCodecs
             new CockpitConfigCodec(targets.Cockpit, targets.Persist.Cockpit),
             new WeatherConfigCodec(targets.Weather, targets.Persist.Weather),
             new FuelCalculatorConfigCodec(targets.FuelCalculator, targets.Persist.FuelCalculator),
-            // The Delta reference is never persisted, so there is nothing of the Delta's to carry.
-            new EmptyConfigCodec(WidgetCatalog.Delta),
+            new DeltaConfigCodec(targets.Delta, targets.Persist.Delta),
             new EmptyConfigCodec(WidgetCatalog.TireInfo),
             new EmptyConfigCodec(WidgetCatalog.Fuel),
             new EmptyConfigCodec(WidgetCatalog.PedalTrace),
@@ -373,6 +376,17 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         Set<double>(config, "marginLaps", value => options.MarginLaps = value);
         Set<double>(config, "marginLiters", value => options.MarginLiters = value);
     }
+
+    protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
+}
+
+/// <summary>Which lap the Delta measures against. Not saved for the individual widget, but a layout
+/// keeps its own choice and applies it while open.</summary>
+internal sealed class DeltaConfigCodec(DeltaOptions options, Action<DeltaOptions> persist) : WidgetConfigCodec(WidgetCatalog.Delta)
+{
+    public override JsonObject Read() => new() { ["reference"] = Name(options.Reference) };
+
+    protected override void Assign(JsonObject config) => Set<DeltaReference>(config, "reference", value => options.Reference = value);
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
 }

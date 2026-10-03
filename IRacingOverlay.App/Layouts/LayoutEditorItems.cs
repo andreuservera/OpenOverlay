@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Nodes;
 using System.Windows;
 using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Overlay;
@@ -14,7 +15,10 @@ namespace IRacingOverlay.App.Layouts;
 /// </summary>
 public sealed class EditorWidgetItem : INotifyPropertyChanged
 {
+    private readonly WidgetConfigTargets _targets;
+    private readonly IWidgetConfigCodec _codec;
     private LayoutWidget _widget;
+    private JsonObject _appliedConfig;
     private bool _isSelected;
     private bool _isOffCanvas;
     private double _canvasScale = 1;
@@ -24,7 +28,18 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
     {
         _widget = widget;
         Descriptor = WidgetCatalog.All.First(descriptor => descriptor.Key == widget.Type);
-        Options = PreviewOptionsFor(widget);
+        _targets = NewTargets();
+        _codec = WidgetConfigCodecs.Create(_targets)[widget.Type];
+        _codec.Apply(widget.Config);
+        _appliedConfig = (JsonObject)widget.Config.DeepClone();
+        Options = new PreviewOptions(
+            _targets.Standings,
+            _targets.Relative,
+            _targets.FuelCalculator,
+            _targets.Flag,
+            FlagPreview: null,
+            _targets.Cockpit,
+            _targets.Weather);
         Panel = PanelFactory.Create(widget.Type, Options);
         if (Panel is FrameworkElement element)
         {
@@ -110,7 +125,40 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
     public void Bind(LayoutWidget widget)
     {
         _widget = widget;
+        if (!JsonNode.DeepEquals(widget.Config, _appliedConfig))
+        {
+            // Undo or redo brought back a different config: the preview follows it.
+            _codec.Apply(widget.Config);
+            _appliedConfig = (JsonObject)widget.Config.DeepClone();
+            PushMockState();
+        }
+
         OnPropertyChanged(string.Empty);
+    }
+
+    /// <summary>Settings for this widget's own options, acting on the very objects its preview is
+    /// drawn from, so a change shows at once. Nothing is saved to the widget's stores:
+    /// <paramref name="changed"/> is where the editor records it in the layout.</summary>
+    public WidgetSettingsContext SettingsContext(Action changed) => new(
+        _targets.Standings,
+        _targets.Relative,
+        _targets.FuelCalculator,
+        _targets.Flag,
+        _targets.Cockpit,
+        _targets.Weather,
+        _targets.Delta,
+        SaveToStores: false,
+        TableHeaderChanged: null,
+        Changed: changed);
+
+    /// <summary>The options as the settings have left them, in the layout's config shape. Also
+    /// refreshes the preview's sample data, which some options (row counts) change the amount of.</summary>
+    public JsonObject ReadConfig()
+    {
+        var config = _codec.Read();
+        _appliedConfig = (JsonObject)config.DeepClone();
+        PushMockState();
+        return config;
     }
 
     private void PushMockState()
@@ -132,29 +180,18 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Fresh options objects carrying this widget's layout config, through the same codecs
-    /// that apply it to the live widget — but saving nowhere.</summary>
-    private static PreviewOptions PreviewOptionsFor(LayoutWidget widget)
-    {
-        var targets = new WidgetConfigTargets(
-            new DriverTableOptions(DriverTable.Standings),
-            new DriverTableOptions(DriverTable.Relative),
-            new FlagOptions(),
-            new CockpitOptions(),
-            new WeatherOptions(),
-            new FuelCalculatorOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
-            _ => { });
-        WidgetConfigCodecs.Create(targets)[widget.Type].Apply(widget.Config);
-        return new PreviewOptions(
-            targets.Standings,
-            targets.Relative,
-            targets.FuelCalculator,
-            targets.Flag,
-            FlagPreview: null,
-            targets.Cockpit,
-            targets.Weather);
-    }
+    /// <summary>Fresh options objects for this widget's preview and settings — never the live
+    /// ones — with a persistence that saves nowhere.</summary>
+    private static WidgetConfigTargets NewTargets() => new(
+        new DriverTableOptions(DriverTable.Standings),
+        new DriverTableOptions(DriverTable.Relative),
+        new FlagOptions(),
+        new CockpitOptions(),
+        new WeatherOptions(),
+        new FuelCalculatorOptions(),
+        new DeltaOptions(),
+        new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+        _ => { });
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

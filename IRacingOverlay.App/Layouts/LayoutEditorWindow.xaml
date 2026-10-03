@@ -38,6 +38,16 @@
                 <Setter Property="CornerRadius" Value="6"/>
             </Style>
 
+            <!-- The theme's primary button has no disabled look; Save is disabled whenever there is
+                 nothing to save, and has to say so. -->
+            <Style x:Key="Ed.SaveButton" TargetType="ButtonBase" BasedOn="{StaticResource Cp.PrimaryButton}">
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.4"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <Style TargetType="ContextMenu">
                 <Setter Property="Background" Value="{StaticResource Cp.SurfaceAlt}"/>
                 <Setter Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
@@ -187,7 +197,7 @@
                     <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
 
                     <Button Style="{StaticResource Cp.Button}" Content="Monitor and resolution…" Click="OnChangeTarget"/>
-                    <Button x:Name="SaveButton" Style="{StaticResource Cp.PrimaryButton}" Content="Save" MinWidth="84"
+                    <Button x:Name="SaveButton" Style="{StaticResource Ed.SaveButton}" Content="Save" MinWidth="84"
                             Margin="12,0,0,0" Click="OnSave"/>
                     <Button Style="{StaticResource Cp.Button}" Content="Close" Margin="6,0,0,0" Click="OnCloseClicked"/>
                 </StackPanel>
@@ -199,7 +209,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="230"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="270"/>
+                <ColumnDefinition Width="370"/>
             </Grid.ColumnDefinitions>
 
             <!-- ===== Catalog ===== -->
@@ -304,6 +314,11 @@
                                               Margin="3,0,0,6" Click="OnToggleHidden"/>
                             </UniformGrid>
                             <Button Style="{StaticResource Cp.Button}" Content="Remove from layout" Click="OnRemove"/>
+
+                            <TextBlock Text="SETTINGS IN THIS LAYOUT" Style="{StaticResource Cp.Eyebrow}" Margin="0,20,0,4"/>
+                            <TextBlock Style="{StaticResource Cp.Hint}" TextWrapping="Wrap" Margin="0,0,0,10"
+                                       Text="The same options as the widget's own page. They apply while this layout is open and don't change the widget's own settings."/>
+                            <ItemsControl x:Name="WidgetSettingsList" Focusable="False"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

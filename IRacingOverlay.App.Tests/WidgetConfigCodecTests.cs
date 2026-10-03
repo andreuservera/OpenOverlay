@@ -17,6 +17,7 @@ public sealed class WidgetConfigCodecTests
         ["iconSize"] = typeof(WeatherGraphicSize),
         ["arrowSize"] = typeof(WeatherGraphicSize),
         ["averageSource"] = typeof(FuelAverageSource),
+        ["reference"] = typeof(DeltaReference),
     };
 
     private readonly List<string> _saved = [];
@@ -142,12 +143,14 @@ public sealed class WidgetConfigCodecTests
             new CockpitOptions(),
             new WeatherOptions(),
             new FuelCalculatorOptions(),
+            new DeltaOptions(),
             new WidgetConfigPersistence(
                 options => _saved.Add($"DriverTable.{options.Table}"),
                 _ => _saved.Add("Flag"),
                 _ => _saved.Add("Cockpit"),
                 _ => _saved.Add("Weather"),
-                _ => _saved.Add("FuelCalculator")),
+                _ => _saved.Add("FuelCalculator"),
+                _ => _saved.Add("Delta")),
             _headerChanges.Add));
 
     /// <summary>Moves every value to a different valid one: booleans flip, numbers go up, enums

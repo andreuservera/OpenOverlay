@@ -8,7 +8,9 @@ public sealed class LayoutEditorModelTests
 {
     private static readonly MonitorRef Monitor = new(@"\\?\DISPLAY#PHLC347#5&1&0&UID1#{guid}", "PHLC347", "34M2C3500L", 1920, 1080);
 
-    private static LayoutEditorModel NewModel(params string[] types)
+    private static LayoutEditorModel NewModel(params string[] types) => NewModel(null, types);
+
+    private static LayoutEditorModel NewModel(Func<DateTime>? clock, params string[] types)
     {
         var layout = new Layout("Race", Monitor, 1920, 1080);
         foreach (var type in types)
@@ -16,7 +18,7 @@ public sealed class LayoutEditorModelTests
             layout.Add(new LayoutWidget { Type = type, Width = 200, Height = 100 });
         }
 
-        return new LayoutEditorModel(layout);
+        return new LayoutEditorModel(layout, clock);
     }
 
     [Fact]
@@ -255,6 +257,77 @@ public sealed class LayoutEditorModelTests
 
         model.Undo();
         Assert.Equal((true, 10), (model.Layout.SnapEnabled, model.Layout.GridSize));
+    }
+
+    [Fact]
+    public void ConfigOpacityAndAutoHide_AreUndoableSteps()
+    {
+        var model = NewModel(WidgetCatalog.Relative);
+
+        model.SetConfig(WidgetCatalog.Relative, new System.Text.Json.Nodes.JsonObject { ["focusSize"] = 9 });
+        model.SetHideOutsideCar(WidgetCatalog.Relative, true);
+        Assert.True(model.IsDirty);
+
+        model.Undo();
+        Assert.False(model.Layout.WidgetOf(WidgetCatalog.Relative)!.HideOutsideCar);
+        model.Undo();
+        Assert.Empty(model.Layout.WidgetOf(WidgetCatalog.Relative)!.Config);
+        Assert.False(model.IsDirty);
+
+        model.Redo();
+        Assert.Equal(9, (int)model.Layout.WidgetOf(WidgetCatalog.Relative)!.Config["focusSize"]!);
+    }
+
+    [Fact]
+    public void ARunOfChangesToOneSetting_IsOneStep_WithinTheMergeWindow()
+    {
+        var now = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
+        var model = NewModel(() => now, WidgetCatalog.Relative);
+
+        foreach (var opacity in new[] { 0.9, 0.8, 0.7, 0.6 })
+        {
+            model.SetOpacity(WidgetCatalog.Relative, opacity);
+            now += TimeSpan.FromMilliseconds(100);
+        }
+
+        model.Undo();
+
+        Assert.Equal(1, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Opacity);
+        Assert.False(model.CanUndo);
+    }
+
+    [Fact]
+    public void ChangesFurtherApartThanTheMergeWindow_OrToAnotherSetting_AreSeparateSteps()
+    {
+        var now = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
+        var model = NewModel(() => now, WidgetCatalog.Relative);
+
+        model.SetOpacity(WidgetCatalog.Relative, 0.9);
+        now += LayoutEditorModel.MergeWindow + TimeSpan.FromMilliseconds(1);
+        model.SetOpacity(WidgetCatalog.Relative, 0.8);
+        model.SetConfig(WidgetCatalog.Relative, new System.Text.Json.Nodes.JsonObject { ["focusSize"] = 9 });
+
+        model.Undo();
+        Assert.Equal(0.8, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Opacity);
+        model.Undo();
+        Assert.Equal(0.9, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Opacity);
+        model.Undo();
+        Assert.Equal(1, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Opacity);
+    }
+
+    [Fact]
+    public void AnUndo_EndsTheRun_SoTheNextChangeIsItsOwnStep()
+    {
+        var now = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
+        var model = NewModel(() => now, WidgetCatalog.Relative, WidgetCatalog.Fuel);
+        model.SetOpacity(WidgetCatalog.Relative, 0.9);
+        model.Move(WidgetCatalog.Fuel, 5, 5);
+        model.Undo();
+
+        model.SetOpacity(WidgetCatalog.Relative, 0.5);
+        model.Undo();
+
+        Assert.Equal(0.9, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Opacity);
     }
 
     private static (ScaleLevel, double, double) Placement(LayoutEditorModel model, string type)

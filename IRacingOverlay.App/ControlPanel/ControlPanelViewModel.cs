@@ -38,7 +38,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private string _searchText = "";
     private int _selectedMonitorIndex;
     private DashboardTheme _dashboardTheme;
-    private DeltaReference _deltaReference = DeltaReference.SessionBest;
     private int _criticalRefreshIndex;
     private int _compassRefreshIndex;
     private Dictionary<NavItem, string>? _searchIndex;
@@ -113,6 +112,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public FlagOptions FlagOptions { get; } = new();
     public CockpitOptions CockpitOptions { get; } = new();
     public WeatherOptions WeatherOptions { get; } = new();
+    public DeltaOptions DeltaOptions { get; } = new();
 
     /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
     /// seen by the live widget.</summary>
@@ -310,7 +310,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public int SelectedMonitorIndex => _selectedMonitorIndex;
 
-    public DeltaReference DeltaReference => _deltaReference;
+    public DeltaReference DeltaReference => DeltaOptions.Reference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
     /// bars and the pedal trace. Index order matches the labels General › Performance offers.</summary>
@@ -432,6 +432,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             CockpitOptions,
             WeatherOptions,
             FuelCalculatorOptions,
+            DeltaOptions,
             WidgetConfigPersistence.Stores,
             table => TableHeaderChanged?.Invoke(table)));
 

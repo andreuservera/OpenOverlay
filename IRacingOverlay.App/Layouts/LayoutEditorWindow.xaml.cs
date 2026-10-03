@@ -34,6 +34,9 @@ public partial class LayoutEditorWindow : Window
     private double _scale = 1;
     private bool _syncing;
     private string _catalogState = "";
+    private string? _settingsFor;
+    private string _settingsBasis = "";
+    private bool _applyingSettings;
 
     private Point? _catalogPress;
     private Gesture? _gesture;
@@ -75,6 +78,7 @@ public partial class LayoutEditorWindow : Window
         }
 
         _selected = null;
+        _settingsFor = null;
         _items.Clear();
         _model = Attach(new LayoutEditorModel(layout));
         Sync();
@@ -193,6 +197,7 @@ public partial class LayoutEditorWindow : Window
         SelectionPanel.Visibility = item is null ? Visibility.Collapsed : Visibility.Visible;
         if (item is null)
         {
+            SyncSettings(null);
             return;
         }
 
@@ -215,7 +220,97 @@ public partial class LayoutEditorWindow : Window
         XBox.IsEnabled = YBox.IsEnabled = SizeBox.IsEnabled = !widget.Locked;
         LockToggle.IsChecked = widget.Locked;
         HideToggle.IsChecked = !widget.Visible;
+        SyncSettings(item);
     }
+
+    // ===== The selected widget's settings =====
+
+    /// <summary>
+    /// Shows the selected widget's settings: opacity and auto-hide, then its own options built by
+    /// <see cref="WidgetSettings"/> — the very rows its control panel page shows. Rebuilt when the
+    /// selection changes or when undo/redo brings back different values, never because of a change
+    /// made in these rows themselves (that would tear the slider out from under the pointer).
+    /// </summary>
+    private void SyncSettings(EditorWidgetItem? item)
+    {
+        if (item is null)
+        {
+            _settingsFor = null;
+            WidgetSettingsList.ItemsSource = null;
+            return;
+        }
+
+        var basis = SettingsBasis(item.Widget);
+        if (_applyingSettings || (_settingsFor == item.Type && basis == _settingsBasis))
+        {
+            return;
+        }
+
+        _settingsFor = item.Type;
+        _settingsBasis = basis;
+        var type = item.Type;
+        var widget = item.Widget;
+        List<SettingsGroup> groups =
+        [
+            new SettingsGroup("PLACEMENT", "Size and position are set above.")
+                .With(
+                    new SliderSetting(
+                        "Opacity",
+                        null,
+                        widget.Opacity,
+                        0,
+                        1,
+                        0.01,
+                        value => ApplySetting(() => _model.SetOpacity(type, value))),
+                    new ToggleSetting(
+                        "Hide when I'm not driving",
+                        "Hidden in menus, the garage, replays and while spectating.",
+                        widget.HideOutsideCar,
+                        value => ApplySetting(() => _model.SetHideOutsideCar(type, value)))),
+            .. WidgetSettings.For(type, item.SettingsContext(() => ApplySetting(() => _model.SetConfig(type, item.ReadConfig())))),
+        ];
+
+        // Names each change in the activity log after where it was made, as the control panel does.
+        foreach (var group in groups)
+        {
+            var path = $"Layout editor › {item.Descriptor.Name} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
+            foreach (var setting in group.Items)
+            {
+                setting.TracePath = path;
+                if (setting is ChipGroupSetting chips)
+                {
+                    foreach (var chip in chips.Chips)
+                    {
+                        chip.TracePath = $"{path}{chips.Label} › ";
+                    }
+                }
+            }
+        }
+
+        WidgetSettingsList.ItemsSource = groups;
+    }
+
+    /// <summary>Records a change made in the settings rows, which already show it.</summary>
+    private void ApplySetting(Action change)
+    {
+        _applyingSettings = true;
+        try
+        {
+            change();
+        }
+        finally
+        {
+            _applyingSettings = false;
+        }
+
+        if (SelectedItem is { } item)
+        {
+            _settingsBasis = SettingsBasis(item.Widget);
+        }
+    }
+
+    private static string SettingsBasis(LayoutWidget widget) =>
+        string.Create(CultureInfo.InvariantCulture, $"{widget.Config.ToJsonString()}|{widget.Opacity:R}|{widget.HideOutsideCar}");
 
     private EditorWidgetItem? SelectedItem => _items.FirstOrDefault(item => item.Type == _selected);
 
@@ -274,9 +369,9 @@ public partial class LayoutEditorWindow : Window
     private void UpdateGridLines()
     {
         var layout = _model.Layout;
-        if (!layout.SnapEnabled || layout.GridSize * _scale < 4)
+        if (!layout.SnapEnabled || layout.GridSize * _scale < 8)
         {
-            // Lines closer than a few screen pixels are noise, not a guide.
+            // Lines closer than this on screen are a texture, not a guide: snapping still works.
             GridLines.Fill = null;
             return;
         }

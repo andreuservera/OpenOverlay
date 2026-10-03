@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.Layouts;
@@ -18,13 +19,21 @@ public sealed class LayoutEditorModel
     /// <summary>Steps kept for undo. The spec asks for at least 50.</summary>
     public const int HistoryLimit = 100;
 
+    /// <summary>Changes to the same setting this close together are one undo step: dragging the
+    /// opacity slider or typing a number would otherwise leave dozens of steps behind.</summary>
+    public static readonly TimeSpan MergeWindow = TimeSpan.FromSeconds(1);
+
     private readonly LinkedList<Layout> _undo = new();
     private readonly Stack<Layout> _redo = new();
     private Layout _saved;
+    private readonly Func<DateTime> _clock;
     private Layout? _gestureStart;
+    private (string Key, DateTime At)? _lastStep;
 
-    public LayoutEditorModel(Layout layout)
+    /// <param name="clock">Only for tests of <see cref="MergeWindow"/>.</param>
+    public LayoutEditorModel(Layout layout, Func<DateTime>? clock = null)
     {
+        _clock = clock ?? (() => DateTime.UtcNow);
         Layout = layout.Clone();
         _saved = layout.Clone();
     }
@@ -89,6 +98,15 @@ public sealed class LayoutEditorModel
         widget.X = x;
         widget.Y = y;
     });
+
+    /// <summary>The widget's own options, as its codec writes them.</summary>
+    public void SetConfig(string type, JsonObject config) =>
+        ChangeWidget(type, widget => widget.Config = (JsonObject)config.DeepClone(), $"config:{type}");
+
+    public void SetOpacity(string type, double opacity) =>
+        ChangeWidget(type, widget => widget.Opacity = Math.Clamp(opacity, 0, 1), $"opacity:{type}");
+
+    public void SetHideOutsideCar(string type, bool hide) => ChangeWidget(type, widget => widget.HideOutsideCar = hide);
 
     public void SetLocked(string type, bool locked) => ChangeWidget(type, widget => widget.Locked = locked);
 
@@ -181,6 +199,7 @@ public sealed class LayoutEditorModel
 
         _undo.RemoveLast();
         _redo.Push(Layout);
+        _lastStep = null;
         Layout = last.Value;
         Changed?.Invoke();
     }
@@ -194,6 +213,7 @@ public sealed class LayoutEditorModel
 
         _undo.AddLast(Layout);
         Layout = next;
+        _lastStep = null;
         Changed?.Invoke();
     }
 
@@ -216,11 +236,11 @@ public sealed class LayoutEditorModel
         });
     }
 
-    private void ChangeWidget(string type, Action<LayoutWidget> change)
+    private void ChangeWidget(string type, Action<LayoutWidget> change, string? mergeKey = null)
     {
         if (Layout.WidgetOf(type) is { } widget)
         {
-            Change(() => change(widget));
+            Change(() => change(widget), mergeKey);
         }
     }
 
@@ -233,16 +253,19 @@ public sealed class LayoutEditorModel
         }
     }
 
-    private void Change(Action change)
+    private void Change(Action change, string? mergeKey = null)
     {
         var before = Layout.Clone();
         change();
-        Commit(before);
+        Commit(before, mergeKey);
     }
 
     /// <summary>Records <paramref name="before"/> as an undo step if the layout actually changed.
     /// A new step forgets whatever could have been redone.</summary>
-    private void Commit(Layout before)
+    /// <remarks>A change carrying the same <paramref name="mergeKey"/> as the step just recorded,
+    /// within <see cref="MergeWindow"/> of it, joins that step instead of adding one: undo then goes
+    /// back to before the whole run of changes.</remarks>
+    private void Commit(Layout before, string? mergeKey = null)
     {
         if (ContentOf(before) == ContentOf(Layout))
         {
@@ -250,12 +273,18 @@ public sealed class LayoutEditorModel
             return;
         }
 
-        _undo.AddLast(before);
-        if (_undo.Count > HistoryLimit)
+        var now = _clock();
+        var merges = mergeKey is not null && _lastStep is { } last && last.Key == mergeKey && now - last.At <= MergeWindow && _undo.Count > 0;
+        if (!merges)
         {
-            _undo.RemoveFirst();
+            _undo.AddLast(before);
+            if (_undo.Count > HistoryLimit)
+            {
+                _undo.RemoveFirst();
+            }
         }
 
+        _lastStep = mergeKey is null ? null : (mergeKey, now);
         _redo.Clear();
         Changed?.Invoke();
     }
