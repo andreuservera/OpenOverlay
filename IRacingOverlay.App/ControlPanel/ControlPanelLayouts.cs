@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Layouts;
+using IRacingOverlay.App.Overlay;
 using Screen = System.Windows.Forms.Screen;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -21,6 +23,7 @@ public sealed partial class ControlPanelViewModel
     private Guid? _selectedLayoutId;
     private LayoutEditorWindow? _layoutEditor;
     private LayoutSession? _layoutSession;
+    private bool _stackingPending;
 
     // Created on first use: nothing about layouts should cost anything until the page is opened.
     internal LayoutStore LayoutStore => _layoutStore ??= new LayoutStore();
@@ -428,6 +431,7 @@ public sealed partial class ControlPanelViewModel
         }
 
         LayoutSession.Open(layout, new LayoutPlacement(monitor, scale, PixelsPerDip()));
+        RequestStacking();
         OnLayoutOpenChanged();
     }
 
@@ -453,7 +457,55 @@ public sealed partial class ControlPanelViewModel
         }
 
         LayoutSession.Reapply(layout, new LayoutPlacement(found.Monitor, open.ScalePositions, PixelsPerDip()));
+        RequestStacking();
         OnLayoutOpenChanged();
+    }
+
+    // ===== Stacking order =====
+    //
+    // Every widget is its own topmost window, and among topmost windows Windows puts on top the one
+    // shown last. Applying a layout bottom layer first gets that right only for widgets that were
+    // off; one already on keeps its place, and one created later (auto-hide defers creating it until
+    // you drive) lands on top. So the open layout's widgets are re-stacked explicitly after it is
+    // applied and whenever one of them comes on screen. Only the order changes: nothing is moved or
+    // activated, and it runs on those moments only, never per frame.
+
+    private void OnWidgetCameOnScreen(WidgetSlot slot)
+    {
+        if (LayoutStore.Open is { } open && open.Snapshot.Any(entry => entry.Type == slot.Key))
+        {
+            RequestStacking();
+        }
+    }
+
+    /// <summary>Stacks once after the current work, however many widgets appear in one go.</summary>
+    private void RequestStacking()
+    {
+        if (_stackingPending || Application.Current?.Dispatcher is not { } dispatcher)
+        {
+            return;
+        }
+
+        _stackingPending = true;
+        dispatcher.BeginInvoke(() =>
+        {
+            _stackingPending = false;
+            StackOpenLayout();
+        });
+    }
+
+    /// <summary>Puts the open layout's widgets in the editor's order, the front one on top.</summary>
+    private void StackOpenLayout()
+    {
+        if (LayoutStore.Open is not { } open || LayoutStore.Get(open.LayoutId) is not { } layout)
+        {
+            return;
+        }
+
+        NativeMethods.StackTopmost(layout.ControlledBottomToTop()
+            .Select(widget => SlotOf(widget.Type).Window)
+            .OfType<OverlayWindowBase>()
+            .Select(window => new WindowInteropHelper(window).Handle));
     }
 
     private void OnLayoutOpenChanged()

@@ -23,6 +23,20 @@ public sealed class LayoutTests
     }
 
     [Fact]
+    public void ControlledBottomToTop_FollowsTheLayers_SkipsHiddenWidgets_AndKeepsListOrderOnTies()
+    {
+        var layout = NewLayout();
+        layout.Add(new LayoutWidget { Type = WidgetCatalog.Relative, ZIndex = 2 });
+        layout.Add(new LayoutWidget { Type = WidgetCatalog.Standings, ZIndex = 0 });
+        layout.Add(new LayoutWidget { Type = WidgetCatalog.Fuel, ZIndex = 1, Visible = false });
+        layout.Add(new LayoutWidget { Type = WidgetCatalog.Delta, ZIndex = 2 });
+
+        Assert.Equal(
+            [WidgetCatalog.Standings, WidgetCatalog.Relative, WidgetCatalog.Delta],
+            layout.ControlledBottomToTop().Select(widget => widget.Type));
+    }
+
+    [Fact]
     public void Add_UnknownType_IsRejected()
     {
         var layout = NewLayout();

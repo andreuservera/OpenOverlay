@@ -71,6 +71,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         foreach (var descriptor in WidgetCatalog.All)
         {
             var slot = new WidgetSlot(descriptor, () => CreateWidget(descriptor.Key));
+            slot.CameOnScreen += OnWidgetCameOnScreen;
             _slots[descriptor.Key] = slot;
             NavItems.Add(NavItem.ForWidget(slot));
         }

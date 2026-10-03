@@ -165,6 +165,11 @@ public sealed class Layout
         }
     }
 
+    /// <summary>The widgets that take over their individual widget when the layout opens (the
+    /// visible ones), bottom layer first: the editor's stacking order, ties in list order.</summary>
+    public IReadOnlyList<LayoutWidget> ControlledBottomToTop() =>
+        _widgets.Where(widget => widget.Visible).OrderBy(widget => widget.ZIndex).ToList();
+
     public bool Contains(string type) => _widgets.Any(widget => widget.Type == type);
 
     public LayoutWidget? WidgetOf(string type) => _widgets.FirstOrDefault(widget => widget.Type == type);

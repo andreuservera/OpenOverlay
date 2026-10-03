@@ -119,7 +119,7 @@ internal sealed class LayoutSession(LayoutStore store, ILayoutWidgetHost host)
 
         store.SetOpen(new OpenLayoutState(layout.Id, snapshot, placement.ScalePositions));
 
-        foreach (var widget in controlled.OrderBy(widget => widget.ZIndex))
+        foreach (var widget in layout.ControlledBottomToTop())
         {
             var (left, top) = placement.ToDesktop(layout, widget.X, widget.Y);
             host.Apply(widget, left, top);
