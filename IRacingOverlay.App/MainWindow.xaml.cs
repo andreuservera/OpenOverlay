@@ -26,11 +26,8 @@ namespace IRacingOverlay.App;
 /// </summary>
 public partial class MainWindow : Window
 {
-    // Standings only needs to feel "live," not sub-second precise — recomputing every 100ms was
-    // wasted work (and, before the continuous-ordering fix, it happened to disguise a bug: since the
-    // underlying data barely changed within a lap either way, it *looked* like updates only landed
-    // at lap boundaries). This throttles it to roughly once a second without a second timer.
-    private const int StandingsUpdateEveryNTicks = 10;
+    // Roughly once a second, without a second timer.
+    private const int DiagnosticsUpdateEveryNTicks = 10;
     private const int HealthUpdateEveryNTicks = 10;
     private static readonly TimeSpan RecentProblemWindow = TimeSpan.FromMinutes(10);
 
@@ -46,6 +43,8 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _dashboardGuard;
     private readonly ComponentGuard _standingsGuard;
     private readonly ComponentGuard _pitStopGuard;
+    private readonly ComponentGuard _lineCrossingGuard;
+    private readonly ComponentGuard _estTimeProfileGuard;
     private readonly ComponentGuard _penaltyGuard;
     private readonly ComponentGuard _lapLogGuard;
     private readonly ComponentGuard _statusGuard;
@@ -67,12 +66,20 @@ public partial class MainWindow : Window
     // itself the whole point — they're read on their own timer, decoupled from the general 100ms
     // tick, so the user can push them faster (lower latency, more CPU) or slower independently of
     // everything else.
-    // Frame-synchronised rather than a DispatcherTimer: at 16 ms a DispatcherTimer lands on the
-    // Windows timer grid (15.6/31.2 ms) at background priority, so the pedal trace sampled unevenly
-    // and visibly stuttered. CompositionTarget.Rendering fires once per displayed frame.
+    // Driven by the telemetry reader rather than a DispatcherTimer: at 16 ms a DispatcherTimer lands
+    // on the Windows timer grid (15.6/31.2 ms) at background priority, so the pedal trace sampled
+    // unevenly and visibly stuttered. Not CompositionTarget.Rendering either: any handler there keeps
+    // WPF's render thread composing on every monitor refresh for the life of the process, widgets
+    // open or not — GPU time taken from iRacing. Each new telemetry tick posts at most one update.
     private readonly System.Diagnostics.Stopwatch _criticalClock = System.Diagnostics.Stopwatch.StartNew();
     private double _criticalIntervalMs = 100;
     private double _nextCriticalMs;
+    private int _criticalTickPending;
+    // PerfProbe: when the pending critical tick was posted, and the post-tick idle probe.
+    private long _criticalPostedTicks;
+    private PerfProbe.Mark _afterTickMark;
+    private readonly Dictionary<string, (string Build, string Apply, string Dashboard)> _perfNames = new();
+
     private GlobalHotkeyManager? _hotkeys;
     private TrayIcon? _tray;
     private WindowState _restoreState = WindowState.Normal;
@@ -205,6 +212,8 @@ public partial class MainWindow : Window
     private readonly IncidentReportLatch _incidentReports = new();
     private SessionBestLapTracker _sessionBestLapTracker = new();
     private PitStopTracker _pitStopTracker = new();
+    private LineCrossingTracker _lineCrossings = new();
+    private EstTimeProfile _estTimeProfile = new();
     private PenaltyFlagTracker _penaltyTracker = new();
     private int _tickCount;
 
@@ -261,6 +270,8 @@ public partial class MainWindow : Window
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
         _standingsGuard = _health.CreateGuard("Standings model", _ => _sessionBestLapTracker = new());
         _pitStopGuard = _health.CreateGuard("Pit stop tracker", _ => _pitStopTracker = new());
+        _lineCrossingGuard = _health.CreateGuard("Line crossing timing", _ => _lineCrossings = new());
+        _estTimeProfileGuard = _health.CreateGuard("Relative time curve", _ => _estTimeProfile = new());
         _penaltyGuard = _health.CreateGuard("Penalty flag log", _ => _penaltyTracker = new());
         _lapLogGuard = _health.CreateGuard("Lap log", _ => ResetLapHistory());
         ResetLapHistory();
@@ -278,6 +289,7 @@ public partial class MainWindow : Window
 
         _connection.Fault += OnConnectionFault;
         _connection.TelemetryUpdated += (_, snapshot) => _incidentReports.Observe(snapshot);
+        _connection.TelemetryUpdated += (_, _) => PostCriticalTick();
         _connection.Connected += (_, _) =>
         {
             AppLog.Info("Telemetry", "Connected to iRacing");
@@ -301,8 +313,6 @@ public partial class MainWindow : Window
 
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
-
-        CompositionTarget.Rendering += OnFrame;
 
         // Registered against this window's handle, which stays alive while the window is hidden.
         SourceInitialized += (_, _) =>
@@ -362,7 +372,6 @@ public partial class MainWindow : Window
             // The watchdog first: once the loop stops beating, a live watchdog would call it a hang.
             _watchdog.Dispose();
             _uiTimer.Stop();
-            CompositionTarget.Rendering -= OnFrame;
             GlobalExceptionHandler.StormRecovery = null;
             _updates.Dispose();
             _hotkeys?.Dispose();
@@ -480,20 +489,33 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!_perfNames.TryGetValue(key, out var names))
+        {
+            names = ($"{key}.build", $"{key}.apply", $"{key}.dashboard");
+            _perfNames[key] = names;
+        }
+
         var guard = _widgetGuards[key];
+        var mark = PerfProbe.Begin();
         if (!guard.TryRun(build, out var state))
         {
             return;
         }
 
+        PerfProbe.End(names.Build, mark);
+
         if (widget is not null)
         {
+            mark = PerfProbe.Begin();
             guard.Run(() => toWidget(widget, state));
+            PerfProbe.End(names.Apply, mark);
         }
 
         if (dashboard is not null)
         {
+            mark = PerfProbe.Begin();
             _dashboardGuard.Run(() => toDashboard!(dashboard, state));
+            PerfProbe.End(names.Dashboard, mark);
         }
     }
 
@@ -501,12 +523,23 @@ public partial class MainWindow : Window
     {
         _watchdog.Beat();
         _uiTickStopwatch.Restart();
+        var perfMark = PerfProbe.Begin();
         try
         {
             UiTimer_TickCore();
         }
         finally
         {
+            PerfProbe.End("ui.tick", perfMark);
+            if (PerfProbe.Enabled)
+            {
+                // Whatever the tick queued (layout, render, input) runs before ContextIdle: the gap
+                // to this callback is the WPF work the tick itself doesn't see.
+                _afterTickMark = PerfProbe.Begin();
+                Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () => PerfProbe.End("ui.after-tick (layout+render)", _afterTickMark));
+                PerfProbe.MaybeFlush();
+            }
+
             RecordTickDuration(_uiTickStopwatch.Elapsed.TotalMilliseconds, ref _uiTickTotalMs, ref _uiTickMaxMs, ref _uiTickSamples);
             if (++_healthTicks % HealthUpdateEveryNTicks == 0)
             {
@@ -544,8 +577,13 @@ public partial class MainWindow : Window
         }, GuardStage.Build);
 
         _tickCount++;
+        var trackersMark = PerfProbe.Begin();
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        // Every tick too: a crossing is timed from the ticks either side of the line, and the time
+        // curve is learned from wherever the cars are each tick.
+        _lineCrossingGuard.Run(() => _lineCrossings.Update(telemetry, session), GuardStage.Build);
+        _estTimeProfileGuard.Run(() => _estTimeProfile.Update(telemetry, session), GuardStage.Build);
         _lapLogGuard.Run(() => _lapLog.Observe(telemetry), GuardStage.Build);
         _penaltyGuard.Run(() =>
         {
@@ -562,18 +600,25 @@ public partial class MainWindow : Window
                 });
             }
         }, GuardStage.Build);
+        PerfProbe.End("trackers", trackersMark);
         // Relative needs the standings order too, for its POS and iRΔ columns, so this runs
         // whenever any of the three consumers is open — not just the two that display it directly.
+        // Every tick: the classification itself only moves as cars cross the line, but pit road,
+        // flags and tyres are live and should show the moment they change.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
-        if (needsStandings && _tickCount % StandingsUpdateEveryNTicks == 0)
+        if (needsStandings)
         {
-            // A failed rebuild keeps the last good order: a table a second old beats an empty one.
+            // A failed rebuild keeps the last good order: a table a tick old beats an empty one.
+            var standingsMark = PerfProbe.Begin();
             if (_standingsGuard.TryRun(
-                    () => StandingsBuilder.BuildStandings(telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops),
+                    () => StandingsBuilder.BuildStandings(
+                        telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings),
                     out var standings))
             {
                 _latestStandings = standings;
             }
+
+            PerfProbe.End("standings.order", standingsMark);
 
             // The floating widget gets the compact focused view (podium + a block around the
             // player); the Dashboard has the room for the whole field, grouped by class. Only these
@@ -613,12 +658,13 @@ public partial class MainWindow : Window
             }
         }
 
-        // Built every tick, unlike standings: Relative is about where cars are right now, and a
-        // once-a-second refresh is visibly laggy when someone is alongside you.
+        // Built every tick: Relative is about where cars are right now, and a once-a-second refresh
+        // is visibly laggy when someone is alongside you.
         Feed(
             WidgetCatalog.Relative,
             Relative,
-            () => StandingsBuilder.BuildRelative(telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops),
+            () => StandingsBuilder.BuildRelative(
+                telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops, _estTimeProfile),
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);
@@ -673,9 +719,8 @@ public partial class MainWindow : Window
         Feed(WidgetCatalog.TrackMap, TrackMap, () => TrackMapBuilder.Build(telemetry, session),
             (widget, markers) => widget.UpdateState(markers), (dashboard, markers) => dashboard.UpdateTrackMap(markers));
 
-        // Memory usage barely changes tick to tick — reuse the same once-a-second cadence as
-        // Standings rather than recomputing it on every 100ms tick.
-        if (_tickCount % StandingsUpdateEveryNTicks == 0)
+        // Memory usage barely changes tick to tick: once a second rather than on every 100ms tick.
+        if (_tickCount % DiagnosticsUpdateEveryNTicks == 0)
         {
             _statusGuard.Run(UpdateDiagnostics);
         }
@@ -722,9 +767,31 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnFrame(object? sender, EventArgs e)
+    /// <summary>Called on the telemetry thread for every new tick. Coalesced: while one update is
+    /// still queued on the UI thread, later ticks don't pile up behind it.</summary>
+    private void PostCriticalTick()
     {
-        // A few ms of slack, so a 16 ms target runs on every 60 Hz frame (16.7 ms apart).
+        if (Interlocked.Exchange(ref _criticalTickPending, 1) == 1)
+        {
+            return;
+        }
+
+        Volatile.Write(ref _criticalPostedTicks, System.Diagnostics.Stopwatch.GetTimestamp());
+
+        Dispatcher.InvokeAsync(OnTelemetryTick, DispatcherPriority.Render);
+    }
+
+    private void OnTelemetryTick()
+    {
+        Volatile.Write(ref _criticalTickPending, 0);
+        if (PerfProbe.Enabled)
+        {
+            // How long the UI thread kept a new telemetry tick waiting: the source of the gaps.
+            var waited = System.Diagnostics.Stopwatch.GetElapsedTime(Volatile.Read(ref _criticalPostedTicks));
+            PerfProbe.Record("critical.queue-wait", waited.TotalMilliseconds);
+        }
+
+        // A few ms of slack, so a 16 ms target runs on every 60 Hz telemetry tick (16.7 ms apart).
         var now = _criticalClock.Elapsed.TotalMilliseconds;
         if (now < _nextCriticalMs - 3)
         {
@@ -732,7 +799,7 @@ public partial class MainWindow : Window
         }
 
         _nextCriticalMs = now + _criticalIntervalMs;
-        CriticalTimer_Tick(sender, e);
+        CriticalTimer_Tick(this, EventArgs.Empty);
     }
 
     private void CriticalTimer_Tick(object? sender, EventArgs e)
@@ -750,12 +817,14 @@ public partial class MainWindow : Window
         _lastCriticalTickTimestampMs = nowMs;
 
         _criticalTickStopwatch.Restart();
+        var perfMark = PerfProbe.Begin();
         try
         {
             CriticalTimer_TickCore();
         }
         finally
         {
+            PerfProbe.End("critical.tick", perfMark);
             RecordTickDuration(_criticalTickStopwatch.Elapsed.TotalMilliseconds, ref _criticalTickTotalMs, ref _criticalTickMaxMs, ref _criticalTickSamples);
         }
     }
@@ -804,7 +873,7 @@ public partial class MainWindow : Window
             $"UI {uiAvg:0.0}/{_uiTickMaxMs:0.0} ms · " +
             $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0})";
 
-        // Rolling ~1s window (this is called once every StandingsUpdateEveryNTicks UI ticks) rather
+        // Rolling ~1s window (this is called once every DiagnosticsUpdateEveryNTicks UI ticks) rather
         // than a since-launch average — a stutter from 10 minutes ago shouldn't still be dragging
         // down what the user sees right now.
         _uiTickTotalMs = 0;
@@ -1017,6 +1086,8 @@ public partial class MainWindow : Window
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();
+            _lineCrossings = new();
+            _estTimeProfile = new();
             _penaltyTracker = new();
             _flagPresenter = new();
             _latestStandings = [];

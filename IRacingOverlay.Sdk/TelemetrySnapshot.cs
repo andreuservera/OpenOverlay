@@ -12,7 +12,7 @@ public sealed class TelemetrySnapshot
     private readonly IReadOnlyDictionary<string, IrsdkVarHeader> _varsByName;
 
     // A fresh TelemetrySnapshot instance is handed out once per tick and never mutated afterward, but
-    // several independent Builders each ask for the same per-car array (e.g. CarIdxEstTime is read by
+    // several independent Builders each ask for the same per-car array (e.g. CarIdxLapDistPct is read by
     // Cockpit, Relative, Standings, and TrackMap builders every tick) — without this cache, every one
     // of those call sites re-parsed and re-allocated its own full copy of the array from raw bytes,
     // several times per tick. Caching by variable name here means each array is parsed once per tick

@@ -131,7 +131,7 @@
                      the panel by the time it reaches the timing columns. Recognisable at a glance,
                      never louder than the data on top of it. -->
                 <Border x:Name="ClassWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"
-                        Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.22}"/>
+                        Background="{Binding ClassColor, Mode=OneTime, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.22}"/>
                 <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Row}" BorderThickness="1"/>
                 <Border x:Name="EdgeBar" Width="3" HorizontalAlignment="Left" CornerRadius="{StaticResource Radius.RowEdge}"/>
                 <Grid x:Name="Cells" Margin="{StaticResource CellInset}">
@@ -150,8 +150,8 @@
                         <ColumnDefinition Width="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Gap}}"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="{Binding PositionDisplay}" Style="{StaticResource PrimaryCell}"
-                               Foreground="{Binding PositionForeground}"
+                    <TextBlock Grid.Column="0" Text="{Binding PositionDisplay, Mode=OneTime}" Style="{StaticResource PrimaryCell}"
+                               Foreground="{Binding PositionForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowPosition, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- Neutral plate: the class is already on the row's edge, so a filled chip in the
@@ -159,22 +159,22 @@
                     <Border x:Name="CarChip" Grid.Column="1" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
                             BorderThickness="1" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}"
                             Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
-                        <TextBlock Text="{Binding CarNumberDisplay}" Style="{StaticResource ChipText}"/>
+                        <TextBlock Text="{Binding CarNumberDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
                     </Border>
 
                     <!-- Status badges take their room out of the name, never out of another column. -->
                     <DockPanel Grid.Column="2" Margin="0,0,8,0"
                                Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
-                                Visibility="{Binding OnPitRoad, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding OnPitRoad, Mode=OneTime, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="PIT" Style="{StaticResource StatusBadgeText}"/>
                         </Border>
                         <!-- One penalty flag slot, same footprint in every state: black, furled black or
                              meatball, or the two most serious split down the middle. -->
                         <w:PenaltyFlagTag DockPanel.Dock="Right" Width="22" Height="14" Margin="6,0,0,0" VerticalAlignment="Center"
-                                          Primary="{Binding PrimaryPenalty}" Secondary="{Binding SecondaryPenalty}"
-                                          Visibility="{Binding HasPenaltyFlag, Converter={StaticResource BoolToVis}}"/>
-                        <TextBlock x:Name="NameText" Text="{Binding NameDisplay}" Style="{StaticResource DataCell}"
+                                          Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
+                                          Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
+                        <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
                                    FontFamily="{DynamicResource Theme.NumericFontFamily}"
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
@@ -184,17 +184,17 @@
                     <Grid Grid.Column="3"
                           Visibility="{Binding Options.ShowLastPitStop, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Border Style="{StaticResource PitStopChip}"
-                                Visibility="{Binding HasLastPitStop, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding HasLastPitStop, Mode=OneTime, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="1"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding LastPitLapDisplay}" Style="{StaticResource PitStopText}"
+                                <TextBlock Text="{Binding LastPitLapDisplay, Mode=OneTime}" Style="{StaticResource PitStopText}"
                                            Margin="5,0" Foreground="{StaticResource State.Warning}"/>
                                 <Border Grid.Column="1" Background="{StaticResource Badge.WarningEdge}" Margin="0,3"/>
-                                <TextBlock Grid.Column="2" Text="{Binding LastPitDurationDisplay}" Style="{StaticResource PitStopText}"
+                                <TextBlock Grid.Column="2" Text="{Binding LastPitDurationDisplay, Mode=OneTime}" Style="{StaticResource PitStopText}"
                                            Foreground="#F2E3C6"/>
                             </Grid>
                         </Border>
@@ -204,8 +204,8 @@
                          seen side-on. Blank when the sim doesn't say. -->
                     <Grid Grid.Column="4" Width="17" Height="17" HorizontalAlignment="Center" Margin="0,0,4,0"
                           Visibility="{Binding Options.ShowTireCompound, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
-                        <w:TireCompoundIcon Letter="{Binding TireCompoundLetter}" Ink="{Binding TireCompoundColor}"
-                                            Visibility="{Binding HasTireCompound, Converter={StaticResource BoolToVis}}"/>
+                        <w:TireCompoundIcon Letter="{Binding TireCompoundLetter, Mode=OneTime}" Ink="{Binding TireCompoundColor, Mode=OneTime}"
+                                            Visibility="{Binding HasTireCompound, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                     </Grid>
 
                     <!-- iRating badge: spans the iR and iRΔ columns, so hiding the delta hands its
@@ -217,17 +217,17 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDeltaSegment}}"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding IRatingDisplay}" Style="{StaticResource ChipText}"
+                            <TextBlock Text="{Binding IRatingDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"
                                        Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                             <Border Grid.Column="1" CornerRadius="0,2,2,0"
-                                    Background="{Binding IRatingDeltaForeground, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.16}"
+                                    Background="{Binding IRatingDeltaForeground, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.16}"
                                     Visibility="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <Path x:Name="TrendArrow" Style="{StaticResource TrendArrow}" Data="{StaticResource Geometry.ArrowUp}"
-                                          Fill="{Binding IRatingDeltaForeground}"/>
-                                    <TextBlock Text="{Binding IRatingDeltaDisplay}" Style="{StaticResource ChipText}"
+                                          Fill="{Binding IRatingDeltaForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
+                                    <TextBlock Text="{Binding IRatingDeltaDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"
                                                FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"
-                                               Foreground="{Binding IRatingDeltaForeground}"/>
+                                               Foreground="{Binding IRatingDeltaForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -236,60 +236,60 @@
                     <!-- Tinted, outlined chip: the licence colour still says R/D/C/B/A at a glance, but
                          as a tint it no longer out-shouts the driver's name next to it. -->
                     <Border Grid.Column="7" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}" BorderThickness="1"
-                            Background="{Binding LicenseColor, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.24}"
-                            BorderBrush="{Binding LicenseColor, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.75}"
+                            Background="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.24}"
+                            BorderBrush="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.75}"
                             Visibility="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
-                        <TextBlock Text="{Binding LicStringDisplay}" Style="{StaticResource ChipText}"
+                        <TextBlock Text="{Binding LicStringDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"
                                    FontSize="{StaticResource Type.Micro}" LineHeight="{StaticResource Line.Micro}"/>
                     </Border>
 
-                    <TextBlock Grid.Column="8" Text="{Binding LapDisplay}" Style="{StaticResource MetaCell}"
+                    <TextBlock Grid.Column="8" Text="{Binding LapDisplay, Mode=OneTime}" Style="{StaticResource MetaCell}"
                                Visibility="{Binding Options.ShowLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="9" Text="{Binding BestLapDisplay}" Style="{StaticResource NumCell}"
-                               Foreground="{Binding BestLapForeground}"
+                    <TextBlock Grid.Column="9" Text="{Binding BestLapDisplay, Mode=OneTime}" Style="{StaticResource NumCell}"
+                               Foreground="{Binding BestLapForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowBestLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="10" Text="{Binding LastLapDisplay}" Style="{StaticResource NumCell}"
-                               Foreground="{Binding LastLapForeground}"
+                    <TextBlock Grid.Column="10" Text="{Binding LastLapDisplay, Mode=OneTime}" Style="{StaticResource NumCell}"
+                               Foreground="{Binding LastLapForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock x:Name="GapText" Grid.Column="11" Text="{Binding GapDisplay}" Style="{StaticResource PrimaryCell}"
-                               Foreground="{Binding GapForeground}"
+                    <TextBlock x:Name="GapText" Grid.Column="11" Text="{Binding GapDisplay, Mode=OneTime}" Style="{StaticResource PrimaryCell}"
+                               Foreground="{Binding GapForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 </Grid>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
-            <DataTrigger Binding="{Binding IsMultiClass}" Value="True">
+            <DataTrigger Binding="{Binding IsMultiClass, Mode=OneTime}" Value="True">
                 <Setter TargetName="ClassWash" Property="Visibility" Value="Visible"/>
-                <Setter TargetName="EdgeBar" Property="Background" Value="{Binding ClassColor}"/>
+                <Setter TargetName="EdgeBar" Property="Background" Value="{Binding ClassColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
             </DataTrigger>
             <!-- In the pits: not racing anyone this instant, so the whole row steps back. -->
-            <DataTrigger Binding="{Binding OnPitRoad}" Value="True">
+            <DataTrigger Binding="{Binding OnPitRoad, Mode=OneTime}" Value="True">
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Pit}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
             </DataTrigger>
             <!-- Lap traffic, in iRacing's colours as ink on the name and gap only — never a fill that
                  could read as a class: blue a lap or more down, red a lap or more up. A lapped car
                  that isn't close also steps back; the one just up the road stays full strength. -->
-            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.Lapped}">
+            <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.Lapped}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.LappedOpacity}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.BeingLapped}">
+            <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.BeingLapped}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding LapRelation}" Value="{x:Static vm:LapRelation.Lapping}">
+            <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.Lapping}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
             </DataTrigger>
             <!-- Declared after the others so it wins: the player's row is always full strength, even
                  in the pits. Neutral white rather than any hue, so it can't be mistaken for a class:
                  a lighter band, a white outline and a bold name. The class bar stays in multiclass. -->
-            <DataTrigger Binding="{Binding IsPlayer}" Value="True">
+            <DataTrigger Binding="{Binding IsPlayer, Mode=OneTime}" Value="True">
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Player}"/>
                 <Setter TargetName="ClassWash" Property="Visibility" Value="Collapsed"/>
                 <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Row.PlayerOutline}"/>
@@ -299,15 +299,15 @@
             </DataTrigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsPlayer}" Value="True"/>
-                    <Condition Binding="{Binding IsMultiClass}" Value="False"/>
+                    <Condition Binding="{Binding IsPlayer, Mode=OneTime}" Value="True"/>
+                    <Condition Binding="{Binding IsMultiClass, Mode=OneTime}" Value="False"/>
                 </MultiDataTrigger.Conditions>
                 <Setter TargetName="EdgeBar" Property="Background" Value="{StaticResource Row.PlayerOutline}"/>
             </MultiDataTrigger>
-            <DataTrigger Binding="{Binding IRatingTrend}" Value="-1">
+            <DataTrigger Binding="{Binding IRatingTrend, Mode=OneTime}" Value="-1">
                 <Setter TargetName="TrendArrow" Property="Data" Value="{StaticResource Geometry.ArrowDown}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding IRatingTrend}" Value="0">
+            <DataTrigger Binding="{Binding IRatingTrend, Mode=OneTime}" Value="0">
                 <Setter TargetName="TrendArrow" Property="Visibility" Value="Collapsed"/>
             </DataTrigger>
             <MultiDataTrigger>

@@ -7,9 +7,9 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class RelativePanel : UserControl
 {
-    // Mixed RelativeRow (car) and RelativePlaceholderRow (reserved slot) items — the shared
-    // per-DataType templates pick the right visual for each.
-    public ObservableCollection<object> Rows { get; } = [];
+    // One RowSlot per line, holding a RelativeRow (car) or RelativePlaceholderRow (reserved slot) —
+    // the shared per-DataType templates pick the right visual for each. See RowSlot for why.
+    public ObservableCollection<RowSlot> Rows { get; } = [];
 
     // Same reasoning as StandingsPanel: XAML bindings on "Options.ShowX" latch onto whatever object
     // this returns the moment they first evaluate, so swapping in the control panel's persisted
@@ -29,21 +29,7 @@ public partial class RelativePanel : UserControl
         InitializeComponent();
     }
 
-    public void SetRows(IReadOnlyList<object> rows)
-    {
-        // Sync in-place: Replace at each index instead of Clear + Add, which fires a Reset
-        // notification that tears down the entire ItemsControl visual tree every tick.
-        for (var i = 0; i < rows.Count; i++)
-        {
-            if (i < Rows.Count)
-                Rows[i] = rows[i];
-            else
-                Rows.Add(rows[i]);
-        }
-
-        while (Rows.Count > rows.Count)
-            Rows.RemoveAt(Rows.Count - 1);
-    }
+    public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Relative");
 
     public void SetClassName(string className) =>
         ClassNameText.Text = Options.ShowClassName ? className.ToUpperInvariant() : "";

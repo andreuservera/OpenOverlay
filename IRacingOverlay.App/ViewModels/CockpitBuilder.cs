@@ -119,8 +119,9 @@ internal static class CockpitBuilder
         // after a pass); negative means their front is behind ours (we've drawn ahead, or they're
         // about to draw level from behind). That sign is what lets ComputeBand place the overlap at
         // the right end of our own car instead of just reporting how much of them is alongside.
-        // Track position, not CarIdxEstTime: EstTime is scaled by each car's own CarClassEstLapTime,
-        // so it can't be compared between classes (or BoP'd models) — that kept multiclass bars dark.
+        // Track position (TrackPosition's on-track fold), not CarIdxEstTime: EstTime is scaled by each
+        // car's own CarClassEstLapTime, so it can't be compared between classes (or BoP'd models) —
+        // that kept multiclass bars dark.
         var minAbsGapMeters = double.MaxValue;
         var closestSignedGapMeters = 0.0;
         foreach (var driver in driverInfo.Drivers)
@@ -132,16 +133,7 @@ internal static class CockpitBuilder
             }
 
             // Wrapped to ±half a lap across S/F. Lap count is ignored on purpose: lapped traffic alongside is still alongside.
-            var gapPct = (double)lapDistPct[driver.CarIdx] - lapDistPct[playerCarIdx];
-            if (gapPct > 0.5)
-            {
-                gapPct -= 1;
-            }
-            else if (gapPct < -0.5)
-            {
-                gapPct += 1;
-            }
-
+            var gapPct = TrackPosition.FoldToHalfLap((double)lapDistPct[driver.CarIdx] - lapDistPct[playerCarIdx]);
             var gapMeters = gapPct * trackLengthMeters;
             var absGapMeters = Math.Abs(gapMeters);
             if (absGapMeters < minAbsGapMeters)

@@ -7,10 +7,10 @@ namespace IRacingOverlay.App.Widgets;
 
 public partial class StandingsPanel : UserControl
 {
-    // Mixed StandingsRow (car), StandingsSeparatorRow (podium/dynamic-block break) and
-    // StandingsHeaderRow (class title bar) items — WPF's implicit per-DataType templates in the
-    // ItemsControl's Resources pick the right visual for each.
-    public ObservableCollection<object> Rows { get; } = [];
+    // One RowSlot per line, holding a StandingsRow (car), StandingsSeparatorRow (podium/dynamic-block
+    // break) or StandingsHeaderRow (class title bar) — WPF's implicit per-DataType templates in the
+    // ItemsControl's Resources pick the right visual for each. See RowSlot for why slots.
+    public ObservableCollection<RowSlot> Rows { get; } = [];
 
     // Must be a real DependencyProperty, not a plain CLR property: XAML's ElementName bindings on
     // "Options.ShowX" latch onto whatever object this returns the moment the binding first
@@ -35,19 +35,7 @@ public partial class StandingsPanel : UserControl
         InitializeComponent();
     }
 
-    public void SetRows(IReadOnlyList<object> rows)
-    {
-        for (var i = 0; i < rows.Count; i++)
-        {
-            if (i < Rows.Count)
-                Rows[i] = rows[i];
-            else
-                Rows.Add(rows[i]);
-        }
-
-        while (Rows.Count > rows.Count)
-            Rows.RemoveAt(Rows.Count - 1);
-    }
+    public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Standings");
 
     public void SetSof(double sof) => SofText.Text = sof > 0 ? $"SOF {Math.Round(sof):N0}" : "";
 

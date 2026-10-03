@@ -2,7 +2,7 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.8.0] - 2026-10-01
+### [0.8.0] - 2026-10-03
 
 #### Added
 - New ABOUT section in the Control Panel with What's New, Changelog and About OpenOverlay pages.
@@ -20,8 +20,9 @@ All notable changes to OpenOverlay, newest first.
 - Build and update channel included in diagnostics reports.
 
 #### Improved
-- Relative calculations refined for more accurate gap tracking throughout a session.
-- Standings calculations improved for greater consistency during session transitions and live updates.
+- Relative gaps now follow each car's real pace around the lap, staying close to iRacing's own Relative, also in multiclass races and after pit stops.
+- Relative shows live race positions while racing, so overtakes appear straight away instead of at the start/finish line.
+- Standings works like a classic timing screen: the official order and gaps update at the start/finish line, while pit and penalty indicators stay live.
 - Cockpit dashboard proximity detection improved, providing a more reliable view of nearby cars.
 - Relative and Standings visuals redesigned for improved readability and quicker identification of important race information.
 - Clearer handling of lapped cars, blue-flag situations and driver highlighting in Relative and Standings.
@@ -29,7 +30,8 @@ All notable changes to OpenOverlay, newest first.
 - Penalty indicators redesigned with distinct visuals for black, furled black and meatball flags.
 - General UI polish across all widgets with improved readability and visual consistency.
 - Additional widget sizing options for greater flexibility when building custom layouts.
-- Performance optimizations across the application resulting in smoother updates and lower resource usage.
+- Improved UI performance: OpenOverlay uses much less CPU and GPU with widgets open, leaving more frame rate for iRacing.
+- Smoother Cockpit and Pedal Trace updates when many widgets are open.
 
 #### Changed
 - Builds take their version from the newest CHANGELOG.md entry instead of git tags.
