@@ -28,7 +28,7 @@ public sealed class WidgetSettingsTests
     [Theory]
     [InlineData(WidgetCatalog.Standings, new[] { "COLUMNS", "TABLE" })]
     [InlineData(WidgetCatalog.Relative, new[] { "COLUMNS", "TABLE" })]
-    [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "CALCULATION" })]
+    [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
     [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
     [InlineData(WidgetCatalog.Cockpit, new[] { "THEME", "UPDATE RATE" })]
     [InlineData(WidgetCatalog.PedalTrace, new[] { "UPDATE RATE" })]

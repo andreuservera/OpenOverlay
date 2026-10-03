@@ -19,6 +19,7 @@ public sealed class FuelCalculatorOptions : INotifyPropertyChanged
     private bool _showLapsRemaining = true;
     private bool _showFuelToFinish = true;
     private bool _showRefuel = true;
+    private bool _vertical;
     private FuelAverageSource _averageSource = FuelAverageSource.AllSession;
     private double _marginLiters;
     private double _marginLaps = 1;
@@ -77,6 +78,14 @@ public sealed class FuelCalculatorOptions : INotifyPropertyChanged
     {
         get => _showRefuel;
         set => SetField(ref _showRefuel, value);
+    }
+
+    /// <summary>Stacked tall and narrow (headline on top, cells two to a row) instead of the default
+    /// wide strip.</summary>
+    public bool Vertical
+    {
+        get => _vertical;
+        set => SetField(ref _vertical, value);
     }
 
     /// <summary>True when at least one of the four per-lap usage figures is on — the row's shared

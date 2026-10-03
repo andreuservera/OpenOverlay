@@ -359,6 +359,7 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         ["averageSource"] = Name(options.AverageSource),
         ["marginLaps"] = options.MarginLaps,
         ["marginLiters"] = options.MarginLiters,
+        ["vertical"] = options.Vertical,
     };
 
     protected override void Assign(JsonObject config)
@@ -375,6 +376,7 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         Set<FuelAverageSource>(config, "averageSource", value => options.AverageSource = value);
         Set<double>(config, "marginLaps", value => options.MarginLaps = value);
         Set<double>(config, "marginLiters", value => options.MarginLiters = value);
+        Set<bool>(config, "vertical", value => options.Vertical = value);
     }
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);

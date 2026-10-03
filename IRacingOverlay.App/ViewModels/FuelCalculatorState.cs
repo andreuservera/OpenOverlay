@@ -85,24 +85,41 @@ public sealed class FuelCalculatorState
 
     /// <summary>Signed so the sign itself carries the meaning at a glance: "+2.4 L" spare versus
     /// "-3.1 L" short.</summary>
-    public string FuelDeltaDisplay => CanProjectToFinish
-        ? $"{(FuelDeltaLiters >= 0 ? "+" : "-")}{Format(Math.Abs(FuelDeltaLiters), "0.0")} {VolumeUnit}"
+    public string FuelDeltaDisplay => WithUnit(FuelDeltaValueDisplay, FuelDeltaUnitDisplay);
+
+    /// <summary>The number of <see cref="FuelDeltaDisplay"/> alone, so the panel can set the unit
+    /// smaller beside it.</summary>
+    public string FuelDeltaValueDisplay => CanProjectToFinish
+        ? $"{(FuelDeltaLiters >= 0 ? "+" : "-")}{Format(Math.Abs(FuelDeltaLiters), "0.0")}"
         : "—";
+
+    /// <summary>Unit after <see cref="FuelDeltaValueDisplay"/>; empty when there's no number.</summary>
+    public string FuelDeltaUnitDisplay => CanProjectToFinish ? VolumeUnit : "";
 
     public string FuelToFinishDisplay => CanProjectToFinish ? $"{Format(FuelToFinishLiters, "0.0")} {VolumeUnit}" : "—";
 
+    public string RefuelDisplay => WithUnit(RefuelValueDisplay, RefuelUnitDisplay);
+
     // "TO FULL" rather than a bare number when there's no finish to aim at, so the figure can't be
     // mistaken for a computed strategy call.
-    public string RefuelDisplay => CanProjectToFinish
-        ? (NeedsRefuel ? $"{RefuelAmount} {VolumeUnit}" : "NOT NEEDED")
+    public string RefuelValueDisplay => CanProjectToFinish
+        ? (NeedsRefuel ? RefuelAmount : "NOT NEEDED")
         : HasTankCapacity
-            ? (NeedsRefuel ? $"{RefuelAmount} {VolumeUnit} TO FULL" : "FULL")
+            ? (NeedsRefuel ? RefuelAmount : "FULL")
             : "—";
+
+    /// <summary>Unit (and "TO FULL" qualifier) after <see cref="RefuelValueDisplay"/>; empty when
+    /// the value is text rather than an amount.</summary>
+    public string RefuelUnitDisplay => !NeedsRefuel || !(CanProjectToFinish || HasTankCapacity)
+        ? ""
+        : CanProjectToFinish ? VolumeUnit : $"{VolumeUnit} TO FULL";
 
     // Whole litres, or tenths of a gallon: the steps each unit's pit fuel control moves in.
     private string RefuelAmount => UnitSystem == UnitSystem.Imperial
         ? (Math.Ceiling(Units.Volume(RefuelNeededLiters, UnitSystem) * 10) / 10).ToString("0.0", CultureInfo.InvariantCulture)
         : Number(RefuelLiters, "0");
+
+    private static string WithUnit(string value, string unit) => unit.Length > 0 ? $"{value} {unit}" : value;
 
     private string Format(double liters, string format) => Number(Units.Volume(liters, UnitSystem), format);
 

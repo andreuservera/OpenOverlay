@@ -53,7 +53,7 @@ public static class WidgetSettings
     {
         WidgetCatalog.Standings => [StandingsColumns(context), StandingsTable(context)],
         WidgetCatalog.Relative => [RelativeColumns(context), RelativeTable(context)],
-        WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorMath(context)],
+        WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
         WidgetCatalog.Flag => [FlagTypes(context), FlagContent(context), FlagLayoutGroup(context)],
         WidgetCatalog.Cockpit => [CockpitThemeGroup(context), HighRateNote()],
         WidgetCatalog.PedalTrace => [HighRateNote()],
@@ -214,6 +214,22 @@ public static class WidgetSettings
             assign(isVisible);
             context.Persist(() => FuelCalculatorOptionsStore.Save(context.FuelCalculator));
         });
+
+    private static SettingsGroup FuelCalculatorDisplay(WidgetSettingsContext context)
+    {
+        var options = context.FuelCalculator;
+        return new SettingsGroup("DISPLAY")
+            .With(new SegmentedSetting(
+                "Orientation",
+                null,
+                ["Horizontal", "Vertical"],
+                options.Vertical ? 1 : 0,
+                index =>
+                {
+                    options.Vertical = index == 1;
+                    context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+                }));
+    }
 
     private static SettingsGroup FuelCalculatorMath(WidgetSettingsContext context)
     {
