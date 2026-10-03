@@ -2,7 +2,7 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.8.0] - 2026-10-01
+### [0.8.0] - 2026-10-03
 
 #### Added
 - New ABOUT section in the Control Panel with What's New, Changelog and About OpenOverlay pages.
