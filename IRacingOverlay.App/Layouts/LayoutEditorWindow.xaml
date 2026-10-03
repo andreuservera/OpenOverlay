@@ -224,11 +224,6 @@
                     <Button x:Name="RedoButton" Style="{StaticResource Cp.Button}" Content="Redo" Margin="6,0,0,0" Click="OnRedo"/>
                     <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
 
-                    <ToggleButton x:Name="ActualSizeToggle" Style="{StaticResource Cp.ToggleButton}" Content="View at 100%"
-                                  Click="OnZoomToggled"
-                                  ToolTip="Show the layout at its real size, scrolling to reach the rest."/>
-                    <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
-
                     <ToggleButton x:Name="SnapToggle" Style="{StaticResource Cp.ToggleButton}" Content="Snap to grid"
                                   Click="OnSnapToggled"/>
                     <Border Style="{StaticResource Ed.Field}" Width="58" Margin="6,0,0,0" ToolTip="Grid size in pixels">
@@ -321,6 +316,25 @@
                     </Border>
                 </Grid>
             </ScrollViewer>
+
+            <!-- Zoom, floating over the canvas's bottom-right corner. "Fit" shows the whole screen;
+                 the percentage jumps to 100% (real size). -->
+            <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,18"
+                    Padding="4" CornerRadius="6" Background="#E6151A1F"
+                    BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ZoomOutButton" Style="{StaticResource Cp.StepButton}" Content="−" Click="OnZoomOut"
+                            ToolTip="Zoom out"/>
+                    <Button x:Name="ZoomLabel" Style="{StaticResource Cp.StepButton}" Width="56" FontSize="{StaticResource Cp.Size.Body}"
+                            FontWeight="SemiBold" Click="OnZoomActualSize" ToolTip="View at 100% (real size)"/>
+                    <Button x:Name="ZoomInButton" Style="{StaticResource Cp.StepButton}" Content="+" Click="OnZoomIn"
+                            ToolTip="Zoom in"/>
+                    <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="4,0"/>
+                    <Button x:Name="ZoomFitButton" Style="{StaticResource Cp.StepButton}" Width="40" Content="Fit"
+                            FontSize="{StaticResource Cp.Size.Body}" FontWeight="SemiBold" Click="OnZoomFit"
+                            ToolTip="Fit the whole screen in the window"/>
+                </StackPanel>
+            </Border>
 
             <!-- Shown for as long as a widget is being dragged from the catalog, so it is obvious where
                  it can go. Never hit-testable: the drop itself lands on the canvas underneath. -->

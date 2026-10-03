@@ -36,6 +36,9 @@ public partial class LayoutEditorWindow : Window
     private LayoutEditorModel _model;
     private string? _selected;
     private double _scale = 1;
+
+    /// <summary>The zoom chosen with the zoom bar, or null to fit the layout in the window.</summary>
+    private double? _zoom;
     private bool _syncing;
     private string _catalogState = "";
     private string? _settingsFor;
@@ -338,21 +341,21 @@ public partial class LayoutEditorWindow : Window
 
     // ===== Zoom and grid =====
 
+    /// <summary>The zoom steps − and + move between, as fractions of the layout's real size.</summary>
+    private static readonly double[] ZoomSteps = [0.1, 0.15, 0.2, 0.25, 0.33, 0.4, 0.5, 0.67, 0.75, 0.9, 1, 1.25, 1.5, 2, 3];
+
     private void ApplyZoom()
     {
-        var actualSize = ActualSizeToggle.IsChecked == true;
-        Viewport.HorizontalScrollBarVisibility = actualSize ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-        Viewport.VerticalScrollBarVisibility = actualSize ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        // Fitted, the canvas never needs scrolling; zoomed by hand, it may be larger than the view.
+        var fitted = _zoom is null;
+        Viewport.HorizontalScrollBarVisibility = fitted ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+        Viewport.VerticalScrollBarVisibility = fitted ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
 
-        var scale = 1.0;
-        if (!actualSize && Viewport.ActualWidth > 0)
-        {
-            var margin = Frame.Margin.Left + Frame.Margin.Right;
-            scale = Math.Min(
-                (Viewport.ActualWidth - margin) / _model.Layout.Width,
-                (Viewport.ActualHeight - margin) / _model.Layout.Height);
-            scale = Math.Clamp(scale, 0.05, 1);
-        }
+        var scale = _zoom ?? FitScale();
+        ZoomLabel.Content = string.Create(CultureInfo.InvariantCulture, $"{Math.Round(scale * 100)}%");
+        ZoomOutButton.IsEnabled = scale > ZoomSteps[0] + 0.001;
+        ZoomInButton.IsEnabled = scale < ZoomSteps[^1] - 0.001;
+        ZoomFitButton.IsEnabled = !fitted;
 
         if (Math.Abs(scale - _scale) < 0.0001 && Math.Abs(CanvasScale.ScaleX - scale) < 0.0001)
         {
@@ -401,10 +404,49 @@ public partial class LayoutEditorWindow : Window
 
     private void OnViewportSizeChanged(object sender, SizeChangedEventArgs e) => ApplyZoom();
 
-    private void OnZoomToggled(object sender, RoutedEventArgs e)
+    /// <summary>The scale that shows the whole layout in the window, never above real size.</summary>
+    private double FitScale()
     {
-        ActualSizeToggle.Content = ActualSizeToggle.IsChecked == true ? "Fit to window" : "View at 100%";
+        if (Viewport.ActualWidth <= 0)
+        {
+            return _scale;
+        }
+
+        var margin = Frame.Margin.Left + Frame.Margin.Right;
+        var scale = Math.Min(
+            (Viewport.ActualWidth - margin) / _model.Layout.Width,
+            (Viewport.ActualHeight - margin) / _model.Layout.Height);
+        return Math.Clamp(scale, 0.05, 1);
+    }
+
+    private void OnZoomIn(object sender, RoutedEventArgs e) =>
+        ZoomTo(ZoomSteps.FirstOrDefault(step => step > _scale + 0.001, ZoomSteps[^1]));
+
+    private void OnZoomOut(object sender, RoutedEventArgs e) =>
+        ZoomTo(ZoomSteps.LastOrDefault(step => step < _scale - 0.001, ZoomSteps[0]));
+
+    private void OnZoomActualSize(object sender, RoutedEventArgs e) => ZoomTo(1);
+
+    private void OnZoomFit(object sender, RoutedEventArgs e) => ZoomTo(null);
+
+    /// <summary>Zooms keeping the point at the centre of the view where it is, so zooming in goes
+    /// towards what was being looked at instead of the top-left corner.</summary>
+    private void ZoomTo(double? zoom)
+    {
+        var viewCentre = new Point(Viewport.ViewportWidth / 2, Viewport.ViewportHeight / 2);
+        var focus = Viewport.TranslatePoint(viewCentre, Surface);
+
+        _zoom = zoom;
         ApplyZoom();
+        if (zoom is null)
+        {
+            return;
+        }
+
+        Viewport.UpdateLayout();
+        var now = Surface.TranslatePoint(focus, Viewport);
+        Viewport.ScrollToHorizontalOffset(Viewport.HorizontalOffset + now.X - viewCentre.X);
+        Viewport.ScrollToVerticalOffset(Viewport.VerticalOffset + now.Y - viewCentre.Y);
     }
 
     private void OnSnapToggled(object sender, RoutedEventArgs e) =>
