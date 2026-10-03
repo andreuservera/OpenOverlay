@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Interop;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Layouts;
@@ -25,6 +26,9 @@ public sealed partial class ControlPanelViewModel
     private LayoutSession? _layoutSession;
     private bool _stackingPending;
     private Layout? _previewLayout;
+    private IReadOnlyList<LayoutChoice>? _layoutChoices;
+    private RelayCommand? _toggleLayout;
+    private RelayCommand? _goToLayouts;
 
     // Created on first use: nothing about layouts should cost anything until the page is opened.
     internal LayoutStore LayoutStore => _layoutStore ??= new LayoutStore();
@@ -40,6 +44,84 @@ public sealed partial class ControlPanelViewModel
         : null;
 
     public bool HasOpenLayout => LayoutStore.Open is not null;
+
+    // ===== Toolbar =====
+    //
+    // A layout picker and a power button, always there: pick a layout and switch it on; while one
+    // is open, picking another switches to it. Independent of the Layouts page's own dropdown, which
+    // picks the layout to look at and edit — browsing there must never change what is on screen.
+
+    /// <summary>Every layout, by name, for the toolbar's dropdown.</summary>
+    public IReadOnlyList<LayoutChoice> LayoutChoices =>
+        _layoutChoices ??= LayoutStore.List().Select(layout => new LayoutChoice(layout.Id, layout.Name)).ToList();
+
+    public bool HasLayouts => LayoutChoices.Count > 0;
+
+    /// <summary>The open layout; with none open, the one last picked (remembered across restarts),
+    /// or the first. Picking one while a layout is open switches to it; otherwise it only becomes
+    /// the one the power button opens.</summary>
+    public LayoutChoice? ToolbarLayout
+    {
+        get
+        {
+            if (LayoutStore.Open is { } open)
+            {
+                return LayoutChoices.FirstOrDefault(choice => choice.Id == open.LayoutId);
+            }
+
+            return LayoutChoices.FirstOrDefault(choice => choice.Id == LayoutStore.LastChosen) ?? LayoutChoices.FirstOrDefault();
+        }
+        set
+        {
+            if (value is null || value == ToolbarLayout)
+            {
+                return;
+            }
+
+            // After the dropdown has finished closing: opening may ask questions in dialogs, and a
+            // cancelled switch has to put the dropdown back on the layout that stayed open.
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (LayoutStore.Open is not null)
+                {
+                    OpenLayout(value.Id);
+                }
+                else
+                {
+                    LayoutStore.SetLastChosen(value.Id);
+                }
+
+                OnPropertyChanged(nameof(ToolbarLayout));
+            });
+        }
+    }
+
+    public string LayoutToggleTip => HasOpenLayout
+        ? "Close the layout: its widgets go back to how they were before it opened."
+        : "Open this layout: its widgets take their place and settings from it.";
+
+    public ICommand ToggleLayoutCommand => _toggleLayout ??= new RelayCommand(() =>
+    {
+        if (HasOpenLayout)
+        {
+            CloseLayout();
+        }
+        else if (ToolbarLayout is { } choice)
+        {
+            OpenLayout(choice.Id);
+        }
+    });
+
+    public ICommand GoToLayoutsCommand => _goToLayouts ??= new RelayCommand(() =>
+        Selected = NavItems.FirstOrDefault(item => item.Key == LayoutsPageKey));
+
+    private void RefreshLayoutChoices()
+    {
+        _layoutChoices = null;
+        OnPropertyChanged(nameof(LayoutChoices));
+        OnPropertyChanged(nameof(HasLayouts));
+        OnPropertyChanged(nameof(ToolbarLayout));
+    }
 
     /// <summary>The layout picked on the Layouts page, for the preview pane; null on any other page,
     /// so its panels are let go when the page is left.</summary>
@@ -128,7 +210,7 @@ public sealed partial class ControlPanelViewModel
             ? new InfoSetting("Status", "Close it from OPEN NOW above.", "Open now")
             : new ActionSetting(
                 "Open layout",
-                openId is null ? "Shows its widgets on its monitor, set up as designed." : $"Closes \"{OpenLayoutName}\" first.",
+                openId is null ? "Shows its widgets on its monitor, set up as designed." : $"Switches from \"{OpenLayoutName}\".",
                 "Open",
                 () => OpenLayout(selected.Id));
 
@@ -459,6 +541,7 @@ public sealed partial class ControlPanelViewModel
         }
 
         LayoutSession.Open(layout, new LayoutPlacement(monitor, scale, PixelsPerDip()));
+        LayoutStore.SetLastChosen(layout.Id);
         RequestStacking();
         OnLayoutOpenChanged();
     }
@@ -540,6 +623,8 @@ public sealed partial class ControlPanelViewModel
     {
         OnPropertyChanged(nameof(OpenLayoutName));
         OnPropertyChanged(nameof(HasOpenLayout));
+        OnPropertyChanged(nameof(ToolbarLayout));
+        OnPropertyChanged(nameof(LayoutToggleTip));
         // Both the Layouts page and a widget page may now read differently.
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
@@ -574,7 +659,10 @@ public sealed partial class ControlPanelViewModel
 
     /// <summary>Rebuilt after the click that caused it has finished, so the dropdown that raised a
     /// change is not torn down inside its own event.</summary>
-    private void RefreshLayoutsPage() =>
+    private void RefreshLayoutsPage()
+    {
+        // Every change to the saved layouts comes through here, so the toolbar's list follows too.
+        RefreshLayoutChoices();
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             if (Selected?.Key == LayoutsPageKey)
@@ -582,4 +670,14 @@ public sealed partial class ControlPanelViewModel
                 BuildSettings(Selected);
             }
         });
+    }
+}
+
+/// <summary>A layout as the toolbar's dropdown lists it. Compared by value, so a refreshed list
+/// still recognises the entry that was selected.</summary>
+public sealed record LayoutChoice(Guid Id, string Name)
+{
+    /// <summary>What the closed dropdown shows: the theme's dropdown draws the selected item as
+    /// text, without the DisplayMemberPath the open list uses.</summary>
+    public override string ToString() => Name;
 }

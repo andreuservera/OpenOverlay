@@ -56,18 +56,68 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <!-- Which layout is open, if any: its widgets follow it until it is closed. -->
-                    <Border Background="{StaticResource Cp.AccentWash}" BorderBrush="{StaticResource Cp.Accent}"
-                            BorderThickness="1" CornerRadius="15" Height="30" Padding="12,0" Margin="0,0,10,0"
-                            Visibility="{Binding HasOpenLayout, Converter={StaticResource Cp.BoolToVis}}"
-                            ToolTip="This layout is open. Close it from the Layouts page.">
+                    <!-- Layouts at hand: pick one and switch it on; while one is open, picking another
+                         switches to it. Lit in the accent colour while a layout is open. -->
+                    <Border CornerRadius="15" Height="30" Padding="12,0,3,0" Margin="0,0,10,0" BorderThickness="1"
+                            Visibility="{Binding HasLayouts, Converter={StaticResource Cp.BoolToVis}}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource Cp.SurfaceAlt}"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource Cp.Border}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasOpenLayout}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                                        <Setter Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="LAYOUT" Style="{StaticResource Cp.Eyebrow}" Foreground="{StaticResource Cp.Accent}"
-                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="{Binding OpenLayoutName}" Style="{StaticResource Cp.Body}"
-                                       Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
+                            <TextBlock Text="LAYOUT" VerticalAlignment="Center" Margin="0,0,8,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasOpenLayout}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <ComboBox Style="{StaticResource Cp.ComboBox}" Height="24" MinWidth="160" MaxWidth="240"
+                                      ItemsSource="{Binding LayoutChoices}" DisplayMemberPath="Name"
+                                      SelectedItem="{Binding ToolbarLayout, Mode=TwoWay}"
+                                      ToolTip="Pick a layout. While one is open, picking another switches to it."/>
+                            <Button Width="24" Height="24" Margin="6,0,0,0" Cursor="Hand" Focusable="False"
+                                    Command="{Binding ToggleLayoutCommand}" ToolTip="{Binding LayoutToggleTip}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Disc" CornerRadius="12" Background="{StaticResource Cp.Field}"
+                                                BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+                                            <Path x:Name="Icon" Data="M12,3 V11 M6.6,6.4 A7.5,7.5 0 1 0 17.4,6.4"
+                                                  Stretch="Uniform" Margin="6" Stroke="{StaticResource Cp.TextMuted}"
+                                                  StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Disc" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                                                <Setter TargetName="Icon" Property="Stroke" Value="{StaticResource Cp.Text}"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding HasOpenLayout}" Value="True">
+                                                <Setter TargetName="Disc" Property="Background" Value="{StaticResource Cp.Accent}"/>
+                                                <Setter TargetName="Disc" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                                                <Setter TargetName="Icon" Property="Stroke" Value="#101316"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
                         </StackPanel>
                     </Border>
+                    <Button Style="{StaticResource Cp.Button}" Content="No layouts yet" Margin="0,0,10,0"
+                            Command="{Binding GoToLayoutsCommand}"
+                            Visibility="{Binding HasLayouts, Converter={StaticResource Cp.NotBoolToVis}}"
+                            ToolTip="Create a layout on the Layouts page."/>
                     <Border Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.Border}"
                             BorderThickness="1" CornerRadius="15" Height="30" Padding="12,0" Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -91,13 +141,9 @@
                         </StackPanel>
                     </Border>
 
-                    <Button Style="{StaticResource Cp.Button}" Content="Close all widgets" Margin="0,0,10,0"
-                            Command="{Binding CloseAllWidgetsCommand}"
-                            ToolTip="Switches every widget off. Each one comes back from its own switch in the list."/>
-
                     <ToggleButton Style="{StaticResource Cp.ToggleButton}" Content="{Binding EditModeLabel}"
                                   IsChecked="{Binding IsEditMode, Mode=TwoWay}"
-                                  ToolTip="Drag a widget to move it. Hover it for the − M + size control, or hold Ctrl and scroll."/>
+                                  ToolTip="Unlocked, widgets can be dragged into place; hover one for the − M + size control, or hold Ctrl and scroll. With a layout open, the changes are temporary: the layout itself doesn't change."/>
                 </StackPanel>
             </Grid>
         </Border>

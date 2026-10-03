@@ -171,7 +171,7 @@ public sealed partial class ControlPanelViewModel
     /// page so they can be changed without reading anything.</summary>
     private SettingsGroup Placement(WidgetSlot slot) => new SettingsGroup(
         "PLACEMENT",
-        "Turn on Edit layout, then drag the widget to move it.")
+        "Unlock widgets from the toolbar, then drag the widget to move it.")
         .With(
             new SegmentedSetting(
                 "Size",

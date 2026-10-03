@@ -51,16 +51,20 @@ internal sealed class LayoutSession(LayoutStore store, ILayoutWidgetHost host)
 {
     public OpenLayoutState? Current => store.Open;
 
-    /// <summary>Opens a layout, closing the one already open first.</summary>
+    /// <summary>
+    /// Opens a layout. With another one open, switches straight to it rather than closing first:
+    /// widgets only the old layout controlled are restored, widgets both control go straight to the
+    /// new layout's settings without jumping back in between, and new ones are captured before they
+    /// change. The capture taken before the first layout opened is kept throughout, so closing still
+    /// returns every widget to how it was before any layout.
+    /// </summary>
     public void Open(Layout layout, LayoutPlacement placement)
     {
-        if (store.Open is { } open && open.LayoutId != layout.Id)
-        {
-            Close();
-        }
-
-        Apply(layout, placement, store.Open?.LayoutId == layout.Id ? store.Open.Snapshot : []);
-        AppLog.Activity("Layouts", $"Opened layout \"{layout.Name}\" on {placement.Monitor.FriendlyName}");
+        var previous = store.Open;
+        Apply(layout, placement, previous?.Snapshot ?? []);
+        AppLog.Activity("Layouts", previous is not null && previous.LayoutId != layout.Id
+            ? $"Switched to layout \"{layout.Name}\" on {placement.Monitor.FriendlyName}"
+            : $"Opened layout \"{layout.Name}\" on {placement.Monitor.FriendlyName}");
     }
 
     /// <summary>

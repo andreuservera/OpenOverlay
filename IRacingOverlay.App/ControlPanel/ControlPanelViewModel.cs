@@ -41,7 +41,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private int _criticalRefreshIndex;
     private int _compassRefreshIndex;
     private Dictionary<NavItem, string>? _searchIndex;
-    private RelayCommand? _closeAllWidgets;
 
     public ControlPanelViewModel()
     {
@@ -176,21 +175,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Switches every widget off at once — the same switch as each widget's own, so it's
-    /// remembered, and each comes back from its page.</summary>
-    public ICommand CloseAllWidgetsCommand => _closeAllWidgets ??= new RelayCommand(TurnOffAllWidgets);
-
-    public void TurnOffAllWidgets()
-    {
-        AppLog.Activity("Control Panel", "All widgets closed");
-        foreach (var slot in _slots.Values)
-        {
-            slot.IsEnabled = false;
-        }
-    }
-
-    /// <summary>Layout-editing mode. A single switch for the whole application rather than per
-    /// widget: "let me move things" is a mode you are in, not a property of one panel.</summary>
+    /// <summary>Widgets unlocked: they can be dragged and resized on screen. A single switch for the
+    /// whole application rather than per widget: "let me move things" is a mode you are in, not a
+    /// property of one panel. Widgets an open layout controls move too; that is saved as their own
+    /// position, never in the layout, and undone when the layout closes.</summary>
     public bool IsEditMode
     {
         get => _isEditMode;
@@ -202,7 +190,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
 
             _isEditMode = value;
-            AppLog.Activity("Control Panel", value ? "Edit layout on" : "Edit layout off");
+            AppLog.Activity("Control Panel", value ? "Widgets unlocked" : "Widgets locked");
             foreach (var slot in _slots.Values)
             {
                 slot.IsEditMode = value;
@@ -213,7 +201,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
     }
 
-    public string EditModeLabel => _isEditMode ? "Editing layout" : "Edit layout";
+    /// <summary>What the toolbar button does when clicked.</summary>
+    public string EditModeLabel => _isEditMode ? "Lock widgets" : "Unlock widgets";
 
     public bool IsConnected
     {

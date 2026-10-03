@@ -60,6 +60,18 @@ public sealed class LayoutStoreTests : IDisposable
     }
 
     [Fact]
+    public void LastChosen_SurvivesAReload_AndStartsEmpty()
+    {
+        var store = NewStore();
+        Assert.Null(store.LastChosen);
+        var race = store.Create("Race", Ultrawide, 3440, 1440);
+
+        store.SetLastChosen(race.Id);
+
+        Assert.Equal(race.Id, NewStore().LastChosen);
+    }
+
+    [Fact]
     public void File_HasTheDocumentedShape()
     {
         var store = NewStore();

@@ -65,7 +65,32 @@ public sealed class LayoutSessionTests : IDisposable
     }
 
     [Fact]
-    public void OpeningAnotherLayout_ClosesTheFirst_SoOnlyItsWidgetsAreControlled()
+    public void SwitchingLayouts_MovesSharedWidgetsStraightAcross_AndCloseStillRestoresTheOriginals()
+    {
+        var race = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200), Widget(WidgetCatalog.Standings, 10, 10));
+        var oval = Layout(Side, Widget(WidgetCatalog.Relative, 700, 20), Widget(WidgetCatalog.Fuel, 50, 50));
+        _session.Open(race, new LayoutPlacement(Side, false, 1));
+        _host.Calls.Clear();
+
+        _session.Open(oval, new LayoutPlacement(Side, false, 1));
+
+        // The shared Relative is never put back in between, so it doesn't jump on screen.
+        Assert.DoesNotContain($"Restore {WidgetCatalog.Relative}", _host.Calls);
+        Assert.DoesNotContain($"Capture {WidgetCatalog.Relative}", _host.Calls);
+        Assert.Equal((4140.0, 377.0), _host.State[WidgetCatalog.Relative].Position);
+        Assert.Equal(_host.Original(WidgetCatalog.Standings), _host.State[WidgetCatalog.Standings]);
+        Assert.Contains($"Capture {WidgetCatalog.Fuel}", _host.Calls);
+        Assert.Equal(oval.Id, _store.Open!.LayoutId);
+
+        _session.Close();
+
+        Assert.Equal(_host.Original(WidgetCatalog.Relative), _host.State[WidgetCatalog.Relative]);
+        Assert.Equal(_host.Original(WidgetCatalog.Fuel), _host.State[WidgetCatalog.Fuel]);
+        Assert.Equal(_host.Original(WidgetCatalog.Standings), _host.State[WidgetCatalog.Standings]);
+    }
+
+    [Fact]
+    public void OpeningAnotherLayout_ReleasesTheFirst_SoOnlyItsWidgetsAreControlled()
     {
         var race = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200));
         var oval = Layout(Side, Widget(WidgetCatalog.Fuel, 10, 10));
@@ -189,19 +214,27 @@ public sealed class LayoutSessionTests : IDisposable
 
         public Dictionary<string, WidgetState> State { get; } = [];
 
+        public List<string> Calls { get; } = [];
+
         public WidgetState Original(string type) => new(false, type == WidgetCatalog.Fuel ? (7, 8) : null, ScaleLevel.M, 1, false, $"{{\"own\":\"{type}\"}}");
 
         public WidgetSnapshot Capture(string type)
         {
+            Calls.Add($"Capture {type}");
             var state = State[type];
             return new WidgetSnapshot(type, state.Enabled, state.Position?.Left, state.Position?.Top, state.Scale, state.Opacity, state.Hide,
                 JsonNode.Parse(state.Config)!.AsObject());
         }
 
-        public void Apply(LayoutWidget widget, double left, double top) =>
+        public void Apply(LayoutWidget widget, double left, double top)
+        {
+            Calls.Add($"Apply {widget.Type}");
             State[widget.Type] = new WidgetState(true, (left, top), widget.Scale, widget.Opacity, widget.HideOutsideCar, widget.Config.ToJsonString());
+        }
 
-        public void Restore(WidgetSnapshot snapshot) =>
+        public void Restore(WidgetSnapshot snapshot)
+        {
+            Calls.Add($"Restore {snapshot.Type}");
             State[snapshot.Type] = new WidgetState(
                 snapshot.Enabled,
                 snapshot.Left is { } left && snapshot.Top is { } top ? (left, top) : null,
@@ -209,5 +242,6 @@ public sealed class LayoutSessionTests : IDisposable
                 snapshot.Opacity,
                 snapshot.HideOutsideCar,
                 snapshot.Config.ToJsonString());
+        }
     }
 }

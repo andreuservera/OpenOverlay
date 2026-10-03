@@ -32,6 +32,7 @@ internal sealed class LayoutStore
     private readonly string _filePath;
     private readonly List<Layout> _layouts;
     private OpenLayoutState? _open;
+    private Guid? _lastChosen;
 
     public LayoutStore(string? filePath = null)
     {
@@ -39,6 +40,7 @@ internal sealed class LayoutStore
         var document = SettingsFile.Read(_filePath, json => JsonSerializer.Deserialize<Document>(json, JsonOptions));
         _layouts = document?.Layouts?.Where(layout => layout is not null).ToList() ?? [];
         _open = document?.Open;
+        _lastChosen = document?.LastChosen;
 
         foreach (var layout in _layouts)
         {
@@ -134,6 +136,21 @@ internal sealed class LayoutStore
         return copy.Clone();
     }
 
+    /// <summary>The layout last picked to open, which the toolbar offers again while none is open.
+    /// May name a layout that has since been deleted.</summary>
+    public Guid? LastChosen => _lastChosen;
+
+    public void SetLastChosen(Guid? id)
+    {
+        if (_lastChosen == id)
+        {
+            return;
+        }
+
+        _lastChosen = id;
+        Write();
+    }
+
     public void SetOpen(OpenLayoutState? open)
     {
         _open = open;
@@ -146,7 +163,7 @@ internal sealed class LayoutStore
         LayoutNaming.Unique(name, _layouts.Where(layout => layout.Id != except).Select(layout => layout.Name));
 
     private void Write() =>
-        SettingsFile.Write(_filePath, JsonSerializer.Serialize(new Document(SchemaVersion, _layouts, _open), JsonOptions));
+        SettingsFile.Write(_filePath, JsonSerializer.Serialize(new Document(SchemaVersion, _layouts, _open, _lastChosen), JsonOptions));
 
-    private sealed record Document(int SchemaVersion, List<Layout>? Layouts, OpenLayoutState? Open);
+    private sealed record Document(int SchemaVersion, List<Layout>? Layouts, OpenLayoutState? Open, Guid? LastChosen = null);
 }

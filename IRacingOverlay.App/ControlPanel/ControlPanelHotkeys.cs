@@ -131,7 +131,7 @@ public sealed partial class ControlPanelViewModel
         return action switch
         {
             HotkeyActions.ToggleOverlays => "Show / hide all overlays",
-            HotkeyActions.ToggleEditMode => "Toggle edit layout",
+            HotkeyActions.ToggleEditMode => "Lock / unlock widgets",
             HotkeyActions.ToggleControlPanel => "Show / hide Control Panel",
             HotkeyActions.RestartOverlays => "Restart overlays",
             _ => "Reset overlay positions",
