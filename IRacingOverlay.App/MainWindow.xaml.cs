@@ -75,14 +75,11 @@ public partial class MainWindow : Window
     private double _criticalIntervalMs = 100;
     private double _nextCriticalMs;
     private int _criticalTickPending;
-    // PerfProbe (temporary): when the pending critical tick was posted, and the post-tick idle probe.
+    // PerfProbe: when the pending critical tick was posted, and the post-tick idle probe.
     private long _criticalPostedTicks;
     private PerfProbe.Mark _afterTickMark;
     private readonly Dictionary<string, (string Build, string Apply, string Dashboard)> _perfNames = new();
 
-    // TEMPORARY (performance A/B test): marks this build in the title bar, tray tooltip and status
-    // line so it can't be mistaken for one that still hooks CompositionTarget.Rendering.
-    internal const string FrameHookTestTag = "TEST v4 filas sin cambios + perf log";
     private GlobalHotkeyManager? _hotkeys;
     private TrayIcon? _tray;
     private WindowState _restoreState = WindowState.Normal;
@@ -203,7 +200,7 @@ public partial class MainWindow : Window
                 : _vm.OverlaysHidden
                     ? (TrayStatus.OverlaysHidden, "Connected · overlays hidden")
                     : (TrayStatus.Running, "Connected · overlays on");
-        _tray.Update(status, $"OpenOverlay [{FrameHookTestTag}] — {text}", _vm.OverlaysHidden);
+        _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
     }
     private PedalTraceBuilder _pedalTraceBuilder = new();
     // The player's racing laps, observed every tick whatever is open: both fuel readouts average it
@@ -316,8 +313,6 @@ public partial class MainWindow : Window
 
         _uiTimer.Tick += UiTimer_Tick;
         _uiTimer.Start();
-
-        Title = $"{Title} · {FrameHookTestTag}";
 
         // Registered against this window's handle, which stays alive while the window is hidden.
         SourceInitialized += (_, _) =>
@@ -876,7 +871,7 @@ public partial class MainWindow : Window
         _vm.DiagnosticsLine =
             $"{megabytes:0} MB · GC {GC.CollectionCount(0)}/{GC.CollectionCount(1)}/{GC.CollectionCount(2)} · " +
             $"UI {uiAvg:0.0}/{_uiTickMaxMs:0.0} ms · " +
-            $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0}) · {FrameHookTestTag}";
+            $"critical {criticalAvg:0.0}/{_criticalTickMaxMs:0.0} ms (target {criticalTargetMs:0}, worst gap {_criticalTickMaxGapMs:0})";
 
         // Rolling ~1s window (this is called once every DiagnosticsUpdateEveryNTicks UI ticks) rather
         // than a since-launch average — a stutter from 10 minutes ago shouldn't still be dragging

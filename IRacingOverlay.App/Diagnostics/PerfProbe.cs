@@ -4,14 +4,15 @@ using System.Globalization;
 namespace IRacingOverlay.App.Diagnostics;
 
 /// <summary>
-/// Temporary UI-thread profiler for the FPS investigation (docs/RENDIMIENTO-FPS-APRENDIZAJES.md).
-/// Times and counts allocations per named section and, every <see cref="WindowSeconds"/>, writes one
-/// "Perf" line to the log with the process-wide GC picture alongside. UI thread only: sections are
-/// not thread-safe, and the allocation figure is the calling thread's own.
+/// UI-thread profiler used to find the FPS cost of open widgets; off unless <see cref="Enabled"/>
+/// is set to true. Times and counts allocations per named section and, every
+/// <see cref="WindowSeconds"/>, writes one "Perf" line to the log with the process-wide GC picture
+/// alongside. UI thread only: sections are not thread-safe, and the allocation figure is the
+/// calling thread's own.
 /// </summary>
 internal static class PerfProbe
 {
-    public static readonly bool Enabled = true;
+    public static readonly bool Enabled = false;
     private const int WindowSeconds = 5;
 
     private static readonly Dictionary<string, Stat> Sections = new();
