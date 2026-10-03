@@ -44,6 +44,27 @@ internal static class DriverTableOptionsStore
 
     public static void SaveFocusSize(DriverTable table, int value) => Set(table, FocusSizeKey, value);
 
+    /// <summary>Every setting of one table in a single write, under the same keys the per-setting
+    /// saves use — for when a whole set changes at once, as when a layout is applied.</summary>
+    public static void Save(DriverTableOptions options)
+    {
+        Load();
+        foreach (var column in Enum.GetValues<DriverTableColumn>())
+        {
+            _cache![Key(options.Table, column.ToString())] = options.IsVisible(column) ? 1 : 0;
+        }
+
+        _cache![Key(options.Table, ShowSessionIdKey)] = options.ShowSessionId ? 1 : 0;
+        _cache[Key(options.Table, ShowClassNameKey)] = options.ShowClassName ? 1 : 0;
+        _cache[Key(options.Table, ShowMulticlassKey)] = options.ShowMulticlass ? 1 : 0;
+        _cache[Key(options.Table, ShowSessionLapsKey)] = options.ShowSessionLaps ? 1 : 0;
+        _cache[Key(options.Table, ShowSessionTimeKey)] = options.ShowSessionTime ? 1 : 0;
+        _cache[Key(options.Table, FocusSizeKey)] = options.FocusSize;
+        SettingsFile.WriteJson(FilePath, _cache);
+    }
+
+    private static string Key(DriverTable table, string key) => $"{table}.{key}";
+
     public static void ApplyTo(DriverTableOptions options)
     {
         Load();

@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Data;
 using System.Windows.Input;
 using IRacingOverlay.App.Diagnostics;
+using IRacingOverlay.App.Layouts;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
@@ -416,6 +417,19 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),
     };
+
+    /// <summary>Codecs over this control panel's own options objects, saving through the real
+    /// stores and raising <see cref="TableHeaderChanged"/> just as the widget pages do.</summary>
+    internal IReadOnlyDictionary<string, IWidgetConfigCodec> CreateConfigCodecs() =>
+        WidgetConfigCodecs.Create(new WidgetConfigTargets(
+            StandingsOptions,
+            RelativeOptions,
+            FlagOptions,
+            CockpitOptions,
+            WeatherOptions,
+            FuelCalculatorOptions,
+            WidgetConfigPersistence.Stores,
+            table => TableHeaderChanged?.Invoke(table)));
 
     private static T Configured<T>(T widget, Action<T> configure) where T : OverlayWindowBase
     {

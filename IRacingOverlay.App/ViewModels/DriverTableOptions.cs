@@ -217,6 +217,22 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         }
     }
 
+    public bool IsVisible(DriverTableColumn column) => column switch
+    {
+        DriverTableColumn.Position => ShowPosition,
+        DriverTableColumn.CarNumber => ShowCarNumber,
+        DriverTableColumn.Driver => ShowDriver,
+        DriverTableColumn.LastPitStop => ShowLastPitStop,
+        DriverTableColumn.TireCompound => ShowTireCompound,
+        DriverTableColumn.IRating => ShowIRating,
+        DriverTableColumn.IRatingDelta => ShowIRatingDelta,
+        DriverTableColumn.License => ShowLicense,
+        DriverTableColumn.Lap => ShowLap,
+        DriverTableColumn.LastLap => ShowLastLap,
+        DriverTableColumn.BestLap => ShowBestLap,
+        _ => ShowGap,
+    };
+
     public void SetVisible(DriverTableColumn column, bool visible)
     {
         switch (column)
