@@ -77,6 +77,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
 
         NavItems.Add(NavItem.ForPage(
+            LayoutsPageKey, "Layouts", "Saved arrangements of your widgets for one monitor.",
+            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20"));
+
+        NavItems.Add(NavItem.ForPage(
             GeneralPageKey, "General", "Units, performance, hotkeys, the tray and diagnostics.",
             "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9"));
 

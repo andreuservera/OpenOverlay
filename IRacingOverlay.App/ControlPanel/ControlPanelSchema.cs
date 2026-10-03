@@ -71,6 +71,7 @@ public sealed partial class ControlPanelViewModel
             return item.Key switch
             {
                 DashboardPageKey => DashboardPage(),
+                LayoutsPageKey => LayoutsPage(),
                 GeneralPageKey => GeneralPage(),
                 WhatsNewPageKey => WhatsNewPage(),
                 ChangelogPageKey => ChangelogPage(),

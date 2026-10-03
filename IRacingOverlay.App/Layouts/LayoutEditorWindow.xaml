@@ -1,0 +1,320 @@
+<Window x:Class="IRacingOverlay.App.Layouts.LayoutEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
+        xmlns:lay="clr-namespace:IRacingOverlay.App.Layouts"
+        Title="OpenOverlay — Layout editor"
+        Height="860" Width="1500" MinHeight="600" MinWidth="1100"
+        Icon="pack://application:,,,/OpenOverlay;component/Assets/icon.ico"
+        Background="{DynamicResource Cp.Window}"
+        FontFamily="{DynamicResource Theme.FontFamily}"
+        FontSize="13"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal">
+    <!--
+      Three panes, as in the control panel: the widgets you can add, the screen you are designing
+      for, and the properties of what is selected. The canvas is the layout's full resolution, scaled
+      to fit or shown 1:1; everything on it is the real widget panel with sample data.
+
+      No keyboard shortcuts on purpose: they are a separate task, and every action here is a button
+      or a context menu entry.
+    -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../ControlPanel/ControlPanelTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="Ed.PaneTitle" TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
+                <Setter Property="Margin" Value="16,14,16,8"/>
+            </Style>
+
+            <Style x:Key="Ed.Field" TargetType="Border">
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="Padding" Value="9,0"/>
+                <Setter Property="Background" Value="{StaticResource Cp.Field}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Cp.Border}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="6"/>
+            </Style>
+
+            <Style TargetType="ContextMenu">
+                <Setter Property="Background" Value="{StaticResource Cp.SurfaceAlt}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+            </Style>
+
+            <!-- A corner handle. Its corner travels in Tag; position and size follow the zoom so it
+                 stays the same size on screen. -->
+            <Style x:Key="Ed.Handle" TargetType="Border">
+                <Setter Property="Width" Value="{Binding HandleSize}"/>
+                <Setter Property="Height" Value="{Binding HandleSize}"/>
+                <Setter Property="Margin" Value="{Binding HandleMargin}"/>
+                <Setter Property="Background" Value="{StaticResource Cp.Accent}"/>
+                <Setter Property="BorderBrush" Value="#101316"/>
+                <Setter Property="BorderThickness" Value="{Binding BadgeScale}"/>
+                <Setter Property="Visibility" Value="{Binding ShowHandles, Converter={StaticResource Cp.BoolToVis}}"/>
+                <EventSetter Event="MouseLeftButtonDown" Handler="OnHandleMouseDown"/>
+                <EventSetter Event="MouseMove" Handler="OnHandleMouseMove"/>
+                <EventSetter Event="MouseLeftButtonUp" Handler="OnHandleMouseUp"/>
+            </Style>
+
+            <DataTemplate x:Key="Ed.ItemTemplate" DataType="{x:Type lay:EditorWidgetItem}">
+                <Grid x:Name="ItemRoot" Background="Transparent" Opacity="{Binding ItemOpacity}"
+                      Cursor="SizeAll" SizeChanged="OnItemSizeChanged"
+                      MouseLeftButtonDown="OnItemMouseDown" MouseMove="OnItemMouseMove"
+                      MouseLeftButtonUp="OnItemMouseUp" MouseRightButtonDown="OnItemRightDown">
+                    <Grid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Bring to front" Click="OnBringToFront"/>
+                            <MenuItem Header="Send to back" Click="OnSendToBack"/>
+                            <Separator/>
+                            <MenuItem Header="Lock position and size" IsChecked="{Binding IsLocked, Mode=OneWay}"
+                                      Click="OnToggleLock"/>
+                            <MenuItem Header="Hide (keep in layout)" IsChecked="{Binding IsHidden, Mode=OneWay}"
+                                      Click="OnToggleHidden"/>
+                            <Separator/>
+                            <MenuItem Header="Remove from layout" Click="OnRemove"/>
+                        </ContextMenu>
+                    </Grid.ContextMenu>
+
+                    <!-- The widget itself, at its size level, with its own opacity. -->
+                    <ContentPresenter Content="{Binding Panel}" Opacity="{Binding PanelOpacity}">
+                        <ContentPresenter.LayoutTransform>
+                            <ScaleTransform ScaleX="{Binding Factor}" ScaleY="{Binding Factor}"/>
+                        </ContentPresenter.LayoutTransform>
+                    </ContentPresenter>
+
+                    <Rectangle x:Name="Outline" StrokeThickness="{Binding OutlineThickness}" IsHitTestVisible="False"
+                               Stroke="#55FFFFFF"/>
+
+                    <!-- Badges: what state this widget is in, drawn at screen size. -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                IsHitTestVisible="False" Margin="0">
+                        <StackPanel.LayoutTransform>
+                            <ScaleTransform ScaleX="{Binding BadgeScale}" ScaleY="{Binding BadgeScale}"/>
+                        </StackPanel.LayoutTransform>
+                        <Border Background="{StaticResource Cp.Danger}" CornerRadius="3" Padding="5,1" Margin="2"
+                                Visibility="{Binding IsOffCanvas, Converter={StaticResource Cp.BoolToVis}}">
+                            <TextBlock Text="OFF SCREEN" FontSize="10" FontWeight="Bold" Foreground="#101316"/>
+                        </Border>
+                        <Border Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="3" Padding="5,1" Margin="2"
+                                Visibility="{Binding IsLocked, Converter={StaticResource Cp.BoolToVis}}">
+                            <TextBlock Text="LOCKED" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Cp.TextSoft}"/>
+                        </Border>
+                        <Border Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="3" Padding="5,1" Margin="2"
+                                Visibility="{Binding IsHidden, Converter={StaticResource Cp.BoolToVis}}">
+                            <TextBlock Text="HIDDEN" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Cp.TextSoft}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <Border Style="{StaticResource Ed.Handle}" Tag="TopLeft" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Cursor="SizeNWSE"/>
+                    <Border Style="{StaticResource Ed.Handle}" Tag="TopRight" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Cursor="SizeNESW"/>
+                    <Border Style="{StaticResource Ed.Handle}" Tag="BottomLeft" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Cursor="SizeNESW"/>
+                    <Border Style="{StaticResource Ed.Handle}" Tag="BottomRight" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Cursor="SizeNWSE"/>
+                </Grid>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsOffCanvas}" Value="True">
+                        <Setter TargetName="Outline" Property="Stroke" Value="{StaticResource Cp.Danger}"/>
+                        <Setter TargetName="Outline" Property="StrokeDashArray" Value="4 3"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                        <Setter TargetName="Outline" Property="Stroke" Value="{StaticResource Cp.Accent}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                        <Setter TargetName="ItemRoot" Property="Cursor" Value="Arrow"/>
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <DataTemplate x:Key="Ed.CatalogTemplate" DataType="{x:Type lay:CatalogEntry}">
+                <Grid Opacity="{Binding EntryOpacity}" Background="Transparent" Margin="0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Path Width="16" Height="16" Stretch="Uniform" Data="{Binding Descriptor.IconData}"
+                          Stroke="{StaticResource Cp.Accent}" StrokeThickness="1.6" VerticalAlignment="Center"
+                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Descriptor.Name}" Style="{StaticResource Cp.Body}"
+                               Foreground="{StaticResource Cp.Text}" Margin="10,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Status}" Style="{StaticResource Cp.Eyebrow}"
+                               FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"/>
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ===== Toolbar ===== -->
+        <Border Grid.Row="0" Background="{StaticResource Cp.Rail}" BorderBrush="{StaticResource Cp.Border}"
+                BorderThickness="0,0,0,1" Padding="16,10">
+            <Grid>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <TextBlock x:Name="LayoutTitle" Style="{StaticResource Cp.Title}"/>
+                    <TextBlock x:Name="LayoutSubtitle" Style="{StaticResource Cp.Hint}"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="UndoButton" Style="{StaticResource Cp.Button}" Content="Undo" Click="OnUndo"/>
+                    <Button x:Name="RedoButton" Style="{StaticResource Cp.Button}" Content="Redo" Margin="6,0,0,0" Click="OnRedo"/>
+                    <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
+
+                    <ToggleButton x:Name="ActualSizeToggle" Style="{StaticResource Cp.ToggleButton}" Content="View at 100%"
+                                  Click="OnZoomToggled"
+                                  ToolTip="Show the layout at its real size, scrolling to reach the rest."/>
+                    <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
+
+                    <ToggleButton x:Name="SnapToggle" Style="{StaticResource Cp.ToggleButton}" Content="Snap to grid"
+                                  Click="OnSnapToggled"/>
+                    <Border Style="{StaticResource Ed.Field}" Width="58" Margin="6,0,0,0" ToolTip="Grid size in pixels">
+                        <TextBox x:Name="GridSizeBox" Style="{StaticResource Cp.TextBox}" TextAlignment="Center"
+                                 MaxLength="3" LostFocus="OnGridSizeCommitted"/>
+                    </Border>
+                    <TextBlock Text="px" Style="{StaticResource Cp.Hint}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                    <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
+
+                    <Button Style="{StaticResource Cp.Button}" Content="Monitor and resolution…" Click="OnChangeTarget"/>
+                    <Button x:Name="SaveButton" Style="{StaticResource Cp.PrimaryButton}" Content="Save" MinWidth="84"
+                            Margin="12,0,0,0" Click="OnSave"/>
+                    <Button Style="{StaticResource Cp.Button}" Content="Close" Margin="6,0,0,0" Click="OnCloseClicked"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ===== Body ===== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="270"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ===== Catalog ===== -->
+            <Border Grid.Column="0" Background="{StaticResource Cp.Rail}" BorderBrush="{StaticResource Cp.Border}"
+                    BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="WIDGETS" Style="{StaticResource Ed.PaneTitle}"/>
+                    <TextBlock DockPanel.Dock="Top" Style="{StaticResource Cp.Hint}" TextWrapping="Wrap" Margin="16,0,16,8"
+                               Text="Drag a widget onto the screen. Each one can be added once."/>
+                    <TextBlock x:Name="CatalogLimit" DockPanel.Dock="Bottom" Style="{StaticResource Cp.Hint}"
+                               TextWrapping="Wrap" Margin="16,8,16,14"/>
+                    <ListBox x:Name="Catalog" Style="{StaticResource Cp.NavList}" ItemTemplate="{StaticResource Ed.CatalogTemplate}"
+                             PreviewMouseLeftButtonDown="OnCatalogMouseDown" PreviewMouseMove="OnCatalogMouseMove"/>
+                </DockPanel>
+            </Border>
+
+            <!-- ===== Canvas ===== -->
+            <ScrollViewer x:Name="Viewport" Grid.Column="1" Background="#06080A" Focusable="False"
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
+                          SizeChanged="OnViewportSizeChanged">
+                <Grid MinWidth="{Binding ViewportWidth, ElementName=Viewport}"
+                      MinHeight="{Binding ViewportHeight, ElementName=Viewport}">
+                    <Border x:Name="Frame" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
+                            BorderThickness="1" BorderBrush="{StaticResource Cp.BorderStrong}">
+                        <Border.LayoutTransform>
+                            <ScaleTransform x:Name="CanvasScale" ScaleX="1" ScaleY="1"/>
+                        </Border.LayoutTransform>
+                        <Grid x:Name="Surface" Background="#090C0F" AllowDrop="True"
+                              DragOver="OnSurfaceDragOver" Drop="OnSurfaceDrop"
+                              MouseLeftButtonDown="OnSurfaceMouseDown">
+                            <cp:PreviewBackdrop/>
+                            <Rectangle x:Name="GridLines" IsHitTestVisible="False"/>
+                            <ItemsControl x:Name="Items" ItemTemplate="{StaticResource Ed.ItemTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <Canvas/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemContainerStyle>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                        <Setter Property="Panel.ZIndex" Value="{Binding ZIndex}"/>
+                                    </Style>
+                                </ItemsControl.ItemContainerStyle>
+                            </ItemsControl>
+                            <Canvas x:Name="GuideLayer" IsHitTestVisible="False"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+
+            <!-- ===== Properties ===== -->
+            <Border Grid.Column="2" Background="{StaticResource Cp.Rail}" BorderBrush="{StaticResource Cp.Border}"
+                    BorderThickness="1,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                    <StackPanel>
+                        <TextBlock Text="PROPERTIES" Style="{StaticResource Ed.PaneTitle}"/>
+
+                        <TextBlock x:Name="NoSelection" Style="{StaticResource Cp.Hint}" TextWrapping="Wrap" Margin="16,0,16,0"
+                                   Text="Select a widget on the screen to place it precisely, change its size, lock or hide it."/>
+
+                        <StackPanel x:Name="SelectionPanel" Margin="16,0,16,16" Visibility="Collapsed">
+                            <TextBlock x:Name="SelectionName" Style="{StaticResource Cp.Title}"/>
+
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="X" Style="{StaticResource Cp.Eyebrow}"/>
+                                    <Border Style="{StaticResource Ed.Field}" Margin="0,5,0,0">
+                                        <TextBox x:Name="XBox" Style="{StaticResource Cp.TextBox}" MaxLength="6"
+                                                 LostFocus="OnPositionCommitted"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Y" Style="{StaticResource Cp.Eyebrow}"/>
+                                    <Border Style="{StaticResource Ed.Field}" Margin="0,5,0,0">
+                                        <TextBox x:Name="YBox" Style="{StaticResource Cp.TextBox}" MaxLength="6"
+                                                 LostFocus="OnPositionCommitted"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Style="{StaticResource Cp.Hint}" Margin="0,4,0,0"
+                                       Text="Pixels from the top-left of the screen. Applied when you click elsewhere."/>
+
+                            <TextBlock Text="SIZE" Style="{StaticResource Cp.Eyebrow}" Margin="0,14,0,0"/>
+                            <ComboBox x:Name="SizeBox" Style="{StaticResource Cp.ComboBox}" Margin="0,5,0,0"
+                                      SelectionChanged="OnSizeChosen"/>
+                            <TextBlock x:Name="MeasuredSize" Style="{StaticResource Cp.Hint}" Margin="0,4,0,0"/>
+
+                            <TextBlock Text="ARRANGE" Style="{StaticResource Cp.Eyebrow}" Margin="0,16,0,0"/>
+                            <UniformGrid Columns="2" Margin="0,5,0,0">
+                                <Button Style="{StaticResource Cp.Button}" Content="Bring to front" Margin="0,0,3,6" Click="OnBringToFront"/>
+                                <Button Style="{StaticResource Cp.Button}" Content="Send to back" Margin="3,0,0,6" Click="OnSendToBack"/>
+                                <ToggleButton x:Name="LockToggle" Style="{StaticResource Cp.ToggleButton}" Content="Lock"
+                                              Margin="0,0,3,6" Click="OnToggleLock"/>
+                                <ToggleButton x:Name="HideToggle" Style="{StaticResource Cp.ToggleButton}" Content="Hide"
+                                              Margin="3,0,0,6" Click="OnToggleHidden"/>
+                            </UniformGrid>
+                            <Button Style="{StaticResource Cp.Button}" Content="Remove from layout" Click="OnRemove"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- ===== Status ===== -->
+        <Border Grid.Row="2" Height="28" Background="{StaticResource Cp.Rail}" BorderBrush="{StaticResource Cp.Border}"
+                BorderThickness="0,1,0,0" Padding="16,0">
+            <TextBlock x:Name="StatusText" Style="{StaticResource Cp.Mono}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"/>
+        </Border>
+    </Grid>
+</Window>

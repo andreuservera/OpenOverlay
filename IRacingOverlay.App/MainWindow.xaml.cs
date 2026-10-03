@@ -159,6 +159,12 @@ public partial class MainWindow : Window
 
     private void ExitApplication()
     {
+        // The layout editor may hold unsaved changes; the user can still back out of exiting.
+        if (!_vm.CloseLayoutEditor())
+        {
+            return;
+        }
+
         AppLog.Activity("Control Panel", "Exit requested");
         _exiting = true;
         Close();
@@ -169,6 +175,14 @@ public partial class MainWindow : Window
     {
         if (_exiting || TrayPreferencesStore.CloseBehavior == CloseBehavior.Exit)
         {
+            // A first close with "Exit application" set: the layout editor gets its say before the
+            // app goes. ExitApplication has already asked, and session end must not wait.
+            if (!_exiting && !_vm.CloseLayoutEditor())
+            {
+                e.Cancel = true;
+                return;
+            }
+
             _exiting = true;
             return;
         }
