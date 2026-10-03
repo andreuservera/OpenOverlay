@@ -1,12 +1,14 @@
 name: Release
 
-# Cutting a release: put the version's entry at the top of CHANGELOG.md, commit it, then
-# git tag vX.Y.Z && git push origin vX.Y.Z — this workflow builds a self-contained installer via
-# Velopack and publishes it to GitHub Releases automatically.
+# Cutting a release: put the version's entry at the top of CHANGELOG.md, commit it, then either
+#   - git tag vX.Y.Z && git push origin vX.Y.Z, or
+#   - Actions tab → Release → Run workflow (creates the tag from the top CHANGELOG.md entry).
+# This workflow builds a self-contained installer via Velopack and publishes it to GitHub Releases.
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,11 +33,12 @@ jobs:
           DOTNET_NOLOGO: true
         run: |
           version=$(dotnet msbuild IRacingOverlay.App/IRacingOverlay.App.csproj -getProperty:Version | tr -d '\r')
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "v$version" != "$GITHUB_REF_NAME" ]; then
             echo "::error::Tag $GITHUB_REF_NAME doesn't match the newest CHANGELOG.md entry ($version)."
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
           awk '/^###?[ \t]+\[?v?[0-9]+\.[0-9]+\.[0-9]+/ { n++; next } n == 1 && !/^[ \t]*---+[ \t]*$/' CHANGELOG.md > release-notes.md
 
       - name: Run tests
@@ -64,11 +67,22 @@ jobs:
           --shortcuts Desktop,StartMenuRoot
           --releaseNotes release-notes.md
 
+      # Manual runs have no tag yet, so create it after the build succeeded (a failed build leaves no tag).
+      # `git tag` fails if the tag already exists, which stops a duplicate release.
+      - name: Create tag for manual release
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git tag "$TAG"
+          git push origin "$TAG"
+
       - name: Publish to GitHub Releases
         run: >
           vpk upload github
           --repoUrl https://github.com/${{ github.repository }}
           --token ${{ secrets.GITHUB_TOKEN }}
           --publish
-          --releaseName "OpenOverlay ${{ github.ref_name }}"
-          --tag ${{ github.ref_name }}
+          --releaseName "OpenOverlay ${{ steps.version.outputs.tag }}"
+          --tag ${{ steps.version.outputs.tag }}
