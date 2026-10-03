@@ -386,10 +386,10 @@ public static class PreviewData
     };
 
     /// <summary>Cars spread around the lap with the pack bunched where it usually is — behind the
-    /// leader — plus one in the pits, so the map's pit styling is visible too.</summary>
+    /// leader — in a multiclass field, so the map shows its class colours.</summary>
     public static IReadOnlyList<TrackMapMarker> TrackMap()
     {
-        var field = StandingsField(multiClass: false);
+        var field = StandingsField(multiClass: true);
         var markers = new List<TrackMapMarker>(field.Count);
         for (var i = 0; i < field.Count; i++)
         {
