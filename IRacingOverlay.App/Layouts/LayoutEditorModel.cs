@@ -133,24 +133,11 @@ public sealed class LayoutEditorModel
         Layout.GridSize = Math.Clamp(gridSize, 1, 500);
     });
 
-    /// <summary>Changes the target monitor and resolution. With <paramref name="scalePositions"/>,
-    /// every widget keeps its place relative to the screen ("Scale positions"); without, it keeps
-    /// its pixel position ("Keep pixels"). Sizes are levels, so they never scale.</summary>
+    /// <summary>Changes the target monitor and resolution; see <see cref="IRacingOverlay.App.Layouts.Layout.Retarget"/>.</summary>
     public void ChangeTarget(MonitorRef monitor, int width, int height, bool scalePositions)
     {
         var before = Layout.Clone();
-        var (oldWidth, oldHeight) = (Layout.Width, Layout.Height);
-        Layout.SetResolution(width, height);
-        Layout.Monitor = monitor;
-        if (scalePositions)
-        {
-            foreach (var widget in Layout.Widgets)
-            {
-                widget.X = Math.Round(widget.X * width / oldWidth);
-                widget.Y = Math.Round(widget.Y * height / oldHeight);
-            }
-        }
-
+        Layout.Retarget(monitor, width, height, scalePositions);
         Commit(before);
     }
 

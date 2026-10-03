@@ -25,7 +25,14 @@ public partial class LayoutTargetDialog : Window
     private readonly bool _currentIsDisconnected;
     private LayoutTarget? _result;
 
-    private LayoutTargetDialog(Window? owner, IReadOnlyList<DisplayMonitor> monitors, Layout? existing, IReadOnlyCollection<string>? takenNames = null)
+    /// <param name="imported">Importing: a layout read from a file, whose name and monitor are
+    /// what the dialog starts from. It is otherwise new, so <paramref name="existing"/> is null.</param>
+    private LayoutTargetDialog(
+        Window? owner,
+        IReadOnlyList<DisplayMonitor> monitors,
+        Layout? existing,
+        IReadOnlyCollection<string>? takenNames = null,
+        Layout? imported = null)
     {
         InitializeComponent();
         Owner = owner is { IsVisible: true } ? owner : null;
@@ -46,13 +53,16 @@ public partial class LayoutTargetDialog : Window
             : monitors;
         monitors = _monitors;
 
-        Heading.Text = existing is null ? "New layout" : "Monitor and resolution";
-        ConfirmButton.Content = existing is null ? "Create" : "Apply";
+        Heading.Text = imported is not null ? "Import layout" : existing is null ? "New layout" : "Monitor and resolution";
+        ConfirmButton.Content = imported is not null ? "Import" : existing is null ? "Create" : "Apply";
         NameRow.Visibility = existing is null ? Visibility.Visible : Visibility.Collapsed;
-        NameBox.Text = existing?.Name ?? "";
+        NameBox.Text = existing?.Name ?? imported?.Name ?? "";
 
+        // An imported layout starts on the monitor it was made for, if this computer has it.
         MonitorBox.ItemsSource = monitors.Select(Describe).ToList();
-        var selected = existing is null
+        var selected = imported is not null && MonitorCatalog.Resolve(imported.Monitor, monitors) is { IsFallback: false } own
+            ? monitors.ToList().IndexOf(own.Monitor)
+            : existing is null
             ? monitors.ToList().FindIndex(monitor => monitor.IsPrimary)
             : _currentIsDisconnected ? 0
             : MonitorCatalog.Resolve(existing.Monitor, monitors) is { IsFallback: false } found ? monitors.ToList().IndexOf(found.Monitor) : -1;
@@ -75,6 +85,11 @@ public partial class LayoutTargetDialog : Window
     /// <param name="takenNames">Names already in use, so a repeat can be flagged as the user types.</param>
     public static LayoutTarget? ForNew(Window? owner, IReadOnlyList<DisplayMonitor> monitors, IReadOnlyCollection<string> takenNames) =>
         Show(new(owner, monitors, null, takenNames));
+
+    /// <summary>Asks for an imported layout's name and the monitor to aim it at: by default the one
+    /// it was made for if connected, otherwise the primary. Null when cancelled.</summary>
+    public static LayoutTarget? ForImport(Window? owner, IReadOnlyList<DisplayMonitor> monitors, IReadOnlyCollection<string> takenNames, Layout imported) =>
+        Show(new(owner, monitors, null, takenNames, imported));
 
     /// <summary>Asks where an existing layout should be aimed. Null when cancelled.</summary>
     public static LayoutTarget? ForExisting(Window? owner, IReadOnlyList<DisplayMonitor> monitors, Layout layout) =>

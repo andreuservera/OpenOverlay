@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Layouts;
@@ -68,6 +69,11 @@ public sealed partial class ControlPanelViewModel
             "For one monitor, at its resolution or one you choose.",
             "Create",
             CreateLayout);
+        var import = new ActionSetting(
+            "Import layout",
+            "From a .layout.json file exported from this app.",
+            "Import",
+            ImportLayout);
 
         if (layouts.Count == 0)
         {
@@ -76,7 +82,7 @@ public sealed partial class ControlPanelViewModel
                 new SettingsGroup(
                     "LAYOUTS",
                     "A layout is a saved arrangement of your widgets — where each goes, how big and how it's set up — for one monitor.")
-                    .With(create),
+                    .With(create, import),
             ];
         }
 
@@ -132,9 +138,10 @@ public sealed partial class ControlPanelViewModel
                 .With(
                     new ActionSetting("Rename", null, "Rename", () => RenameLayout(selected.Id)),
                     new ActionSetting("Duplicate", "A copy you can change without touching this one.", "Duplicate", () => DuplicateLayout(selected.Id)),
+                    new ActionSetting("Export", "Save it to a file, to keep or share.", "Export", () => ExportLayout(selected.Id)),
                     new ActionSetting("Delete", "Can't be undone.", "Delete", () => DeleteLayout(selected.Id))),
             new SettingsGroup("NEW")
-                .With(create),
+                .With(create, import),
         ];
     }
 
@@ -223,6 +230,122 @@ public sealed partial class ControlPanelViewModel
         _selectedLayoutId = null;
         RefreshLayoutsPage();
     }
+
+    // ===== Export and import =====
+
+    private void ExportLayout(Guid id)
+    {
+        if (LayoutStore.Get(id) is not { } layout)
+        {
+            return;
+        }
+
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export layout",
+            FileName = LayoutFile.FileNameFor(layout.Name),
+            Filter = LayoutFile.DialogFilter,
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        if (!ShowFileDialog(dialog))
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(dialog.FileName, LayoutFile.Export(layout, CreateConfigCodecs(), BuildInfo.Version, DateTime.UtcNow));
+            AppLog.Activity("Layouts", $"Exported layout \"{layout.Name}\"");
+        }
+        catch (Exception error) when (!ExceptionPolicy.IsFatal(error))
+        {
+            AppLog.Error("Layouts", "Could not export the layout", error);
+            LayoutDialog.Inform(DialogOwner, "Could not export the layout", error.Message);
+        }
+    }
+
+    /// <summary>
+    /// Reads a layout file, asks which monitor to aim it at (the file's own if this computer has
+    /// it, otherwise the primary) and, if that monitor's resolution differs, whether to scale the
+    /// positions. Saved as a new layout, renamed if its name is taken. A file that can't be imported
+    /// says why and creates nothing.
+    /// </summary>
+    private void ImportLayout()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Import layout",
+            Filter = LayoutFile.DialogFilter,
+            CheckFileExists = true,
+        };
+        if (!ShowFileDialog(dialog))
+        {
+            return;
+        }
+
+        LayoutImport read;
+        try
+        {
+            read = new FileInfo(dialog.FileName).Length > LayoutFile.MaxFileBytes
+                ? LayoutImport.Failed("The file is far too big to be a layout file.")
+                : LayoutFile.Import(File.ReadAllText(dialog.FileName), CreateConfigCodecs(), LayoutFile.NameFromFileName(dialog.FileName));
+        }
+        catch (Exception error) when (!ExceptionPolicy.IsFatal(error))
+        {
+            AppLog.Error("Layouts", "Could not read the layout file", error);
+            LayoutDialog.Inform(DialogOwner, "Could not read the file", error.Message);
+            return;
+        }
+
+        if (read.Layout is not { } layout)
+        {
+            AppLog.Warn("Layouts", $"Import refused: {read.Error}");
+            LayoutDialog.Inform(DialogOwner, "Can't import this layout", read.Error ?? "");
+            return;
+        }
+
+        if (LayoutTargetDialog.ForImport(DialogOwner, Monitors.Monitors(), LayoutStore.List().Select(saved => saved.Name).ToList(), layout) is not { } target)
+        {
+            return;
+        }
+
+        var scale = false;
+        if (target.Width != layout.Width || target.Height != layout.Height)
+        {
+            var answer = LayoutDialog.Ask(
+                DialogOwner,
+                "Different resolution",
+                string.Create(CultureInfo.InvariantCulture,
+                    $"The layout is designed for {layout.Width}×{layout.Height}, and you chose {target.Width}×{target.Height}. Scale the widgets' positions to keep their place on screen, or keep their pixel positions? Sizes don't change."),
+                ["Scale positions", "Keep pixels", "Cancel"]);
+            if (answer is < 0 or 2)
+            {
+                return;
+            }
+
+            scale = answer == 0;
+        }
+
+        layout.Name = target.Name;
+        layout.Retarget(target.Monitor, target.Width, target.Height, scale);
+        var saved = LayoutStore.Save(layout);
+        AppLog.Activity("Layouts", $"Imported layout \"{saved.Name}\"");
+        foreach (var warning in read.Warnings)
+        {
+            AppLog.Warn("Layouts", $"Import of \"{saved.Name}\": {warning}");
+        }
+
+        _selectedLayoutId = saved.Id;
+        RefreshLayoutsPage();
+        if (read.Warnings.Count > 0)
+        {
+            LayoutDialog.Inform(DialogOwner, $"Imported \"{saved.Name}\"", string.Join(Environment.NewLine + Environment.NewLine, read.Warnings));
+        }
+    }
+
+    private static bool ShowFileDialog(Microsoft.Win32.FileDialog dialog) =>
+        (DialogOwner is { IsVisible: true } owner ? dialog.ShowDialog(owner) : dialog.ShowDialog()) == true;
 
     private void OpenLayoutEditor(Guid id)
     {

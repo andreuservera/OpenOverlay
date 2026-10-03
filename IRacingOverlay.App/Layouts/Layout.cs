@@ -147,6 +147,24 @@ public sealed class Layout
         Height = height;
     }
 
+    /// <summary>Aims the layout at another monitor and resolution. With <paramref name="scalePositions"/>,
+    /// every widget keeps its place relative to the screen ("Scale positions"); without, it keeps
+    /// its pixel position ("Keep pixels"). Sizes are levels, so they never scale.</summary>
+    public void Retarget(MonitorRef monitor, int width, int height, bool scalePositions)
+    {
+        var (oldWidth, oldHeight) = (Width, Height);
+        SetResolution(width, height);
+        Monitor = monitor;
+        if (scalePositions)
+        {
+            foreach (var widget in _widgets)
+            {
+                widget.X = Math.Round(widget.X * width / oldWidth);
+                widget.Y = Math.Round(widget.Y * height / oldHeight);
+            }
+        }
+    }
+
     public bool Contains(string type) => _widgets.Any(widget => widget.Type == type);
 
     public LayoutWidget? WidgetOf(string type) => _widgets.FirstOrDefault(widget => widget.Type == type);
