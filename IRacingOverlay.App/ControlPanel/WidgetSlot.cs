@@ -304,6 +304,28 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Puts the widget at a desktop position (WPF units) and remembers it there — now if
+    /// the window exists, on first show if not.</summary>
+    public void MoveTo(double left, double top)
+    {
+        if (_window is not null)
+        {
+            _window.MoveTo(left, top);
+        }
+        else
+        {
+            WidgetLayoutStore.Save(Key, new WidgetLayout(left, top));
+        }
+    }
+
+    /// <summary>Back to never having been placed: the default position now, and no saved position,
+    /// so the next run starts it where a new widget starts.</summary>
+    public void ForgetPosition()
+    {
+        _window?.ResetPosition();
+        WidgetLayoutStore.Remove(Key);
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private string LogSource => $"Widget: {Descriptor.Name}";

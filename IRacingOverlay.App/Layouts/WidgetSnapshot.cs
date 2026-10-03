@@ -17,4 +17,6 @@ public sealed record WidgetSnapshot(
 
 /// <summary>The layout currently open and the snapshot to restore when it closes. Persisted so the
 /// restore still works after the app is restarted with the layout open.</summary>
-public sealed record OpenLayoutState(Guid LayoutId, IReadOnlyList<WidgetSnapshot> Snapshot);
+/// <param name="ScalePositions">Whether it was opened with its positions scaled to its monitor's
+/// resolution, so saving it from the editor while open re-applies it the same way.</param>
+public sealed record OpenLayoutState(Guid LayoutId, IReadOnlyList<WidgetSnapshot> Snapshot, bool ScalePositions = false);

@@ -289,6 +289,17 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         }
     }
 
+    /// <summary>Moves the widget to a position chosen elsewhere (a layout), and remembers it. Still
+    /// kept on the desktop like any other placement.</summary>
+    public void MoveTo(double left, double top)
+    {
+        Left = left;
+        Top = top;
+        ConstrainToScreen();
+        SaveLayout();
+        HasSavedLayout = true;
+    }
+
     /// <summary>Moves the widget back to where it first appeared, and remembers that.</summary>
     public void ResetPosition()
     {

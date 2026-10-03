@@ -96,11 +96,14 @@ public sealed partial class ControlPanelViewModel
         // The widget's own settings come from WidgetSettings, shared with the layout editor; this
         // page adds what belongs to the individual widget alone around them.
         var own = WidgetSettings.For(slot.Key, IndividualSettings);
-        return slot.Key switch
+        IEnumerable<SettingsGroup> groups = slot.Key switch
         {
             WidgetCatalog.Flag => [FlagPreviewGroup(), .. own, Placement(slot)],
             _ => [.. own, Placement(slot)],
         };
+
+        // While a layout controls this widget, the page says so before anything else.
+        return LayoutNotice(slot.Key) is { } notice ? [notice, .. groups] : groups;
     }
 
     // ===== Search =====

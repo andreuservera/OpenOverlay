@@ -56,6 +56,18 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Which layout is open, if any: its widgets follow it until it is closed. -->
+                    <Border Background="{StaticResource Cp.AccentWash}" BorderBrush="{StaticResource Cp.Accent}"
+                            BorderThickness="1" CornerRadius="15" Height="30" Padding="12,0" Margin="0,0,10,0"
+                            Visibility="{Binding HasOpenLayout, Converter={StaticResource Cp.BoolToVis}}"
+                            ToolTip="This layout is open. Close it from the Layouts page.">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="LAYOUT" Style="{StaticResource Cp.Eyebrow}" Foreground="{StaticResource Cp.Accent}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding OpenLayoutName}" Style="{StaticResource Cp.Body}"
+                                       Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
                     <Border Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.Border}"
                             BorderThickness="1" CornerRadius="15" Height="30" Padding="12,0" Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
