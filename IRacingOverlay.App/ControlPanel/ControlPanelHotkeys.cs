@@ -140,10 +140,10 @@ public sealed partial class ControlPanelViewModel
 
     private static string? HintFor(string action) => action switch
     {
-        HotkeyActions.ToggleOverlays => "Floating widgets only. Edit layout still shows them.",
-        HotkeyActions.ToggleControlPanel => "Brings this window back from anywhere, even with iRacing focused.",
-        HotkeyActions.RestartOverlays => "Recreates every open widget window, to clear a rendering glitch.",
-        HotkeyActions.ResetLayout => "Moves every widget back to where it first appeared. Off by default.",
+        HotkeyActions.ToggleOverlays => "Floating widgets only.",
+        HotkeyActions.ToggleControlPanel => null,
+        HotkeyActions.RestartOverlays => "Clears rendering glitches.",
+        HotkeyActions.ResetLayout => "Off by default.",
         _ => null,
     };
 
@@ -161,11 +161,8 @@ public sealed partial class ControlPanelViewModel
 
         var global = new SettingsGroup(
             "HOTKEYS",
-            "Work in any app, iRacing included. Click a shortcut and press the new combination; Esc cancels. " +
-            "A shortcut is reserved for this app while it runs, so pick ones iRacing doesn't use.");
-        var widgets = new SettingsGroup(
-            "HOTKEYS · WIDGETS",
-            "Turn a single widget on or off — the same switch as in its own page. Unassigned until you pick a key.");
+            "Work in any app. Click a shortcut and press new keys; Esc cancels. Avoid keys iRacing uses.");
+        var widgets = new SettingsGroup("HOTKEYS · WIDGETS");
         foreach (var binding in _hotkeys)
         {
             var action = binding.Action;
@@ -193,12 +190,12 @@ public sealed partial class ControlPanelViewModel
                 .With(
                     new ActionSetting(
                         "Default shortcuts",
-                        "Ctrl + Shift + F8 to F12, reset positions switched off, and no widget shortcuts.",
+                        "Ctrl + Shift + F8 to F12, no widget shortcuts.",
                         "Restore defaults",
                         RestoreDefaultHotkeys),
                     new ActionSetting(
                         "Overlay positions",
-                        "Every widget back to its default spot, right now.",
+                        "Move every widget back to its default spot.",
                         "Reset positions",
                         ResetLayout)),
         ];
