@@ -34,7 +34,6 @@
 
     <Border Style="{StaticResource OverlayPanel}" Padding="14,10">
         <StackPanel>
-            <TextBlock Text="FUEL CALC" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
 
             <!-- Landscape, not portrait: the headline sits beside the numbers instead of on top of
                  them, so the eight readouts get a full row each rather than being stacked into a

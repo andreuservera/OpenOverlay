@@ -4,7 +4,6 @@
              x:Name="Root">
     <Border Style="{StaticResource OverlayPanel}" Padding="16,9">
         <StackPanel>
-            <TextBlock Text="TRACK MAP" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
             <Grid x:Name="MapArea" Height="30">
                 <Rectangle Height="2" Fill="{StaticResource Surface.Track}" VerticalAlignment="Center" HorizontalAlignment="Stretch"
                            RadiusX="1" RadiusY="1"/>

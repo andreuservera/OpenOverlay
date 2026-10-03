@@ -4,95 +4,131 @@
              xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
              x:Name="Root">
     <UserControl.Resources>
-        <!-- One corner: label, pressure, then the tread in three zones (left, centre, right) — the
-             carcass temperature over the remaining wear, with a bar per zone. The four corners are
-             the same template. Type sits on the same steps as the other widgets: captions at label
-             size, readings at body size, pressure a value step up. -->
-        <Style x:Key="CornerLabel" TargetType="TextBlock" BasedOn="{StaticResource PanelTitle}">
-            <Setter Property="Margin" Value="0,0,0,1"/>
-        </Style>
-        <Style x:Key="ZoneHeader" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
-            <Setter Property="HorizontalAlignment" Value="Left"/>
-        </Style>
+        <!-- One corner: the tire drawn head-on — taller than it is wide, sidewalls
+             bulging slightly, shaded dark at the top and bottom where the tread curves away — with
+             the tread split in three zones (left, centre, right). Each zone fills from the bottom
+             with the tread it has left, in the wear colour; the remaining percentage sits above
+             the zone and the carcass temperature below it. The four corners are the same template.
+             Zone readings are at micro size so three of them fit across one tire. -->
+        <!-- The carcass silhouette. -->
+        <Geometry x:Key="TireShape">M10,0 L71,0 Q78,0 79,9 Q82,56 79,103 Q78,112 71,112 L10,112 Q3,112 2,103 Q-1,56 2,9 Q3,0 10,0 Z</Geometry>
         <Style x:Key="ZoneTemp" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
-            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Micro}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,3,0,0"/>
         </Style>
         <Style x:Key="ZoneWear" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
+            <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
+            <Setter Property="LineHeight" Value="{StaticResource Line.Micro}"/>
             <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
         </Style>
-        <Style x:Key="ZoneTrack" TargetType="Border" BasedOn="{StaticResource MeterTrack}">
-            <Setter Property="Height" Value="5"/>
-            <Setter Property="Margin" Value="0,3,6,0"/>
+        <!-- One tread zone: bare rubber where the tread is gone; the 2px gaps between zones are
+             the grooves. -->
+        <Style x:Key="TreadZone" TargetType="Border">
+            <Setter Property="Background" Value="#1A1F25"/>
+            <Setter Property="ClipToBounds" Value="True"/>
         </Style>
-        <Style x:Key="ZoneFill" TargetType="Rectangle">
-            <Setter Property="RadiusX" Value="2"/>
-            <Setter Property="RadiusY" Value="2"/>
-            <Setter Property="RenderTransformOrigin" Value="0,0.5"/>
+        <Style x:Key="TreadFill" TargetType="Border">
+            <Setter Property="Opacity" Value="0.8"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,1"/>
         </Style>
 
         <DataTemplate x:Key="CornerTemplate" DataType="{x:Type vm:TireCornerInfo}">
-            <StackPanel>
-                <TextBlock Text="{Binding Label, Mode=OneTime}" Style="{StaticResource CornerLabel}"/>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding PressureDisplay, Mode=OneTime}" Style="{StaticResource ValueTextLarge}"/>
-                    <TextBlock Text="{Binding PressureUnit, Mode=OneTime}" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom"
-                               Margin="4,0,0,3" Visibility="{Binding HasPressure, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
-                </StackPanel>
-                <Grid Margin="0,4,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="42"/>
-                        <ColumnDefinition Width="42"/>
-                        <ColumnDefinition Width="42"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="26"/>
+                    <ColumnDefinition Width="26"/>
+                    <ColumnDefinition Width="26"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="L" Style="{StaticResource ZoneHeader}"/>
-                    <TextBlock Grid.Column="1" Text="C" Style="{StaticResource ZoneHeader}"/>
-                    <TextBlock Grid.Column="2" Text="R" Style="{StaticResource ZoneHeader}"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding WearLeftDisplay, Mode=OneTime}" Foreground="{Binding WearLeftColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding WearMiddleDisplay, Mode=OneTime}" Foreground="{Binding WearMiddleColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding WearRightDisplay, Mode=OneTime}" Foreground="{Binding WearRightColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding TempLeftDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding TempMiddleDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding TempRightDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding WearLeftDisplay, Mode=OneTime}" Foreground="{Binding WearLeftColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding WearMiddleDisplay, Mode=OneTime}" Foreground="{Binding WearMiddleColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
-                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding WearRightDisplay, Mode=OneTime}" Foreground="{Binding WearRightColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneWear}"/>
-
-                    <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource ZoneTrack}">
-                        <Rectangle Fill="{Binding WearLeftColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneFill}">
-                            <Rectangle.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding WearLeftFill, Mode=OneTime}"/>
-                            </Rectangle.RenderTransform>
-                        </Rectangle>
-                    </Border>
-                    <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource ZoneTrack}">
-                        <Rectangle Fill="{Binding WearMiddleColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneFill}">
-                            <Rectangle.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding WearMiddleFill, Mode=OneTime}"/>
-                            </Rectangle.RenderTransform>
-                        </Rectangle>
-                    </Border>
-                    <Border Grid.Row="3" Grid.Column="2" Style="{StaticResource ZoneTrack}">
-                        <Rectangle Fill="{Binding WearRightColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource ZoneFill}">
-                            <Rectangle.RenderTransform>
-                                <ScaleTransform ScaleX="{Binding WearRightFill, Mode=OneTime}"/>
-                            </Rectangle.RenderTransform>
-                        </Rectangle>
-                    </Border>
+                <!-- The tire: 57 x 80, centred under the readings, carcass silhouette, tread zones, then the cylinder
+                     shading and the sipes laid over the top so the fills curve with it. -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="3" Width="57" Height="80">
+                    <Path Data="{StaticResource TireShape}" Stretch="Fill" StrokeThickness="1" Stroke="{StaticResource Surface.Outline}">
+                        <Path.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#07090B" Offset="0"/>
+                                <GradientStop Color="#15191E" Offset="0.5"/>
+                                <GradientStop Color="#07090B" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Path.Fill>
+                    </Path>
+                    <Grid Margin="4,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Margin="0,0,1,0" CornerRadius="4,1,1,4" Style="{StaticResource TreadZone}">
+                            <Border CornerRadius="4,1,1,4" Background="{Binding WearLeftColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource TreadFill}">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="{Binding WearLeftFill, Mode=OneTime}"/>
+                                </Border.RenderTransform>
+                            </Border>
+                        </Border>
+                        <Border Grid.Column="1" Margin="1,0" CornerRadius="1" Style="{StaticResource TreadZone}">
+                            <Border CornerRadius="1" Background="{Binding WearMiddleColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource TreadFill}">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="{Binding WearMiddleFill, Mode=OneTime}"/>
+                                </Border.RenderTransform>
+                            </Border>
+                        </Border>
+                        <Border Grid.Column="2" Margin="1,0,0,0" CornerRadius="1,4,4,1" Style="{StaticResource TreadZone}">
+                            <Border CornerRadius="1,4,4,1" Background="{Binding WearRightColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}" Style="{StaticResource TreadFill}">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="{Binding WearRightFill, Mode=OneTime}"/>
+                                </Border.RenderTransform>
+                            </Border>
+                        </Border>
+                    </Grid>
+                    <!-- Sipes: faint horizontal cuts across the tread every 5px. -->
+                    <Rectangle Margin="4,2" RadiusX="4" RadiusY="4" IsHitTestVisible="False">
+                        <Rectangle.Fill>
+                            <DrawingBrush TileMode="Tile" Viewport="0,0,10,5" ViewportUnits="Absolute">
+                                <DrawingBrush.Drawing>
+                                    <GeometryDrawing Brush="#40000000">
+                                        <GeometryDrawing.Geometry>
+                                            <RectangleGeometry Rect="0,0,10,1"/>
+                                        </GeometryDrawing.Geometry>
+                                    </GeometryDrawing>
+                                </DrawingBrush.Drawing>
+                            </DrawingBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <!-- Seen head-on the tread curves away at the top and bottom: darken there. -->
+                    <Rectangle Margin="1" RadiusX="6" RadiusY="6" IsHitTestVisible="False">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#C0000000" Offset="0"/>
+                                <GradientStop Color="#00000000" Offset="0.22"/>
+                                <GradientStop Color="#00000000" Offset="0.78"/>
+                                <GradientStop Color="#C0000000" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
                 </Grid>
-            </StackPanel>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding TempLeftDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TempMiddleDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding TempRightDisplay, Mode=OneTime}" Style="{StaticResource ZoneTemp}"/>
+            </Grid>
         </DataTemplate>
     </UserControl.Resources>
     <Border Style="{StaticResource OverlayPanel}" Padding="12,9">
         <StackPanel>
-            <TextBlock Text="TIRES" Style="{StaticResource PanelTitle}" Margin="0,0,0,5"/>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -103,9 +139,9 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <ContentControl x:Name="LFCorner" Grid.Row="0" Grid.Column="0" Margin="2,3,12,6" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
-                <ContentControl x:Name="RFCorner" Grid.Row="0" Grid.Column="1" Margin="6,3,2,6" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
-                <ContentControl x:Name="LRCorner" Grid.Row="1" Grid.Column="0" Margin="2,3,12,3" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
+                <ContentControl x:Name="LFCorner" Grid.Row="0" Grid.Column="0" Margin="2,3,14,8" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
+                <ContentControl x:Name="RFCorner" Grid.Row="0" Grid.Column="1" Margin="6,3,2,8" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
+                <ContentControl x:Name="LRCorner" Grid.Row="1" Grid.Column="0" Margin="2,3,14,3" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
                 <ContentControl x:Name="RRCorner" Grid.Row="1" Grid.Column="1" Margin="6,3,2,3" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
             </Grid>
         </StackPanel>
