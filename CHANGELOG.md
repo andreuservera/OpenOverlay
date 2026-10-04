@@ -5,16 +5,44 @@ All notable changes to OpenOverlay, newest first.
 ### [0.9.0] - 2026-10-04
 
 #### Added
-- Layouts: save your widgets as presets, with their own position, size and settings, and switch between them in one click.
-  - New Layouts page in the Control Panel to create, edit, rename, duplicate and delete layouts, with a preview of each one.
-  - Canvas at the real resolution of the chosen monitor, with a zoom bar (fit, 100% and steps in between)
-  - Drag widgets from the catalog onto the screen, or double-click them to add them
-  - Each widget's own settings, independent of its individual setup
-  - Layout selector in the Control Panel toolbar: pick a layout and switch it on; while one is open, picking another switches to it directly.
+- Layouts: save your widgets as presets — each with its own position, size and settings — and switch between them in one click.
+  - A new Layouts page in the Control Panel to create, edit, rename, duplicate and delete layouts, with a preview of each one.
+  - A layout editor with a canvas at the real resolution of the chosen monitor and a zoom bar (fit, 100% and steps in between).
+  - Add widgets by dragging them from the catalog onto the canvas, or by double-clicking them.
+  - Move the selected widget with the arrow keys, one pixel at a time, or one grid step with Shift.
+  - Every widget keeps its own settings inside each layout, without touching how it's set up on its own.
+  - A layout selector in the Control Panel toolbar: pick a layout to switch it on; while one is open, picking another switches straight to it.
   - Export layouts to a file and import them, choosing the monitor they go on.
+- Track & session: choose which fields to show — track name, session, temperatures, wind, humidity, track usage, time left and lap.
+- Relative and Standings: show or hide the strength of field (SOF) and the column headers; with the headers hidden, the widget gets shorter to match.
+- Weather: choose how often the wind compass refreshes, from 10 to 60 Hz.
+
+#### Improved
+- Weather redesigned as four cards — track temperature, air temperature, rain and wind — side by side or stacked.
+  - The wind compass now shows your car, with an arrow pointing to where the wind hits it.
+  - Humidity sits next to the air temperature, and the track surface state under the chance of rain.
+- Track & session uses the same icons as Weather for air temperature, track temperature, wind and humidity.
+- Track map redesigned, with clearer markers and support for multiclass races.
+- Fuel calculator can now be shown vertically, and its status is easier to read at a glance.
+- Tire widget redesigned for easier reading.
+- Relative and Standings:
+  - Driver names keep their original capitalisation, in a bolder font that stays easy to read.
+  - New tire compound icon, iRating gains and losses shown as up and down chevrons, and redesigned PIT, last pit stop and penalty flag tags.
+  - When a driver has two penalty flags, they now show stacked rather than squeezed side by side.
+  - Cars a lap down keep their blue as bright as every other colour in the table.
+  - The header shows the session type (RACE, QUALIFYING, PRACTICE) and the SOF in short form, e.g. "SOF 2.9k".
+- Pedal trace is more compact, with each pedal's bar lined up with its graph.
 
 #### Changed
-- Control Panel UI changes
+- Widget opacity now fades only the background, so the data on top stays fully readable. The Cockpit, which has no separate background, still fades as a whole.
+- The wind compass refresh rate has moved from General › Performance to the Weather widget's settings.
+- In Relative and Standings, "Show category name" is now "Show session type" and shows the session instead of your class.
+
+#### Removed
+- The Fuel widget, now covered by the Fuel calculator. Layouts that included it simply leave it out, and the Dashboard shows the Fuel calculator in its place.
+- The "Show session number" option from Relative and Standings.
+- Redundant titles inside the Pedal trace, Relative, Standings and Track map widgets.
+
 
 ---
 
