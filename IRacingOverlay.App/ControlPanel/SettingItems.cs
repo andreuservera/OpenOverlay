@@ -267,6 +267,7 @@ public sealed class NumberSetting : SettingItem
 public sealed class SliderSetting : SettingItem
 {
     private readonly Action<double> _apply;
+    private readonly Func<double, string>? _format;
     private double _value;
 
     public SliderSetting(
@@ -276,9 +277,11 @@ public sealed class SliderSetting : SettingItem
         double minimum,
         double maximum,
         double step,
-        Action<double> apply)
+        Action<double> apply,
+        Func<double, string>? format = null)
         : base(label, hint)
     {
+        _format = format;
         Minimum = minimum;
         Maximum = maximum;
         Step = step;
@@ -308,7 +311,8 @@ public sealed class SliderSetting : SettingItem
         }
     }
 
-    public string Display => (Value * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+    /// <summary>The value beside the slider; a percentage unless the setting formats it itself.</summary>
+    public string Display => _format?.Invoke(Value) ?? (Value * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
 }
 
 /// <summary>One toggle inside a <see cref="ChipGroupSetting"/>.</summary>

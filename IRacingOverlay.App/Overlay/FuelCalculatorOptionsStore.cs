@@ -20,7 +20,8 @@ internal static class FuelCalculatorOptionsStore
         bool ShowRefuel,
         FuelAverageSource AverageSource,
         double MarginLiters,
-        double MarginLaps);
+        double MarginLaps,
+        bool Vertical = false);
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -46,6 +47,7 @@ internal static class FuelCalculatorOptionsStore
         options.AverageSource = saved.AverageSource;
         options.MarginLiters = saved.MarginLiters;
         options.MarginLaps = saved.MarginLaps;
+        options.Vertical = saved.Vertical;
     }
 
     public static void Save(FuelCalculatorOptions options)
@@ -62,7 +64,8 @@ internal static class FuelCalculatorOptionsStore
             options.ShowRefuel,
             options.AverageSource,
             options.MarginLiters,
-            options.MarginLaps);
+            options.MarginLaps,
+            options.Vertical);
 
         SettingsFile.WriteJson(FilePath, snapshot);
     }

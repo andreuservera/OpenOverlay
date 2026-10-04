@@ -1,0 +1,78 @@
+<Window x:Class="IRacingOverlay.App.Layouts.LayoutTargetDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Layout"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStyle="None" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Cp.Surface}" BorderBrush="{DynamicResource Cp.BorderStrong}" BorderThickness="1"
+        FontFamily="{DynamicResource Theme.FontFamily}" FontSize="13"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal"
+        MouseLeftButtonDown="OnDrag">
+    <!-- Name, monitor and resolution of a layout: used to create one, and to change where an
+         existing one is aimed. -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../ControlPanel/ControlPanelTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <StackPanel>
+        <StackPanel Margin="22,20,22,10">
+            <TextBlock x:Name="Heading" Style="{StaticResource Cp.Title}"/>
+            <TextBlock Style="{StaticResource Cp.Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="A layout is designed for one monitor, at that monitor's resolution unless you choose another."/>
+        </StackPanel>
+
+        <StackPanel Margin="22,0,22,12">
+            <StackPanel x:Name="NameRow" Margin="0,6,0,6">
+                <TextBlock Text="Name" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <Border Height="32" Padding="10,0" Margin="0,6,0,0" Background="{StaticResource Cp.Field}"
+                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6">
+                    <TextBox x:Name="NameBox" Style="{StaticResource Cp.TextBox}"
+                             FontFamily="{DynamicResource Theme.FontFamily}" MaxLength="60"
+                             TextChanged="OnNameChanged"/>
+                </Border>
+                <TextBlock x:Name="NameHint" Style="{StaticResource Cp.Hint}" Foreground="{StaticResource Cp.Accent}"
+                           Margin="0,4,0,0" Visibility="Collapsed"/>
+            </StackPanel>
+
+            <StackPanel Margin="0,6,0,6">
+                <TextBlock Text="Monitor" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <ComboBox x:Name="MonitorBox" Style="{StaticResource Cp.ComboBox}" Margin="0,6,0,0"
+                          SelectionChanged="OnMonitorChanged"/>
+            </StackPanel>
+
+            <StackPanel Margin="0,6,0,6">
+                <TextBlock Text="Resolution" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <ComboBox x:Name="ResolutionBox" Style="{StaticResource Cp.ComboBox}" Margin="0,6,0,0"
+                          SelectionChanged="OnResolutionChanged"/>
+                <StackPanel x:Name="CustomRow" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed">
+                    <Border Width="90" Height="32" Padding="10,0" Background="{StaticResource Cp.Field}"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6">
+                        <TextBox x:Name="WidthBox" Style="{StaticResource Cp.TextBox}" MaxLength="4"/>
+                    </Border>
+                    <TextBlock Text="×" Style="{StaticResource Cp.Body}" VerticalAlignment="Center" Margin="8,0"/>
+                    <Border Width="90" Height="32" Padding="10,0" Background="{StaticResource Cp.Field}"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6">
+                        <TextBox x:Name="HeightBox" Style="{StaticResource Cp.TextBox}" MaxLength="4"/>
+                    </Border>
+                    <TextBlock Text="px, 640 to 7680" Style="{StaticResource Cp.Hint}" VerticalAlignment="Center"
+                               Margin="10,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock x:Name="ErrorText" Style="{StaticResource Cp.Hint}" Foreground="{StaticResource Cp.Danger}"
+                       TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+
+        <Border BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0" Background="{StaticResource Cp.Rail}"
+                Padding="22,14">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="ConfirmButton" Style="{StaticResource Cp.PrimaryButton}" MinWidth="84" Click="OnConfirm"/>
+                <Button Style="{StaticResource Cp.Button}" Content="Cancel" MinWidth="84" Margin="8,0,0,0" Click="OnCancel"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</Window>

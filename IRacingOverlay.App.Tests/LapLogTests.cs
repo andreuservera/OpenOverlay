@@ -118,14 +118,14 @@ public class LapLogTests
     }
 
     [Fact]
-    public void FuelWidget_LeavesTheFormationLapOutOfItsAverage()
+    public void FuelCalculator_LeavesTheFormationLapOutOfItsAverage()
     {
         var log = new LapLog();
-        var fuel = new FuelBuilder(log);
+        var fuel = new FuelCalculatorBuilder(log);
         var builder = Vars();
         builder.AddVar("FuelLevelPct", IrsdkVarType.Float);
 
-        FuelState Tick(int lap, float level, double time, int state)
+        FuelCalculatorState Tick(int lap, float level, double time, int state)
         {
             var snapshot = TestSnapshotFactory.Build(builder, w =>
             {
@@ -135,13 +135,13 @@ public class LapLogTests
                 w.SetDouble("SessionTime", time);
             });
             log.Observe(snapshot);
-            return fuel.Build(snapshot);
+            return fuel.Build(snapshot, null, new FuelCalculatorOptions());
         }
 
         Tick(0, 60, 0, ParadeLaps);
         Tick(1, 59, 100, Racing); // formation lap: 1 L at pace-car speed
         var state = Tick(2, 56, 190, Racing);
 
-        Assert.Equal(3.0, state.PerLapLiters, precision: 3);
+        Assert.Equal(3.0, state.AverageLiters, precision: 3);
     }
 }

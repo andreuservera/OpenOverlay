@@ -275,6 +275,45 @@
         </Setter>
     </Style>
 
+    <!-- The toolbar's lock: same chrome as Cp.ToggleButton, with a padlock in place of the lamp that
+         shows the current state (closed = widgets locked, open = they can be dragged). -->
+    <Style x:Key="Cp.LockToggle" TargetType="ToggleButton" BasedOn="{StaticResource Cp.Button}">
+        <Setter Property="Padding" Value="12,0,14,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.SurfaceAlt}"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <StackPanel Orientation="Horizontal">
+                            <Path x:Name="Padlock" Width="14" Height="15" Stretch="Uniform" Margin="0,0,8,0"
+                                  VerticalAlignment="Center" Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.8"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Data="M6,11 H18 A1,1 0 0 1 19,12 V20 A1,1 0 0 1 18,21 H6 A1,1 0 0 1 5,20 V12 A1,1 0 0 1 6,11 Z M8,11 V7 A4,4 0 0 1 16,7 V11"/>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter TargetName="Padlock" Property="Stroke" Value="{StaticResource Cp.Text}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#66FFD24D"/>
+                            <Setter TargetName="Padlock" Property="Stroke" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Padlock" Property="Data"
+                                    Value="M6,11 H18 A1,1 0 0 1 19,12 V20 A1,1 0 0 1 18,21 H6 A1,1 0 0 1 5,20 V12 A1,1 0 0 1 6,11 Z M8,11 V7 A4,4 0 0 1 15.75,5.6"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Square, borderless, icon-sized. Used by the numeric stepper and the preview toolbar. -->
     <Style x:Key="Cp.StepButton" TargetType="ButtonBase">
         <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
@@ -875,6 +914,7 @@
                 <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center"
                         Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                         SmallChange="{Binding Step}" LargeChange="{Binding Step}"
+                        TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
                         Value="{Binding Value, Mode=TwoWay}"/>
                 <TextBlock Text="{Binding Display}" Style="{StaticResource Cp.Mono}" Width="42"
                            TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"

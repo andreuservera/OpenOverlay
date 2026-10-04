@@ -40,7 +40,7 @@ public sealed class TireCornerInfo
     public string WearMiddleColor => WearColor(WearMiddle);
     public string WearRightColor => WearColor(WearRight);
 
-    /// <summary>How full each zone's bar is, 0–1; empty without wear data.</summary>
+    /// <summary>How far up each tread zone of the tire drawing is filled, 0–1; empty without wear data.</summary>
     public double WearLeftFill => WearFill(WearLeft);
     public double WearMiddleFill => WearFill(WearMiddle);
     public double WearRightFill => WearFill(WearRight);
@@ -57,7 +57,7 @@ public sealed class TireCornerInfo
         ? (Math.Clamp(fraction, 0, 1) * 100).ToString("0", CultureInfo.InvariantCulture) + "%"
         : "—";
 
-    // Same three bands the single worst-zone bar used: plenty, getting thin, change them.
+    // Three bands: plenty, getting thin, change them.
     private string WearColor(double fraction) => !HasWearData
         ? "#8E99A5"
         : fraction > 0.6 ? "#34D399" : fraction > 0.3 ? "#F5A524" : "#F04438";

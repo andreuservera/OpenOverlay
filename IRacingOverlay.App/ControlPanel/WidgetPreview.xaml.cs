@@ -3,7 +3,6 @@ using System.Windows;
 using System.Windows.Controls;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
-using IRacingOverlay.App.Widgets;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -30,6 +29,7 @@ public partial class WidgetPreview : UserControl
     private FlagPreviewScenario? _flagPreview;
     private CockpitOptions? _cockpitOptions;
     private WeatherOptions? _weatherOptions;
+    private TrackInfoOptions? _trackInfoOptions;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -61,7 +61,8 @@ public partial class WidgetPreview : UserControl
         FlagOptions flagOptions,
         FlagPreviewScenario flagPreview,
         CockpitOptions cockpitOptions,
-        WeatherOptions weatherOptions)
+        WeatherOptions weatherOptions,
+        TrackInfoOptions trackInfoOptions)
     {
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
@@ -71,6 +72,7 @@ public partial class WidgetPreview : UserControl
         _cockpitOptions = cockpitOptions;
         // The weather panel follows its options itself, so no rebuild subscription is needed.
         _weatherOptions = weatherOptions;
+        _trackInfoOptions = trackInfoOptions;
         // Previews show sample data in whatever units iRacing last reported.
         Units.CurrentChanged += Refresh;
 
@@ -121,7 +123,7 @@ public partial class WidgetPreview : UserControl
 
     private void Rebuild()
     {
-        _panel = _slot is null ? null : CreatePanel(_slot.Key);
+        _panel = _slot is null ? null : PanelFactory.Create(_slot.Key, Options);
 
         if (_panel is FrameworkElement element && _slot is not null)
         {
@@ -146,26 +148,15 @@ public partial class WidgetPreview : UserControl
     }
 
     /// <summary>The configured value, not the edit-mode floor the window applies: the preview's job
-    /// is to answer "what will this look like while I'm racing", and that is the locked state.</summary>
-    private void ApplyOpacity() => Stage.Opacity = _slot?.Opacity ?? 1.0;
-
-    private UIElement? CreatePanel(string key) => key switch
+    /// is to answer "what will this look like while I'm racing", and that is the locked state. Applied
+    /// the way the window applies it: to the background only, unless the widget has none of its own.</summary>
+    private void ApplyOpacity()
     {
-        WidgetCatalog.Relative => new RelativePanel { Options = _relativeOptions ?? new DriverTableOptions(DriverTable.Relative) },
-        WidgetCatalog.Standings => new StandingsPanel { Options = _standingsOptions ?? new DriverTableOptions(DriverTable.Standings) },
-        WidgetCatalog.Cockpit => new CockpitPanel { Options = _cockpitOptions ?? new CockpitOptions() },
-        WidgetCatalog.Flag => new FlagPanel { Options = _flagOptions ?? new FlagOptions() },
-        WidgetCatalog.TireInfo => new TireInfoPanel(),
-        WidgetCatalog.Delta => new DeltaPanel(),
-        WidgetCatalog.Fuel => new FuelPanel(),
-        WidgetCatalog.PedalTrace => new PedalTracePanel(),
-        WidgetCatalog.Incident => new IncidentPanel(),
-        WidgetCatalog.TrackInfo => new TrackInfoPanel(),
-        WidgetCatalog.Weather => new WeatherPanel { Options = _weatherOptions ?? new WeatherOptions() },
-        WidgetCatalog.TrackMap => new TrackMapPanel(),
-        WidgetCatalog.FuelCalculator => new FuelCalculatorPanel { Options = _fuelCalculatorOptions ?? new FuelCalculatorOptions() },
-        _ => null,
-    };
+        var opacity = _slot?.Opacity ?? 1.0;
+        var whole = _slot is { } slot && WidgetCatalog.FadesWholeWidget(slot.Key);
+        Stage.Opacity = whole ? opacity : 1.0;
+        BackgroundOpacity.SetValue(Stage, whole ? 1.0 : opacity);
+    }
 
     /// <summary>Pushes the mock state into whatever panel is on the stage. Cheap enough to call on
     /// every option change: it is one pass over at most a couple of dozen rows, against a visual
@@ -190,75 +181,15 @@ public partial class WidgetPreview : UserControl
         }
     }
 
-    private void PushMockState()
-    {
-        switch (_panel)
-        {
-            case StandingsPanel standings:
-                {
-                    var options = _standingsOptions;
-                    var field = PreviewData.StandingsField(options?.ShowMulticlass == true);
-                    var focusSize = options?.FocusSize ?? DriverTableOptions.DefaultStandingsFocusSize;
-                    standings.SetRows(options?.ShowMulticlass == true
-                        ? StandingsBuilder.BuildMulticlassView(field, focusSize)
-                        : StandingsBuilder.BuildFocusedView(field, focusSize));
-                    standings.SetSof(PreviewData.StrengthOfField());
-                    standings.SetClassName(PreviewData.ClassName);
-                    standings.SetSessionId(PreviewData.SubSessionId);
-                    standings.SetProgress(PreviewData.Progress());
-                    break;
-                }
+    private void PushMockState() => PanelFactory.PushMockState(_panel, Options);
 
-            case RelativePanel relative:
-                {
-                    var focusSize = _relativeOptions?.FocusSize ?? DriverTableOptions.DefaultRelativeFocusSize;
-                    relative.SetRows(PreviewData.RelativeRows(focusSize));
-                    relative.SetClassName(PreviewData.ClassName);
-                    relative.SetSessionId(PreviewData.SubSessionId);
-                    relative.SetProgress(PreviewData.Progress());
-                    break;
-                }
-
-            case CockpitPanel cockpit:
-                cockpit.UpdateState(PreviewData.Cockpit());
-                break;
-            case FlagPanel flag:
-                {
-                    // Same selection the live widget makes; a disabled flag shows the placeholder,
-                    // which is the honest answer to "what will I see".
-                    var flags = FlagPresenter.Compose(
-                        _flagPreview?.Flags ?? PreviewData.FlagScenarios[0].Flags,
-                        _flagOptions ?? new FlagOptions());
-                    flag.UpdateState(flags.Count > 0 ? flags : [FlagState.None]);
-                    break;
-                }
-            case TireInfoPanel tires:
-                tires.UpdateState(PreviewData.Tires());
-                break;
-            case DeltaPanel delta:
-                delta.UpdateState(PreviewData.Delta());
-                break;
-            case FuelPanel fuel:
-                fuel.UpdateState(PreviewData.Fuel());
-                break;
-            case PedalTracePanel pedals:
-                pedals.UpdateState(PreviewData.PedalTrace());
-                break;
-            case IncidentPanel incidents:
-                incidents.UpdateState(PreviewData.Incidents());
-                break;
-            case TrackInfoPanel trackInfo:
-                trackInfo.UpdateState(PreviewData.TrackInfo());
-                break;
-            case WeatherPanel weather:
-                weather.UpdateState(PreviewData.Weather());
-                break;
-            case TrackMapPanel trackMap:
-                trackMap.UpdateState(PreviewData.TrackMap());
-                break;
-            case FuelCalculatorPanel fuelCalculator:
-                fuelCalculator.UpdateState(PreviewData.FuelCalculator());
-                break;
-        }
-    }
+    private PreviewOptions Options => new(
+        _standingsOptions,
+        _relativeOptions,
+        _fuelCalculatorOptions,
+        _flagOptions,
+        _flagPreview,
+        _cockpitOptions,
+        _weatherOptions,
+        _trackInfoOptions);
 }

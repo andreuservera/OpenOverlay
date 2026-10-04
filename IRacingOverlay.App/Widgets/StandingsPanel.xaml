@@ -9,21 +9,22 @@
         <DockPanel>
             <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="STANDINGS" Style="{StaticResource PanelTitle}"/>
-                    <!-- The category the player races in (e.g. GT3). Trimmed rather than allowed to
-                         push the header wider than the table beneath it. -->
-                    <TextBlock x:Name="ClassNameText" Text="" Style="{StaticResource ColumnHeader}"
-                               Margin="9,0,12,0" TextTrimming="CharacterEllipsis"/>
+                    <!-- The session being run (RACE, QUALIFYING, PRACTICE). Trimmed rather than
+                         allowed to push the header wider than the table beneath it. -->
+                    <TextBlock x:Name="SessionTypeText" Text="" Style="{StaticResource ColumnHeader}"
+                               Margin="0,0,12,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <!-- Session id and SOF describe the whole lobby, so they belong in the header
-                         once rather than as a column repeating itself on every row. -->
-                    <TextBlock x:Name="SessionIdText" Text="" Style="{StaticResource ColumnHeader}" Margin="0,0,10,0"/>
+                    <!-- SOF describes the whole lobby, so it belongs in the header once rather than
+                         as a column repeating itself on every row. -->
                     <TextBlock x:Name="SofText" Text="" Style="{StaticResource ColumnHeader}"/>
                 </StackPanel>
             </Grid>
 
-            <Grid DockPanel.Dock="Top" Margin="{StaticResource RulerInset}">
+            <!-- The column names. Collapsed when switched off, which takes its height out of the
+                 widget: the window sizes to its content. -->
+            <Grid DockPanel.Dock="Top" Margin="{StaticResource RulerInset}"
+                  Visibility="{Binding Options.ShowColumnHeaders, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Pos}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>

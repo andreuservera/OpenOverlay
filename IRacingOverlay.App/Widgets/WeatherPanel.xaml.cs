@@ -19,7 +19,6 @@ public partial class WeatherPanel : UserControl
         new PropertyMetadata(new WeatherOptions(), (d, e) => ((WeatherPanel)d).OnOptionsChanged(e)));
 
     private WeatherState _last = WeatherState.Empty;
-    private long _nextCompassMs;
 
     public WeatherPanel()
     {
@@ -33,9 +32,6 @@ public partial class WeatherPanel : UserControl
         get => (WeatherOptions)GetValue(OptionsProperty);
         set => SetValue(OptionsProperty, value);
     }
-
-    /// <summary>Minimum time between wind-dial redraws on live updates; 0 = every update, animated.</summary>
-    public int CompassIntervalMs { get; set; }
 
     public void UpdateState(WeatherState state)
     {
@@ -57,14 +53,10 @@ public partial class WeatherPanel : UserControl
 
         ForecastIcon.Condition = state.Condition;
         ForecastIcon.ToolTip = state.ConditionDescription;
-        ConditionText.Text = state.ConditionLabel;
         RainChanceText.Text = state.RainChanceDisplay;
         var rain = state.RainChancePct is { } pct ? (int)Math.Round(Math.Clamp(pct, 0, 100)) : (int?)null;
         RainChanceText.Foreground = rain is { } level ? RainText[level] : StatePalette.TextMuted;
-        RainFill.Fill = rain is { } fill ? RainBar[fill] : StatePalette.TextMuted;
-        RainFillScale.ScaleX = (rain ?? 0) / 100.0;
         WetnessText.Text = state.TrackWetnessDisplay;
-        WetnessText.Foreground = RiskBrush(state.TrackWetnessRisk);
 
         WindDial.ToolTip = state.WindDirectionDescription;
         // A hidden dial isn't animated at all; it snaps into place when it's shown again.
@@ -73,29 +65,11 @@ public partial class WeatherPanel : UserControl
             return;
         }
 
-        if (animate && CompassIntervalMs > 0)
-        {
-            // Half a 10 Hz tick of slack, so 500 ms lands on every 5th tick despite timer jitter.
-            var now = Environment.TickCount64;
-            if (now < _nextCompassMs - 50)
-            {
-                return;
-            }
-
-            _nextCompassMs = now + CompassIntervalMs;
-            animate = false;
-        }
-
-        WindDial.Point(state.WindFromRelativeDeg, state.HeadingDeg, animate);
+        // Updates arrive at 10 Hz: at the slowest rate the arrow jumps to each one, and above it
+        // animates between them at the chosen frame rate.
+        var hz = Options.CompassRefreshHz;
+        WindDial.Point(state.WindFromRelativeDeg, state.HeadingDeg, animate && hz > WeatherOptions.MinCompassRefreshHz, hz);
     }
-
-    private static Brush RiskBrush(RainRisk? risk) => risk switch
-    {
-        RainRisk.Low => StatePalette.Positive,
-        RainRisk.Medium => StatePalette.Info,
-        RainRisk.High => StatePalette.Critical,
-        _ => StatePalette.TextMuted,
-    };
 
     // Rain chance runs from sunshine to rain: yellow when dry, a pale sky in the uncertain middle,
     // blue when it's coming. Every stop clears 4.5:1 against the panel, so the number stays legible.
@@ -104,11 +78,6 @@ public partial class WeatherPanel : UserControl
     private static readonly Color RainCertain = Color.FromRgb(0x3D, 0x8B, 0xFF);
 
     private static readonly Brush[] RainText = Enumerable.Range(0, 101).Select(p => Freeze(new SolidColorBrush(RainColor(p / 100.0)))).ToArray();
-
-    // The bar shows the scale it sits on: yellow at its start, the reading's own colour at its end.
-    private static readonly Brush[] RainBar = Enumerable.Range(0, 101)
-        .Select(p => Freeze(new LinearGradientBrush(RainNone, RainColor(p / 100.0), 0)))
-        .ToArray();
 
     /// <summary>The rain-chance colour for a 0–1 probability.</summary>
     internal static Color RainColor(double fraction)

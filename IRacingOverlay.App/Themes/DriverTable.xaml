@@ -88,8 +88,9 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
         <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
     </Style>
-    <Geometry x:Key="Geometry.ArrowUp">M3.5,0 L7,4 L4.6,4 L4.6,9 L2.4,9 L2.4,4 L0,4 Z</Geometry>
-    <Geometry x:Key="Geometry.ArrowDown">M3.5,9 L7,5 L4.6,5 L4.6,0 L2.4,0 L2.4,5 L0,5 Z</Geometry>
+    <!-- iRating trend: a filled chevron (^ / v), centred in the 7 x 9 box. -->
+    <Geometry x:Key="Geometry.ArrowUp">M0,5.3 L3.5,1.8 L7,5.3 L7,7.5 L3.5,4 L0,7.5 Z</Geometry>
+    <Geometry x:Key="Geometry.ArrowDown">M0,3.7 L3.5,7.2 L7,3.7 L7,1.5 L3.5,5 L0,1.5 Z</Geometry>
     <Style x:Key="TrendArrow" TargetType="Path">
         <Setter Property="Width" Value="7"/>
         <Setter Property="Height" Value="9"/>
@@ -97,7 +98,8 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <!-- Last pit stop: the PIT badge's tinted amber, split into lap | time segments. -->
+    <!-- Last pit stop: the PIT tag's tinted amber and orange edge, so the two read as one family,
+         split into lap | time segments. -->
     <Style x:Key="PitStopChip" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource Badge.WarningFill}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Badge.WarningEdge}"/>
@@ -105,11 +107,9 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
         <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
     </Style>
-    <Style x:Key="PitStopText" TargetType="TextBlock" BasedOn="{StaticResource ChipText}">
-        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
-        <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-    </Style>
+    <!-- The car-number chip's text exactly (face, size, line box), so the lap and time sit centred
+         in the chip the same way the number does. -->
+    <Style x:Key="PitStopText" TargetType="TextBlock" BasedOn="{StaticResource ChipText}"/>
 
     <!-- Same height as a data row, so a reserved slot holds its place without the table visibly
          stuttering as cars move in and out of it. -->
@@ -170,12 +170,14 @@
                             <TextBlock Text="PIT" Style="{StaticResource StatusBadgeText}"/>
                         </Border>
                         <!-- One penalty flag slot, same footprint in every state: black, furled black or
-                             meatball, or the two most serious split down the middle. -->
-                        <w:PenaltyFlagTag DockPanel.Dock="Right" Width="22" Height="14" Margin="6,0,0,0" VerticalAlignment="Center"
+                             meatball, or the two most serious side by side. -->
+                        <w:PenaltyFlagTag DockPanel.Dock="Right" Width="24" Height="15" Margin="6,0,0,0" VerticalAlignment="Center"
                                           Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
+                        <!-- One pixel over the body size on the same line box: mixed-case names need
+                             the extra x-height to read as quickly as the old all-caps ones. -->
                         <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NumericFontFamily}"
+                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="15"
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
 
@@ -200,8 +202,8 @@
                         </Border>
                     </Grid>
 
-                    <!-- The tyre: a ringed compound letter in the broadcast colours, like a sidewall
-                         seen side-on. Blank when the sim doesn't say. -->
+                    <!-- The tyre: dark rubber, the compound's broadcast colour as a sidewall stripe and
+                         its letter in the middle. Blank when the sim doesn't say. -->
                     <Grid Grid.Column="4" Width="17" Height="17" HorizontalAlignment="Center" Margin="0,0,4,0"
                           Visibility="{Binding Options.ShowTireCompound, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <w:TireCompoundIcon Letter="{Binding TireCompoundLetter, Mode=OneTime}" Ink="{Binding TireCompoundColor, Mode=OneTime}"
@@ -271,12 +273,11 @@
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
             </DataTrigger>
             <!-- Lap traffic, in iRacing's colours as ink on the name and gap only — never a fill that
-                 could read as a class: blue a lap or more down, red a lap or more up. A lapped car
-                 that isn't close also steps back; the one just up the road stays full strength. -->
+                 could read as a class: blue a lap or more down, red a lap or more up. Always at full
+                 strength, so the blue reads as clearly as the red and as every other row's ink. -->
             <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.Lapped}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
-                <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.LappedOpacity}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.BeingLapped}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>

@@ -3,27 +3,26 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
-    <!-- Three sections — temperatures, wind, forecast — stacked, or side by side in compact mode.
-         Every element binds its own toggle; SpacedStackPanel only spaces visible children and the
-         section/divider flags are derived in WeatherOptions, so hiding anything closes the gap. -->
+    <!-- Four cards — track temperature, air temperature, rain, wind — inside one frame, stacked, or
+         side by side in horizontal mode. Every element binds its own toggle and each card's flag is
+         derived in WeatherOptions; SpacedStackPanel only spaces visible children, so hiding a card
+         closes the gap. Side by side, the taller cards turn their contents sideways (dial beside the
+         speed, surface and humidity beside the chance) so the strip stays one even height. -->
     <UserControl.Resources>
+        <!-- Card caption, top-left, e.g. "TRACK TEMP". -->
         <Style x:Key="Caption" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
             <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
             <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
             <Setter Property="Visibility" Value="{Binding Options.ShowLabels, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}"/>
-        </Style>
-        <Style x:Key="StackedCaption" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-            <Setter Property="Margin" Value="0,0,0,2"/>
-        </Style>
-        <Style x:Key="InlineCaption" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
-            <Setter Property="Margin" Value="0,0,6,0"/>
         </Style>
         <Style x:Key="Unit" TargetType="TextBlock" BasedOn="{StaticResource UnitLabel}">
             <Setter Property="VerticalAlignment" Value="Bottom"/>
-            <Setter Property="Margin" Value="2,0,0,2"/>
+            <Setter Property="Margin" Value="3,0,0,3"/>
         </Style>
-        <!-- The headline number. Steps down a size in compact mode so the strip stays one line tall. -->
-        <Style x:Key="AirValue" TargetType="TextBlock" BasedOn="{StaticResource DisplayValueSmall}">
+        <!-- Each card's number. Steps down a size side by side so the strip stays short. -->
+        <Style x:Key="CardValue" TargetType="TextBlock" BasedOn="{StaticResource DisplayValueSmall}">
+            <Setter Property="VerticalAlignment" Value="Center"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                     <Setter Property="FontSize" Value="{StaticResource Type.ValueLarge}"/>
@@ -31,127 +30,210 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="SectionStack" TargetType="w:SpacedStackPanel">
-            <Setter Property="Spacing" Value="9"/>
+        <Style x:Key="CardStack" TargetType="w:SpacedStackPanel">
+            <Setter Property="Spacing" Value="5"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                     <Setter Property="Orientation" Value="Horizontal"/>
-                    <Setter Property="Spacing" Value="12"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="Section" TargetType="FrameworkElement">
-            <Setter Property="HorizontalAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
+        <!-- A card is an inset well inside the widget's frame, like the pedal trace's plot. -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource Surface.Inset}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Surface.ChipBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Row}"/>
+            <Setter Property="Padding" Value="10,6,10,8"/>
         </Style>
-        <Style x:Key="Divider" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource Surface.Divider}"/>
-            <Setter Property="Height" Value="1"/>
+        <!-- A card's contents: top-aligned when stacked; centred side by side, where every card
+             takes the height of the tallest one. -->
+        <Style x:Key="CardBody" TargetType="FrameworkElement">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
-                    <Setter Property="Height" Value="NaN"/>
-                    <Setter Property="Width" Value="1"/>
-                    <Setter Property="Margin" Value="0,3"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
                 </DataTrigger>
             </Style.Triggers>
+        </Style>
+        <!-- Rain details (surface): under the chance when stacked, beside it otherwise. -->
+        <Style x:Key="RainDetails" TargetType="w:SpacedStackPanel">
+            <Setter Property="Spacing" Value="4"/>
+            <Setter Property="Grid.Row" Value="2"/>
+            <Setter Property="Margin" Value="0,5,0,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Grid.Row" Value="1"/>
+                    <Setter Property="Grid.Column" Value="1"/>
+                    <Setter Property="Margin" Value="12,0,0,0"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Wind: caption, dial, speed top to bottom when stacked; side by side the dial moves to
+             the left and the caption and speed centre beside it. -->
+        <Style x:Key="WindCaption" TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+            <Setter Property="Grid.Column" Value="1"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Grid.Row" Value="1"/>
+                    <Setter Property="VerticalAlignment" Value="Bottom"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="WindDialPlacement" TargetType="FrameworkElement">
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Grid.Row" Value="0"/>
+                    <Setter Property="Grid.RowSpan" Value="3"/>
+                    <Setter Property="Grid.Column" Value="0"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Setter Property="Margin" Value="0,0,12,0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Stacked, the speed is centred under the dial: left-aligned, its empty right side made
+             the (centred) dial read as sitting left. Side by side it lines up with the caption. -->
+        <Style x:Key="WindSpeedPlacement" TargetType="FrameworkElement">
+            <Setter Property="Grid.Row" Value="2"/>
+            <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="VerticalAlignment" Value="Top"/>
+                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Line icons beside a value: same muted grey as the weather icon's cloud. -->
+        <Style x:Key="Glyph" TargetType="Path">
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Fill" Value="{StaticResource Text.Secondary}"/>
         </Style>
     </UserControl.Resources>
 
-    <Border Style="{StaticResource OverlayPanel}" Padding="14,10">
-        <w:SpacedStackPanel Style="{StaticResource SectionStack}">
-            <!-- Temperatures: air is the headline; track sits on a chip so the two never read alike. -->
-            <w:SpacedStackPanel Orientation="Horizontal" Spacing="14" Style="{StaticResource Section}"
-                                Visibility="{Binding Options.ShowTemperatures, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <StackPanel VerticalAlignment="Bottom" ToolTip="Air temperature"
-                            Visibility="{Binding Options.ShowAirTemp, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="AIR" Style="{StaticResource StackedCaption}"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource AirValue}"/>
+    <Border Style="{StaticResource OverlayPanel}" Padding="5">
+    <w:SpacedStackPanel Style="{StaticResource CardStack}">
+        <!-- Track temperature: a road in perspective, its lane dashes cut out of the surface. -->
+        <Border Style="{StaticResource Card}" ToolTip="Track surface temperature"
+                Visibility="{Binding Options.ShowTrackCard, ElementName=Root, Converter={StaticResource BoolToVis}}">
+            <StackPanel Style="{StaticResource CardBody}">
+                <TextBlock Text="TRACK TEMP" Style="{StaticResource Caption}"/>
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource Glyph}" Margin="0,0,8,0"
+                          Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
+                          Data="{StaticResource Icon.Road}"/>
+                    <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource CardValue}"/>
+                    <TextBlock x:Name="TrackUnitText" Text="°C" Style="{StaticResource Unit}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Air temperature, with the sky the sim reports right now as its icon. -->
+        <Border Style="{StaticResource Card}" ToolTip="Air temperature"
+                Visibility="{Binding Options.ShowAirCard, ElementName=Root, Converter={StaticResource BoolToVis}}">
+            <StackPanel Style="{StaticResource CardBody}">
+                <!-- Humidity rides on the caption line, right-aligned: it belongs with the air and
+                     costs the card no height or width of its own. -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="AIR TEMP" Style="{StaticResource Caption}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,4" ToolTip="Relative humidity"
+                                Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <Path Style="{StaticResource Glyph}" Fill="{StaticResource State.Info}" Width="8" Height="11" Margin="0,0,4,0"
+                              Data="{StaticResource Icon.Drop}"/>
+                        <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource FieldLabel}" Foreground="{StaticResource Text.Secondary}"
+                                   FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"/>
+                    </StackPanel>
+                </Grid>
+                <StackPanel Orientation="Horizontal">
+                    <w:WeatherIcon x:Name="ForecastIcon" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
+                                   SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
+                                   CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
+                                   RainBrush="{StaticResource State.Info}"
+                                   Visibility="{Binding Options.ShowForecast, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding Options.ShowAirTemp, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource CardValue}"/>
                         <TextBlock x:Name="AirUnitText" Text="°C" Style="{StaticResource Unit}"/>
                     </StackPanel>
                 </StackPanel>
-                <StackPanel VerticalAlignment="Bottom" ToolTip="Track surface temperature"
-                            Visibility="{Binding Options.ShowTrackTemp, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="TRACK" Style="{StaticResource StackedCaption}"/>
-                    <Border Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
-                            BorderThickness="1" CornerRadius="{StaticResource Radius.Chip}" Padding="6,1,5,1">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource ValueTextLarge}"/>
-                            <TextBlock x:Name="TrackUnitText" Text="°C" Style="{StaticResource Unit}"/>
-                        </StackPanel>
-                    </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Rain: the chance, then how wet the track already is. -->
+        <Border Style="{StaticResource Card}"
+                Visibility="{Binding Options.ShowRainCard, ElementName=Root, Converter={StaticResource BoolToVis}}">
+            <Grid Style="{StaticResource CardBody}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.ColumnSpan="2" Text="RAIN CHANCE" Style="{StaticResource Caption}"/>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" ToolTip="Chance of rain"
+                            Visibility="{Binding Options.ShowRainProbability, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                    <w:WeatherIcon Condition="Rain" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
+                                   CloudBrush="{StaticResource Text.Secondary}" RainBrush="{StaticResource State.Info}"/>
+                    <TextBlock x:Name="RainChanceText" Text="—" Style="{StaticResource CardValue}"/>
                 </StackPanel>
-            </w:SpacedStackPanel>
+                <!-- Surface state as a quiet label. -->
+                <w:SpacedStackPanel Style="{StaticResource RainDetails}">
+                    <TextBlock x:Name="WetnessText" Text="—" Style="{StaticResource FieldLabel}" ToolTip="Track surface"
+                               FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"
+                               Visibility="{Binding Options.ShowTrackWetness, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
+                </w:SpacedStackPanel>
+            </Grid>
+        </Border>
 
-            <Border Style="{StaticResource Divider}"
-                    Visibility="{Binding Options.ShowFirstDivider, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-
-            <!-- Wind and humidity. The dial's notch is the car's nose; the compass ring turns with the
-                 car, and the arrow runs from where the wind comes from to where it blows. -->
-            <w:SpacedStackPanel Orientation="Horizontal" Spacing="11" Style="{StaticResource Section}"
-                                Visibility="{Binding Options.ShowWindSection, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <w:WindCompass x:Name="WindDial" VerticalAlignment="Center"
+        <!-- Wind: the dial keeps its size; the car in its middle always faces up and the arrow shows
+             where the wind hits it. -->
+        <Border Style="{StaticResource Card}"
+                Visibility="{Binding Options.ShowWindCard, ElementName=Root, Converter={StaticResource BoolToVis}}">
+            <!-- Side by side the card is as tall as the dial, and the two star rows split it so the
+                 caption sits just above the middle and the speed just below. Stacked, the panel is
+                 measured without a height limit and the star rows simply size to content, while the star
+                 column spans the card's full width so the dial centres in it. -->
+            <Grid Style="{StaticResource CardBody}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="WIND" Style="{StaticResource WindCaption}"/>
+                <w:WindCompass x:Name="WindDial" Style="{StaticResource WindDialPlacement}"
                                Width="{Binding Options.ArrowPixels, ElementName=Root}" Height="{Binding Options.ArrowPixels, ElementName=Root}"
                                RingBrush="{StaticResource Surface.Track}" LetterBrush="{StaticResource Text.Muted}"
                                NorthBrush="{StaticResource State.Negative}" NoseBrush="{StaticResource Text.Primary}"
-                               ArrowBrush="{StaticResource State.Info}"
+                               ArrowBrush="{StaticResource State.Info}" CarBrush="{StaticResource Text.Secondary}"
                                Visibility="{Binding Options.ShowWindArrow, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-                <w:SpacedStackPanel Spacing="4" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" ToolTip="Wind speed"
-                                Visibility="{Binding Options.ShowWindSpeed, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="WIND" Style="{StaticResource InlineCaption}"/>
-                        <TextBlock x:Name="WindSpeedText" Text="—" Style="{StaticResource ValueText}"/>
-                        <TextBlock x:Name="WindUnitText" Text="km/h" Style="{StaticResource Unit}" Margin="3,0,0,1"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" ToolTip="Relative humidity"
-                                Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <Path Data="M5,0 C6.5,2.5 10,6.2 10,9 A5,5 0 0 1 0,9 C0,6.2 3.5,2.5 5,0 Z" Fill="{StaticResource Text.Muted}"
-                              Width="11" Height="15" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource ValueText}"/>
-                    </StackPanel>
-                </w:SpacedStackPanel>
-            </w:SpacedStackPanel>
-
-            <Border Style="{StaticResource Divider}"
-                    Visibility="{Binding Options.ShowSecondDivider, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-
-            <!-- Forecast: the sky icon beside what it means — the sky in words, the chance of rain with
-                 a meter, and how wet the track already is — so the row fills the panel's width
-                 instead of a lone icon floating in the middle of it. -->
-            <w:SpacedStackPanel Orientation="Horizontal" Spacing="12" Style="{StaticResource Section}"
-                                Visibility="{Binding Options.ShowForecastSection, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <w:WeatherIcon x:Name="ForecastIcon" VerticalAlignment="Center"
-                               Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
-                               SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
-                               CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
-                               RainBrush="{StaticResource State.Info}"
-                               Visibility="{Binding Options.ShowForecast, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-                <w:SpacedStackPanel Spacing="4" VerticalAlignment="Center">
-                    <TextBlock x:Name="ConditionText" Text="—" Style="{StaticResource FieldLabel}"
-                               FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"
-                               Foreground="{StaticResource Text.Secondary}"
-                               Visibility="{Binding Options.ShowForecast, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-                    <StackPanel ToolTip="Chance of rain"
-                                Visibility="{Binding Options.ShowRainProbability, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="RAIN" Style="{StaticResource InlineCaption}"/>
-                            <TextBlock x:Name="RainChanceText" Text="—" Style="{StaticResource ValueText}"/>
-                        </StackPanel>
-                        <Border Style="{StaticResource MeterTrack}" Height="6" Margin="0,3,0,0">
-                            <Rectangle x:Name="RainFill" RadiusX="3" RadiusY="3" RenderTransformOrigin="0,0.5">
-                                <Rectangle.RenderTransform>
-                                    <ScaleTransform x:Name="RainFillScale" ScaleX="0"/>
-                                </Rectangle.RenderTransform>
-                            </Rectangle>
-                        </Border>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" ToolTip="Track surface"
-                                Visibility="{Binding Options.ShowTrackWetness, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="SURFACE" Style="{StaticResource InlineCaption}"/>
-                        <TextBlock x:Name="WetnessText" Text="—" Style="{StaticResource ValueText}"/>
-                    </StackPanel>
-                </w:SpacedStackPanel>
-            </w:SpacedStackPanel>
-        </w:SpacedStackPanel>
+                <StackPanel Orientation="Horizontal" ToolTip="Wind speed" Style="{StaticResource WindSpeedPlacement}"
+                            Visibility="{Binding Options.ShowWindSpeed, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                    <Path Style="{StaticResource Glyph}" Fill="{x:Null}" Stroke="{StaticResource Text.Secondary}"
+                          StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="20" Height="16" Margin="0,0,7,0"
+                          Data="{StaticResource Icon.Wind}"/>
+                    <TextBlock x:Name="WindSpeedText" Text="—" Style="{StaticResource ValueTextLarge}"/>
+                    <TextBlock x:Name="WindUnitText" Text="km/h" Style="{StaticResource Unit}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </w:SpacedStackPanel>
     </Border>
 </UserControl>

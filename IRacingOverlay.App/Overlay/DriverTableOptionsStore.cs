@@ -9,9 +9,10 @@ namespace IRacingOverlay.App.Overlay;
 internal static class DriverTableOptionsStore
 {
     private const string FocusSizeKey = "FocusSize";
-    private const string ShowSessionIdKey = "ShowSessionId";
     // Stored under its original name, so the setting survives the car-name → class-name change.
     private const string ShowClassNameKey = "ShowCarName";
+    private const string ShowSofKey = "ShowSof";
+    private const string ShowColumnHeadersKey = "ShowColumnHeaders";
     private const string ShowMulticlassKey = "ShowMulticlass";
     private const string ShowSessionLapsKey = "ShowSessionLaps";
     private const string ShowSessionTimeKey = "ShowSessionTime";
@@ -27,11 +28,14 @@ internal static class DriverTableOptionsStore
     public static void SaveColumn(DriverTable table, DriverTableColumn column, bool isVisible) =>
         Set(table, column.ToString(), isVisible ? 1 : 0);
 
-    public static void SaveSessionId(DriverTable table, bool isVisible) =>
-        Set(table, ShowSessionIdKey, isVisible ? 1 : 0);
-
     public static void SaveClassName(DriverTable table, bool isVisible) =>
         Set(table, ShowClassNameKey, isVisible ? 1 : 0);
+
+    public static void SaveSof(DriverTable table, bool isVisible) =>
+        Set(table, ShowSofKey, isVisible ? 1 : 0);
+
+    public static void SaveColumnHeaders(DriverTable table, bool isVisible) =>
+        Set(table, ShowColumnHeadersKey, isVisible ? 1 : 0);
 
     public static void SaveMulticlass(DriverTable table, bool isEnabled) =>
         Set(table, ShowMulticlassKey, isEnabled ? 1 : 0);
@@ -44,6 +48,28 @@ internal static class DriverTableOptionsStore
 
     public static void SaveFocusSize(DriverTable table, int value) => Set(table, FocusSizeKey, value);
 
+    /// <summary>Every setting of one table in a single write, under the same keys the per-setting
+    /// saves use — for when a whole set changes at once, as when a layout is applied.</summary>
+    public static void Save(DriverTableOptions options)
+    {
+        Load();
+        foreach (var column in Enum.GetValues<DriverTableColumn>())
+        {
+            _cache![Key(options.Table, column.ToString())] = options.IsVisible(column) ? 1 : 0;
+        }
+
+        _cache![Key(options.Table, ShowClassNameKey)] = options.ShowClassName ? 1 : 0;
+        _cache[Key(options.Table, ShowSofKey)] = options.ShowSof ? 1 : 0;
+        _cache[Key(options.Table, ShowColumnHeadersKey)] = options.ShowColumnHeaders ? 1 : 0;
+        _cache[Key(options.Table, ShowMulticlassKey)] = options.ShowMulticlass ? 1 : 0;
+        _cache[Key(options.Table, ShowSessionLapsKey)] = options.ShowSessionLaps ? 1 : 0;
+        _cache[Key(options.Table, ShowSessionTimeKey)] = options.ShowSessionTime ? 1 : 0;
+        _cache[Key(options.Table, FocusSizeKey)] = options.FocusSize;
+        SettingsFile.WriteJson(FilePath, _cache);
+    }
+
+    private static string Key(DriverTable table, string key) => $"{table}.{key}";
+
     public static void ApplyTo(DriverTableOptions options)
     {
         Load();
@@ -53,8 +79,9 @@ internal static class DriverTableOptionsStore
             options.SetVisible(column, Get(options.Table, column.ToString(), defaultVisible) != 0);
         }
 
-        options.ShowSessionId = Get(options.Table, ShowSessionIdKey, 0) != 0;
         options.ShowClassName = Get(options.Table, ShowClassNameKey, 1) != 0;
+        options.ShowSof = Get(options.Table, ShowSofKey, 1) != 0;
+        options.ShowColumnHeaders = Get(options.Table, ShowColumnHeadersKey, 1) != 0;
         options.ShowMulticlass = Get(options.Table, ShowMulticlassKey, 1) != 0;
         options.ShowSessionLaps = Get(options.Table, ShowSessionLapsKey, 1) != 0;
         options.ShowSessionTime = Get(options.Table, ShowSessionTimeKey, 1) != 0;

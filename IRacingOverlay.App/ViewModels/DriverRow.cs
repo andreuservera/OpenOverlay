@@ -193,15 +193,15 @@ public abstract class DriverRow
     public virtual string GapForeground => "#F2F5F8";
 
     /// <summary>
-    /// Abbreviates from the front once a name is too long for the driver column: "MARIA GARCIA
-    /// LOPEZ" becomes "M. G. LOPEZ". The surname stays intact because that's what identifies the
+    /// Abbreviates from the front once a name is too long for the driver column: "Maria Garcia
+    /// Lopez" becomes "M. G. Lopez". The name keeps the case the driver registered it in. The surname stays intact because that's what identifies the
     /// driver on a timing screen, and every row keeps ending in a real word instead of a row of
     /// ellipses that all look alike at speed. A single long token is left for the UI to trim, since
     /// there's nothing meaningful to drop.
     /// </summary>
     private static string ShortenName(string raw)
     {
-        var name = (raw ?? string.Empty).Trim().ToUpperInvariant();
+        var name = (raw ?? string.Empty).Trim();
         if (name.Length <= NameBudget)
         {
             return name;

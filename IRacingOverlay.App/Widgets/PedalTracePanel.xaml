@@ -4,69 +4,43 @@
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <Border Style="{StaticResource OverlayPanel}" Padding="12,10">
+        <!-- Gauges and plot share the full height, so each bar's 0-100 % travel lines up with the
+             same 0-100 % on the trace beside it. The bars carry their pedal's trace colour, so they
+             need no letters. -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
+            <Border x:Name="ThrottleTrack" Grid.Column="0" Width="20" Margin="0,0,5,0" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
+                <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                </Rectangle>
+            </Border>
+            <Border x:Name="BrakeTrack" Grid.Column="1" Width="20" Margin="0,0,5,0" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
+                <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                </Rectangle>
+            </Border>
+            <Border x:Name="ClutchTrack" Grid.Column="2" Width="20" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
+                <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" RenderTransformOrigin="0.5,1">
+                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                </Rectangle>
+            </Border>
 
-            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                <TextBlock Text="PEDALS" Style="{StaticResource PanelTitle}" Margin="0,0,0,6"/>
-                <StackPanel Orientation="Horizontal">
-                    <StackPanel Width="20" Margin="0,0,5,0">
-                        <Border x:Name="ThrottleTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}" Height="90">
-                            <Grid VerticalAlignment="Stretch">
-                                <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" RenderTransformOrigin="0.5,1">
-                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
-                                </Rectangle>
-                            </Grid>
-                        </Border>
-                        <TextBlock Text="T" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Positive}"
-                                   HorizontalAlignment="Center" Margin="0,3,0,0"/>
-                    </StackPanel>
-                    <StackPanel Width="20" Margin="0,0,5,0">
-                        <Border x:Name="BrakeTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}" Height="90">
-                            <Grid VerticalAlignment="Stretch">
-                                <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" RenderTransformOrigin="0.5,1">
-                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
-                                </Rectangle>
-                            </Grid>
-                        </Border>
-                        <TextBlock Text="B" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Critical}"
-                                   HorizontalAlignment="Center" Margin="0,3,0,0"/>
-                    </StackPanel>
-                    <StackPanel Width="20">
-                        <Border x:Name="ClutchTrack" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}" Height="90">
-                            <Grid VerticalAlignment="Stretch">
-                                <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" RenderTransformOrigin="0.5,1">
-                                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
-                                </Rectangle>
-                            </Grid>
-                        </Border>
-                        <TextBlock Text="C" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Info}"
-                                   HorizontalAlignment="Center" Margin="0,3,0,0"/>
-                    </StackPanel>
-                </StackPanel>
-            </StackPanel>
-
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="PEDAL TRACE" Style="{StaticResource PanelTitle}" Margin="0,0,0,6"/>
-                <!-- The plot sits on its own inset well rather than directly on the panel: the darker
-                     rounded field makes the traces read as a chart, and matches the rounded gauge
-                     tracks beside it instead of being the one square-cornered element in the panel. -->
-                <Border Grid.Row="1" Background="{StaticResource Surface.Inset}" CornerRadius="{StaticResource Radius.Chip}">
-                    <Grid>
-                        <!-- Half-travel guide: the one reference line worth drawing, and faint. -->
-                        <Rectangle Height="1" VerticalAlignment="Center" Fill="{StaticResource Surface.DividerFade}" Opacity="0.6"/>
-                        <w:PedalTraceGraph x:Name="Trace" ThrottleBrush="{StaticResource State.Positive}" ClutchBrush="{StaticResource State.Info}"
-                                           BrakeBrush="{StaticResource State.Critical}" AbsBrush="{StaticResource State.Accent}"/>
-                    </Grid>
-                </Border>
-            </Grid>
+            <!-- The plot sits on its own inset well rather than directly on the panel: the darker
+                 rounded field makes the traces read as a chart, and matches the rounded gauge
+                 tracks beside it instead of being the one square-cornered element in the panel. -->
+            <Border Grid.Column="3" Margin="12,0,0,0" Background="{DynamicResource Surface.Inset}" CornerRadius="{StaticResource Radius.Chip}">
+                <Grid>
+                    <!-- Half-travel guide: the one reference line worth drawing, and faint. -->
+                    <Rectangle Height="1" VerticalAlignment="Center" Fill="{StaticResource Surface.DividerFade}" Opacity="0.6"/>
+                    <w:PedalTraceGraph x:Name="Trace" ThrottleBrush="{StaticResource State.Positive}" ClutchBrush="{StaticResource State.Info}"
+                                       BrakeBrush="{StaticResource State.Critical}" AbsBrush="{StaticResource State.Accent}"/>
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

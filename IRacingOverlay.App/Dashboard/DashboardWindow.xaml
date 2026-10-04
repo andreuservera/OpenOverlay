@@ -100,7 +100,7 @@
             </ov:ScalablePanel>
 
             <!-- Bottom-left corner: flag (enlarged, FlagPanel's own box size grew, so it reads at a
-                 glance) with fuel/incidents stacked beside it — moved down here from the top-left so
+                 glance) with the fuel calculator and incidents stacked beside it — moved down here from the top-left so
                  that row, previously the tallest thing sharing row 1 with tire info, no longer forces
                  that Auto row to be as tall, leaving more of the * row underneath for
                  Standings/Relative to stretch into. Spans all rows so it can anchor to the true
@@ -110,8 +110,8 @@
                     <w:FlagPanel/>
                 </ov:ScalablePanel>
                 <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" Margin="12,0,0,0">
-                    <ov:ScalablePanel x:Name="FuelScaler" PersistenceKey="Dashboard.Fuel" DesignWidth="320" Margin="0,0,0,10">
-                        <w:FuelPanel/>
+                    <ov:ScalablePanel x:Name="FuelCalculatorScaler" PersistenceKey="Dashboard.FuelCalculator" Margin="0,0,0,10">
+                        <w:FuelCalculatorPanel/>
                     </ov:ScalablePanel>
                     <ov:ScalablePanel x:Name="IncidentScaler" PersistenceKey="Dashboard.Incident" DesignWidth="320">
                         <w:IncidentPanel/>
@@ -121,7 +121,7 @@
 
             <!-- Pedal trace: bottom-right corner, mirroring the flag's bottom-left placement so the
                  four corners stay visually balanced. -->
-            <ov:ScalablePanel x:Name="PedalTraceScaler" PersistenceKey="Dashboard.PedalTrace" DesignWidth="340" DesignHeight="180"
+            <ov:ScalablePanel x:Name="PedalTraceScaler" PersistenceKey="Dashboard.PedalTrace" DesignWidth="340" DesignHeight="130"
                               Grid.Row="3" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <w:PedalTracePanel/>
             </ov:ScalablePanel>

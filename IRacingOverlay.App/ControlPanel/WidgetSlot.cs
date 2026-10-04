@@ -227,10 +227,12 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     /// a widget on from the menus with auto-hide enabled costs nothing and shows nothing.</summary>
     public void Apply()
     {
+        var cameOnScreen = false;
         try
         {
             if (ShouldBeOnScreen)
             {
+                cameOnScreen = _window is not { IsVisible: true };
                 if (_window is null)
                 {
                     var window = _factory();
@@ -260,7 +262,16 @@ public sealed class WidgetSlot : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(StateLabel));
         OnPropertyChanged(nameof(IsOnScreen));
+        if (cameOnScreen && _window is { IsVisible: true })
+        {
+            CameOnScreen?.Invoke(this);
+        }
     }
+
+    /// <summary>Raised when the window appears, having been hidden or not existing yet. A window
+    /// appearing for the first time lands on top of the other widgets; an open layout uses this to
+    /// put its widgets back in their designed order.</summary>
+    public event Action<WidgetSlot>? CameOnScreen;
 
     /// <summary>Picks up a size the user changed on the widget itself, via its own +/- control or
     /// Ctrl+wheel, so the control panel's selector never shows a stale level.</summary>
@@ -302,6 +313,28 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         {
             WidgetLayoutStore.Remove(Key);
         }
+    }
+
+    /// <summary>Puts the widget at a desktop position (WPF units) and remembers it there — now if
+    /// the window exists, on first show if not.</summary>
+    public void MoveTo(double left, double top)
+    {
+        if (_window is not null)
+        {
+            _window.MoveTo(left, top);
+        }
+        else
+        {
+            WidgetLayoutStore.Save(Key, new WidgetLayout(left, top));
+        }
+    }
+
+    /// <summary>Back to never having been placed: the default position now, and no saved position,
+    /// so the next run starts it where a new widget starts.</summary>
+    public void ForgetPosition()
+    {
+        _window?.ResetPosition();
+        WidgetLayoutStore.Remove(Key);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

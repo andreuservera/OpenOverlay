@@ -25,6 +25,29 @@ internal static class NativeMethods
     private static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) =>
         IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
 
+    private static readonly IntPtr HwndTopmost = new(-1);
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoMove = 0x0002;
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpNoOwnerZOrder = 0x0200;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+
+    /// <summary>
+    /// Stacks topmost windows in the given order, the last one ending up on top of every other
+    /// topmost window. Each is only re-ordered: not moved, resized, shown or activated, so the game
+    /// keeps focus. Windows without a handle yet are skipped.
+    /// </summary>
+    public static void StackTopmost(IEnumerable<IntPtr> bottomToTop)
+    {
+        foreach (var hWnd in bottomToTop.Where(handle => handle != IntPtr.Zero))
+        {
+            SetWindowPos(hWnd, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate | SwpNoOwnerZOrder);
+        }
+    }
+
     private const int WmNcLButtonDown = 0x00A1;
     private const int HtCaption = 0x2;
 

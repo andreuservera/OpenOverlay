@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Data;
 using System.Windows.Input;
 using IRacingOverlay.App.Diagnostics;
+using IRacingOverlay.App.Layouts;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
@@ -37,11 +38,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private string _searchText = "";
     private int _selectedMonitorIndex;
     private DashboardTheme _dashboardTheme;
-    private DeltaReference _deltaReference = DeltaReference.SessionBest;
     private int _criticalRefreshIndex;
-    private int _compassRefreshIndex;
     private Dictionary<NavItem, string>? _searchIndex;
-    private RelayCommand? _closeAllWidgets;
 
     public ControlPanelViewModel()
     {
@@ -53,10 +51,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         FuelCalculatorOptionsStore.ApplyTo(FuelCalculatorOptions);
         FlagOptionsStore.ApplyTo(FlagOptions);
         WeatherOptionsStore.ApplyTo(WeatherOptions);
+        TrackInfoOptionsStore.ApplyTo(TrackInfoOptions);
         CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
-        _compassRefreshIndex = CompassRefreshStore.Get();
         Units.SetPreference(UnitPreferenceStore.Get());
 
         // Settings with a unit (the fuel reserve) are built in the sim's units, so rebuild on a switch.
@@ -71,9 +69,14 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         foreach (var descriptor in WidgetCatalog.All)
         {
             var slot = new WidgetSlot(descriptor, () => CreateWidget(descriptor.Key));
+            slot.CameOnScreen += OnWidgetCameOnScreen;
             _slots[descriptor.Key] = slot;
             NavItems.Add(NavItem.ForWidget(slot));
         }
+
+        NavItems.Add(NavItem.ForPage(
+            LayoutsPageKey, "Layouts", "Saved arrangements of your widgets for one monitor.",
+            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20"));
 
         NavItems.Add(NavItem.ForPage(
             GeneralPageKey, "General", "Units, performance, hotkeys, the tray and diagnostics.",
@@ -108,6 +111,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public FlagOptions FlagOptions { get; } = new();
     public CockpitOptions CockpitOptions { get; } = new();
     public WeatherOptions WeatherOptions { get; } = new();
+
+    public TrackInfoOptions TrackInfoOptions { get; } = new();
+    public DeltaOptions DeltaOptions { get; } = new();
 
     /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
     /// seen by the live widget.</summary>
@@ -170,21 +176,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
     }
 
-    /// <summary>Switches every widget off at once — the same switch as each widget's own, so it's
-    /// remembered, and each comes back from its page.</summary>
-    public ICommand CloseAllWidgetsCommand => _closeAllWidgets ??= new RelayCommand(TurnOffAllWidgets);
-
-    public void TurnOffAllWidgets()
-    {
-        AppLog.Activity("Control Panel", "All widgets closed");
-        foreach (var slot in _slots.Values)
-        {
-            slot.IsEnabled = false;
-        }
-    }
-
-    /// <summary>Layout-editing mode. A single switch for the whole application rather than per
-    /// widget: "let me move things" is a mode you are in, not a property of one panel.</summary>
+    /// <summary>Widgets unlocked: they can be dragged and resized on screen. A single switch for the
+    /// whole application rather than per widget: "let me move things" is a mode you are in, not a
+    /// property of one panel. Widgets an open layout controls move too; that is saved as their own
+    /// position, never in the layout, and undone when the layout closes.</summary>
     public bool IsEditMode
     {
         get => _isEditMode;
@@ -196,7 +191,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
 
             _isEditMode = value;
-            AppLog.Activity("Control Panel", value ? "Edit layout on" : "Edit layout off");
+            AppLog.Activity("Control Panel", value ? "Widgets unlocked" : "Widgets locked");
             foreach (var slot in _slots.Values)
             {
                 slot.IsEditMode = value;
@@ -207,7 +202,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         }
     }
 
-    public string EditModeLabel => _isEditMode ? "Editing layout" : "Edit layout";
+    /// <summary>What the toolbar button does when clicked.</summary>
+    public string EditModeLabel => _isEditMode ? "Lock widgets" : "Unlock widgets";
 
     public bool IsConnected
     {
@@ -305,7 +301,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public int SelectedMonitorIndex => _selectedMonitorIndex;
 
-    public DeltaReference DeltaReference => _deltaReference;
+    public DeltaReference DeltaReference => DeltaOptions.Reference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
     /// bars and the pedal trace. Index order matches the labels General › Performance offers.</summary>
@@ -316,17 +312,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         3 => 100,
         4 => 200,
         _ => 67,
-    };
-
-    /// <summary>Redraw period for the Weather wind compass; 0 = follow every update, animated.
-    /// Index order matches the labels General › Performance offers.</summary>
-    public int CompassRefreshIntervalMs => _compassRefreshIndex switch
-    {
-        0 => 0,
-        1 => 100,
-        2 => 200,
-        4 => 1000,
-        _ => 500,
     };
 
     /// <summary>Raised when the dashboard theme changes, so the window can repaint if it's open.
@@ -388,6 +373,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedWidget));
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsInfoPage));
+        OnPropertyChanged(nameof(PreviewLayout));
+        OnPropertyChanged(nameof(HasLayoutPreview));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
     }
 
@@ -403,19 +390,29 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.Flag => Configured(new FlagWidget(), w => w.SetOptions(FlagOptions)),
         WidgetCatalog.TireInfo => new TireInfoWidget(),
         WidgetCatalog.Delta => new DeltaWidget(),
-        WidgetCatalog.Fuel => new FuelWidget(),
         WidgetCatalog.PedalTrace => new PedalTraceWidget(),
         WidgetCatalog.Incident => new IncidentWidget(),
-        WidgetCatalog.TrackInfo => new TrackInfoWidget(),
-        WidgetCatalog.Weather => Configured(new WeatherWidget(), w =>
-        {
-            w.SetOptions(WeatherOptions);
-            w.SetCompassInterval(CompassRefreshIntervalMs);
-        }),
+        WidgetCatalog.TrackInfo => Configured(new TrackInfoWidget(), w => w.SetOptions(TrackInfoOptions)),
+        WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),
     };
+
+    /// <summary>Codecs over this control panel's own options objects, saving through the real
+    /// stores and raising <see cref="TableHeaderChanged"/> just as the widget pages do.</summary>
+    internal IReadOnlyDictionary<string, IWidgetConfigCodec> CreateConfigCodecs() =>
+        WidgetConfigCodecs.Create(new WidgetConfigTargets(
+            StandingsOptions,
+            RelativeOptions,
+            FlagOptions,
+            CockpitOptions,
+            WeatherOptions,
+            TrackInfoOptions,
+            FuelCalculatorOptions,
+            DeltaOptions,
+            WidgetConfigPersistence.Stores,
+            table => TableHeaderChanged?.Invoke(table)));
 
     private static T Configured<T>(T widget, Action<T> configure) where T : OverlayWindowBase
     {

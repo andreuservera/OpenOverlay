@@ -23,6 +23,9 @@ public sealed class TrackInfoState
     /// <summary>False for <see cref="Empty"/>, so readings show as dashes instead of a believable 0.</summary>
     public bool HasData { get; init; } = true;
 
+    /// <summary>The sky, for the icon beside the air temperature.</summary>
+    public WeatherCondition Condition { get; init; }
+
     public static TrackInfoState Empty => new()
     {
         TrackName = "",

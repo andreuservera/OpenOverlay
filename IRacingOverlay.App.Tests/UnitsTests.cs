@@ -41,23 +41,6 @@ public class UnitsTests
     }
 
     [Fact]
-    public void Fuel_DisplaysGallonsInImperial()
-    {
-        var state = new FuelState
-        {
-            LevelLiters = 37.854,
-            LevelPct = 0.5,
-            PerLapLiters = 3.7854,
-            LapsOfFuelRemaining = 10,
-            LapsRemainingInSession = null,
-            UnitSystem = UnitSystem.Imperial,
-        };
-
-        Assert.Equal("10.0 gal", state.LevelDisplay);
-        Assert.Equal("1.00 gal/lap", state.PerLapDisplay);
-    }
-
-    [Fact]
     public void FuelCalculator_RefuelRoundsUpToATenthOfAGallon()
     {
         var shortBy = new FuelCalculatorState

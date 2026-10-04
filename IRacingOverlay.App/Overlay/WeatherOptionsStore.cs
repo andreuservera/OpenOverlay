@@ -20,7 +20,9 @@ internal static class WeatherOptionsStore
         WeatherGraphicSize IconSize,
         WeatherGraphicSize ArrowSize,
         // Added later: files written before it have no value, and those users get it on.
-        bool ShowTrackWetness = true);
+        bool ShowTrackWetness = true,
+        // Added later, when it moved here from General › Performance: 0 means not saved yet.
+        int CompassRefreshHz = 0);
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -29,6 +31,7 @@ internal static class WeatherOptionsStore
     public static void ApplyTo(WeatherOptions options)
     {
         var saved = Load();
+        options.CompassRefreshHz = saved is { CompassRefreshHz: > 0 } ? saved.CompassRefreshHz : CompassRefreshStore.LegacyHz();
         if (saved is null)
         {
             return;
@@ -62,7 +65,8 @@ internal static class WeatherOptionsStore
             options.Compact,
             options.IconSize,
             options.ArrowSize,
-            options.ShowTrackWetness);
+            options.ShowTrackWetness,
+            options.CompassRefreshHz);
 
         SettingsFile.WriteJson(FilePath, snapshot);
     }

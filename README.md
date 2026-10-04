@@ -27,7 +27,7 @@ and rendered directly by the app.
 
 ![Floating widgets](docs/screenshots/floating-widgets.png)
 
-**Fullscreen dashboard**, for a second monitor — track map, standings, relative, tires, fuel,
+**Fullscreen dashboard**, for a second monitor — track map, standings, relative, tires, fuel calculator,
 incidents, flags, pedals and the cockpit all on one screen:
 
 ![Fullscreen dashboard](docs/screenshots/dashboard.png)
@@ -59,7 +59,7 @@ last-pit-stop column:
 - **Last pit stop** — optional Standings/Relative column showing the lap of each driver's most
   recent stop and its pit-lane time (e.g. `L24 | 01:18`).
 - **Delta bar** — live time delta vs. session best, personal best, or optimal lap.
-- **Fuel & fuel calculator** — average consumption per lap (computed from your own fuel burn across
+- **Fuel calculator** — average consumption per lap (computed from your own fuel burn across
   completed laps, not a jumpy instantaneous rate), laps of fuel remaining, whether you'll make it to
   the end of the session, and how much to add at the next stop.
 - **Flags** — every iRacing flag (track status, flags aimed at you, race progress and advisories),

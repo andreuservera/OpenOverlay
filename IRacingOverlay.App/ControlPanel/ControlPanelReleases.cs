@@ -39,7 +39,7 @@ public sealed partial class ControlPanelViewModel
     /// <summary>An ABOUT page: nothing to preview, so the side panel shows the product instead.</summary>
     public bool IsInfoPage => _selected?.Group == AboutGroup;
 
-    public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage;
+    public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage && !HasLayoutPreview;
 
     /// <summary>The update check's latest state, pushed by MainWindow once a second.</summary>
     public string UpdateStatus
@@ -101,7 +101,7 @@ public sealed partial class ControlPanelViewModel
             [
                 new SettingsGroup(
                     $"VERSION {BuildInfo.Version}",
-                    "This build carries no release notes. Every release is described on GitHub."),
+                    "No release notes in this build. See GitHub."),
                 ReleaseLinks(null),
             ];
         }
@@ -161,7 +161,7 @@ public sealed partial class ControlPanelViewModel
         var releases = new SettingsGroup(
             "RELEASES",
             entries.Count == 0
-                ? "This build carries no release notes. Every release is described on GitHub."
+                ? "No release notes in this build. See GitHub."
                 : "Newest first. Select a version to show or hide its changes.");
 
         for (var i = 0; i < entries.Count; i++)
@@ -189,7 +189,7 @@ public sealed partial class ControlPanelViewModel
 
     private IEnumerable<SettingsGroup> AboutPage()
     {
-        var updateStatusRow = new InfoSetting("Updates", "The last automatic check for a new version.", _updateStatus);
+        var updateStatusRow = new InfoSetting("Updates", null, _updateStatus);
         if (!_buildingIndex)
         {
             _updateStatusRow = updateStatusRow;
@@ -198,7 +198,7 @@ public sealed partial class ControlPanelViewModel
         ActionSetting? copy = null;
         copy = new ActionSetting(
             "Version details",
-            "All of the above as text, ready to paste into a bug report.",
+            "For a bug report.",
             "Copy",
             () =>
             {
@@ -211,16 +211,11 @@ public sealed partial class ControlPanelViewModel
             new SettingsGroup("OPENOVERLAY", "A free, open-source telemetry overlay for iRacing.")
                 .With(
                     new InfoSetting("Version", VersionHint(), BuildInfo.Version),
-                    new InfoSetting(
-                        "Build",
-                        BuildInfo.Commit is null
-                            ? "This build doesn't record the commit it was made from."
-                            : "The commit this copy was built from. Quote it when reporting a problem.",
-                        BuildInfo.Commit ?? "Not recorded"),
+                    new InfoSetting("Build", null, BuildInfo.Commit ?? "Not recorded"),
                     new InfoSetting("Released", null, ReleaseCatalog.Current?.Date is { } released ? FormatDate(released) : "Unknown"),
                     new InfoSetting(
                         "Installed",
-                        InstallHistory.PreviousVersion is { } previous ? $"Previously {previous} on this PC." : "When this version first ran on this PC.",
+                        InstallHistory.PreviousVersion is { } previous ? $"Previously {previous}." : null,
                         InstallHistory.InstalledUtc is { } installed ? FormatDate(installed) : "Unknown"),
                     new InfoSetting("Update channel", ChannelHint(), BuildInfo.Channel.ToString()),
                     updateStatusRow,
@@ -233,36 +228,36 @@ public sealed partial class ControlPanelViewModel
                 new ActionSetting("Documentation", "Setup, features and troubleshooting.", "Open", () => ProjectLinks.Open(ProjectLinks.Documentation)),
                 new ActionSetting(
                     "Report a problem",
-                    "Opens a new GitHub issue. Attach the report from General › Diagnostics.",
+                    "Attach the report from General › Diagnostics.",
                     "Open",
                     () => ProjectLinks.Open(ProjectLinks.NewIssue)),
                 ProjectLinks.Discord is { } discord
                     ? new ActionSetting("Discord", "Talk to other drivers and the developers.", "Open", () => ProjectLinks.Open(discord))
-                    : Planned("Discord", "A community server for questions and setups is planned.")),
+                    : Planned("Discord", null)),
             new SettingsGroup("SUPPORT TOOLS").With(
-                new ActionSetting("Diagnostics", "Copy or export a report of this run, with its logs.", "Open", () => Navigate(GeneralPageKey)),
-                Planned("Check for updates now", "Installed copies already check at every start; checking on demand is planned."),
-                Planned("Send feedback", "Sending feedback from inside the app is planned; GitHub works today.")),
+                new ActionSetting("Diagnostics", "Report and logs for this run.", "Open", () => Navigate(GeneralPageKey)),
+                Planned("Check for updates now", "Updates are already checked at every start."),
+                Planned("Send feedback", "Use GitHub for now.")),
             new SettingsGroup("LICENSE").With(
                 new ActionSetting(
                     "MIT License",
-                    "Free to use, change and share. Built with YamlDotNet and Velopack, both MIT licensed.",
+                    "Free to use, change and share.",
                     "View",
                     () => ProjectLinks.Open(ProjectLinks.License))),
         ];
     }
 
     /// <summary>A support tool that doesn't exist yet, listed so its place is already known.</summary>
-    private static ActionSetting Planned(string label, string hint) =>
+    private static ActionSetting Planned(string label, string? hint) =>
         new(label, hint, "Coming soon", () => { }, isEnabled: false);
 
     private static string? VersionHint() => BuildInfo.Release is { IsPrerelease: true } ? "A preview release." : null;
 
     private static string ChannelHint() => BuildInfo.Channel switch
     {
-        UpdateChannel.Stable => "Looks for a new release at every start and installs it the next time OpenOverlay starts.",
-        UpdateChannel.Preview => "A pre-release. Updates arrive from GitHub the same way as for stable releases.",
-        _ => "A copy that doesn't update itself. The installer on GitHub gives you automatic updates.",
+        UpdateChannel.Stable => "Checks at every start; updates install on the next start.",
+        UpdateChannel.Preview => "Updates install automatically.",
+        _ => "No automatic updates. Use the installer to get them.",
     };
 
     private string SupportText()

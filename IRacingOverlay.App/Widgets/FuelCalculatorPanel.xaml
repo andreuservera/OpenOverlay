@@ -4,49 +4,185 @@
              x:Name="Root">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <!-- One cell shape for every readout: caption above, value below, with a minimum width and a
-             gutter to its right. A horizontal StackPanel of these can't overlap the way the old
-             label-left/value-right Grid rows did, where both TextBlocks shared a single cell and ran
-             straight into each other as soon as the panel was narrower than label + value. -->
-        <Style x:Key="StatCell" TargetType="StackPanel">
-            <Setter Property="MinWidth" Value="70"/>
-            <Setter Property="Margin" Value="0,0,18,0"/>
+        <!-- Two arrangements of the same elements, switched by Options.Vertical.
+             Horizontal (default): the headline on the left, a vertical rule, then two rows of tiles,
+             each a caption above its value, both rows stretched to the same width.
+             Vertical: the headline and bar across the top, then a list of bands — caption on the
+             left, value right-aligned on the same line — with what you act on (fuel left, to
+             finish, refuel) above the per-lap usage.
+             Every readout sits on its own soft band, like the driver-table rows, so at a glance a
+             number can't be read as belonging to the caption next door. -->
+        <Style x:Key="Body" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Orientation" Value="Vertical"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
-        <!-- Wider, because "LAPS LEFT"/"TO FINISH" are longer captions over a bigger number. -->
-        <Style x:Key="StrategyCell" TargetType="StackPanel" BasedOn="{StaticResource StatCell}">
+        <Style x:Key="Headline" TargetType="StackPanel">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MinWidth" Value="104"/>
+            <Setter Property="Margin" Value="0,0,16,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="MinWidth" Value="150"/>
+                    <Setter Property="Margin" Value="0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="BodyDivider" TargetType="Rectangle">
+            <Setter Property="Fill" Value="{StaticResource Surface.Divider}"/>
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Margin" Value="0,2,16,2"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Width" Value="NaN"/>
+                    <Setter Property="Height" Value="1"/>
+                    <Setter Property="Margin" Value="0,9,0,7"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Holds the usage row, the gap between the groups and the strategy row. The negative
+             right margin cancels the trailing tile's gutter in the horizontal strip, so the panel's
+             right padding matches its left. -->
+        <Style x:Key="Cells" TargetType="Grid">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,-6,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Margin" Value="0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- The bands already separate the readouts; the groups are told apart by a wider gap. -->
+        <Style x:Key="GroupGap" TargetType="FrameworkElement">
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="Height" Value="6"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Height" Value="8"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- A row of cells in the strip, a column of lines in the list; hidden cells are skipped,
+             so the rest close up either way. -->
+        <Style x:Key="CellRow" TargetType="UniformGrid">
+            <Setter Property="Rows" Value="1"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Rows" Value="0"/>
+                    <Setter Property="Columns" Value="1"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="UsageRow" TargetType="UniformGrid" BasedOn="{StaticResource CellRow}">
+            <Setter Property="Grid.Row" Value="0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Grid.Row" Value="2"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StrategyRow" TargetType="UniformGrid" BasedOn="{StaticResource CellRow}">
+            <Setter Property="Grid.Row" Value="2"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Grid.Row" Value="0"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- One readout: a band holding a two-by-two grid whose caption stays top-left while the
+             value moves — under the caption in the strip, to the right of it in the list. -->
+        <Style x:Key="StatCell" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Row.Base}"/>
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
+            <Setter Property="MinWidth" Value="70"/>
+            <Setter Property="Padding" Value="9,5,9,6"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="MinWidth" Value="0"/>
+                    <Setter Property="Padding" Value="8,3"/>
+                    <Setter Property="Margin" Value="0,0,0,2"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Wider, because "FUEL LEFT"/"TO FINISH" are longer captions over a bigger number. -->
+        <Style x:Key="StrategyCell" TargetType="Border" BasedOn="{StaticResource StatCell}">
             <Setter Property="MinWidth" Value="92"/>
         </Style>
         <Style x:Key="CellLabel" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
             <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
             <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
             <Setter Property="Margin" Value="0,0,0,2"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Margin" Value="0,0,14,0"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
-        <!-- Read at a glance on the straight, so a full value size rather than table-cell size. -->
+        <Style x:Key="CellValuePanel" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Grid.Row" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Grid.Row" Value="0"/>
+                    <Setter Property="Grid.Column" Value="1"/>
+                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                    <Setter Property="VerticalAlignment" Value="Center"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Read at a glance on the straight, so a full value size rather than table-cell size in
+             the strip; a step down in the list, where every line already has its own row. -->
         <Style x:Key="CellValue" TargetType="TextBlock" BasedOn="{StaticResource ValueText}">
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="FontSize" Value="{StaticResource Type.Body}"/>
+                    <Setter Property="LineHeight" Value="{StaticResource Line.Body}"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <Style x:Key="StrategyValue" TargetType="TextBlock" BasedOn="{StaticResource ValueTextLarge}">
-            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="FontSize" Value="{StaticResource Type.Value}"/>
+                    <Setter Property="LineHeight" Value="{StaticResource Line.Value}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- The unit after a value, small and on its baseline like the headline's, so the number
+             keeps the weight. Empty when the value is text ("NOT NEEDED") or not known yet. -->
+        <Style x:Key="CellUnit" TargetType="TextBlock" BasedOn="{StaticResource UnitLabel}">
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="Margin" Value="3,0,0,2"/>
+        </Style>
+        <Style x:Key="StrategyUnit" TargetType="TextBlock" BasedOn="{StaticResource CellUnit}">
+            <Setter Property="Margin" Value="4,0,0,4"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
+                    <Setter Property="Margin" Value="3,0,0,2"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
     <Border Style="{StaticResource OverlayPanel}" Padding="14,10">
         <StackPanel>
-            <TextBlock Text="FUEL CALC" Style="{StaticResource PanelTitle}" Margin="0,0,0,7"/>
 
-            <!-- Landscape, not portrait: the headline sits beside the numbers instead of on top of
-                 them, so the eight readouts get a full row each rather than being stacked into a
-                 tall column that squeezes every one of them. -->
-            <StackPanel Orientation="Horizontal">
-                <!-- Fuel remaining: the headline number, big enough to read at a glance mid-corner,
-                     with the level bar tracking its width underneath. -->
-                <StackPanel VerticalAlignment="Center" MinWidth="104" Margin="0,0,16,0">
+            <StackPanel Style="{StaticResource Body}">
+                <!-- Laps the fuel aboard lasts: the headline number, big enough to read at a glance
+                     mid-corner, with the fuel level bar tracking its width underneath. -->
+                <StackPanel Style="{StaticResource Headline}">
                     <StackPanel Orientation="Horizontal"
-                                Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource DisplayValue}"/>
-                        <TextBlock x:Name="LevelUnitText" Text="L" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+                                Visibility="{Binding Options.ShowLapsRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource DisplayValue}"/>
+                        <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
                     </StackPanel>
 
                     <Border x:Name="LevelTrack" Style="{StaticResource MeterTrack}" Height="8" Margin="0,6,0,0"
@@ -56,66 +192,161 @@
                     </Border>
                 </StackPanel>
 
-                <Rectangle Width="1" Fill="{StaticResource Surface.Divider}" Margin="0,2,16,2"/>
+                <Rectangle Style="{StaticResource BodyDivider}"/>
 
-                <!-- Negative right margin cancels the trailing cell's gutter, so the panel's right
-                     padding matches its left instead of carrying 18px of dead air. -->
-                <StackPanel VerticalAlignment="Center" Margin="0,0,-18,0">
+                <Grid Style="{StaticResource Cells}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
                     <!-- Per-lap usage: up to four compact cells, each independently toggleable. -->
-                    <StackPanel Orientation="Horizontal"
-                                Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <StackPanel Style="{StaticResource StatCell}"
-                                    Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="LAST" Style="{StaticResource CellLabel}"/>
-                            <TextBlock x:Name="LastLapText" Text="—" Style="{StaticResource CellValue}"/>
-                        </StackPanel>
+                    <UniformGrid Style="{StaticResource UsageRow}"
+                                 Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource StatCell}"
+                                Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="LAST" Style="{StaticResource CellLabel}"/>
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="LastLapText" Text="—" Style="{StaticResource CellValue}"/>
+                                    <TextBlock x:Name="LastLapUnitText" Text="L" Style="{StaticResource CellUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                        <StackPanel Style="{StaticResource StatCell}"
-                                    Visibility="{Binding Options.ShowAverage, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock x:Name="AverageLabel" Text="AVG" Style="{StaticResource CellLabel}"/>
-                            <!-- The average is the figure the strategy row below is actually derived
-                                 from, so it's the one of the four that reads at full strength. -->
-                            <TextBlock x:Name="AverageText" Text="—" Style="{StaticResource CellValue}"
-                                       Foreground="{StaticResource Text.Primary}" FontWeight="Bold"/>
-                        </StackPanel>
+                        <Border Style="{StaticResource StatCell}"
+                                Visibility="{Binding Options.ShowAverage, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock x:Name="AverageLabel" Text="AVG" Style="{StaticResource CellLabel}"/>
+                                <!-- The average is the figure the strategy figures are actually derived
+                                     from, so it's the one of the four that reads at full strength. -->
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="AverageText" Text="—" Style="{StaticResource CellValue}"
+                                               Foreground="{StaticResource Text.Primary}" FontWeight="Bold"/>
+                                    <TextBlock x:Name="AverageUnitText" Text="L" Style="{StaticResource CellUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                        <StackPanel Style="{StaticResource StatCell}"
-                                    Visibility="{Binding Options.ShowMinimum, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="MIN" Style="{StaticResource CellLabel}"/>
-                            <TextBlock x:Name="MinText" Text="—" Style="{StaticResource CellValue}"/>
-                        </StackPanel>
+                        <Border Style="{StaticResource StatCell}"
+                                Visibility="{Binding Options.ShowMinimum, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="MIN" Style="{StaticResource CellLabel}"/>
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="MinText" Text="—" Style="{StaticResource CellValue}"/>
+                                    <TextBlock x:Name="MinUnitText" Text="L" Style="{StaticResource CellUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                        <StackPanel Style="{StaticResource StatCell}"
-                                    Visibility="{Binding Options.ShowMaximum, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="MAX" Style="{StaticResource CellLabel}"/>
-                            <TextBlock x:Name="MaxText" Text="—" Style="{StaticResource CellValue}"/>
-                        </StackPanel>
-                    </StackPanel>
+                        <Border Style="{StaticResource StatCell}"
+                                Visibility="{Binding Options.ShowMaximum, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="MAX" Style="{StaticResource CellLabel}"/>
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="MaxText" Text="—" Style="{StaticResource CellValue}"/>
+                                    <TextBlock x:Name="MaxUnitText" Text="L" Style="{StaticResource CellUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </UniformGrid>
 
-                    <Rectangle Height="1" Fill="{StaticResource Surface.Divider}" Margin="0,8,18,8"
+                    <FrameworkElement Style="{StaticResource GroupGap}"
                                Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
 
-                    <!-- Strategy: what you act on, so a size step up from the usage cells above. -->
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel Style="{StaticResource StrategyCell}"
-                                    Visibility="{Binding Options.ShowLapsRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="LAPS LEFT" Style="{StaticResource CellLabel}"/>
-                            <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource StrategyValue}"/>
-                        </StackPanel>
+                    <!-- Strategy: what you act on, so a size step up from the usage cells. -->
+                    <UniformGrid Style="{StaticResource StrategyRow}">
+                        <Border Style="{StaticResource StrategyCell}"
+                                Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="FUEL LEFT" Style="{StaticResource CellLabel}"/>
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource StrategyValue}"/>
+                                    <TextBlock x:Name="LevelUnitText" Text="L" Style="{StaticResource StrategyUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                        <StackPanel Style="{StaticResource StrategyCell}"
-                                    Visibility="{Binding Options.ShowFuelToFinish, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="TO FINISH" Style="{StaticResource CellLabel}"/>
-                            <TextBlock x:Name="FuelDeltaText" Text="—" Style="{StaticResource StrategyValue}"/>
-                        </StackPanel>
+                        <Border Style="{StaticResource StrategyCell}"
+                                Visibility="{Binding Options.ShowFuelToFinish, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="TO FINISH" Style="{StaticResource CellLabel}"/>
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="FuelDeltaText" Text="—" Style="{StaticResource StrategyValue}"/>
+                                    <TextBlock x:Name="FuelDeltaUnitText" Text="" Style="{StaticResource StrategyUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
 
-                        <StackPanel Style="{StaticResource StrategyCell}"
-                                    Visibility="{Binding Options.ShowRefuel, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="REFUEL" Style="{StaticResource CellLabel}"/>
-                            <TextBlock x:Name="RefuelText" Text="—" Style="{StaticResource StrategyValue}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </StackPanel>
+                        <Border Style="{StaticResource StrategyCell}"
+                                Visibility="{Binding Options.ShowRefuel, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="REFUEL" Style="{StaticResource CellLabel}"/>
+                                <StackPanel Style="{StaticResource CellValuePanel}">
+                                    <TextBlock x:Name="RefuelText" Text="—" Style="{StaticResource StrategyValue}"/>
+                                    <TextBlock x:Name="RefuelUnitText" Text="" Style="{StaticResource StrategyUnit}"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </UniformGrid>
+                </Grid>
             </StackPanel>
         </StackPanel>
     </Border>

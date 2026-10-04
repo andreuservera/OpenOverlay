@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Interop;
+using IRacingOverlay.App.ControlPanel;
 
 namespace IRacingOverlay.App.Overlay;
 
@@ -87,9 +88,10 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         ApplyOpacity();
     }
 
-    /// <summary>How visible a widget is allowed to get while the layout is being edited. A widget
-    /// left at 0% is invisible by design once racing, but it still has to be findable and draggable
-    /// on the screen where it lives — otherwise the only way back is the control panel, and the user
+    /// <summary>How visible a widget's background is allowed to get while the layout is being edited.
+    /// A background left at 0% is see-through by design once racing, but in edit mode the widget
+    /// still has to be findable and draggable on the screen where it lives (and a fully transparent
+    /// pixel doesn't take the mouse) — otherwise the only way back is the control panel, and the user
     /// has no idea where the thing they are moving actually is.</summary>
     private const double EditModeMinimumOpacity = 0.4;
 
@@ -97,10 +99,9 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     public bool HasSavedLayout { get; private set; }
 
     /// <summary>
-    /// The widget's own opacity, 0 to 1. Applied to the window rather than to any one brush, so it
-    /// reaches everything the widget draws — panel background, borders, text, chips, bars and icons
-    /// alike — in one place, and keeps working for widgets added later without them having to know
-    /// the feature exists.
+    /// The widget's own opacity, 0 to 1. Fades only the widget's background (see
+    /// <see cref="BackgroundOpacity"/>), so the data on it stays fully readable; widgets that draw
+    /// their own background (<see cref="WidgetCatalog.FadesWholeWidget"/>) fade as a whole instead.
     /// </summary>
     public double WidgetOpacity
     {
@@ -120,8 +121,18 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         }
     }
 
-    private void ApplyOpacity() =>
-        Opacity = _isEditMode ? Math.Max(_widgetOpacity, EditModeMinimumOpacity) : _widgetOpacity;
+    private void ApplyOpacity()
+    {
+        var opacity = _isEditMode ? Math.Max(_widgetOpacity, EditModeMinimumOpacity) : _widgetOpacity;
+        if (WidgetCatalog.FadesWholeWidget(_widgetName))
+        {
+            Opacity = opacity;
+        }
+        else
+        {
+            BackgroundOpacity.SetValue(this, opacity);
+        }
+    }
 
     /// <summary>
     /// The widget's step on the shared size ladder, reached through whichever <see cref="ScalablePanel"/>
@@ -287,6 +298,17 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         {
             NativeMethods.SetClickThrough(hwndSource.Handle, clickThrough: !_isEditMode);
         }
+    }
+
+    /// <summary>Moves the widget to a position chosen elsewhere (a layout), and remembers it. Still
+    /// kept on the desktop like any other placement.</summary>
+    public void MoveTo(double left, double top)
+    {
+        Left = left;
+        Top = top;
+        ConstrainToScreen();
+        SaveLayout();
+        HasSavedLayout = true;
     }
 
     /// <summary>Moves the widget back to where it first appeared, and remembers that.</summary>

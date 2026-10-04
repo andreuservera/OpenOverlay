@@ -243,16 +243,6 @@ public static class PreviewData
         return scenarios;
     }
 
-    public static FuelState Fuel() => new()
-    {
-        UnitSystem = Units.Current,
-        LevelLiters = 31.4,
-        LevelPct = 0.46,
-        PerLapLiters = 2.68,
-        LapsOfFuelRemaining = 11.7,
-        LapsRemainingInSession = 14,
-    };
-
     /// <summary>Deliberately a few liters short of the finish, so the strategy figures render in
     /// their warning state and the refuel line has a real number in it.</summary>
     public static FuelCalculatorState FuelCalculator() => new()
@@ -373,6 +363,7 @@ public static class PreviewData
     public static TrackInfoState TrackInfo() => new()
     {
         UnitSystem = Units.Current,
+        Condition = WeatherCondition.PartlyCloudy,
         TrackName = "Spa-Francorchamps",
         SessionLabel = "Race",
         TrackUsage = "moderately high usage",
@@ -386,10 +377,10 @@ public static class PreviewData
     };
 
     /// <summary>Cars spread around the lap with the pack bunched where it usually is — behind the
-    /// leader — plus one in the pits, so the map's pit styling is visible too.</summary>
+    /// leader — in a multiclass field, so the map shows its class colours.</summary>
     public static IReadOnlyList<TrackMapMarker> TrackMap()
     {
-        var field = StandingsField(multiClass: false);
+        var field = StandingsField(multiClass: true);
         var markers = new List<TrackMapMarker>(field.Count);
         for (var i = 0; i < field.Count; i++)
         {
@@ -411,8 +402,4 @@ public static class PreviewData
     /// <summary>Strength of field for the header chip — the average of the mock field's iRatings,
     /// so the number the preview shows is consistent with the rows underneath it.</summary>
     public static double StrengthOfField() => Field.Average(e => e.IRating);
-
-    public static int SubSessionId => 68412907;
-
-    public static string ClassName => "GT3";
 }

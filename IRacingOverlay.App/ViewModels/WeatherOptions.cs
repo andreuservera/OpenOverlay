@@ -11,15 +11,14 @@ public enum WeatherGraphicSize
 }
 
 /// <summary>
-/// What the Weather widget shows and how. Every element toggles independently; the section and
-/// divider flags are derived from them, so the layout closes up around whatever is hidden.
+/// What the Weather widget shows and how. Every element toggles independently; the card flags are
+/// derived from them, so a card disappears once everything in it is hidden.
 /// </summary>
 public sealed class WeatherOptions : INotifyPropertyChanged
 {
     private static readonly string[] Derived =
     [
-        nameof(ShowTemperatures), nameof(ShowWindSection), nameof(ShowForecastSection),
-        nameof(ShowFirstDivider), nameof(ShowSecondDivider),
+        nameof(ShowTrackCard), nameof(ShowAirCard), nameof(ShowRainCard), nameof(ShowWindCard),
     ];
 
     private bool _showAirTemp = true;
@@ -34,6 +33,7 @@ public sealed class WeatherOptions : INotifyPropertyChanged
     private bool _compact;
     private WeatherGraphicSize _iconSize = WeatherGraphicSize.Medium;
     private WeatherGraphicSize _arrowSize = WeatherGraphicSize.Medium;
+    private int _compassRefreshHz = MinCompassRefreshHz;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -55,7 +55,7 @@ public sealed class WeatherOptions : INotifyPropertyChanged
 
     public bool ShowLabels { get => _showLabels; set => Set(ref _showLabels, value); }
 
-    /// <summary>One horizontal strip instead of stacked sections.</summary>
+    /// <summary>Cards side by side (the Horizontal orientation) instead of stacked.</summary>
     public bool Compact { get => _compact; set => Set(ref _compact, value); }
 
     public WeatherGraphicSize IconSize
@@ -82,11 +82,30 @@ public sealed class WeatherOptions : INotifyPropertyChanged
         }
     }
 
+    /// <summary>The icon beside each card's value, sized to sit next to the number rather than above it.</summary>
+    public const int MinCompassRefreshHz = 10;
+    public const int MaxCompassRefreshHz = 60;
+    public const int CompassRefreshStepHz = 10;
+
+    /// <summary>
+    /// How often the wind dial redraws, 10 to 60 in steps of 10. Weather data arrives at 10 Hz, so
+    /// 10 moves the arrow on each update without animating; above that it animates between updates
+    /// at this frame rate. Faster costs more GPU. Anything else is snapped to the nearest step.
+    /// </summary>
+    public int CompassRefreshHz
+    {
+        get => _compassRefreshHz;
+        set => Set(ref _compassRefreshHz, SnapCompassRefreshHz(value));
+    }
+
+    public static int SnapCompassRefreshHz(double hz) =>
+        (int)Math.Clamp(Math.Round(hz / CompassRefreshStepHz) * CompassRefreshStepHz, MinCompassRefreshHz, MaxCompassRefreshHz);
+
     public double IconPixels => _iconSize switch
     {
-        WeatherGraphicSize.Small => 36,
-        WeatherGraphicSize.Large => 64,
-        _ => 48,
+        WeatherGraphicSize.Small => 24,
+        WeatherGraphicSize.Large => 38,
+        _ => 30,
     };
 
     public double ArrowPixels => _arrowSize switch
@@ -96,15 +115,13 @@ public sealed class WeatherOptions : INotifyPropertyChanged
         _ => 58,
     };
 
-    public bool ShowTemperatures => ShowAirTemp || ShowTrackTemp;
+    public bool ShowTrackCard => ShowTrackTemp;
 
-    public bool ShowWindSection => ShowWindArrow || ShowWindSpeed || ShowHumidity;
+    public bool ShowAirCard => ShowAirTemp || ShowForecast || ShowHumidity;
 
-    public bool ShowForecastSection => ShowForecast || ShowRainProbability || ShowTrackWetness;
+    public bool ShowRainCard => ShowRainProbability || ShowTrackWetness;
 
-    public bool ShowFirstDivider => ShowTemperatures && (ShowWindSection || ShowForecastSection);
-
-    public bool ShowSecondDivider => ShowWindSection && ShowForecastSection;
+    public bool ShowWindCard => ShowWindArrow || ShowWindSpeed;
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {

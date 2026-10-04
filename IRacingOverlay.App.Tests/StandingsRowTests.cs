@@ -6,12 +6,12 @@ public class StandingsRowTests
 {
     private static StandingsRow Row(
         string licString = "", double iRatingDelta = 0, int iRating = 1000,
-        double lastLap = 0, double bestLap = 0, bool sessionFastest = false) => new()
+        double lastLap = 0, double bestLap = 0, bool sessionFastest = false, string name = "Driver") => new()
     {
         CarIdx = 0,
         Position = 1,
         ClassPosition = 1,
-        Name = "Driver",
+        Name = name,
         CarNumber = "1",
         IsPlayer = false,
         OnPitRoad = false,
@@ -101,5 +101,15 @@ public class StandingsRowTests
         Assert.Equal("#8E99A5", Row(iRatingDelta: 0).IRatingDeltaForeground);
         // Colour follows the rounded value too, so a dash is never tinted as a gain.
         Assert.Equal("#8E99A5", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
+    }
+
+    [Theory]
+    [InlineData("Max Verstappen", "Max Verstappen")]
+    [InlineData("  Lando Norris ", "Lando Norris")]
+    [InlineData("Maria Garcia Lopez-Ortega", "M. G. Lopez-Ortega")]
+    [InlineData("José de la Fuente", "J. d. l. Fuente")]
+    public void NameDisplay_KeepsTheRegisteredCase_AndAbbreviatesLongNamesFromTheFront(string name, string expected)
+    {
+        Assert.Equal(expected, Row(name: name).NameDisplay);
     }
 }

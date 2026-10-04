@@ -175,16 +175,36 @@ public class WeatherBuilderTests
     }
 
     [Fact]
-    public void Options_SectionsAndDividersCloseUpAroundHiddenElements()
+    public void Options_CardsHideOnceEverythingInThemIsHidden()
     {
-        var options = new WeatherOptions { ShowWindArrow = false, ShowWindSpeed = false, ShowHumidity = false };
+        var options = new WeatherOptions { ShowWindArrow = false };
 
-        Assert.False(options.ShowWindSection);
-        Assert.True(options.ShowFirstDivider);
-        Assert.False(options.ShowSecondDivider);
+        Assert.True(options.ShowWindCard);
+        options.ShowWindSpeed = false;
+        Assert.False(options.ShowWindCard);
 
         options.ShowAirTemp = false;
+        options.ShowForecast = false;
+        Assert.True(options.ShowAirCard);
+        options.ShowHumidity = false;
+        Assert.False(options.ShowAirCard);
+
         options.ShowTrackTemp = false;
-        Assert.False(options.ShowFirstDivider);
+        options.ShowRainProbability = false;
+        Assert.False(options.ShowTrackCard);
+        Assert.True(options.ShowRainCard);
+        options.ShowTrackWetness = false;
+        Assert.False(options.ShowRainCard);
+    }
+
+    [Theory]
+    [InlineData(10, 10)]
+    [InlineData(34, 30)]
+    [InlineData(35, 40)]
+    [InlineData(0, 10)]
+    [InlineData(500, 60)]
+    public void Options_CompassRefreshSnapsToStepsOfTenBetweenTenAndSixty(int requested, int expected)
+    {
+        Assert.Equal(expected, new WeatherOptions { CompassRefreshHz = requested }.CompassRefreshHz);
     }
 }

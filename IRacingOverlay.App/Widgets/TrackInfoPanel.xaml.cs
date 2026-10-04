@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -14,9 +15,20 @@ public partial class TrackInfoPanel : UserControl
     private static readonly Brush UsageMedium = StatePalette.Warning;
     private static readonly Brush UsageHigh = StatePalette.Critical;
 
+    // The XAML binds Options' fields straight off this property, so swapping in the persisted
+    // instance is a DependencyProperty change and every binding follows it.
+    public static readonly DependencyProperty OptionsProperty = DependencyProperty.Register(
+        nameof(Options), typeof(TrackInfoOptions), typeof(TrackInfoPanel), new PropertyMetadata(new TrackInfoOptions()));
+
     public TrackInfoPanel()
     {
         InitializeComponent();
+    }
+
+    public TrackInfoOptions Options
+    {
+        get => (TrackInfoOptions)GetValue(OptionsProperty);
+        set => SetValue(OptionsProperty, value);
     }
 
     public void UpdateState(TrackInfoState state)
@@ -24,6 +36,7 @@ public partial class TrackInfoPanel : UserControl
         TrackNameText.Text = state.TrackNameDisplay;
         SessionLabelText.Text = state.SessionLabelDisplay;
         AirTempText.Text = state.AirTempDisplay;
+        SkyIcon.Condition = state.Condition;
         TrackTempText.Text = state.TrackTempDisplay;
         WindText.Text = state.WindDisplay;
         HumidityText.Text = state.HumidityDisplay;

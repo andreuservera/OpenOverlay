@@ -1583,48 +1583,6 @@ public class StandingsBuilderTests
         Assert.DoesNotContain(rows, r => r.CarIdx == 3);
     }
 
-    private static IracingSessionInfo RosterOf(int playerCarIdx, params DriverEntry[] drivers) => new()
-    {
-        DriverInfo = new DriverInfoSection { DriverCarIdx = playerCarIdx, Drivers = drivers.ToList() },
-    };
-
-    [Fact]
-    public void PlayerClassName_NamesThePlayersClassNotTheirCar()
-    {
-        var session = RosterOf(2,
-            new DriverEntry { CarIdx = 0, UserName = "A", CarClassID = 100, CarScreenNameShort = "911 GT3 R", CarClassShortName = "GT3" },
-            new DriverEntry { CarIdx = 1, UserName = "B", CarClassID = 200, CarScreenNameShort = "Dallara P217", CarClassShortName = "LMP2" },
-            new DriverEntry { CarIdx = 2, UserName = "Me", CarClassID = 200, CarScreenNameShort = "Dallara P217", CarClassShortName = "LMP2" });
-
-        Assert.Equal("LMP2", StandingsBuilder.PlayerClassName(session));
-    }
-
-    [Fact]
-    public void PlayerClassName_PaceCarIsNeverTheClass()
-    {
-        var session = RosterOf(0,
-            new DriverEntry { CarIdx = 1, UserName = "Pace", CarClassID = 999, CarClassShortName = "Safety", CarIsPaceCar = 1 },
-            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarClassShortName = "GT4" });
-
-        Assert.Equal("GT4", StandingsBuilder.PlayerClassName(session));
-    }
-
-    [Fact]
-    public void PlayerClassName_BlankClass_IsEmptyRatherThanTheCarName()
-    {
-        var session = RosterOf(0,
-            new DriverEntry { CarIdx = 0, UserName = "Me", CarClassID = 100, CarScreenNameShort = "MX-5", CarClassShortName = "" });
-
-        Assert.Equal("", StandingsBuilder.PlayerClassName(session));
-    }
-
-    [Fact]
-    public void PlayerClassName_NoSessionOrEmptyRoster_IsEmpty()
-    {
-        Assert.Equal("", StandingsBuilder.PlayerClassName(null));
-        Assert.Equal("", StandingsBuilder.PlayerClassName(RosterOf(0)));
-    }
-
     private static SyntheticMemoryBuilder FieldVars(int cars)
     {
         var b = new SyntheticMemoryBuilder();
@@ -1743,7 +1701,7 @@ public class StandingsBuilderTests
         Assert.Equal("10", me.LapDisplay);
         Assert.Equal("1:30.000", me.BestLapDisplay);
         Assert.Equal("1:35.000", me.LastLapDisplay);
-        Assert.Equal("DRIVER 4", me.NameDisplay);
+        Assert.Equal("Driver 4", me.NameDisplay);
         Assert.True(me.IsSessionFastestLap);
         Assert.Equal("—", me.GapDisplay); // the player's own gap to themselves
     }
@@ -2398,5 +2356,19 @@ public class StandingsBuilderTests
         });
 
         Assert.All(StandingsBuilder.BuildStandings(snapshot, PenaltySession()), r => Assert.False(r.HasTireCompound));
+    }
+
+    [Theory]
+    [InlineData("Race", "RACE")]
+    [InlineData("Open Qualify", "QUALIFYING")]
+    [InlineData("Lone Qualify", "QUALIFYING")]
+    [InlineData("Practice", "PRACTICE")]
+    [InlineData("Offline Testing", "TESTING")]
+    [InlineData("Warmup", "WARMUP")]
+    [InlineData("Heat", "HEAT")]
+    [InlineData(null, "")]
+    public void SessionTypeLabel_NamesTheSessionForTheStandingsHeader(string? type, string expected)
+    {
+        Assert.Equal(expected, StandingsBuilder.SessionTypeLabel(type));
     }
 }

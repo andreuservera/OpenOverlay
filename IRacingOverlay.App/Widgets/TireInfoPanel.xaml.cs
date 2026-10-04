@@ -33,11 +33,7 @@ public partial class TireInfoPanel : UserControl
     }
 
     private static bool SameDisplay(TireCornerInfo a, TireCornerInfo b) =>
-        a.Label == b.Label
-        && a.HasPressure == b.HasPressure
-        && a.PressureDisplay == b.PressureDisplay
-        && a.PressureUnit == b.PressureUnit
-        && a.TempLeftDisplay == b.TempLeftDisplay
+        a.TempLeftDisplay == b.TempLeftDisplay
         && a.TempMiddleDisplay == b.TempMiddleDisplay
         && a.TempRightDisplay == b.TempRightDisplay
         && a.WearLeftDisplay == b.WearLeftDisplay

@@ -128,24 +128,24 @@
     <!-- In the pits: a warm band, a PIT badge, and the row's content recedes (see the row template). -->
     <SolidColorBrush x:Key="Row.Pit" Color="#1FF5A524"/>
     <sys:Double x:Key="Row.PitOpacity">0.7</sys:Double>
-    <!-- Relative: a lapped car isn't in your race, so it steps back further than a car in the pits.
-         Lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
-    <sys:Double x:Key="Row.LappedOpacity">0.55</sys:Double>
+    <!-- Relative: lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
     <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Row.LappingInk" Color="#FF6B6B"/>
 
     <!-- ===== Status badges =====
-         Short live states (PIT) as a tinted, outlined pill: the same shape as the licence chip, so
-         every badge in the product reads as one family. -->
+         Short live states (PIT) as a tinted, outlined amber tag. The last-pit chip wears the same
+         fill and edge so the two read as one family. -->
     <SolidColorBrush x:Key="Badge.WarningFill" Color="#2EF5A524"/>
-    <SolidColorBrush x:Key="Badge.WarningEdge" Color="#B3F5A524"/>
+    <SolidColorBrush x:Key="Badge.WarningEdge" Color="#D9F5A524"/>
+    <!-- 15 high on a driver-table row (3 px off the cell top and bottom): the height the flag tag
+         and the last-pit lap tab read at, so the row's tags line up. -->
     <Style x:Key="StatusBadge" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource Badge.WarningFill}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Badge.WarningEdge}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="Padding" Value="4,0"/>
-        <Setter Property="Margin" Value="6,2,0,2"/>
+        <Setter Property="Margin" Value="6,3,0,3"/>
         <Setter Property="VerticalAlignment" Value="Stretch"/>
     </Style>
     <Style x:Key="StatusBadgeText" TargetType="TextBlock">
@@ -294,6 +294,17 @@
         <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
+
+    <!-- ===== Icons =====
+         Line icons shared by the Weather and Track & session widgets, in a 24-unit box (the drop in
+         a 10 x 14 one), so the same reading always wears the same picture. Drawn with a Path set to
+         Stretch="Uniform". -->
+    <!-- Track temperature: a road in perspective, its lane dashes cut out of the surface. -->
+    <Geometry x:Key="Icon.Road">F0 M9,3 H15 L21,21 H3 Z M11.45,5 H12.55 V8 H11.45 Z M11.3,10.5 H12.7 V14 H11.3 Z M11.1,16.5 H12.9 V20 H11.1 Z</Geometry>
+    <!-- Wind: three gusts; stroked, not filled. -->
+    <Geometry x:Key="Icon.Wind">M2,8 H14 A3,3 0 1 0 11,5 M2,12 H18 A3,3 0 1 1 15,15 M2,16 H9</Geometry>
+    <!-- Humidity: a drop. -->
+    <Geometry x:Key="Icon.Drop">M5,0 C6.5,2.5 10,6.2 10,9 A5,5 0 0 1 0,9 C0,6.2 3.5,2.5 5,0 Z</Geometry>
 
     <!-- ===== Meters =====
          Gauge track + fill, shared by the fuel level and tire wear bars. -->

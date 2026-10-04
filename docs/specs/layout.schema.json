@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:openoverlay:layout:1",
+  "title": "OpenOverlay layout file, format 1",
+  "description": "What Export writes to a *.layout.json file. The app does not validate imports with this schema: it applies the same rules in code (IRacingOverlay.App/Layouts/LayoutFile.cs), with two deliberate differences. A widget whose type the app does not know is skipped with a warning, its other fields unchecked; and only formatVersion, resolution, widgets and each known widget's type, x, y and scale are required on import, the rest falling back to defaults. Config keys a widget declares sensitive never appear in an exported file.",
+  "type": "object",
+  "required": ["formatVersion", "metadata", "monitor", "resolution", "widgets"],
+  "properties": {
+    "formatVersion": { "const": 1 },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "exportedAt", "appVersion"],
+      "properties": {
+        "name": { "type": "string" },
+        "exportedAt": { "type": "string", "format": "date-time", "description": "UTC, to the second." },
+        "appVersion": { "type": "string" }
+      }
+    },
+    "monitor": {
+      "type": "object",
+      "description": "The monitor the layout was designed for. On import it is the default target if this computer has it (matched by id, then by edidId when only one monitor has it), otherwise the primary monitor.",
+      "required": ["id", "edidId", "name", "width", "height"],
+      "properties": {
+        "id": { "type": "string", "description": "Windows' monitorDevicePath from QueryDisplayConfig. Empty when unknown." },
+        "edidId": { "type": ["string", "null"], "description": "Manufacturer and product from the EDID, e.g. PHLC347." },
+        "name": { "type": "string" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "description": "The layout's canvas, in pixels. Positions are in these pixels.",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 640, "maximum": 7680 },
+        "height": { "type": "integer", "minimum": 640, "maximum": 7680 }
+      }
+    },
+    "widgets": {
+      "type": "array",
+      "description": "At most one entry per widget type, so never more entries than the app has widget types.",
+      "items": { "$ref": "#/$defs/widget" }
+    }
+  },
+  "$defs": {
+    "widget": {
+      "type": "object",
+      "required": ["type", "x", "y", "scale", "width", "height", "zIndex", "visible", "locked", "opacity", "hideOutsideCar", "config"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The widget type, e.g. Relative, Standings, Delta. A type the importing app does not know is skipped."
+        },
+        "x": { "type": "number", "description": "Left edge, in pixels of the layout's resolution." },
+        "y": { "type": "number", "description": "Top edge, in pixels of the layout's resolution." },
+        "scale": { "enum": ["XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL"] },
+        "width": { "type": "number", "minimum": 0, "description": "Measured in the editor's preview; informational only." },
+        "height": { "type": "number", "minimum": 0, "description": "Measured in the editor's preview; informational only." },
+        "zIndex": { "type": "integer" },
+        "visible": { "type": "boolean", "description": "False keeps the entry without taking over the widget when the layout opens." },
+        "locked": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "hideOutsideCar": { "type": "boolean" },
+        "config": {
+          "type": "object",
+          "description": "The widget's own options, as its page sets them. Keys that are missing, unknown or out of range are ignored when the layout is applied."
+        }
+      }
+    }
+  }
+}
