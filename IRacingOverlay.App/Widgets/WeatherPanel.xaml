@@ -40,7 +40,7 @@
         </Style>
         <!-- A card is an inset well inside the widget's frame, like the pedal trace's plot. -->
         <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource Surface.Inset}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface.Inset}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Surface.ChipBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Row}"/>

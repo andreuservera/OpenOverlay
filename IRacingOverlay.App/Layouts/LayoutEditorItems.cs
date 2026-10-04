@@ -69,7 +69,11 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
 
     public double Factor => ScaleLevels.FactorOf(_widget.Scale);
 
-    public double PanelOpacity => _widget.Opacity;
+    /// <summary>The widget's opacity as the real window applies it: to the background only, or to
+    /// the whole panel for widgets with no separate background.</summary>
+    public double PanelOpacity => WidgetCatalog.FadesWholeWidget(_widget.Type) ? _widget.Opacity : 1;
+
+    public double BackgroundOpacity => WidgetCatalog.FadesWholeWidget(_widget.Type) ? 1 : _widget.Opacity;
 
     public bool IsLocked => _widget.Locked;
 

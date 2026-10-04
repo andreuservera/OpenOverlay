@@ -145,8 +145,15 @@ public partial class WidgetPreview : UserControl
     }
 
     /// <summary>The configured value, not the edit-mode floor the window applies: the preview's job
-    /// is to answer "what will this look like while I'm racing", and that is the locked state.</summary>
-    private void ApplyOpacity() => Stage.Opacity = _slot?.Opacity ?? 1.0;
+    /// is to answer "what will this look like while I'm racing", and that is the locked state. Applied
+    /// the way the window applies it: to the background only, unless the widget has none of its own.</summary>
+    private void ApplyOpacity()
+    {
+        var opacity = _slot?.Opacity ?? 1.0;
+        var whole = _slot is { } slot && WidgetCatalog.FadesWholeWidget(slot.Key);
+        Stage.Opacity = whole ? opacity : 1.0;
+        BackgroundOpacity.SetValue(Stage, whole ? 1.0 : opacity);
+    }
 
     /// <summary>Pushes the mock state into whatever panel is on the stage. Cheap enough to call on
     /// every option change: it is one pass over at most a couple of dozen rows, against a visual

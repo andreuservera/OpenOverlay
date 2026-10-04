@@ -33,7 +33,7 @@
             <!-- The plot sits on its own inset well rather than directly on the panel: the darker
                  rounded field makes the traces read as a chart, and matches the rounded gauge
                  tracks beside it instead of being the one square-cornered element in the panel. -->
-            <Border Grid.Column="3" Margin="12,0,0,0" Background="{StaticResource Surface.Inset}" CornerRadius="{StaticResource Radius.Chip}">
+            <Border Grid.Column="3" Margin="12,0,0,0" Background="{DynamicResource Surface.Inset}" CornerRadius="{StaticResource Radius.Chip}">
                 <Grid>
                     <!-- Half-travel guide: the one reference line worth drawing, and faint. -->
                     <Rectangle Height="1" VerticalAlignment="Center" Fill="{StaticResource Surface.DividerFade}" Opacity="0.6"/>
