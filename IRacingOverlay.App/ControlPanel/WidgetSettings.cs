@@ -142,7 +142,7 @@ public static class WidgetSettings
                 }),
             new ToggleSetting(
                 "SOF per class",
-                "Each class's own strength of field in its title bar.",
+                null,
                 context.Standings.ShowClassSof,
                 value =>
                 {
@@ -156,7 +156,7 @@ public static class WidgetSettings
         .With(
             new NumberSetting(
                 "Drivers each side",
-                "Cars ahead and behind you.",
+                null,
                 context.Relative.FocusSize,
                 DriverTableOptions.MinFocusSize,
                 30,
@@ -170,7 +170,7 @@ public static class WidgetSettings
     // Bound straight in the panels, so the row goes (and the widget shrinks) without a header nudge.
     private static ToggleSetting ColumnHeadersToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
         "Show column headers",
-        "POS, DRIVER, GAP… above the table.",
+        null,
         options.ShowColumnHeaders,
         value =>
         {
@@ -204,9 +204,6 @@ public static class WidgetSettings
             TableInfoElement.SessionType => "RACE, QUALIFYING or PRACTICE.",
             TableInfoElement.Sof => "The lobby's strength of field, e.g. SOF 2.9k.",
             TableInfoElement.SessionLaps => "Current lap over total. Estimated in timed races.",
-            TableInfoElement.SessionTime => "Elapsed session time over its length.",
-            TableInfoElement.BrakeBias => "Your current setting, as the car's black box shows it.",
-            TableInfoElement.AirTemp => "With the sky as an icon.",
             _ => null,
         },
         SlotChoices,
@@ -436,9 +433,7 @@ public static class WidgetSettings
         "Default", "GT Sports", "Casual", "Hypercar", "Pit Wall", "Classic Car", "Invisible",
     ];
 
-    private static SettingsGroup CockpitThemeGroup(WidgetSettingsContext context) => new SettingsGroup(
-        "THEME",
-        "Each has its own layout and size.")
+    private static SettingsGroup CockpitThemeGroup(WidgetSettingsContext context) => new SettingsGroup("THEME")
         .With(new ChoiceSetting(
             "Cockpit theme",
             null,

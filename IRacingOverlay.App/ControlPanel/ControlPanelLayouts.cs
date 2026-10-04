@@ -244,14 +244,14 @@ public sealed partial class ControlPanelViewModel
                     openOrStatus,
                     new ActionSetting(
                         "Edit layout",
-                        "Place, size and arrange its widgets.",
+                        null,
                         "Edit",
                         () => OpenLayoutEditor(selected.Id))),
             new SettingsGroup("MANAGE")
                 .With(
                     new ActionSetting("Rename", null, "Rename", () => RenameLayout(selected.Id)),
-                    new ActionSetting("Duplicate", "A copy you can change without touching this one.", "Duplicate", () => DuplicateLayout(selected.Id)),
-                    new ActionSetting("Export", "Save it to a file, to keep or share.", "Export", () => ExportLayout(selected.Id)),
+                    new ActionSetting("Duplicate", null, "Duplicate", () => DuplicateLayout(selected.Id)),
+                    new ActionSetting("Export", null, "Export", () => ExportLayout(selected.Id)),
                     new ActionSetting("Delete", "Can't be undone.", "Delete", () => DeleteLayout(selected.Id))),
             new SettingsGroup("NEW")
                 .With(create, import),

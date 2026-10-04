@@ -246,7 +246,7 @@ public sealed partial class ControlPanelViewModel
         ActionSetting? copy = null;
         copy = new ActionSetting(
             "Copy diagnostics",
-            "A text report for a bug report.",
+            null,
             "Copy",
             () =>
             {
@@ -329,7 +329,7 @@ public sealed partial class ControlPanelViewModel
     {
         var button = new ActionSetting(
             "Second-monitor dashboard",
-            "Every panel at once.",
+            null,
             "Show dashboard",
             () => DashboardToggleRequested?.Invoke());
         if (!_buildingIndex)
