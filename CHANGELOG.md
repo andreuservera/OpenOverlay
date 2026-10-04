@@ -2,6 +2,20 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.10.0] - 2026-10-05
+
+#### Added
+- Layout shortcuts: give each layout its own hotkey, and use new ones to open or close the selected layout, switch to the next or previous one, or edit it.
+- Auto-save in the layout editor: every change is saved as you make it, so an open layout updates on screen while you edit.
+- Relative and Standings: reorder or hide columns by dragging, and place session info — session type, SOF, laps, time, temperatures, humidity, brake bias and your incidents — in any corner above or below the table.
+- Standings split by class can show each class's driver count and SOF in its title bar.
+- Pedal trace can now show gear, speed and steering, and Pedal trace, Track & session and Fuel calculator let you choose and reorder what they show.
+- Control Panel and layout editor sections can be folded, and stay as you left them.
+
+#### Fixed
+- Widgets near the bottom of the screen no longer shift up and overlap others when you open or switch layouts.
+
+
 ### [0.9.0] - 2026-10-04
 
 #### Added
