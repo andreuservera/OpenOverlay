@@ -883,25 +883,24 @@ internal static class StandingsBuilder
         }
     }
 
-    /// <summary>The category (class) the player races in, for the panel header — e.g. "GT3". Never
-    /// the car's name: iRacing leaves the class name blank for a spec series, and then so is this.</summary>
-    public static string PlayerClassName(IracingSessionInfo? session)
+    /// <summary>
+    /// The running session, as the Standings header names it: RACE, QUALIFYING or PRACTICE, then
+    /// WARMUP or TESTING; any other type in capitals, and empty when the session can't be identified.
+    /// Read from the type rather than the name, since the name is free text an event can set.
+    /// </summary>
+    public static string SessionTypeLabel(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+        SessionTypeLabel(CurrentSession.Entry(telemetry, session)?.SessionType);
+
+    internal static string SessionTypeLabel(string? type) => (type ?? "").Trim() switch
     {
-        if (session?.DriverInfo is not { } driverInfo)
-        {
-            return "";
-        }
-
-        var racing = driverInfo.Drivers.Where(d => !d.IsPaceCar).ToList();
-        if (racing.Count == 0)
-        {
-            return "";
-        }
-
-        // Spectating has no player entry: the first car's class stands in.
-        var car = racing.FirstOrDefault(d => d.CarIdx == driverInfo.DriverCarIdx) ?? racing[0];
-        return car.CarClassShortName?.Trim() ?? "";
-    }
+        "" => "",
+        var t when t.Contains("Race", StringComparison.OrdinalIgnoreCase) => "RACE",
+        var t when t.Contains("Qualify", StringComparison.OrdinalIgnoreCase) => "QUALIFYING",
+        var t when t.Contains("Practice", StringComparison.OrdinalIgnoreCase) => "PRACTICE",
+        var t when t.Contains("Warmup", StringComparison.OrdinalIgnoreCase) => "WARMUP",
+        var t when t.Contains("Testing", StringComparison.OrdinalIgnoreCase) => "TESTING",
+        var t => t.ToUpperInvariant(),
+    };
 
     private static bool IsRaceSession(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);

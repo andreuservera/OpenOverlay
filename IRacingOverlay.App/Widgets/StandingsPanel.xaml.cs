@@ -38,7 +38,7 @@ public partial class StandingsPanel : UserControl
 
     public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Standings");
 
-    public void SetSof(double sof) => SofText.Text = FormatSof(sof);
+    public void SetSof(double sof) => SofText.Text = Options.ShowSof ? FormatSof(sof) : "";
 
     /// <summary>"SOF 2.9k": thousands to one decimal, truncated rather than rounded, so 2,987 never
     /// claims to be a 3k lobby. Under 1,000 the actual SOF, as a whole number; nothing without a
@@ -56,11 +56,10 @@ public partial class StandingsPanel : UserControl
             : $"SOF {(Math.Floor(whole / 100) / 10).ToString("0.0", CultureInfo.InvariantCulture)}k";
     }
 
-    public void SetClassName(string className) =>
-        ClassNameText.Text = Options.ShowClassName ? className.ToUpperInvariant() : "";
-
-    public void SetSessionId(int subSessionId) =>
-        SessionIdText.Text = Options.ShowSessionId && subSessionId > 0 ? $"#{subSessionId}" : "";
+    /// <summary>The session type in the header. Shown under the same switch the Relative uses for
+    /// its class name, so saved settings and layouts carry over.</summary>
+    public void SetSessionType(string label) =>
+        SessionTypeText.Text = Options.ShowClassName ? label : "";
 
     public void SetProgress(SessionProgress progress)
     {

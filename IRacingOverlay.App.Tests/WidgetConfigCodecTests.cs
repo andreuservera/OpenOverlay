@@ -93,7 +93,7 @@ public sealed class WidgetConfigCodecTests
     {
         var codec = NewCodecs()[type];
         var config = codec.Read();
-        config["showSessionId"] = !(bool)config["showSessionId"]!;
+        config["showSof"] = !(bool)config["showSof"]!;
 
         codec.Apply(config);
 

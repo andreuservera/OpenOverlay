@@ -95,7 +95,7 @@ public partial class DashboardWindow : Window
 
     public void UpdateStandingsSof(double sof) => _standingsPanel.SetSof(sof);
 
-    public void UpdateStandingsClassName(string className) => _standingsPanel.SetClassName(className);
+    public void UpdateStandingsSessionType(string label) => _standingsPanel.SetSessionType(label);
 
     public void UpdateRelativeRows(IReadOnlyList<object> relative) => _relativePanel.SetRows(relative);
 

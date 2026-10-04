@@ -119,7 +119,7 @@ public static class WidgetSettings
                     context.Persist(() => DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value));
                 }),
             ClassNameToggle(context.Standings, context),
-            SessionIdToggle(context.Standings, context),
+            SofToggle(context.Standings, context),
             SessionLapsToggle(context.Standings, context),
             SessionTimeToggle(context.Standings, context));
 
@@ -136,13 +136,14 @@ public static class WidgetSettings
                 null,
                 value => SetFocusSize(context.Relative, value, context)),
             ClassNameToggle(context.Relative, context),
-            SessionIdToggle(context.Relative, context),
+            SofToggle(context.Relative, context),
             SessionLapsToggle(context.Relative, context),
             SessionTimeToggle(context.Relative, context));
 
+    // The header used to name the player's class here; same switch, so saved settings carry over.
     private static ToggleSetting ClassNameToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show category name",
-        "Your class, e.g. GT3, next to the title.",
+        "Show session type",
+        "RACE, QUALIFYING or PRACTICE, next to the title.",
         options.ShowClassName,
         value =>
         {
@@ -151,14 +152,14 @@ public static class WidgetSettings
             context.TableHeaderChanged?.Invoke(options.Table);
         });
 
-    private static ToggleSetting SessionIdToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show session number",
-        "The subsession id. iRacing doesn't report the split.",
-        options.ShowSessionId,
+    private static ToggleSetting SofToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
+        "Show SOF",
+        "The lobby's strength of field, e.g. SOF 2.9k.",
+        options.ShowSof,
         value =>
         {
-            options.ShowSessionId = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSessionId(options.Table, value));
+            options.ShowSof = value;
+            context.Persist(() => DriverTableOptionsStore.SaveSof(options.Table, value));
             context.TableHeaderChanged?.Invoke(options.Table);
         });
 

@@ -9,15 +9,14 @@
         <DockPanel>
             <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
                 <StackPanel Orientation="Horizontal">
-                    <!-- The category the player races in (e.g. GT3). Trimmed rather than allowed to
-                         push the header wider than the table beneath it. -->
-                    <TextBlock x:Name="ClassNameText" Text="" Style="{StaticResource ColumnHeader}"
+                    <!-- The session being run (RACE, QUALIFYING, PRACTICE). Trimmed rather than
+                         allowed to push the header wider than the table beneath it. -->
+                    <TextBlock x:Name="SessionTypeText" Text="" Style="{StaticResource ColumnHeader}"
                                Margin="0,0,12,0" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <!-- Session id and SOF describe the whole lobby, so they belong in the header
-                         once rather than as a column repeating itself on every row. -->
-                    <TextBlock x:Name="SessionIdText" Text="" Style="{StaticResource ColumnHeader}" Margin="0,0,10,0"/>
+                    <!-- SOF describes the whole lobby, so it belongs in the header once rather than
+                         as a column repeating itself on every row. -->
                     <TextBlock x:Name="SofText" Text="" Style="{StaticResource ColumnHeader}"/>
                 </StackPanel>
             </Grid>

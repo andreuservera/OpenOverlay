@@ -402,8 +402,4 @@ public static class PreviewData
     /// <summary>Strength of field for the header chip — the average of the mock field's iRatings,
     /// so the number the preview shows is consistent with the rows underneath it.</summary>
     public static double StrengthOfField() => Field.Average(e => e.IRating);
-
-    public static int SubSessionId => 68412907;
-
-    public static string ClassName => "GT3";
 }

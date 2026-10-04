@@ -55,8 +55,7 @@ public static class PanelFactory
                         ? StandingsBuilder.BuildMulticlassView(field, focusSize)
                         : StandingsBuilder.BuildFocusedView(field, focusSize));
                     standings.SetSof(PreviewData.StrengthOfField());
-                    standings.SetClassName(PreviewData.ClassName);
-                    standings.SetSessionId(PreviewData.SubSessionId);
+                    standings.SetSessionType("RACE");
                     standings.SetProgress(PreviewData.Progress());
                     break;
                 }
@@ -65,8 +64,8 @@ public static class PanelFactory
                 {
                     var focusSize = options.Relative?.FocusSize ?? DriverTableOptions.DefaultRelativeFocusSize;
                     relative.SetRows(PreviewData.RelativeRows(focusSize));
-                    relative.SetClassName(PreviewData.ClassName);
-                    relative.SetSessionId(PreviewData.SubSessionId);
+                    relative.SetSessionType("RACE");
+                    relative.SetSof(PreviewData.StrengthOfField());
                     relative.SetProgress(PreviewData.Progress());
                     break;
                 }

@@ -209,7 +209,7 @@ internal sealed class DriverTableConfigCodec(
             ["columns"] = columns,
             ["focusSize"] = options.FocusSize,
             ["showClassName"] = options.ShowClassName,
-            ["showSessionId"] = options.ShowSessionId,
+            ["showSof"] = options.ShowSof,
             ["showSessionLaps"] = options.ShowSessionLaps,
             ["showSessionTime"] = options.ShowSessionTime,
         };
@@ -231,7 +231,7 @@ internal sealed class DriverTableConfigCodec(
 
         Set<int>(config, "focusSize", value => options.FocusSize = value);
         Set<bool>(config, "showClassName", value => options.ShowClassName = value);
-        Set<bool>(config, "showSessionId", value => options.ShowSessionId = value);
+        Set<bool>(config, "showSof", value => options.ShowSof = value);
         Set<bool>(config, "showSessionLaps", value => options.ShowSessionLaps = value);
         Set<bool>(config, "showSessionTime", value => options.ShowSessionTime = value);
         if (HasMulticlass)
@@ -245,7 +245,7 @@ internal sealed class DriverTableConfigCodec(
         persist(options);
         // The same nudge the page gives: the header fields are otherwise only pushed on the
         // standings tick, leaving a stale value on screen for up to a second.
-        if (Changed(before, after, "showClassName") || Changed(before, after, "showSessionId"))
+        if (Changed(before, after, "showClassName") || Changed(before, after, "showSof"))
         {
             headerChanged(options.Table);
         }

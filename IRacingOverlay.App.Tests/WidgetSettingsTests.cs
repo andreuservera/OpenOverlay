@@ -72,11 +72,11 @@ public sealed class WidgetSettingsTests
         var (context, _) = NewContext(WidgetCatalog.Relative);
         var toggle = WidgetSettings.For(WidgetCatalog.Relative, context)
             .SelectMany(group => group.Items).OfType<ToggleSetting>()
-            .First(setting => setting.Label == "Show session number");
+            .First(setting => setting.Label == "Show SOF");
 
         toggle.Value = !toggle.Value;
 
-        Assert.True(context.Relative.ShowSessionId);
+        Assert.False(context.Relative.ShowSof);
         Assert.Equal(1, _changes);
     }
 
@@ -88,7 +88,7 @@ public sealed class WidgetSettingsTests
         context = context with { TableHeaderChanged = nudged.Add };
         var toggle = WidgetSettings.For(WidgetCatalog.Standings, context)
             .SelectMany(group => group.Items).OfType<ToggleSetting>()
-            .First(setting => setting.Label == "Show category name");
+            .First(setting => setting.Label == "Show session type");
 
         toggle.Value = !toggle.Value;
 

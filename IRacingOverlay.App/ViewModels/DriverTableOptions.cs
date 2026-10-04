@@ -55,8 +55,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showLastLap = true;
     private bool _showBestLap = true;
     private bool _showGap = true;
-    private bool _showSessionId;
     private bool _showClassName = true;
+    private bool _showSof = true;
     private bool _showMulticlass = true;
     private bool _showSessionLaps = true;
     private bool _showSessionTime = true;
@@ -146,22 +146,19 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         set => SetField(ref _showGap, value);
     }
 
-    /// <summary>Shows the session identifier in the panel header. Deliberately not a column: it's
-    /// one value for the whole lobby, so a column would repeat the same number on every row.
-    /// iRacing's telemetry SDK exposes no split *index* — "split 2 of 7" comes from the web API, not
-    /// the memory-mapped session YAML — so this is the subsession id, the number that identifies
-    /// which room you actually landed in.</summary>
-    public bool ShowSessionId
-    {
-        get => _showSessionId;
-        set => SetField(ref _showSessionId, value);
-    }
-
-    /// <summary>Shows the player's class (category) name next to the panel title.</summary>
+    /// <summary>Shows the session being run (RACE, QUALIFYING, PRACTICE) next to the panel title.
+    /// Named for what it first showed, the player's class, so saved settings and layouts carry over.</summary>
     public bool ShowClassName
     {
         get => _showClassName;
         set => SetField(ref _showClassName, value);
+    }
+
+    /// <summary>Shows the lobby's strength of field in the header.</summary>
+    public bool ShowSof
+    {
+        get => _showSof;
+        set => SetField(ref _showSof, value);
     }
 
     /// <summary>Standings only. Splits the widget into one block per car class, each with its own

@@ -220,6 +220,11 @@ public partial class MainWindow : Window
     // The player's racing laps, observed every tick whatever is open: the fuel calculator averages it
     // and the session clock prices a lap with it. Set up by ResetLapHistory.
     private LapLog _lapLog = null!;
+
+    // What the driver tables' headers last showed, so switching a header field back on can put it
+    // up at once instead of waiting for the next tick.
+    private string _sessionType = "";
+    private double _strengthOfField;
     private FuelCalculatorBuilder _fuelCalculatorBuilder = null!;
     // Filled on the telemetry thread, where every tick is seen: PlayerIncidents may last just one.
     private readonly IncidentReportLatch _incidentReports = new();
@@ -430,9 +435,12 @@ public partial class MainWindow : Window
         _lastCockpitFeed = null;
         _vm.TelemetryLine = "Waiting for iRacing";
 
+        _sessionType = "";
+        _strengthOfField = 0;
         Clear(WidgetCatalog.Relative, Relative, w =>
         {
             w.UpdateRows([]);
+            w.SetSof(0);
             w.SetProgress(SessionProgress.Empty);
         });
         Clear(WidgetCatalog.Standings, Standings, w =>
@@ -643,13 +651,14 @@ public partial class MainWindow : Window
                         ? StandingsBuilder.BuildMulticlassView(_latestStandings, _vm.StandingsOptions.FocusSize)
                         : StandingsBuilder.BuildFocusedView(_latestStandings, _vm.StandingsOptions.FocusSize),
                     Sof: StandingsBuilder.ComputeStrengthOfField(session),
-                    ClassName: StandingsBuilder.PlayerClassName(session)),
+                    SessionType: StandingsBuilder.SessionTypeLabel(telemetry, session)),
                 (widget, view) =>
                 {
                     widget.UpdateRows(view.Rows);
+                    _sessionType = view.SessionType;
+                    _strengthOfField = view.Sof;
                     widget.SetSof(view.Sof);
-                    widget.SetClassName(view.ClassName);
-                    widget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
+                    widget.SetSessionType(view.SessionType);
                 },
                 null);
 
@@ -657,14 +666,14 @@ public partial class MainWindow : Window
                     () => (
                         Rows: StandingsBuilder.GroupForDisplay(_latestStandings),
                         Sof: StandingsBuilder.ComputeStrengthOfField(session),
-                        ClassName: StandingsBuilder.PlayerClassName(session)),
+                        SessionType: StandingsBuilder.SessionTypeLabel(telemetry, session)),
                     out var full))
             {
                 _dashboardGuard.Run(() =>
                 {
                     dashboard.UpdateStandingsRows(full.Rows);
                     dashboard.UpdateStandingsSof(full.Sof);
-                    dashboard.UpdateStandingsClassName(full.ClassName);
+                    dashboard.UpdateStandingsSessionType(full.SessionType);
                 });
             }
         }
@@ -679,8 +688,10 @@ public partial class MainWindow : Window
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);
-                widget.SetClassName(StandingsBuilder.PlayerClassName(session));
-                widget.SetSessionId(session?.WeekendInfo?.SubSessionID ?? 0);
+                _sessionType = StandingsBuilder.SessionTypeLabel(telemetry, session);
+                _strengthOfField = StandingsBuilder.ComputeStrengthOfField(session);
+                widget.SetSessionType(_sessionType);
+                widget.SetSof(_strengthOfField);
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
 
@@ -908,24 +919,20 @@ public partial class MainWindow : Window
     /// second.</summary>
     private void PushTableHeader(DriverTable table)
     {
-        var session = _connection.Session;
-        var className = StandingsBuilder.PlayerClassName(session);
-        var subSessionId = session?.WeekendInfo?.SubSessionID ?? 0;
-
         if (table == DriverTable.Standings)
         {
             Clear(WidgetCatalog.Standings, Standings, w =>
             {
-                w.SetClassName(className);
-                w.SetSessionId(subSessionId);
+                w.SetSessionType(_sessionType);
+                w.SetSof(_strengthOfField);
             });
         }
         else
         {
             Clear(WidgetCatalog.Relative, Relative, w =>
             {
-                w.SetClassName(className);
-                w.SetSessionId(subSessionId);
+                w.SetSessionType(_sessionType);
+                w.SetSof(_strengthOfField);
             });
         }
     }

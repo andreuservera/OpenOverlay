@@ -31,11 +31,10 @@ public partial class RelativePanel : UserControl
 
     public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Relative");
 
-    public void SetClassName(string className) =>
-        ClassNameText.Text = Options.ShowClassName ? className.ToUpperInvariant() : "";
+    public void SetSessionType(string label) =>
+        SessionTypeText.Text = Options.ShowClassName ? label : "";
 
-    public void SetSessionId(int subSessionId) =>
-        SessionIdText.Text = Options.ShowSessionId && subSessionId > 0 ? $"#{subSessionId}" : "";
+    public void SetSof(double sof) => SofText.Text = Options.ShowSof ? StandingsPanel.FormatSof(sof) : "";
 
     public void SetProgress(SessionProgress progress)
     {
