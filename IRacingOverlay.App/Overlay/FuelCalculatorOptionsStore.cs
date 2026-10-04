@@ -21,7 +21,11 @@ internal static class FuelCalculatorOptionsStore
         FuelAverageSource AverageSource,
         double MarginLiters,
         double MarginLaps,
-        bool Vertical = false);
+        bool Vertical = false,
+        // Added later; files written before them keep the default order and grouping.
+        string[]? UsageOrder = null,
+        string[]? StrategyOrder = null,
+        FuelGroupOrder FirstGroup = FuelGroupOrder.Auto);
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -48,6 +52,16 @@ internal static class FuelCalculatorOptionsStore
         options.MarginLiters = saved.MarginLiters;
         options.MarginLaps = saved.MarginLaps;
         options.Vertical = saved.Vertical;
+        options.FirstGroup = saved.FirstGroup;
+        if (saved.UsageOrder is { } usage)
+        {
+            options.UsageOrder = Cells(usage);
+        }
+
+        if (saved.StrategyOrder is { } strategy)
+        {
+            options.StrategyOrder = Cells(strategy);
+        }
     }
 
     public static void Save(FuelCalculatorOptions options)
@@ -65,10 +79,18 @@ internal static class FuelCalculatorOptionsStore
             options.AverageSource,
             options.MarginLiters,
             options.MarginLaps,
-            options.Vertical);
+            options.Vertical,
+            options.UsageOrder.Select(cell => cell.ToString()).ToArray(),
+            options.StrategyOrder.Select(cell => cell.ToString()).ToArray(),
+            options.FirstGroup);
 
         SettingsFile.WriteJson(FilePath, snapshot);
     }
 
     private static Snapshot? Load() => SettingsFile.ReadJson<Snapshot>(FilePath);
+
+    private static List<FuelCell> Cells(IEnumerable<string> names) => names
+        .Select(name => Enum.TryParse<FuelCell>(name, out var cell) ? cell : (FuelCell?)null)
+        .OfType<FuelCell>()
+        .ToList();
 }

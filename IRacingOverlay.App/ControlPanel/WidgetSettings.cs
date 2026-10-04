@@ -237,21 +237,53 @@ public static class WidgetSettings
     {
         var options = context.FuelCalculator;
         return new SettingsGroup("BLOCKS")
-            .With(new ChipGroupSetting(
-                "Visible blocks",
-                null,
-                [
-                    FuelBlock("Fuel bar", options.ShowFuelBar, v => options.ShowFuelBar = v, context),
-                    FuelBlock("Remaining", options.ShowFuelRemaining, v => options.ShowFuelRemaining = v, context),
-                    FuelBlock("Last lap", options.ShowLastLap, v => options.ShowLastLap = v, context),
-                    FuelBlock("Average", options.ShowAverage, v => options.ShowAverage = v, context),
-                    FuelBlock("Minimum", options.ShowMinimum, v => options.ShowMinimum = v, context),
-                    FuelBlock("Maximum", options.ShowMaximum, v => options.ShowMaximum = v, context),
-                    FuelBlock("Laps left", options.ShowLapsRemaining, v => options.ShowLapsRemaining = v, context),
-                    FuelBlock("To finish", options.ShowFuelToFinish, v => options.ShowFuelToFinish = v, context),
-                    FuelBlock("Refuel", options.ShowRefuel, v => options.ShowRefuel = v, context),
-                ]));
+            .With(
+                new ChipGroupSetting(
+                    "Headline",
+                    null,
+                    [
+                        FuelBlock("Laps left", options.ShowLapsRemaining, v => options.ShowLapsRemaining = v, context),
+                        FuelBlock("Fuel bar", options.ShowFuelBar, v => options.ShowFuelBar = v, context),
+                    ]),
+                FuelCells("Usage", options.UsageOrder, order => options.UsageOrder = order, context),
+                FuelCells("Strategy", options.StrategyOrder, order => options.StrategyOrder = order, context),
+                new SegmentedSetting(
+                    "First group",
+                    "Auto puts usage first across and strategy first when vertical.",
+                    ["Auto", "Usage", "Strategy"],
+                    (int)options.FirstGroup,
+                    index =>
+                    {
+                        options.FirstGroup = (FuelGroupOrder)index;
+                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+                    }));
     }
+
+    /// <summary>One group of cells as a drag list, each with its switch.</summary>
+    private static ReorderListSetting FuelCells(string label, IReadOnlyList<FuelCell> order, Action<IReadOnlyList<FuelCell>> reorder, WidgetSettingsContext context)
+    {
+        var options = context.FuelCalculator;
+        return new ReorderListSetting(
+            label,
+            "Drag a row by its handle to change the order.",
+            order.Select(cell => new ReorderListItem(cell, FuelBlock(FuelCellLabel(cell), options.IsVisible(cell), v => options.SetVisible(cell, v), context))),
+            newOrder =>
+            {
+                reorder(newOrder.Cast<FuelCell>().ToList());
+                context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+            });
+    }
+
+    private static string FuelCellLabel(FuelCell cell) => cell switch
+    {
+        FuelCell.LastLap => "Last lap",
+        FuelCell.Average => "Average",
+        FuelCell.Minimum => "Minimum",
+        FuelCell.Maximum => "Maximum",
+        FuelCell.FuelRemaining => "Fuel left",
+        FuelCell.FuelToFinish => "To finish",
+        _ => "Refuel",
+    };
 
     private static ChipSetting FuelBlock(string label, bool value, Action<bool> assign, WidgetSettingsContext context) =>
         new(label, null, value, isVisible =>

@@ -451,6 +451,9 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         ["marginLaps"] = options.MarginLaps,
         ["marginLiters"] = options.MarginLiters,
         ["vertical"] = options.Vertical,
+        ["usageOrder"] = new JsonArray(options.UsageOrder.Select(cell => (JsonNode)Name(cell)).ToArray()),
+        ["strategyOrder"] = new JsonArray(options.StrategyOrder.Select(cell => (JsonNode)Name(cell)).ToArray()),
+        ["firstGroup"] = Name(options.FirstGroup),
     };
 
     protected override void Assign(JsonObject config)
@@ -468,7 +471,24 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         Set<double>(config, "marginLaps", value => options.MarginLaps = value);
         Set<double>(config, "marginLiters", value => options.MarginLiters = value);
         Set<bool>(config, "vertical", value => options.Vertical = value);
+        Set<FuelGroupOrder>(config, "firstGroup", value => options.FirstGroup = value);
+        // As the driver tables' column order: unknown names skipped, missing cells keep their place.
+        if (config["usageOrder"] is JsonArray usage)
+        {
+            options.UsageOrder = Cells(usage);
+        }
+
+        if (config["strategyOrder"] is JsonArray strategy)
+        {
+            options.StrategyOrder = Cells(strategy);
+        }
     }
+
+    private static List<FuelCell> Cells(JsonArray names) => names
+        .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+            Enum.TryParse<FuelCell>(name, ignoreCase: true, out var cell) ? cell : (FuelCell?)null)
+        .OfType<FuelCell>()
+        .ToList();
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
 }

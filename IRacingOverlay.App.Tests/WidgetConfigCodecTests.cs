@@ -17,6 +17,7 @@ public sealed class WidgetConfigCodecTests
         ["iconSize"] = typeof(WeatherGraphicSize),
         ["arrowSize"] = typeof(WeatherGraphicSize),
         ["averageSource"] = typeof(FuelAverageSource),
+        ["firstGroup"] = typeof(FuelGroupOrder),
         ["reference"] = typeof(DeltaReference),
         ["sessionTypeSlot"] = typeof(TableSlot),
         ["sofSlot"] = typeof(TableSlot),
