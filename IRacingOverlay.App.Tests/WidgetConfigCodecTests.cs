@@ -20,6 +20,12 @@ public sealed class WidgetConfigCodecTests
         ["reference"] = typeof(DeltaReference),
     };
 
+    // Integer keys that only take multiples of a step, so a test moves them by that step.
+    private static readonly Dictionary<string, int> SteppedKeys = new()
+    {
+        ["compassRefreshHz"] = WeatherOptions.CompassRefreshStepHz,
+    };
+
     private readonly List<string> _saved = [];
     private readonly List<DriverTable> _headerChanges = [];
 
@@ -163,7 +169,7 @@ public sealed class WidgetConfigCodecTests
             {
                 JsonObject nested => Modified(nested),
                 JsonValue value when value.TryGetValue<bool>(out var flag) => !flag,
-                JsonValue value when value.TryGetValue<int>(out var number) => number + 1,
+                JsonValue value when value.TryGetValue<int>(out var number) => number + SteppedKeys.GetValueOrDefault(key, 1),
                 JsonValue value when value.TryGetValue<double>(out var number) => number + 0.5,
                 JsonValue value when value.TryGetValue<string>(out var name) => NextName(EnumKeys[key], name),
                 _ => throw new InvalidOperationException($"Unexpected config value at {key}"),

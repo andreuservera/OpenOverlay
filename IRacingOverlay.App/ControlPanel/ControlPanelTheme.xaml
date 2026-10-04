@@ -914,6 +914,7 @@
                 <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center"
                         Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                         SmallChange="{Binding Step}" LargeChange="{Binding Step}"
+                        TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
                         Value="{Binding Value, Mode=TwoWay}"/>
                 <TextBlock Text="{Binding Display}" Style="{StaticResource Cp.Mono}" Width="42"
                            TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"

@@ -319,6 +319,7 @@ internal sealed class WeatherConfigCodec(WeatherOptions options, Action<WeatherO
         ["compact"] = options.Compact,
         ["iconSize"] = Name(options.IconSize),
         ["arrowSize"] = Name(options.ArrowSize),
+        ["compassRefreshHz"] = options.CompassRefreshHz,
     };
 
     protected override void Assign(JsonObject config)
@@ -335,6 +336,7 @@ internal sealed class WeatherConfigCodec(WeatherOptions options, Action<WeatherO
         Set<bool>(config, "compact", value => options.Compact = value);
         Set<WeatherGraphicSize>(config, "iconSize", value => options.IconSize = value);
         Set<WeatherGraphicSize>(config, "arrowSize", value => options.ArrowSize = value);
+        Set<int>(config, "compassRefreshHz", value => options.CompassRefreshHz = value);
     }
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);

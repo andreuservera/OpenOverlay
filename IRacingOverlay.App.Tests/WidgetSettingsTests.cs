@@ -142,6 +142,9 @@ public sealed class WidgetSettingsTests
                         ? number.IncrementCommand
                         : number.DecrementCommand).Execute(null));
                     break;
+                case SliderSetting slider:
+                    yield return new Row(slider.Label, () => slider.Value += slider.Value + slider.Step <= slider.Maximum ? slider.Step : -slider.Step);
+                    break;
                 case ChipGroupSetting chips:
                     foreach (var chip in chips.Chips)
                     {

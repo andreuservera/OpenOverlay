@@ -196,4 +196,15 @@ public class WeatherBuilderTests
         options.ShowTrackWetness = false;
         Assert.False(options.ShowRainCard);
     }
+
+    [Theory]
+    [InlineData(10, 10)]
+    [InlineData(34, 30)]
+    [InlineData(35, 40)]
+    [InlineData(0, 10)]
+    [InlineData(500, 60)]
+    public void Options_CompassRefreshSnapsToStepsOfTenBetweenTenAndSixty(int requested, int expected)
+    {
+        Assert.Equal(expected, new WeatherOptions { CompassRefreshHz = requested }.CompassRefreshHz);
+    }
 }

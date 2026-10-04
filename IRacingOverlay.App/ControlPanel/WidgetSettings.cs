@@ -321,11 +321,20 @@ public static class WidgetSettings
                     (int)options.IconSize,
                     index => SaveWeather(() => options.IconSize = (WeatherGraphicSize)index, context)),
                 new SegmentedSetting(
-                    "Wind arrow size",
+                    "Wind compass size",
                     null,
                     GraphicSizes,
                     (int)options.ArrowSize,
-                    index => SaveWeather(() => options.ArrowSize = (WeatherGraphicSize)index, context)));
+                    index => SaveWeather(() => options.ArrowSize = (WeatherGraphicSize)index, context)),
+                new SliderSetting(
+                    "Wind compass refresh",
+                    "10 Hz moves the arrow on each update; faster animates it and costs more GPU.",
+                    options.CompassRefreshHz,
+                    WeatherOptions.MinCompassRefreshHz,
+                    WeatherOptions.MaxCompassRefreshHz,
+                    WeatherOptions.CompassRefreshStepHz,
+                    value => SaveWeather(() => options.CompassRefreshHz = (int)value, context),
+                    value => $"{value:0} Hz"));
     }
 
     private static void SaveWeather(Action change, WidgetSettingsContext context)

@@ -56,15 +56,16 @@ public sealed class WindCompass : FrameworkElement
 
     public Brush CarBrush { get => (Brush)GetValue(CarBrushProperty); set => SetValue(CarBrushProperty, value); }
 
-    /// <summary>Points the dial. Null wind hides the arrow; null heading hides the compass letters.</summary>
-    public void Point(double? windFromRelativeDeg, double? headingDeg, bool animate)
+    /// <summary>Points the dial. Null wind hides the arrow; null heading hides the compass letters.
+    /// An animated turn redraws at most <paramref name="frameRate"/> times a second.</summary>
+    public void Point(double? windFromRelativeDeg, double? headingDeg, bool animate, int frameRate = 60)
     {
-        _windTarget = Aim(WindAngleProperty, _windTarget, windFromRelativeDeg, animate);
-        _compassTarget = Aim(CompassAngleProperty, _compassTarget, headingDeg is { } heading ? -heading : null, animate);
+        _windTarget = Aim(WindAngleProperty, _windTarget, windFromRelativeDeg, animate, frameRate);
+        _compassTarget = Aim(CompassAngleProperty, _compassTarget, headingDeg is { } heading ? -heading : null, animate, frameRate);
         InvalidateVisual();
     }
 
-    private double? Aim(DependencyProperty property, double? current, double? target, bool animate)
+    private double? Aim(DependencyProperty property, double? current, double? target, bool animate, int frameRate)
     {
         if (target is not { } goal)
         {
@@ -85,7 +86,9 @@ public sealed class WindCompass : FrameworkElement
         }
 
         var to = from + shortest;
-        BeginAnimation(property, new DoubleAnimation(to, Turn) { EasingFunction = Ease });
+        var turn = new DoubleAnimation(to, Turn) { EasingFunction = Ease };
+        Timeline.SetDesiredFrameRate(turn, frameRate);
+        BeginAnimation(property, turn);
         return to;
     }
 

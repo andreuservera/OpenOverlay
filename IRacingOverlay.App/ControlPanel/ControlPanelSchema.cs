@@ -314,20 +314,6 @@ public sealed partial class ControlPanelViewModel
                     CriticalRefreshStore.Save(index);
                     CriticalRefreshChanged?.Invoke(CriticalRefreshIntervalMs);
                 })),
-        new SettingsGroup(
-            "PERFORMANCE · WIND COMPASS",
-            "The Weather widget's wind arrow, which turns with your car.")
-            .With(new ChoiceSetting(
-                "Refresh rate",
-                "Fixed rates skip the animation and use less GPU.",
-                ["Smooth (animated)", "10 Hz", "5 Hz", "2 Hz", "1 Hz"],
-                _compassRefreshIndex,
-                index =>
-                {
-                    _compassRefreshIndex = index;
-                    CompassRefreshStore.Save(index);
-                    WidgetOf<WeatherWidget>(WidgetCatalog.Weather)?.SetCompassInterval(CompassRefreshIntervalMs);
-                })),
     ];
 
     private IEnumerable<SettingsGroup> DashboardPage()

@@ -33,6 +33,7 @@ public sealed class WeatherOptions : INotifyPropertyChanged
     private bool _compact;
     private WeatherGraphicSize _iconSize = WeatherGraphicSize.Medium;
     private WeatherGraphicSize _arrowSize = WeatherGraphicSize.Medium;
+    private int _compassRefreshHz = MinCompassRefreshHz;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -82,6 +83,24 @@ public sealed class WeatherOptions : INotifyPropertyChanged
     }
 
     /// <summary>The icon beside each card's value, sized to sit next to the number rather than above it.</summary>
+    public const int MinCompassRefreshHz = 10;
+    public const int MaxCompassRefreshHz = 60;
+    public const int CompassRefreshStepHz = 10;
+
+    /// <summary>
+    /// How often the wind dial redraws, 10 to 60 in steps of 10. Weather data arrives at 10 Hz, so
+    /// 10 moves the arrow on each update without animating; above that it animates between updates
+    /// at this frame rate. Faster costs more GPU. Anything else is snapped to the nearest step.
+    /// </summary>
+    public int CompassRefreshHz
+    {
+        get => _compassRefreshHz;
+        set => Set(ref _compassRefreshHz, SnapCompassRefreshHz(value));
+    }
+
+    public static int SnapCompassRefreshHz(double hz) =>
+        (int)Math.Clamp(Math.Round(hz / CompassRefreshStepHz) * CompassRefreshStepHz, MinCompassRefreshHz, MaxCompassRefreshHz);
+
     public double IconPixels => _iconSize switch
     {
         WeatherGraphicSize.Small => 24,

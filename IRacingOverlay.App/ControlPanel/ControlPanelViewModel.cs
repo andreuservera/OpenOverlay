@@ -39,7 +39,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private int _selectedMonitorIndex;
     private DashboardTheme _dashboardTheme;
     private int _criticalRefreshIndex;
-    private int _compassRefreshIndex;
     private Dictionary<NavItem, string>? _searchIndex;
 
     public ControlPanelViewModel()
@@ -55,7 +54,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
-        _compassRefreshIndex = CompassRefreshStore.Get();
         Units.SetPreference(UnitPreferenceStore.Get());
 
         // Settings with a unit (the fuel reserve) are built in the sim's units, so rebuild on a switch.
@@ -313,17 +311,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         _ => 67,
     };
 
-    /// <summary>Redraw period for the Weather wind compass; 0 = follow every update, animated.
-    /// Index order matches the labels General › Performance offers.</summary>
-    public int CompassRefreshIntervalMs => _compassRefreshIndex switch
-    {
-        0 => 0,
-        1 => 100,
-        2 => 200,
-        4 => 1000,
-        _ => 500,
-    };
-
     /// <summary>Raised when the dashboard theme changes, so the window can repaint if it's open.
     /// The choice itself is already persisted by the time this fires.</summary>
     public event Action<DashboardTheme>? DashboardThemeChanged;
@@ -403,11 +390,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.PedalTrace => new PedalTraceWidget(),
         WidgetCatalog.Incident => new IncidentWidget(),
         WidgetCatalog.TrackInfo => new TrackInfoWidget(),
-        WidgetCatalog.Weather => Configured(new WeatherWidget(), w =>
-        {
-            w.SetOptions(WeatherOptions);
-            w.SetCompassInterval(CompassRefreshIntervalMs);
-        }),
+        WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),
