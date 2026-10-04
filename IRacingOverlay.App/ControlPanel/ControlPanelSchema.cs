@@ -60,6 +60,8 @@ public sealed partial class ControlPanelViewModel
 
         foreach (var group in groups)
         {
+            group.Scope = item.Key;
+            group.KeepOpen = term.Length > 0;
             // Names every change in the activity trail after where the user made it.
             var path = $"{item.Title} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
             foreach (var setting in group.Items)

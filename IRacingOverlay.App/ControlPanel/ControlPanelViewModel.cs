@@ -94,7 +94,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         _selectedMonitorIndex = MonitorNames.Count > 1 ? 1 : 0;
 
         NavView = CollectionViewSource.GetDefaultView(NavItems);
-        NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Group)));
+        NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
 
         Select(NavItems[0]);
     }

@@ -281,6 +281,9 @@ public partial class LayoutEditorWindow : Window
         // Names each change in the activity log after where it was made, as the control panel does.
         foreach (var group in groups)
         {
+            // Same scope as the widget's page in the control panel, so a group folded there is
+            // folded here too.
+            group.Scope = type;
             var path = $"Layout editor › {item.Descriptor.Name} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
             foreach (var setting in group.Items)
             {

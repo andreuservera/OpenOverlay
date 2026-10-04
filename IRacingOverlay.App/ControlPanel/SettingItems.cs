@@ -737,17 +737,60 @@ public sealed class ReleaseSetting : SettingItem
     }
 }
 
-/// <summary>A titled block of related settings — the unit the configuration pane is built from.</summary>
-public sealed class SettingsGroup
+/// <summary>A titled block of related settings — the unit the configuration pane is built from.
+/// It can be folded shut down to its title; whether it is outlives the group, which pages rebuild
+/// freely, because it is kept per <see cref="Scope"/> and title in <see cref="CollapseStore"/>.</summary>
+public sealed class SettingsGroup : INotifyPropertyChanged
 {
+    private bool _keepOpen;
+
     public SettingsGroup(string title, string? subtitle = null)
     {
         Title = title;
         Subtitle = subtitle;
     }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public string Title { get; }
     public string? Subtitle { get; }
+
+    /// <summary>The page the group belongs to — a widget's type, so the control panel and the layout
+    /// editor fold that widget's groups together.</summary>
+    public string? Scope { get; set; }
+
+    /// <summary>Shows the group open whatever was saved: set on search results, so a match is never
+    /// hidden inside a folded group.</summary>
+    public bool KeepOpen
+    {
+        get => _keepOpen;
+        set
+        {
+            _keepOpen = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
+        }
+    }
+
+    public string CollapseKey => $"{Scope}/{Title}";
+
+    /// <summary>A group with nothing in it (a notice) has nothing to fold.</summary>
+    public bool IsCollapsible => Items.Count > 0;
+
+    public bool IsCollapsed
+    {
+        get => !KeepOpen && IsCollapsible && CollapseStore.IsCollapsed(CollapseKey);
+        set
+        {
+            if (value == IsCollapsed || !IsCollapsible)
+            {
+                return;
+            }
+
+            KeepOpen = false;
+            CollapseStore.SetCollapsed(CollapseKey, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
+        }
+    }
 
     /// <summary>Draws the title in the danger colour, for a block that asks for attention.</summary>
     public bool IsWarning { get; init; }

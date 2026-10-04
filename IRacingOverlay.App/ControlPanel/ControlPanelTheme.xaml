@@ -807,15 +807,77 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- A heading that folds what is under it: the rail's sections and every settings group. The
+         whole row is the button; the chevron at its end points down open and right folded. -->
+    <Style x:Key="Cp.SectionHeader" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="6" Padding="8,6">
+                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#1A2028"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Cp.SectionChevron" TargetType="Path">
+        <Setter Property="Data" Value="M0,0 L4,4 L0,8"/>
+        <Setter Property="Width" Value="5"/>
+        <Setter Property="Height" Value="9"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stroke" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="StrokeThickness" Value="1.6"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="StrokeLineJoin" Value="Round"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="10,0,2,0"/>
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <RotateTransform Angle="90"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A rail section folds away its pages, and stays folded next time. While searching every
+         section shows, so a match is never hidden. -->
     <Style x:Key="Cp.NavGroupStyle" TargetType="GroupItem">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="GroupItem">
                     <StackPanel>
-                        <TextBlock Text="{Binding Name}" Style="{StaticResource Cp.Eyebrow}"
-                                   Margin="19,16,0,6"/>
-                        <ItemsPresenter/>
+                        <ToggleButton Style="{StaticResource Cp.SectionHeader}" Margin="11,10,8,0"
+                                      IsChecked="{Binding Name.IsCollapsed, Mode=TwoWay}">
+                            <DockPanel>
+                                <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
+                                <TextBlock Text="{Binding Name.Title}" Style="{StaticResource Cp.Eyebrow}"/>
+                            </DockPanel>
+                        </ToggleButton>
+                        <ItemsPresenter x:Name="Pages"/>
                     </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Name.IsCollapsed}" Value="True"/>
+                                <Condition Binding="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType=ListBox}}" Value=""/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="Pages" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="Chevron" Property="RenderTransform">
+                                <Setter.Value>
+                                    <RotateTransform Angle="0"/>
+                                </Setter.Value>
+                            </Setter>
+                        </MultiDataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -1193,17 +1255,24 @@
         </ContentControl>
     </DataTemplate>
 
-    <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. -->
+    <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. The caption
+         folds the rows away (and remembers it); a group with no rows has nothing to fold. -->
     <DataTemplate DataType="{x:Type cp:SettingsGroup}">
         <Border Style="{StaticResource Cp.Card}">
             <StackPanel>
-                <StackPanel Margin="0,12,0,2">
-                    <TextBlock x:Name="GroupTitle" Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
-                               Foreground="{StaticResource Cp.Accent}"/>
-                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Cp.Hint}"
-                               Visibility="{Binding Subtitle, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
-                </StackPanel>
-                <ItemsControl ItemsSource="{Binding Items}">
+                <ToggleButton x:Name="Header" Style="{StaticResource Cp.SectionHeader}" Margin="-8,6,-8,0"
+                              IsChecked="{Binding IsCollapsed, Mode=TwoWay}">
+                    <DockPanel>
+                        <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
+                        <StackPanel>
+                            <TextBlock x:Name="GroupTitle" Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
+                                       Foreground="{StaticResource Cp.Accent}"/>
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Cp.Hint}"
+                                       Visibility="{Binding Subtitle, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </ToggleButton>
+                <ItemsControl x:Name="Rows" ItemsSource="{Binding Items}">
                     <ItemsControl.ItemContainerStyle>
                         <Style TargetType="ContentPresenter">
                             <Setter Property="Margin" Value="0"/>
@@ -1215,6 +1284,18 @@
         <DataTemplate.Triggers>
             <DataTrigger Binding="{Binding IsWarning}" Value="True">
                 <Setter TargetName="GroupTitle" Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                <Setter TargetName="Rows" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="Chevron" Property="RenderTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="0"/>
+                    </Setter.Value>
+                </Setter>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsCollapsible}" Value="False">
+                <Setter TargetName="Chevron" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="Header" Property="IsHitTestVisible" Value="False"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>

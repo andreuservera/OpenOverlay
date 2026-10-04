@@ -1,6 +1,51 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
+
+/// <summary>A heading in the rail (WIDGETS, APPLICATION, ABOUT) that can be folded to hide its
+/// pages. One instance per title, so the rail can group on it; folded or not is remembered.</summary>
+public sealed class NavSection : INotifyPropertyChanged
+{
+    private static readonly Dictionary<string, NavSection> ByTitle = [];
+
+    private NavSection(string title) => Title = title;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Title { get; }
+
+    public bool IsCollapsed
+    {
+        get => CollapseStore.IsCollapsed(Key);
+        set
+        {
+            if (value == IsCollapsed)
+            {
+                return;
+            }
+
+            CollapseStore.SetCollapsed(Key, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
+        }
+    }
+
+    private string Key => $"Rail/{Title}";
+
+    public static NavSection For(string title)
+    {
+        if (!ByTitle.TryGetValue(title, out var section))
+        {
+            section = new NavSection(title);
+            ByTitle[title] = section;
+        }
+
+        return section;
+    }
+
+    public override string ToString() => Title;
+}
 
 /// <summary>
 /// One entry in the left-hand rail, and the page it opens. Widgets and the two application-level
@@ -28,6 +73,9 @@ public sealed class NavItem
     /// <summary>Rail heading this entry files itself under. The rail groups on this value, so a new
     /// section is a new string rather than new markup.</summary>
     public string Group { get; }
+
+    /// <summary>The rail heading as an object, what the rail actually groups on so the heading can fold.</summary>
+    public NavSection Section => NavSection.For(Group);
 
     /// <summary>The widget this page configures, or null for an application-level page.</summary>
     public WidgetSlot? Widget { get; }
