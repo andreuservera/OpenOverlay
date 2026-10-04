@@ -15,6 +15,7 @@
     <SolidColorBrush x:Key="Theme.LabelForeground" Color="#FFA340"/>
     <FontFamily x:Key="Theme.FontFamily">Cascadia Mono, Consolas</FontFamily>
     <FontFamily x:Key="Theme.LabelFontFamily">Cascadia Mono SemiBold, Consolas</FontFamily>
+    <FontFamily x:Key="Theme.NameFontFamily">Cascadia Mono SemiBold, Consolas</FontFamily>
     <FontFamily x:Key="Theme.NumericFontFamily">Cascadia Mono SemiBold, Consolas</FontFamily>
     <FontFamily x:Key="Theme.DataFontFamily">Cascadia Mono, Consolas</FontFamily>
     <!-- Heavier monospace for the big gear numeral — reads like a home-built 7-segment counter. -->

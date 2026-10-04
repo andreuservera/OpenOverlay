@@ -174,8 +174,10 @@
                         <w:PenaltyFlagTag DockPanel.Dock="Right" Width="22" Height="14" Margin="6,0,0,0" VerticalAlignment="Center"
                                           Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
+                        <!-- One pixel over the body size on the same line box: mixed-case names need
+                             the extra x-height to read as quickly as the old all-caps ones. -->
                         <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NumericFontFamily}"
+                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="15"
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
 

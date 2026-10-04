@@ -62,6 +62,9 @@
                  what lets the type scale grow a step without any label getting wider. -->
             <FontFamily x:Key="Theme.LabelFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold</FontFamily>
             <FontFamily x:Key="Theme.NumericFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold, Consolas</FontFamily>
+            <!-- Driver names, in the case they were registered in: the full-width semibold cut, since
+                 mixed case at the semi-condensed width closes up lowercase counters at a glance. -->
+            <FontFamily x:Key="Theme.NameFontFamily">Bahnschrift SemiBold, Segoe UI Semibold</FontFamily>
             <FontFamily x:Key="Theme.DataFontFamily">Bahnschrift SemiCondensed, Bahnschrift, Consolas</FontFamily>
             <!-- Just for the big gear numeral — the most condensed/heaviest cut available, so the
                  single most-glanced-at character on the whole overlay is also the boldest. -->
