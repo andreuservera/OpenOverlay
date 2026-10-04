@@ -88,8 +88,9 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
         <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
     </Style>
-    <Geometry x:Key="Geometry.ArrowUp">M3.5,0 L7,4 L4.6,4 L4.6,9 L2.4,9 L2.4,4 L0,4 Z</Geometry>
-    <Geometry x:Key="Geometry.ArrowDown">M3.5,9 L7,5 L4.6,5 L4.6,0 L2.4,0 L2.4,5 L0,5 Z</Geometry>
+    <!-- iRating trend: a filled chevron (^ / v), centred in the 7 x 9 box. -->
+    <Geometry x:Key="Geometry.ArrowUp">M0,5.3 L3.5,1.8 L7,5.3 L7,7.5 L3.5,4 L0,7.5 Z</Geometry>
+    <Geometry x:Key="Geometry.ArrowDown">M0,3.7 L3.5,7.2 L7,3.7 L7,1.5 L3.5,5 L0,1.5 Z</Geometry>
     <Style x:Key="TrendArrow" TargetType="Path">
         <Setter Property="Width" Value="7"/>
         <Setter Property="Height" Value="9"/>
@@ -202,8 +203,8 @@
                         </Border>
                     </Grid>
 
-                    <!-- The tyre: a ringed compound letter in the broadcast colours, like a sidewall
-                         seen side-on. Blank when the sim doesn't say. -->
+                    <!-- The tyre: dark rubber, the compound's broadcast colour as a sidewall stripe and
+                         its letter in the middle. Blank when the sim doesn't say. -->
                     <Grid Grid.Column="4" Width="17" Height="17" HorizontalAlignment="Center" Margin="0,0,4,0"
                           Visibility="{Binding Options.ShowTireCompound, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <w:TireCompoundIcon Letter="{Binding TireCompoundLetter, Mode=OneTime}" Ink="{Binding TireCompoundColor, Mode=OneTime}"
