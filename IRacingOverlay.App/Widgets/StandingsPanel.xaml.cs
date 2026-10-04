@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
@@ -55,6 +57,7 @@ public partial class StandingsPanel : UserControl
                 [TableInfoElement.AirTemp] = AirTempField,
                 [TableInfoElement.TrackTemp] = TrackTempField,
                 [TableInfoElement.Humidity] = HumidityField,
+                [TableInfoElement.Incidents] = IncidentsField,
             });
         _bands.Follow(Options);
     }
@@ -76,7 +79,16 @@ public partial class StandingsPanel : UserControl
         AirTempText.Text = conditions.AirTempDisplay;
         TrackTempText.Text = conditions.TrackTempDisplay;
         HumidityText.Text = conditions.HumidityDisplay;
+        IncidentsText.Text = conditions.IncidentsDisplay;
+        IncidentsText.Foreground = StandingsPanel.IncidentBrush(conditions.IncidentSeverity);
     }
+
+    internal static Brush IncidentBrush(IncidentSeverity severity) => severity switch
+    {
+        IncidentSeverity.Critical => StatePalette.Critical,
+        IncidentSeverity.Warning => StatePalette.Warning,
+        _ => StatePalette.TextPrimary,
+    };
 
     public void SetProgress(SessionProgress progress)
     {

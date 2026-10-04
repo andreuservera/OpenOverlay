@@ -21,6 +21,21 @@
     <!-- Column order and widths come from DriverTableOptions.Columns (DriverTableColumnLayout):
          header and rows bind each ColumnDefinition's width and each cell's Grid.Column to it, so a
          reordered or hidden column moves in both at once. -->
+    <!-- Fastest lap of its class: a purple tile with a white stopwatch, the timing-screen mark. The
+         stopwatch is stroked on a 24-unit canvas and scaled whole, line weight included. -->
+    <SolidColorBrush x:Key="Row.FastestLapTile" Color="#7E3F98"/>
+    <Style x:Key="FastestLapBadge" TargetType="Border">
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Text.Primary}"/>
+        <Setter Property="Background" Value="{StaticResource Row.FastestLapTile}"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ToolTip" Value="Fastest lap in its class"/>
+    </Style>
+
     <!-- The delta's segment inside the iRating badge: its column (44) minus the badge's inset.
          A string because it is fed to ColumnVisibilityConverter as the width to use when visible. -->
     <sys:String x:Key="W.IRatingDeltaSegment">36</sys:String>
@@ -138,7 +153,22 @@
                         <ColumnDefinition Width="{Binding Options.Columns.Width9, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width10, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width11, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <!-- Not a column: the fastest-lap mark's slot, always last. -->
+                        <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="12"
+                          Visibility="{Binding Options.ShowFastestLapMark, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource FastestLapBadge}"
+                                Visibility="{Binding IsSessionFastestLap, Mode=OneTime, Converter={StaticResource BoolToVis}}">
+                            <Viewbox Margin="1">
+                                <Canvas Width="24" Height="24">
+                                    <Path Stroke="{StaticResource Text.Primary}" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Data="M12,6.5 A7.5,7.5 0 1 1 11.99,6.5 Z M9.5,3 L14.5,3 M12,3 L12,6.5 M18.2,6.8 L19.8,5.2 M12,14 L15,10.5"/>
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
+                    </Grid>
 
                     <TextBlock Grid.Column="{Binding Options.Columns.Position, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding PositionDisplay, Mode=OneTime}" Style="{StaticResource PrimaryCell}"
                                Foreground="{Binding PositionForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"

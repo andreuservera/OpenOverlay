@@ -143,4 +143,13 @@ public class DriverTableColumnOrderTests
             new DeltaOptions(),
             new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { }))[options.Table == DriverTable.Standings ? WidgetCatalog.Standings : WidgetCatalog.Relative];
+
+    [Fact]
+    public void OnlyStandings_HasTheFastestLapSlot()
+    {
+        Assert.True(new DriverTableOptions(DriverTable.Standings).ShowFastestLapMark);
+        Assert.True(new DriverTableOptions(DriverTable.Standings).FastestLapMarkWidth > 0);
+        Assert.False(new DriverTableOptions(DriverTable.Relative).ShowFastestLapMark);
+        Assert.Equal(0, new DriverTableOptions(DriverTable.Relative).FastestLapMarkWidth);
+    }
 }

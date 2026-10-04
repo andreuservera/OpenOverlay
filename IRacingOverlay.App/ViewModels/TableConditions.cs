@@ -5,7 +5,7 @@ namespace IRacingOverlay.App.ViewModels;
 
 /// <summary>
 /// The car and weather readings a driver table can show around itself: brake bias, air and track
-/// temperature and humidity. Each is null when the sim doesn't report it (brake bias on a car
+/// temperature, humidity and the player's incidents. Each is null when the sim doesn't report it (brake bias on a car
 /// without an adjuster), and shows as a dash rather than a confident-looking zero.
 /// </summary>
 public sealed class TableConditions
@@ -16,6 +16,8 @@ public sealed class TableConditions
     public double? HumidityPct { get; init; }
     public WeatherCondition Condition { get; init; }
     public UnitSystem UnitSystem { get; init; }
+    /// <summary>The player's incidents (the team's in a team race) and the limit; null when not reported.</summary>
+    public IncidentState? Incidents { get; init; }
 
     public static TableConditions Empty { get; } = new();
 
@@ -28,7 +30,16 @@ public sealed class TableConditions
 
     public string HumidityDisplay => HumidityPct is { } pct ? $"{pct.ToString("0", CultureInfo.InvariantCulture)}%" : "—";
 
-    public static TableConditions Build(TelemetrySnapshot telemetry) => new()
+    /// <summary>"7/17" against the limit, a bare "7" when the session has none.</summary>
+    public string IncidentsDisplay => Incidents is not { } incidents
+        ? "—"
+        : incidents.Limit is { } limit
+            ? string.Create(CultureInfo.InvariantCulture, $"{incidents.CountedTotal}/{limit}")
+            : incidents.CountedTotal.ToString(CultureInfo.InvariantCulture);
+
+    public IncidentSeverity IncidentSeverity => Incidents?.Severity ?? IncidentSeverity.Normal;
+
+    public static TableConditions Build(TelemetrySnapshot telemetry, IracingSessionInfo? session = null) => new()
     {
         BrakeBias = Read(telemetry, TelemetryVarNames.BrakeBias, -100, 100),
         AirTempC = Read(telemetry, TelemetryVarNames.AirTemp, -60, 70),
@@ -37,6 +48,9 @@ public sealed class TableConditions
         HumidityPct = Read(telemetry, TelemetryVarNames.RelativeHumidity, 0, 1) * 100,
         Condition = WeatherBuilder.Condition(telemetry),
         UnitSystem = Units.Read(telemetry),
+        Incidents = IncidentBuilder.Build(telemetry, session) is var incidents && !ReferenceEquals(incidents, IncidentState.Empty)
+            ? incidents
+            : null,
     };
 
     private string Temperature(double? celsius) => celsius is { } c

@@ -1,4 +1,5 @@
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.Sdk;
 using IRacingOverlay.Sdk.Interop;
 using IRacingOverlay.Sdk.Tests;
 
@@ -40,6 +41,33 @@ public class TableConditionsTests
         Assert.Equal("—", conditions.BrakeBiasDisplay);
         Assert.Equal("—", conditions.AirTempDisplay);
         Assert.Equal("—", conditions.HumidityDisplay);
+        Assert.Equal("—", conditions.IncidentsDisplay);
+    }
+
+    [Theory]
+    [InlineData("17", 7, 0, "7/17", IncidentSeverity.Normal)]
+    [InlineData("17", 14, 0, "14/17", IncidentSeverity.Critical)]
+    [InlineData("unlimited", 20, 0, "20", IncidentSeverity.Normal)]
+    [InlineData("17", 2, 1, "9/17", IncidentSeverity.Warning)] // team race: the team's total counts
+    public void Build_ShowsThePlayersIncidentsOverTheLimit(string limit, int mine, int teamRacing, string display, IncidentSeverity severity)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("PlayerCarMyIncidentCount", IrsdkVarType.Int);
+        builder.AddVar("PlayerCarTeamIncidentCount", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("PlayerCarMyIncidentCount", mine);
+            w.SetInt("PlayerCarTeamIncidentCount", 9);
+        });
+        var session = new IracingSessionInfo
+        {
+            WeekendInfo = new WeekendInfoSection { TeamRacing = teamRacing, WeekendOptions = new WeekendOptionsSection { IncidentLimit = limit } },
+        };
+
+        var conditions = TableConditions.Build(snapshot, session);
+
+        Assert.Equal(display, conditions.IncidentsDisplay);
+        Assert.Equal(severity, conditions.IncidentSeverity);
     }
 
     [Fact]
@@ -47,7 +75,7 @@ public class TableConditionsTests
     {
         var options = new DriverTableOptions(DriverTable.Standings);
 
-        foreach (var element in new[] { TableInfoElement.BrakeBias, TableInfoElement.AirTemp, TableInfoElement.TrackTemp, TableInfoElement.Humidity })
+        foreach (var element in new[] { TableInfoElement.BrakeBias, TableInfoElement.AirTemp, TableInfoElement.TrackTemp, TableInfoElement.Humidity, TableInfoElement.Incidents })
         {
             Assert.False(options.IsShown(element));
             Assert.False(DriverTableOptions.HasOwnSwitch(element));

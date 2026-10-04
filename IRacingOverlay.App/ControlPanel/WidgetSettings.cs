@@ -110,11 +110,11 @@ public static class WidgetSettings
             context.Persist(() => DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible));
         });
 
-    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("TABLE")
+    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("TABLE", "Which drivers to show, and what goes above and below the table.")
         .With(
             new NumberSetting(
                 "Drivers around me",
-                "Shown around your position, besides the top 3.",
+                null,
                 context.Standings.FocusSize,
                 DriverTableOptions.MinFocusSize,
                 60,
@@ -124,7 +124,7 @@ public static class WidgetSettings
                 value => SetFocusSize(context.Standings, value, context)),
             new ToggleSetting(
                 "Split by class",
-                "One block per class, each with its own top 3.",
+                null,
                 context.Standings.ShowMulticlass,
                 value =>
                 {
@@ -133,7 +133,7 @@ public static class WidgetSettings
                 }),
             new ToggleSetting(
                 "Drivers per class",
-                "A helmet and the number of drivers in each class's title bar.",
+                null,
                 context.Standings.ShowClassDrivers,
                 value =>
                 {
@@ -152,7 +152,7 @@ public static class WidgetSettings
             ColumnHeadersToggle(context.Standings, context))
         .With(InfoPlacements(context.Standings, context).ToArray());
 
-    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("TABLE")
+    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("TABLE", "How many cars to show around you, and what goes above and below the table.")
         .With(
             new NumberSetting(
                 "Drivers each side",
@@ -197,15 +197,10 @@ public static class WidgetSettings
             TableInfoElement.BrakeBias => "Brake bias",
             TableInfoElement.AirTemp => "Air temp",
             TableInfoElement.TrackTemp => "Track temp",
+            TableInfoElement.Incidents => "Incidents",
             _ => "Humidity",
         },
-        element switch
-        {
-            TableInfoElement.SessionType => "RACE, QUALIFYING or PRACTICE.",
-            TableInfoElement.Sof => "The lobby's strength of field, e.g. SOF 2.9k.",
-            TableInfoElement.SessionLaps => "Current lap over total. Estimated in timed races.",
-            _ => null,
-        },
+        null,
         SlotChoices,
         options.IsShown(element) ? (int)options.SlotOf(element) + 1 : 0,
         index =>

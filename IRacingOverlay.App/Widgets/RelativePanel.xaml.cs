@@ -49,6 +49,7 @@ public partial class RelativePanel : UserControl
                 [TableInfoElement.AirTemp] = AirTempField,
                 [TableInfoElement.TrackTemp] = TrackTempField,
                 [TableInfoElement.Humidity] = HumidityField,
+                [TableInfoElement.Incidents] = IncidentsField,
             });
         _bands.Follow(Options);
     }
@@ -67,6 +68,8 @@ public partial class RelativePanel : UserControl
         AirTempText.Text = conditions.AirTempDisplay;
         TrackTempText.Text = conditions.TrackTempDisplay;
         HumidityText.Text = conditions.HumidityDisplay;
+        IncidentsText.Text = conditions.IncidentsDisplay;
+        IncidentsText.Foreground = StandingsPanel.IncidentBrush(conditions.IncidentSeverity);
     }
 
     public void SetProgress(SessionProgress progress)

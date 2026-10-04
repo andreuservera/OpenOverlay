@@ -33,6 +33,7 @@ public enum TableInfoElement
     AirTemp,
     TrackTemp,
     Humidity,
+    Incidents,
 }
 
 /// <summary>Where a <see cref="TableInfoElement"/> sits: a corner or the middle, above or below the table.</summary>
@@ -308,6 +309,12 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
 
     /// <summary>The elements shown beyond the original four; changes whenever one is switched.</summary>
     public IReadOnlyCollection<TableInfoElement> InfoShown => _shownExtras;
+
+    /// <summary>Width of the slot after the last column where Standings marks each class's fastest
+    /// lap with a stopwatch; Relative has no such slot.</summary>
+    public double FastestLapMarkWidth => ShowFastestLapMark ? 24 : 0;
+
+    public bool ShowFastestLapMark => Table == DriverTable.Standings;
 
     /// <summary>Standings, split by class: the number of drivers in each class, with a helmet, in
     /// the class's title bar.</summary>

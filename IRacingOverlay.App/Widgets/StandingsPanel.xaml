@@ -53,6 +53,12 @@
                     <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource DataCell}"
                                FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
                 </StackPanel>
+                <!-- The player's incidents over the limit, amber and red like the Incidents widget. -->
+                <StackPanel x:Name="IncidentsField" Orientation="Horizontal" ToolTip="Incidents">
+                    <TextBlock Text="x" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="IncidentsText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
             </StackPanel>
 
             <!-- Session information above the table (see TableInfoBands): three slots, left, centre
@@ -87,6 +93,8 @@
                     <ColumnDefinition Width="{Binding Options.Columns.Width9, ElementName=Root}"/>
                     <ColumnDefinition Width="{Binding Options.Columns.Width10, ElementName=Root}"/>
                     <ColumnDefinition Width="{Binding Options.Columns.Width11, ElementName=Root}"/>
+                    <!-- Matches the rows' fastest-lap slot, so the columns stay aligned. -->
+                    <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, ElementName=Root}"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="{Binding Options.Columns.Position, ElementName=Root}" Text="POS" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>

@@ -697,12 +697,12 @@ public partial class MainWindow : Window
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
 
-        // The tables' session information: the clock, brake bias and conditions move every tick, so
+        // The tables' session information: the clock, brake bias, conditions and incidents move every tick, so
         // not on the once-a-second standings beat.
         Feed(
             WidgetCatalog.Standings,
             Standings,
-            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry)),
+            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry, session)),
             (widget, info) =>
             {
                 widget.SetProgress(info.Progress);
@@ -712,7 +712,7 @@ public partial class MainWindow : Window
         Feed(
             WidgetCatalog.Relative,
             Relative,
-            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry)),
+            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry, session)),
             (widget, info) =>
             {
                 widget.SetProgress(info.Progress);

@@ -368,6 +368,7 @@ public static class PreviewData
         HumidityPct = 54,
         Condition = WeatherCondition.PartlyCloudy,
         UnitSystem = Units.Current,
+        Incidents = new IncidentState { MyIncidentCount = 7, TeamIncidentCount = null, Limit = 17 },
     };
 
     public static TrackInfoState TrackInfo() => new()
