@@ -4,8 +4,9 @@
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <Border Style="{StaticResource OverlayPanel}" Padding="12,10">
-        <!-- Gauges and plot share one row, so each bar's 0-100 % travel lines up with the same
-             0-100 % on the trace beside it; the pedal letters sit in a row of their own below. -->
+        <!-- Gauges and plot share the full height, so each bar's 0-100 % travel lines up with the
+             same 0-100 % on the trace beside it. The bars carry their pedal's trace colour, so they
+             need no letters. -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
@@ -13,32 +14,21 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
             <Border x:Name="ThrottleTrack" Grid.Column="0" Width="20" Margin="0,0,5,0" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
                 <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" RenderTransformOrigin="0.5,1">
                     <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
                 </Rectangle>
             </Border>
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="T" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Positive}"
-                       HorizontalAlignment="Center" Margin="0,3,5,0"/>
             <Border x:Name="BrakeTrack" Grid.Column="1" Width="20" Margin="0,0,5,0" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
                 <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" RenderTransformOrigin="0.5,1">
                     <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
                 </Rectangle>
             </Border>
-            <TextBlock Grid.Row="1" Grid.Column="1" Text="B" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Critical}"
-                       HorizontalAlignment="Center" Margin="0,3,5,0"/>
             <Border x:Name="ClutchTrack" Grid.Column="2" Width="20" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
                 <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" RenderTransformOrigin="0.5,1">
                     <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
                 </Rectangle>
             </Border>
-            <TextBlock Grid.Row="1" Grid.Column="2" Text="C" Style="{StaticResource UnitLabel}" Foreground="{StaticResource State.Info}"
-                       HorizontalAlignment="Center" Margin="0,3,0,0"/>
 
             <!-- The plot sits on its own inset well rather than directly on the panel: the darker
                  rounded field makes the traces read as a chart, and matches the rounded gauge
