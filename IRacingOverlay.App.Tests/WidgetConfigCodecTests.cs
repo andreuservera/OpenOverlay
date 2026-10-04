@@ -18,6 +18,10 @@ public sealed class WidgetConfigCodecTests
         ["arrowSize"] = typeof(WeatherGraphicSize),
         ["averageSource"] = typeof(FuelAverageSource),
         ["reference"] = typeof(DeltaReference),
+        ["sessionTypeSlot"] = typeof(TableSlot),
+        ["sofSlot"] = typeof(TableSlot),
+        ["sessionLapsSlot"] = typeof(TableSlot),
+        ["sessionTimeSlot"] = typeof(TableSlot),
     };
 
     // Integer keys that only take multiples of a step, so a test moves them by that step.

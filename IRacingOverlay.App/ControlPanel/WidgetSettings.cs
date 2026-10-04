@@ -131,11 +131,8 @@ public static class WidgetSettings
                     context.Standings.ShowMulticlass = value;
                     context.Persist(() => DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value));
                 }),
-            ColumnHeadersToggle(context.Standings, context),
-            ClassNameToggle(context.Standings, context),
-            SofToggle(context.Standings, context),
-            SessionLapsToggle(context.Standings, context),
-            SessionTimeToggle(context.Standings, context));
+            ColumnHeadersToggle(context.Standings, context))
+        .With(InfoPlacements(context.Standings, context).ToArray());
 
     private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("TABLE")
         .With(
@@ -149,11 +146,8 @@ public static class WidgetSettings
                 "0",
                 null,
                 value => SetFocusSize(context.Relative, value, context)),
-            ColumnHeadersToggle(context.Relative, context),
-            ClassNameToggle(context.Relative, context),
-            SofToggle(context.Relative, context),
-            SessionLapsToggle(context.Relative, context),
-            SessionTimeToggle(context.Relative, context));
+            ColumnHeadersToggle(context.Relative, context))
+        .With(InfoPlacements(context.Relative, context).ToArray());
 
     // Bound straight in the panels, so the row goes (and the widget shrinks) without a header nudge.
     private static ToggleSetting ColumnHeadersToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
@@ -166,48 +160,59 @@ public static class WidgetSettings
             context.Persist(() => DriverTableOptionsStore.SaveColumnHeaders(options.Table, value));
         });
 
-    // The header used to name the player's class here; same switch, so saved settings carry over.
-    private static ToggleSetting ClassNameToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show session type",
-        "RACE, QUALIFYING or PRACTICE, next to the title.",
-        options.ShowClassName,
-        value =>
+    private static readonly string[] SlotChoices =
+        ["Hidden", "Top left", "Top center", "Top right", "Bottom left", "Bottom center", "Bottom right"];
+
+    /// <summary>One dropdown per piece of session information: hidden, or the slot it sits in.</summary>
+    private static IEnumerable<SettingItem> InfoPlacements(DriverTableOptions options, WidgetSettingsContext context) =>
+        Enum.GetValues<TableInfoElement>().Select(element => (SettingItem)InfoPlacement(element, options, context));
+
+    // "Hidden" keeps the slot, so showing it again puts it back where it was. The session type is
+    // still saved under the switch that once named the class, so settings and layouts carry over.
+    private static ChoiceSetting InfoPlacement(TableInfoElement element, DriverTableOptions options, WidgetSettingsContext context) => new(
+        element switch
         {
-            options.ShowClassName = value;
-            context.Persist(() => DriverTableOptionsStore.SaveClassName(options.Table, value));
+            TableInfoElement.SessionType => "Session type",
+            TableInfoElement.Sof => "SOF",
+            TableInfoElement.SessionLaps => "Session laps",
+            _ => "Session time",
+        },
+        element switch
+        {
+            TableInfoElement.SessionType => "RACE, QUALIFYING or PRACTICE.",
+            TableInfoElement.Sof => "The lobby's strength of field, e.g. SOF 2.9k.",
+            TableInfoElement.SessionLaps => "Current lap over total. Estimated in timed races.",
+            _ => "Elapsed session time over its length.",
+        },
+        SlotChoices,
+        options.IsShown(element) ? (int)options.SlotOf(element) + 1 : 0,
+        index =>
+        {
+            var shown = index > 0;
+            options.SetShown(element, shown);
+            if (shown)
+            {
+                options.SetSlot(element, (TableSlot)(index - 1));
+            }
+
+            context.Persist(() =>
+            {
+                SaveShown(element, options.Table, shown);
+                DriverTableOptionsStore.SaveInfoSlot(options.Table, element, options.SlotOf(element));
+            });
             context.TableHeaderChanged?.Invoke(options.Table);
         });
 
-    private static ToggleSetting SofToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show SOF",
-        "The lobby's strength of field, e.g. SOF 2.9k.",
-        options.ShowSof,
-        value =>
+    private static void SaveShown(TableInfoElement element, DriverTable table, bool shown)
+    {
+        switch (element)
         {
-            options.ShowSof = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSof(options.Table, value));
-            context.TableHeaderChanged?.Invoke(options.Table);
-        });
-
-    private static ToggleSetting SessionLapsToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show laps",
-        "Current lap over total. Estimated in timed races.",
-        options.ShowSessionLaps,
-        value =>
-        {
-            options.ShowSessionLaps = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSessionLaps(options.Table, value));
-        });
-
-    private static ToggleSetting SessionTimeToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show session time",
-        "Elapsed over total.",
-        options.ShowSessionTime,
-        value =>
-        {
-            options.ShowSessionTime = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSessionTime(options.Table, value));
-        });
+            case TableInfoElement.SessionType: DriverTableOptionsStore.SaveClassName(table, shown); break;
+            case TableInfoElement.Sof: DriverTableOptionsStore.SaveSof(table, shown); break;
+            case TableInfoElement.SessionLaps: DriverTableOptionsStore.SaveSessionLaps(table, shown); break;
+            default: DriverTableOptionsStore.SaveSessionTime(table, shown); break;
+        }
+    }
 
     private static void SetFocusSize(DriverTableOptions options, double value, WidgetSettingsContext context)
     {

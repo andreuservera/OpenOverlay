@@ -23,7 +23,9 @@ public partial class StandingsPanel : UserControl
     // widget's panel ever gets a different (control-panel-editable) instance.
     public static readonly DependencyProperty OptionsProperty = DependencyProperty.Register(
         nameof(Options), typeof(DriverTableOptions), typeof(StandingsPanel),
-        new PropertyMetadata(new DriverTableOptions(DriverTable.Standings)));
+        new PropertyMetadata(new DriverTableOptions(DriverTable.Standings), (d, e) => ((StandingsPanel)d)._bands?.Follow((DriverTableOptions)e.NewValue)));
+
+    private readonly TableInfoBands _bands;
 
     public DriverTableOptions Options
     {
@@ -34,11 +36,29 @@ public partial class StandingsPanel : UserControl
     public StandingsPanel()
     {
         InitializeComponent();
+        _bands = new TableInfoBands(
+            new Dictionary<TableSlot, Panel>
+            {
+                [TableSlot.TopLeft] = TopLeftSlot,
+                [TableSlot.TopCenter] = TopCenterSlot,
+                [TableSlot.TopRight] = TopRightSlot,
+                [TableSlot.BottomLeft] = BottomLeftSlot,
+                [TableSlot.BottomCenter] = BottomCenterSlot,
+                [TableSlot.BottomRight] = BottomRightSlot,
+            },
+            new Dictionary<TableInfoElement, FrameworkElement>
+            {
+                [TableInfoElement.SessionType] = SessionTypeText,
+                [TableInfoElement.Sof] = SofText,
+                [TableInfoElement.SessionLaps] = SessionLapsField,
+                [TableInfoElement.SessionTime] = SessionTimeField,
+            });
+        _bands.Follow(Options);
     }
 
     public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Standings");
 
-    public void SetSof(double sof) => SofText.Text = Options.ShowSof ? FormatSof(sof) : "";
+    public void SetSof(double sof) => SofText.Text = FormatSof(sof);
 
     /// <summary>"SOF 2.9k": thousands to one decimal, truncated rather than rounded, so 2,987 never
     /// claims to be a 3k lobby. Under 1,000 the actual SOF, as a whole number; nothing without a
@@ -56,10 +76,8 @@ public partial class StandingsPanel : UserControl
             : $"SOF {(Math.Floor(whole / 100) / 10).ToString("0.0", CultureInfo.InvariantCulture)}k";
     }
 
-    /// <summary>The session type in the header. Shown under the same switch the Relative uses for
-    /// its class name, so saved settings and layouts carry over.</summary>
-    public void SetSessionType(string label) =>
-        SessionTypeText.Text = Options.ShowClassName ? label : "";
+    /// <summary>The session type; whether and where it shows is the options' call (TableInfoBands).</summary>
+    public void SetSessionType(string label) => SessionTypeText.Text = label;
 
     public void SetProgress(SessionProgress progress)
     {

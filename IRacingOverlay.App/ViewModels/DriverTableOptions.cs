@@ -21,6 +21,27 @@ public enum DriverTableColumn
     Gap,
 }
 
+/// <summary>Session information shown around a driver table, above or below it rather than as a
+/// column. New elements go at the end, with a default slot in <see cref="DriverTableOptions"/>.</summary>
+public enum TableInfoElement
+{
+    SessionType,
+    Sof,
+    SessionLaps,
+    SessionTime,
+}
+
+/// <summary>Where a <see cref="TableInfoElement"/> sits: a corner or the middle, above or below the table.</summary>
+public enum TableSlot
+{
+    TopLeft,
+    TopCenter,
+    TopRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
 /// <summary>Which table a settings instance belongs to. Also the prefix its values are stored
 /// under, so the two widgets configure independently.</summary>
 public enum DriverTable
@@ -63,6 +84,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showSessionTime = true;
     private int _focusSize;
     private IReadOnlyList<DriverTableColumn> _columnOrder = DriverTableColumnLayout.DefaultOrder;
+    private readonly Dictionary<TableInfoElement, TableSlot> _infoSlots = Enum.GetValues<TableInfoElement>()
+        .ToDictionary(element => element, DefaultSlot);
     private DriverTableColumnLayout? _columns;
 
     public DriverTableOptions(DriverTable table)
@@ -204,7 +227,59 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         }
     }
 
-    public bool ShowFooter => _showSessionLaps || _showSessionTime;
+    /// <summary>Whether anything is shown above / below the table, so an empty band takes no room.</summary>
+    public bool ShowTopInfo => Enum.GetValues<TableInfoElement>().Any(element => IsShown(element) && !IsBottom(SlotOf(element)));
+
+    public bool ShowFooter => Enum.GetValues<TableInfoElement>().Any(element => IsShown(element) && IsBottom(SlotOf(element)));
+
+    /// <summary>Where each element went before it could be moved: the session type and the laps on
+    /// the left, the SOF and the clock on the right.</summary>
+    public static TableSlot DefaultSlot(TableInfoElement element) => element switch
+    {
+        TableInfoElement.SessionType => TableSlot.TopLeft,
+        TableInfoElement.Sof => TableSlot.TopRight,
+        TableInfoElement.SessionLaps => TableSlot.BottomLeft,
+        _ => TableSlot.BottomRight,
+    };
+
+    public static bool IsBottom(TableSlot slot) => slot >= TableSlot.BottomLeft;
+
+    public TableSlot SlotOf(TableInfoElement element) => _infoSlots[element];
+
+    public void SetSlot(TableInfoElement element, TableSlot slot)
+    {
+        if (!Enum.IsDefined(slot) || _infoSlots[element] == slot)
+        {
+            return;
+        }
+
+        _infoSlots[element] = slot;
+        OnPropertyChanged(nameof(InfoSlots));
+        OnPropertyChanged(nameof(ShowTopInfo));
+        OnPropertyChanged(nameof(ShowFooter));
+    }
+
+    /// <summary>Every element's slot; changes (as a whole) whenever an element moves.</summary>
+    public IReadOnlyDictionary<TableInfoElement, TableSlot> InfoSlots => _infoSlots;
+
+    public bool IsShown(TableInfoElement element) => element switch
+    {
+        TableInfoElement.SessionType => ShowClassName,
+        TableInfoElement.Sof => ShowSof,
+        TableInfoElement.SessionLaps => ShowSessionLaps,
+        _ => ShowSessionTime,
+    };
+
+    public void SetShown(TableInfoElement element, bool shown)
+    {
+        switch (element)
+        {
+            case TableInfoElement.SessionType: ShowClassName = shown; break;
+            case TableInfoElement.Sof: ShowSof = shown; break;
+            case TableInfoElement.SessionLaps: ShowSessionLaps = shown; break;
+            default: ShowSessionTime = shown; break;
+        }
+    }
 
     /// <summary>How much of the field to show around the player. Standings reads it as the total
     /// size of the block below the pinned podium; Relative reads it as the number of cars on each
@@ -294,9 +369,12 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
 
         field = value;
         OnPropertyChanged(propertyName);
-        // A column switched on or off changes the widths the grid is laid out with.
+        // A column switched on or off changes the widths the grid is laid out with, and an element
+        // shown or hidden can empty or fill the band above or below the table.
         _columns = null;
         OnPropertyChanged(nameof(Columns));
+        OnPropertyChanged(nameof(ShowTopInfo));
+        OnPropertyChanged(nameof(ShowFooter));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>

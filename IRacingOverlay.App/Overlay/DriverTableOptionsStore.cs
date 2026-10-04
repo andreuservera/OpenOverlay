@@ -18,6 +18,8 @@ internal static class DriverTableOptionsStore
     // Each column's place in the order, under "Order.<Column>": the file holds ints, so the order
     // is kept as one index per column rather than as a list.
     private const string OrderKeyPrefix = "Order.";
+    // Where each piece of session information sits around the table, under "Slot.<Element>".
+    private const string SlotKeyPrefix = "Slot.";
     private const string ShowSessionTimeKey = "ShowSessionTime";
 
     private static readonly string FilePath = Path.Combine(
@@ -51,6 +53,9 @@ internal static class DriverTableOptionsStore
 
     public static void SaveFocusSize(DriverTable table, int value) => Set(table, FocusSizeKey, value);
 
+    public static void SaveInfoSlot(DriverTable table, TableInfoElement element, TableSlot slot) =>
+        Set(table, SlotKeyPrefix + element, (int)slot);
+
     public static void SaveColumnOrder(DriverTable table, IReadOnlyList<DriverTableColumn> order)
     {
         Load();
@@ -76,6 +81,11 @@ internal static class DriverTableOptionsStore
         _cache[Key(options.Table, ShowSessionTimeKey)] = options.ShowSessionTime ? 1 : 0;
         _cache[Key(options.Table, FocusSizeKey)] = options.FocusSize;
         WriteOrder(options.Table, options.ColumnOrder);
+        foreach (var element in Enum.GetValues<TableInfoElement>())
+        {
+            _cache[Key(options.Table, SlotKeyPrefix + element)] = (int)options.SlotOf(element);
+        }
+
         SettingsFile.WriteJson(FilePath, _cache);
     }
 
@@ -97,6 +107,11 @@ internal static class DriverTableOptionsStore
         options.ShowSessionLaps = Get(options.Table, ShowSessionLapsKey, 1) != 0;
         options.ShowSessionTime = Get(options.Table, ShowSessionTimeKey, 1) != 0;
         options.ColumnOrder = ReadOrder(options.Table);
+        foreach (var element in Enum.GetValues<TableInfoElement>())
+        {
+            options.SetSlot(element, (TableSlot)Get(options.Table, SlotKeyPrefix + element, (int)DriverTableOptions.DefaultSlot(element)));
+        }
+
         options.FocusSize = Get(options.Table, FocusSizeKey, options.Table == DriverTable.Standings
             ? DriverTableOptions.DefaultStandingsFocusSize
             : DriverTableOptions.DefaultRelativeFocusSize);

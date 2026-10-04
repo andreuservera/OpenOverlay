@@ -70,11 +70,11 @@ public sealed class WidgetSettingsTests
     public void HeaderToggles_DoNotNudgeAnyLiveWidget_WhenThereIsNone()
     {
         var (context, _) = NewContext(WidgetCatalog.Relative);
-        var toggle = WidgetSettings.For(WidgetCatalog.Relative, context)
-            .SelectMany(group => group.Items).OfType<ToggleSetting>()
-            .First(setting => setting.Label == "Show SOF");
+        var placement = WidgetSettings.For(WidgetCatalog.Relative, context)
+            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
+            .First(setting => setting.Label == "SOF");
 
-        toggle.Value = !toggle.Value;
+        placement.SelectedIndex = 0; // Hidden
 
         Assert.False(context.Relative.ShowSof);
         Assert.Equal(1, _changes);
@@ -86,11 +86,11 @@ public sealed class WidgetSettingsTests
         var nudged = new List<DriverTable>();
         var (context, _) = NewContext();
         context = context with { TableHeaderChanged = nudged.Add };
-        var toggle = WidgetSettings.For(WidgetCatalog.Standings, context)
-            .SelectMany(group => group.Items).OfType<ToggleSetting>()
-            .First(setting => setting.Label == "Show session type");
+        var placement = WidgetSettings.For(WidgetCatalog.Standings, context)
+            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
+            .First(setting => setting.Label == "Session type");
 
-        toggle.Value = !toggle.Value;
+        placement.SelectedIndex = 0; // Hidden
 
         Assert.Equal([DriverTable.Standings], nudged);
     }

@@ -7,15 +7,39 @@
          which rows the builder hands them. -->
     <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
         <DockPanel>
-            <Grid DockPanel.Dock="Top" Margin="0,0,0,7">
-                <StackPanel Orientation="Horizontal">
-                    <!-- The session being run (RACE, QUALIFYING, PRACTICE). -->
-                    <TextBlock x:Name="SessionTypeText" Text="" Style="{StaticResource ColumnHeader}"
-                               Margin="0,0,12,0" TextTrimming="CharacterEllipsis"/>
+            <!-- The session information itself: kept here, collapsed, until TableInfoBands moves each
+                 element into the slot the options give it. -->
+            <StackPanel x:Name="InfoHolder" DockPanel.Dock="Top" Visibility="Collapsed">
+                <!-- The session being run (RACE, QUALIFYING, PRACTICE). Trimmed rather than allowed
+                     to push the band wider than the table. -->
+                <TextBlock x:Name="SessionTypeText" Text="" Style="{StaticResource ColumnHeader}" TextTrimming="CharacterEllipsis"/>
+                <!-- SOF describes the whole lobby, so it belongs here once rather than as a column. -->
+                <TextBlock x:Name="SofText" Text="" Style="{StaticResource ColumnHeader}"/>
+                <StackPanel x:Name="SessionLapsField" Orientation="Horizontal">
+                    <TextBlock Text="LAP" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="SessionLapsText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock x:Name="SofText" Text="" Style="{StaticResource ColumnHeader}"/>
+                <StackPanel x:Name="SessionTimeField" Orientation="Horizontal">
+                    <TextBlock Text="TIME" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="SessionTimeText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
                 </StackPanel>
+            </StackPanel>
+
+            <!-- Session information above the table (see TableInfoBands): three slots, left, centre
+                 and right, each holding whatever the options put there. The band takes no room when
+                 nothing is in it. -->
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,7"
+                  Visibility="{Binding Options.ShowTopInfo, ElementName=Root, Converter={StaticResource BoolToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel x:Name="TopLeftSlot" Orientation="Horizontal" HorizontalAlignment="Left"/>
+                <StackPanel x:Name="TopCenterSlot" Grid.Column="1" Orientation="Horizontal" Margin="12,0"/>
+                <StackPanel x:Name="TopRightSlot" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"/>
             </Grid>
 
             <!-- The column names. Collapsed when switched off, which takes its height out of the
@@ -65,22 +89,19 @@
             <!-- Session progress: one value each for the whole field, so a footer rather than a
                  column — the player's lap out of the race's laps (estimated from their pace in a
                  timed race) and the clock. Docked before the rows so it never scrolls with them. -->
+            <!-- And below it, under a hairline; the same three slots. -->
             <Grid DockPanel.Dock="Bottom" Margin="0,5,0,0"
                   Visibility="{Binding Options.ShowFooter, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <Border Height="1" VerticalAlignment="Top" Background="{StaticResource Surface.DividerFade}"/>
                 <Grid Margin="8,6,4,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,18,0"
-                                Visibility="{Binding Options.ShowSessionLaps, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="LAP" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="SessionLapsText" Text="—" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
-                                Visibility="{Binding Options.ShowSessionTime, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="TIME" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
-                        <TextBlock x:Name="SessionTimeText" Text="—" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
-                    </StackPanel>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel x:Name="BottomLeftSlot" Orientation="Horizontal" HorizontalAlignment="Left"/>
+                    <StackPanel x:Name="BottomCenterSlot" Grid.Column="1" Orientation="Horizontal" Margin="12,0"/>
+                    <StackPanel x:Name="BottomRightSlot" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"/>
                 </Grid>
             </Grid>
 

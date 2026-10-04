@@ -212,6 +212,10 @@ internal sealed class DriverTableConfigCodec(
             ["showClassName"] = options.ShowClassName,
             ["showSof"] = options.ShowSof,
             ["showColumnHeaders"] = options.ShowColumnHeaders,
+            ["sessionTypeSlot"] = Name(options.SlotOf(TableInfoElement.SessionType)),
+            ["sofSlot"] = Name(options.SlotOf(TableInfoElement.Sof)),
+            ["sessionLapsSlot"] = Name(options.SlotOf(TableInfoElement.SessionLaps)),
+            ["sessionTimeSlot"] = Name(options.SlotOf(TableInfoElement.SessionTime)),
             ["showSessionLaps"] = options.ShowSessionLaps,
             ["showSessionTime"] = options.ShowSessionTime,
         };
@@ -246,6 +250,10 @@ internal sealed class DriverTableConfigCodec(
         Set<bool>(config, "showClassName", value => options.ShowClassName = value);
         Set<bool>(config, "showSof", value => options.ShowSof = value);
         Set<bool>(config, "showColumnHeaders", value => options.ShowColumnHeaders = value);
+        Set<TableSlot>(config, "sessionTypeSlot", slot => options.SetSlot(TableInfoElement.SessionType, slot));
+        Set<TableSlot>(config, "sofSlot", slot => options.SetSlot(TableInfoElement.Sof, slot));
+        Set<TableSlot>(config, "sessionLapsSlot", slot => options.SetSlot(TableInfoElement.SessionLaps, slot));
+        Set<TableSlot>(config, "sessionTimeSlot", slot => options.SetSlot(TableInfoElement.SessionTime, slot));
         Set<bool>(config, "showSessionLaps", value => options.ShowSessionLaps = value);
         Set<bool>(config, "showSessionTime", value => options.ShowSessionTime = value);
         if (HasMulticlass)
