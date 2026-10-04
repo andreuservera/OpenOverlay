@@ -62,4 +62,17 @@ public class HotkeyTests
         Assert.Equal(new Hotkey(ModifierKeys.Control, Key.F1), new Hotkey(ModifierKeys.Control, Key.F1));
         Assert.NotEqual(new Hotkey(ModifierKeys.Control, Key.F1), new Hotkey(ModifierKeys.Alt, Key.F1));
     }
+
+    [Fact]
+    public void LayoutActions_StartUnassigned_AndALayoutsOwnActionRoundTripsItsId()
+    {
+        Assert.All(HotkeyActions.Layouts, action => Assert.Null(HotkeyDefaults.For(action).Hotkey));
+        Assert.Empty(HotkeyActions.Layouts.Intersect(HotkeyActions.Global));
+
+        var id = Guid.NewGuid();
+        Assert.True(HotkeyActions.TryGetLayout(HotkeyActions.OpenLayout(id), out var parsed));
+        Assert.Equal(id, parsed);
+        Assert.False(HotkeyActions.TryGetLayout(HotkeyActions.ToggleWidget("Standings"), out _));
+        Assert.False(HotkeyActions.TryGetLayout("OpenLayout.not-a-guid", out _));
+    }
 }

@@ -358,6 +358,8 @@ public partial class MainWindow : Window
             }
         };
         _vm.ControlPanelToggleRequested += ToggleControlPanel;
+        // A layout switched to by shortcut is announced from the tray: the sim has the screen.
+        _vm.LayoutSwitchedNotice += (title, text) => _tray?.ShowNotice(title, text);
 
         _tray = new TrayIcon();
         _tray.OpenRequested += RestoreFromTray;

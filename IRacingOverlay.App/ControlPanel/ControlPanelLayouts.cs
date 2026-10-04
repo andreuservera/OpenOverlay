@@ -29,6 +29,11 @@ public sealed partial class ControlPanelViewModel
     private IReadOnlyList<LayoutChoice>? _layoutChoices;
     private RelayCommand? _toggleLayout;
     private RelayCommand? _goToLayouts;
+    private string _layoutHotkeySignature = "";
+
+    /// <summary>A short message to show outside the control panel (title, text): a layout switched
+    /// to by shortcut, while the sim has the screen.</summary>
+    public event Action<string, string>? LayoutSwitchedNotice;
 
     // Created on first use: nothing about layouts should cost anything until the page is opened.
     internal LayoutStore LayoutStore => _layoutStore ??= new LayoutStore();
@@ -252,6 +257,7 @@ public sealed partial class ControlPanelViewModel
                     new ActionSetting("Rename", null, "Rename", () => RenameLayout(selected.Id)),
                     new ActionSetting("Duplicate", null, "Duplicate", () => DuplicateLayout(selected.Id)),
                     new ActionSetting("Export", null, "Export", () => ExportLayout(selected.Id)),
+                    LayoutShortcut(selected),
                     new ActionSetting("Delete", "Can't be undone.", "Delete", () => DeleteLayout(selected.Id))),
             new SettingsGroup("NEW")
                 .With(create, import),
@@ -661,8 +667,10 @@ public sealed partial class ControlPanelViewModel
     /// change is not torn down inside its own event.</summary>
     private void RefreshLayoutsPage()
     {
-        // Every change to the saved layouts comes through here, so the toolbar's list follows too.
+        // Every change to the saved layouts comes through here, so the toolbar's list follows too,
+        // and so do the layouts' shortcuts (one deleted takes its shortcut with it).
         RefreshLayoutChoices();
+        SyncLayoutHotkeys();
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
             if (Selected?.Key == LayoutsPageKey)
@@ -670,6 +678,115 @@ public sealed partial class ControlPanelViewModel
                 BuildSettings(Selected);
             }
         });
+    }
+    // ===== Shortcuts =====
+
+    private IEnumerable<HotkeyBinding> LayoutHotkeyBindings() =>
+        LayoutStore.List()
+            .Where(layout => layout.Hotkey is not null)
+            .Select(layout => new HotkeyBinding(HotkeyActions.OpenLayout(layout.Id), layout.Hotkey, layout.HotkeyEnabled));
+
+    /// <summary>Registers the layouts' shortcuts again if any changed. Saves of a layout's content
+    /// (the editor auto-saving as you go) leave them alone, so nothing is registered for those.</summary>
+    private void SyncLayoutHotkeys()
+    {
+        var signature = string.Join(";", LayoutHotkeyBindings().Select(b => $"{b.Action}={b.Hotkey?.Display}:{b.Enabled}"));
+        if (signature == _layoutHotkeySignature)
+        {
+            return;
+        }
+
+        _layoutHotkeySignature = signature;
+        HotkeysChanged?.Invoke();
+    }
+
+    /// <summary>The layout's own shortcut, on its Layouts page.</summary>
+    private HotkeySetting LayoutShortcut(Layout layout)
+    {
+        var id = layout.Id;
+        var action = HotkeyActions.OpenLayout(id);
+        var setting = new HotkeySetting(
+            "Shortcut",
+            "Opens this layout, or closes it if it's open.",
+            layout.Hotkey,
+            layout.HotkeyEnabled,
+            hotkey =>
+            {
+                if (TakenBy(action, hotkey) is { } taken)
+                {
+                    return taken;
+                }
+
+                LayoutStore.SetHotkey(id, hotkey, LayoutStore.Get(id)?.HotkeyEnabled ?? true);
+                SyncLayoutHotkeys();
+                return null;
+            },
+            enabled =>
+            {
+                LayoutStore.SetHotkey(id, LayoutStore.Get(id)?.Hotkey, enabled);
+                SyncLayoutHotkeys();
+            },
+            SetHotkeyRecording);
+        setting.SetStatus(_hotkeyFailures.Contains(action) ? HotkeyTakenMessage : null);
+        if (!_buildingIndex)
+        {
+            _hotkeySettings[action] = setting;
+        }
+
+        return setting;
+    }
+
+    /// <summary>A layout's own shortcut: opens it, switching from any other, or closes it if it's open.</summary>
+    private void ToggleLayoutById(Guid id)
+    {
+        if (LayoutStore.Open?.LayoutId == id)
+        {
+            CloseLayout();
+        }
+        else
+        {
+            OpenLayout(id);
+        }
+    }
+
+    /// <summary>Next or previous layout in the list, switched to directly, wrapping round. From the
+    /// open layout; with none open, the one chosen in the toolbar opens.</summary>
+    private void CycleLayout(int step)
+    {
+        var layouts = LayoutStore.List().ToList();
+        if (layouts.Count == 0)
+        {
+            return;
+        }
+
+        Guid target;
+        if (LayoutStore.Open is { } open && layouts.FindIndex(layout => layout.Id == open.LayoutId) is var index and >= 0)
+        {
+            target = layouts[(index + step + layouts.Count) % layouts.Count].Id;
+        }
+        else if (ToolbarLayout is { } chosen)
+        {
+            target = chosen.Id;
+        }
+        else
+        {
+            return;
+        }
+
+        OpenLayout(target);
+        if (LayoutStore.Open?.LayoutId == target)
+        {
+            LayoutSwitchedNotice?.Invoke("Layout", $"\"{OpenLayoutName}\" is open.");
+        }
+    }
+
+    /// <summary>The editor on the open layout, or on the one chosen in the toolbar.</summary>
+    private void EditCurrentLayout()
+    {
+        if ((LayoutStore.Open?.LayoutId ?? ToolbarLayout?.Id) is { } id)
+        {
+            OpenLayoutEditor(id);
+        }
     }
 }
 

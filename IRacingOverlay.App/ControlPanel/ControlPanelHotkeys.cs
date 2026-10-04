@@ -18,7 +18,8 @@ public sealed partial class ControlPanelViewModel
     private bool _hotkeyRecording;
     private bool _overlaysHidden;
 
-    public IReadOnlyList<HotkeyBinding> Hotkeys => _hotkeys;
+    /// <summary>Every binding to register: the saved actions, and each layout's own shortcut.</summary>
+    public IReadOnlyList<HotkeyBinding> Hotkeys => [.. _hotkeys, .. LayoutHotkeyBindings()];
 
     /// <summary>Bindings changed and need registering again.</summary>
     public event Action? HotkeysChanged;
@@ -53,7 +54,13 @@ public sealed partial class ControlPanelViewModel
 
     public void Execute(string action)
     {
-        AppLog.Activity("Hotkeys", $"Pressed: {Describe(action)}");
+        AppLog.Activity("Hotkeys", $"Pressed: {DescribeAction(action)}");
+        if (HotkeyActions.TryGetLayout(action, out var layoutId))
+        {
+            ToggleLayoutById(layoutId);
+            return;
+        }
+
         if (HotkeyActions.TryGetWidget(action, out var widgetKey))
         {
             // Same switch as the widget's own toggle in the rail, so the two can never disagree.
@@ -81,6 +88,18 @@ public sealed partial class ControlPanelViewModel
                 break;
             case HotkeyActions.RestartOverlays:
                 RestartOverlays();
+                break;
+            case HotkeyActions.ToggleLayout:
+                ToggleLayoutCommand.Execute(null);
+                break;
+            case HotkeyActions.NextLayout:
+                CycleLayout(+1);
+                break;
+            case HotkeyActions.PreviousLayout:
+                CycleLayout(-1);
+                break;
+            case HotkeyActions.EditLayout:
+                EditCurrentLayout();
                 break;
         }
     }
@@ -111,7 +130,7 @@ public sealed partial class ControlPanelViewModel
         _hotkeyFailures = failed;
         if (failed.Count > 0)
         {
-            AppLog.Warn("Hotkeys", $"Windows refused {failed.Count} shortcut(s): {string.Join(", ", failed.Select(Describe))}");
+            AppLog.Warn("Hotkeys", $"Windows refused {failed.Count} shortcut(s): {string.Join(", ", failed.Select(DescribeAction))}");
         }
 
         foreach (var (action, setting) in _hotkeySettings)
@@ -134,9 +153,19 @@ public sealed partial class ControlPanelViewModel
             HotkeyActions.ToggleEditMode => "Lock / unlock widgets",
             HotkeyActions.ToggleControlPanel => "Show / hide Control Panel",
             HotkeyActions.RestartOverlays => "Restart overlays",
+            HotkeyActions.ToggleLayout => "Open / close layout",
+            HotkeyActions.NextLayout => "Next layout",
+            HotkeyActions.PreviousLayout => "Previous layout",
+            HotkeyActions.EditLayout => "Edit layout",
             _ => "Reset overlay positions",
         };
     }
+
+    /// <summary><see cref="Describe"/>, plus a layout's own shortcut, which needs the layout's name.</summary>
+    private string DescribeAction(string action) =>
+        HotkeyActions.TryGetLayout(action, out var id)
+            ? $"Open / close layout \"{LayoutStore.Get(id)?.Name ?? "deleted layout"}\""
+            : Describe(action);
 
     private static string? HintFor(string action) => action switch
     {
@@ -144,11 +173,17 @@ public sealed partial class ControlPanelViewModel
         HotkeyActions.ToggleControlPanel => null,
         HotkeyActions.RestartOverlays => "Clears rendering glitches.",
         HotkeyActions.ResetLayout => "Off by default.",
+        HotkeyActions.ToggleLayout => "The layout chosen in the toolbar.",
+        HotkeyActions.NextLayout => "Switches straight to it; a notice names it.",
+        HotkeyActions.PreviousLayout => "Switches straight to it; a notice names it.",
+        HotkeyActions.EditLayout => "The open layout, or the one chosen in the toolbar.",
         _ => null,
     };
 
     private static IEnumerable<string> AllHotkeyActions() =>
-        HotkeyActions.Global.Concat(WidgetCatalog.All.Select(d => HotkeyActions.ToggleWidget(d.Key)));
+        HotkeyActions.Global
+            .Concat(HotkeyActions.Layouts)
+            .Concat(WidgetCatalog.All.Select(d => HotkeyActions.ToggleWidget(d.Key)));
 
     private IEnumerable<SettingsGroup> HotkeyGroups()
     {
@@ -162,6 +197,7 @@ public sealed partial class ControlPanelViewModel
         var global = new SettingsGroup(
             "HOTKEYS",
             "Work in any app. Click a shortcut and press new keys; Esc cancels. Avoid keys iRacing uses.");
+        var layouts = new SettingsGroup("HOTKEYS · LAYOUTS", "Each layout's own shortcut is set on the Layouts page.");
         var widgets = new SettingsGroup("HOTKEYS · WIDGETS");
         foreach (var binding in _hotkeys)
         {
@@ -179,12 +215,15 @@ public sealed partial class ControlPanelViewModel
             {
                 _hotkeySettings[action] = setting;
             }
-            (HotkeyActions.TryGetWidget(action, out _) ? widgets : global).Items.Add(setting);
+            (HotkeyActions.TryGetWidget(action, out _) ? widgets
+                : HotkeyActions.Layouts.Contains(action) ? layouts
+                : global).Items.Add(setting);
         }
 
         return
         [
             global,
+            layouts,
             widgets,
             new SettingsGroup("HOTKEYS · RESET")
                 .With(
@@ -204,14 +243,21 @@ public sealed partial class ControlPanelViewModel
     /// <summary>Refuses a combination another action already has; null means it was taken.</summary>
     private string? AssignHotkey(string action, Hotkey? hotkey)
     {
-        if (hotkey is not null && _hotkeys.FirstOrDefault(b => b.Action != action && b.Hotkey == hotkey) is { } other)
+        if (TakenBy(action, hotkey) is { } taken)
         {
-            return $"Already used by \"{Describe(other.Action)}\".";
+            return taken;
         }
 
         UpdateHotkey(action, b => b with { Hotkey = hotkey });
         return null;
     }
+
+    /// <summary>Why <paramref name="hotkey"/> can't go to <paramref name="action"/> — another action
+    /// or layout has it — or null if it can.</summary>
+    private string? TakenBy(string action, Hotkey? hotkey) =>
+        hotkey is not null && Hotkeys.FirstOrDefault(b => b.Action != action && b.Hotkey == hotkey) is { } other
+            ? $"Already used by \"{DescribeAction(other.Action)}\"."
+            : null;
 
     private void UpdateHotkey(string action, Func<HotkeyBinding, HotkeyBinding> change)
     {

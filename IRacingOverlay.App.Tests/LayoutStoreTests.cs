@@ -22,6 +22,51 @@ public sealed class LayoutStoreTests : IDisposable
 
     private LayoutStore NewStore() => new(FilePath);
 
+    private static readonly Hotkey CtrlShiftOne = new(System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift, System.Windows.Input.Key.D1);
+
+    [Fact]
+    public void LayoutShortcut_IsSavedAndReloaded()
+    {
+        var store = NewStore();
+        var race = store.Create("Race", Ultrawide, 3440, 1440);
+
+        Assert.True(store.SetHotkey(race.Id, CtrlShiftOne, enabled: false));
+
+        var reloaded = NewStore().Get(race.Id)!;
+        Assert.Equal(CtrlShiftOne, reloaded.Hotkey);
+        Assert.False(reloaded.HotkeyEnabled);
+        Assert.False(store.SetHotkey(Guid.NewGuid(), CtrlShiftOne, enabled: true));
+    }
+
+    [Fact]
+    public void LayoutShortcut_SurvivesTheEditorSavingAnOlderCopy()
+    {
+        var store = NewStore();
+        var race = store.Create("Race", Ultrawide, 3440, 1440);
+        var editorCopy = store.Get(race.Id)!;    // opened in the editor before the shortcut was set
+        store.SetHotkey(race.Id, CtrlShiftOne, enabled: true);
+
+        editorCopy.GridSize = 20;
+        store.Save(editorCopy);
+
+        Assert.Equal(CtrlShiftOne, store.Get(race.Id)!.Hotkey);
+        Assert.Equal(20, store.Get(race.Id)!.GridSize);
+    }
+
+    [Fact]
+    public void LayoutShortcut_IsNotCopiedByDuplicate_AndGoesWithTheLayout()
+    {
+        var store = NewStore();
+        var race = store.Create("Race", Ultrawide, 3440, 1440);
+        store.SetHotkey(race.Id, CtrlShiftOne, enabled: true);
+
+        var copy = store.Duplicate(race.Id)!;
+        Assert.Null(copy.Hotkey);
+
+        store.Delete(race.Id);
+        Assert.DoesNotContain(NewStore().List(), layout => layout.Hotkey is not null);
+    }
+
     [Fact]
     public void SaveAndReload_TwoLayoutsWithOpenSnapshot_RoundTripsIdentically()
     {

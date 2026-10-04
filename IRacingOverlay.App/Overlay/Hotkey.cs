@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Windows.Input;
 
 namespace IRacingOverlay.App.Overlay;
@@ -14,12 +15,34 @@ public static class HotkeyActions
     public const string ResetLayout = "ResetLayout";
     public const string RestartOverlays = "RestartOverlays";
 
+    /// <summary>Opens the layout chosen in the toolbar, or closes the open one: the toolbar's button.</summary>
+    public const string ToggleLayout = "ToggleLayout";
+    public const string NextLayout = "NextLayout";
+    public const string PreviousLayout = "PreviousLayout";
+
+    /// <summary>Opens the editor on the open layout (or the one chosen in the toolbar).</summary>
+    public const string EditLayout = "EditLayout";
+
     private const string WidgetPrefix = "ToggleWidget.";
+    private const string LayoutPrefix = "OpenLayout.";
 
     public static IReadOnlyList<string> Global { get; } =
         [ToggleOverlays, ToggleEditMode, ToggleControlPanel, RestartOverlays, ResetLayout];
 
+    /// <summary>The layout actions that are not tied to one layout. Unassigned by default.</summary>
+    public static IReadOnlyList<string> Layouts { get; } = [ToggleLayout, NextLayout, PreviousLayout, EditLayout];
+
     public static string ToggleWidget(string widgetKey) => WidgetPrefix + widgetKey;
+
+    /// <summary>A layout's own shortcut. Not saved with the other hotkeys: it is kept on the layout,
+    /// so it goes when the layout does.</summary>
+    public static string OpenLayout(Guid layoutId) => LayoutPrefix + layoutId.ToString("D");
+
+    public static bool TryGetLayout(string action, out Guid layoutId)
+    {
+        layoutId = Guid.Empty;
+        return action.StartsWith(LayoutPrefix, StringComparison.Ordinal) && Guid.TryParse(action[LayoutPrefix.Length..], out layoutId);
+    }
 
     public static bool TryGetWidget(string action, out string widgetKey)
     {
@@ -41,6 +64,7 @@ public sealed record Hotkey(ModifierKeys Modifiers, Key Key)
         (ModifierKeys.Control | ModifierKeys.Alt, Key.Delete),
     ];
 
+    [JsonIgnore]
     public string Display => Describe(Modifiers, KeyName(Key));
 
     /// <summary>"Ctrl + Shift + {key}" — also used for a combination still being pressed.</summary>
@@ -56,6 +80,7 @@ public sealed record Hotkey(ModifierKeys Modifiers, Key Key)
     }
 
     /// <summary>Why this combination can't be used as a global hotkey, or null if it can.</summary>
+    [JsonIgnore]
     public string? Problem
     {
         get

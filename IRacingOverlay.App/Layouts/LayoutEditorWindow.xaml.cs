@@ -964,6 +964,119 @@ public partial class LayoutEditorWindow : Window
         }
     }
 
+    // ===== Keyboard shortcuts =====
+
+    /// <summary>
+    /// The editor's fixed shortcuts. Undo, redo and the bare keys (Delete, H, 0) stand down while a
+    /// text box has the keyboard, which needs them for its own text; Ctrl+S and Ctrl+L never do, and
+    /// Ctrl+S commits a value still being typed before saving.
+    /// </summary>
+    private void OnWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        var typing = Keyboard.FocusedElement is TextBoxBase;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var modifiers = Keyboard.Modifiers;
+        if (modifiers == ModifierKeys.Control)
+        {
+            switch (key)
+            {
+                case Key.S:
+                    if (typing)
+                    {
+                        Surface.Focus();
+                    }
+
+                    e.Handled = true;
+                    if (_model.IsDirty)
+                    {
+                        _autoSave.Stop();
+                        Save();
+                    }
+
+                    return;
+                case Key.Z when !typing:
+                    e.Handled = true;
+                    _model.Undo();
+                    return;
+                case Key.Y when !typing:
+                    e.Handled = true;
+                    _model.Redo();
+                    return;
+                case Key.L:
+                    e.Handled = true;
+                    ToggleSelected(lockIt: true);
+                    return;
+            }
+
+            return;
+        }
+
+        if (modifiers != ModifierKeys.None || typing)
+        {
+            return;
+        }
+
+        switch (key)
+        {
+            case Key.Delete when SelectedItem is { } item:
+                e.Handled = true;
+                _model.Remove(item.Type);
+                Status($"Removed {item.Descriptor.Name}. Undo brings it back.");
+                break;
+            case Key.H:
+                e.Handled = true;
+                ToggleSelected(lockIt: false);
+                break;
+            case Key.D0 or Key.NumPad0:
+                e.Handled = true;
+                ZoomTo(null);
+                break;
+        }
+    }
+
+    /// <summary>Locks or unlocks (or hides or shows) the selected widget, saying which it now is.</summary>
+    private void ToggleSelected(bool lockIt)
+    {
+        if (SelectedItem is not { } item)
+        {
+            Status("Select a widget first.");
+            return;
+        }
+
+        var name = item.Descriptor.Name;
+        if (lockIt)
+        {
+            var locked = !item.Widget.Locked;
+            _model.SetLocked(item.Type, locked);
+            Status(locked ? $"{name} locked." : $"{name} unlocked.");
+        }
+        else
+        {
+            var visible = !item.Widget.Visible;
+            _model.SetVisible(item.Type, visible);
+            Status(visible ? $"{name} shown." : $"{name} hidden: kept in the layout, not opened with it.");
+        }
+    }
+
+    /// <summary>Ctrl + wheel zooms the canvas a step, as the − and + buttons do.</summary>
+    private void OnViewportMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (e.Delta > 0)
+        {
+            OnZoomIn(sender, e);
+        }
+        else if (e.Delta < 0)
+        {
+            OnZoomOut(sender, e);
+        }
+    }
+
     private void OnUndo(object sender, RoutedEventArgs e) => _model.Undo();
 
     private void OnRedo(object sender, RoutedEventArgs e) => _model.Redo();
