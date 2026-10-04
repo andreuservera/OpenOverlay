@@ -8,7 +8,7 @@
         <!-- The trace plot fills whatever space it is given, so the panel needs a design size to
              measure against: without one the chart would collapse to its caption. -->
         <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.PedalTrace"
-                          DesignWidth="340" DesignHeight="150">
+                          DesignWidth="340" DesignHeight="110">
             <w:PedalTracePanel/>
         </ov:ScalablePanel>
         <Border Style="{StaticResource EditFrame}"/>

@@ -57,14 +57,10 @@ public partial class WeatherPanel : UserControl
 
         ForecastIcon.Condition = state.Condition;
         ForecastIcon.ToolTip = state.ConditionDescription;
-        ConditionText.Text = state.ConditionLabel;
         RainChanceText.Text = state.RainChanceDisplay;
         var rain = state.RainChancePct is { } pct ? (int)Math.Round(Math.Clamp(pct, 0, 100)) : (int?)null;
         RainChanceText.Foreground = rain is { } level ? RainText[level] : StatePalette.TextMuted;
-        RainFill.Fill = rain is { } fill ? RainBar[fill] : StatePalette.TextMuted;
-        RainFillScale.ScaleX = (rain ?? 0) / 100.0;
         WetnessText.Text = state.TrackWetnessDisplay;
-        WetnessText.Foreground = RiskBrush(state.TrackWetnessRisk);
 
         WindDial.ToolTip = state.WindDirectionDescription;
         // A hidden dial isn't animated at all; it snaps into place when it's shown again.
@@ -89,14 +85,6 @@ public partial class WeatherPanel : UserControl
         WindDial.Point(state.WindFromRelativeDeg, state.HeadingDeg, animate);
     }
 
-    private static Brush RiskBrush(RainRisk? risk) => risk switch
-    {
-        RainRisk.Low => StatePalette.Positive,
-        RainRisk.Medium => StatePalette.Info,
-        RainRisk.High => StatePalette.Critical,
-        _ => StatePalette.TextMuted,
-    };
-
     // Rain chance runs from sunshine to rain: yellow when dry, a pale sky in the uncertain middle,
     // blue when it's coming. Every stop clears 4.5:1 against the panel, so the number stays legible.
     private static readonly Color RainNone = Color.FromRgb(0xFF, 0xD2, 0x4D);
@@ -104,11 +92,6 @@ public partial class WeatherPanel : UserControl
     private static readonly Color RainCertain = Color.FromRgb(0x3D, 0x8B, 0xFF);
 
     private static readonly Brush[] RainText = Enumerable.Range(0, 101).Select(p => Freeze(new SolidColorBrush(RainColor(p / 100.0)))).ToArray();
-
-    // The bar shows the scale it sits on: yellow at its start, the reading's own colour at its end.
-    private static readonly Brush[] RainBar = Enumerable.Range(0, 101)
-        .Select(p => Freeze(new LinearGradientBrush(RainNone, RainColor(p / 100.0), 0)))
-        .ToArray();
 
     /// <summary>The rain-chance colour for a 0–1 probability.</summary>
     internal static Color RainColor(double fraction)

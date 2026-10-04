@@ -121,7 +121,7 @@
 
             <!-- Pedal trace: bottom-right corner, mirroring the flag's bottom-left placement so the
                  four corners stay visually balanced. -->
-            <ov:ScalablePanel x:Name="PedalTraceScaler" PersistenceKey="Dashboard.PedalTrace" DesignWidth="340" DesignHeight="180"
+            <ov:ScalablePanel x:Name="PedalTraceScaler" PersistenceKey="Dashboard.PedalTrace" DesignWidth="340" DesignHeight="130"
                               Grid.Row="3" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <w:PedalTracePanel/>
             </ov:ScalablePanel>

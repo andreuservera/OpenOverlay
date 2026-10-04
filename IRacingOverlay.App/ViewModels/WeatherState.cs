@@ -89,9 +89,6 @@ public sealed class WeatherState
         _ => null,
     };
 
-    /// <summary>The sky in words, under the forecast icon.</summary>
-    public string ConditionLabel => Condition == WeatherCondition.Unknown ? "—" : ConditionDescription.ToUpperInvariant();
-
     public string WindDirectionDescription => WindFromRelativeDeg switch
     {
         null => "Wind direction unavailable",

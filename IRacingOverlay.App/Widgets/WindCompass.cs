@@ -8,9 +8,10 @@ using System.Windows.Media.Animation;
 namespace IRacingOverlay.App.Widgets;
 
 /// <summary>
-/// Wind dial drawn from the driver's seat: the car's nose is always up, the N/E/S/W ring turns
-/// with the car's heading, and the arrow runs from where the wind comes from (tail) to where it
-/// blows (head). Both angles animate the short way round.
+/// Wind dial drawn from the driver's seat: a top-down car sits in the middle with its nose always
+/// up, the N/E/S/W ring turns with the car's heading, and the arrow comes in from the side the wind
+/// blows from and stops just short of the car, so it shows where the wind hits it. Both angles
+/// animate the short way round.
 /// </summary>
 public sealed class WindCompass : FrameworkElement
 {
@@ -19,6 +20,12 @@ public sealed class WindCompass : FrameworkElement
     private static readonly (string Letter, double Bearing)[] Cardinals = [("N", 0), ("E", 90), ("S", 180), ("W", 270)];
     private static readonly ConcurrentDictionary<(string, double, Brush), FormattedText> LetterCache = new();
 
+    // The car, in units of its own length, centred on the origin with the nose at -Y.
+    private const double CarLength = 0.34;
+    private const double CarHalfWidth = 0.31;
+    private static readonly Geometry CarBody = CreateCarBody();
+    private static readonly Geometry CarWheels = CreateCarWheels();
+
     public static readonly DependencyProperty WindAngleProperty = Register(nameof(WindAngle), 0.0);
     public static readonly DependencyProperty CompassAngleProperty = Register(nameof(CompassAngle), 0.0);
     public static readonly DependencyProperty RingBrushProperty = Register<Brush>(nameof(RingBrush), Brushes.DimGray);
@@ -26,6 +33,7 @@ public sealed class WindCompass : FrameworkElement
     public static readonly DependencyProperty NorthBrushProperty = Register<Brush>(nameof(NorthBrush), Brushes.OrangeRed);
     public static readonly DependencyProperty NoseBrushProperty = Register<Brush>(nameof(NoseBrush), Brushes.White);
     public static readonly DependencyProperty ArrowBrushProperty = Register<Brush>(nameof(ArrowBrush), Brushes.DeepSkyBlue);
+    public static readonly DependencyProperty CarBrushProperty = Register<Brush>(nameof(CarBrush), Brushes.LightGray);
 
     private double? _windTarget;
     private double? _compassTarget;
@@ -45,6 +53,8 @@ public sealed class WindCompass : FrameworkElement
     public Brush NoseBrush { get => (Brush)GetValue(NoseBrushProperty); set => SetValue(NoseBrushProperty, value); }
 
     public Brush ArrowBrush { get => (Brush)GetValue(ArrowBrushProperty); set => SetValue(ArrowBrushProperty, value); }
+
+    public Brush CarBrush { get => (Brush)GetValue(CarBrushProperty); set => SetValue(CarBrushProperty, value); }
 
     /// <summary>Points the dial. Null wind hides the arrow; null heading hides the compass letters.</summary>
     public void Point(double? windFromRelativeDeg, double? headingDeg, bool animate)
@@ -110,6 +120,12 @@ public sealed class WindCompass : FrameworkElement
 
         dc.DrawGeometry(NoseBrush, null, noseGeometry);
 
+        var length = size * CarLength;
+        dc.PushTransform(new MatrixTransform(length, 0, 0, length, center.X, center.Y));
+        dc.DrawGeometry(LetterBrush, null, CarWheels);
+        dc.DrawGeometry(CarBrush, null, CarBody);
+        dc.Pop();
+
         if (_windTarget is not null)
         {
             DrawWind(dc, center, radius, size);
@@ -142,29 +158,85 @@ public sealed class WindCompass : FrameworkElement
     private void DrawWind(DrawingContext dc, Point center, double radius, double size)
     {
         var from = WindAngle;
-        var width = Math.Max(2, size * 0.065);
 
-        // Shaft from the upwind side to the downwind side, head where the wind blows to.
-        var reach = radius * 0.5;
-        var tail = OnCircle(center, reach, from);
-        var headTip = OnCircle(center, reach + (size * 0.04), from + 180);
-        var headLength = size * 0.19;
-        var headBase = OnCircle(center, reach + (size * 0.04) - headLength, from + 180);
-        var shaftPen = new Pen(ArrowBrush, width) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Flat };
-        dc.DrawLine(shaftPen, tail, headBase);
+        // One broad dart: its notched base just inside the ring on the upwind side, its tip stopping
+        // short of the car's outline there, so it lands on the part of the car the wind hits.
+        var tipReach = CarReach(from, size) + (size * 0.03);
+        var baseReach = Math.Max(tipReach + (size * 0.12), radius - (size * 0.04));
+        var length = baseReach - tipReach;
+        var half = Math.Min(length * 0.5, size * 0.11);
+        var tip = OnCircle(center, tipReach, from);
+        var notch = OnCircle(center, baseReach - (length * 0.28), from);
+        var back = OnCircle(center, baseReach, from);
 
         var (sin, cos) = Math.SinCos(from * Math.PI / 180);
-        var half = headLength * 0.62;
-        var head = new StreamGeometry();
-        using (var g = head.Open())
+        var dart = new StreamGeometry();
+        using (var g = dart.Open())
         {
-            g.BeginFigure(headTip, true, true);
-            g.LineTo(new Point(headBase.X + (cos * half), headBase.Y + (sin * half)), true, false);
-            g.LineTo(new Point(headBase.X - (cos * half), headBase.Y - (sin * half)), true, false);
+            g.BeginFigure(tip, true, true);
+            g.LineTo(new Point(back.X + (cos * half), back.Y + (sin * half)), true, true);
+            g.LineTo(notch, true, true);
+            g.LineTo(new Point(back.X - (cos * half), back.Y - (sin * half)), true, true);
         }
 
-        dc.DrawGeometry(ArrowBrush, null, head);
-        dc.DrawEllipse(ArrowBrush, null, tail, width * 0.95, width * 0.95);
+        dc.DrawGeometry(ArrowBrush, null, dart);
+    }
+
+    /// <summary>Distance from the centre to the car's bounding box along a bearing.</summary>
+    private static double CarReach(double degrees, double size)
+    {
+        var (sin, cos) = Math.SinCos(degrees * Math.PI / 180);
+        var length = size * CarLength;
+        var acrossSide = Math.Abs(sin) > 1e-6 ? (CarHalfWidth * length) / Math.Abs(sin) : double.MaxValue;
+        var acrossEnd = Math.Abs(cos) > 1e-6 ? (0.5 * length) / Math.Abs(cos) : double.MaxValue;
+        return Math.Min(acrossSide, acrossEnd);
+    }
+
+    // Top-down race car: body with the windscreen and rear window cut out so the panel shows through
+    // them, and a rear wing on two struts spanning past the wheels.
+    private static Geometry CreateCarBody()
+    {
+        var windows = new GeometryGroup();
+        windows.Children.Add(Polygon(new(-0.19, -0.2), new(0.19, -0.2), new(0.16, -0.05), new(-0.16, -0.05)));
+        windows.Children.Add(Polygon(new(-0.16, 0.14), new(0.16, 0.14), new(0.18, 0.25), new(-0.18, 0.25)));
+        var car = new GeometryGroup { FillRule = FillRule.Nonzero };
+        car.Children.Add(new CombinedGeometry(
+            GeometryCombineMode.Exclude,
+            new RectangleGeometry(new Rect(-0.23, -0.5, 0.46, 0.88), 0.14, 0.16),
+            windows));
+        car.Children.Add(new RectangleGeometry(new Rect(-0.11, 0.36, 0.05, 0.06)));
+        car.Children.Add(new RectangleGeometry(new Rect(0.06, 0.36, 0.05, 0.06)));
+        car.Children.Add(new RectangleGeometry(new Rect(-CarHalfWidth, 0.41, CarHalfWidth * 2, 0.09), 0.02, 0.02));
+        car.Freeze();
+        return car;
+    }
+
+    private static Geometry CreateCarWheels()
+    {
+        var wheels = new GeometryGroup();
+        foreach (var x in (double[])[-0.29, 0.17])
+        {
+            foreach (var y in (double[])[-0.38, 0.1])
+            {
+                wheels.Children.Add(new RectangleGeometry(new Rect(x, y, 0.12, 0.2), 0.03, 0.03));
+            }
+        }
+
+        wheels.Freeze();
+        return wheels;
+    }
+
+    private static Geometry Polygon(params Point[] points)
+    {
+        var geometry = new StreamGeometry();
+        using (var g = geometry.Open())
+        {
+            g.BeginFigure(points[0], true, true);
+            g.PolyLineTo(points[1..], true, false);
+        }
+
+        geometry.Freeze();
+        return geometry;
     }
 
     /// <summary>A point on a circle, angle in degrees clockwise from straight up.</summary>

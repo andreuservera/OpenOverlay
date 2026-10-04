@@ -305,14 +305,15 @@ public static class WidgetSettings
             .With(
                 new ToggleSetting(
                     "Show labels",
-                    "Captions such as AIR and TRACK.",
+                    "Captions such as AIR TEMP and WIND.",
                     options.ShowLabels,
                     value => SaveWeather(() => options.ShowLabels = value, context)),
-                new ToggleSetting(
-                    "Compact",
-                    "One horizontal strip.",
-                    options.Compact,
-                    value => SaveWeather(() => options.Compact = value, context)),
+                new SegmentedSetting(
+                    "Orientation",
+                    null,
+                    ["Horizontal", "Vertical"],
+                    options.Compact ? 0 : 1,
+                    index => SaveWeather(() => options.Compact = index == 0, context)),
                 new SegmentedSetting(
                     "Forecast icon size",
                     null,

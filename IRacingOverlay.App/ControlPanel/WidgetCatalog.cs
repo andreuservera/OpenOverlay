@@ -75,7 +75,7 @@ public static class WidgetCatalog
             "M4,21 V5 A2,2 0 0 1 6,3 H11 A2,2 0 0 1 13,5 V21 M3,21 H14 M4,10 H13 M16,8 L19,11 V17"),
 
         new(PedalTrace, "Pedal trace", "Throttle, brake and clutch, with ABS activity marked.",
-            "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewWidth: 340, PreviewHeight: 150),
+            "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewWidth: 340, PreviewHeight: 110),
 
         new(Incident, "Incidents", "Your incidents, and your team's in a team race.",
             "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8"),
