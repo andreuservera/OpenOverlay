@@ -20,6 +20,8 @@ public partial class RelativeWidget : OverlayWindowBase
 
     public void SetSof(double sof) => _panel.SetSof(sof);
 
+    public void SetConditions(TableConditions conditions) => _panel.SetConditions(conditions);
+
     public void SetProgress(SessionProgress progress) => _panel.SetProgress(progress);
 
     public void SetOptions(DriverTableOptions options) => _panel.Options = options;

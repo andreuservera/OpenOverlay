@@ -57,6 +57,7 @@ public static class PanelFactory
                     standings.SetSof(PreviewData.StrengthOfField());
                     standings.SetSessionType("RACE");
                     standings.SetProgress(PreviewData.Progress());
+                    standings.SetConditions(PreviewData.TableConditions());
                     break;
                 }
 
@@ -67,6 +68,7 @@ public static class PanelFactory
                     relative.SetSessionType("RACE");
                     relative.SetSof(PreviewData.StrengthOfField());
                     relative.SetProgress(PreviewData.Progress());
+                    relative.SetConditions(PreviewData.TableConditions());
                     break;
                 }
 

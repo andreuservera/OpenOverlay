@@ -43,7 +43,7 @@ internal sealed class TableInfoBands
     private void OnOptionChanged(object? sender, PropertyChangedEventArgs e)
     {
         // Only what moves or shows an element: a column toggle shouldn't rebuild the bands.
-        if (e.PropertyName is nameof(DriverTableOptions.InfoSlots) or nameof(DriverTableOptions.ShowClassName) or
+        if (e.PropertyName is nameof(DriverTableOptions.InfoSlots) or nameof(DriverTableOptions.InfoShown) or nameof(DriverTableOptions.ShowClassName) or
             nameof(DriverTableOptions.ShowSof) or nameof(DriverTableOptions.ShowSessionLaps) or nameof(DriverTableOptions.ShowSessionTime))
         {
             Arrange();

@@ -45,6 +45,10 @@ public partial class RelativePanel : UserControl
                 [TableInfoElement.Sof] = SofText,
                 [TableInfoElement.SessionLaps] = SessionLapsField,
                 [TableInfoElement.SessionTime] = SessionTimeField,
+                [TableInfoElement.BrakeBias] = BrakeBiasField,
+                [TableInfoElement.AirTemp] = AirTempField,
+                [TableInfoElement.TrackTemp] = TrackTempField,
+                [TableInfoElement.Humidity] = HumidityField,
             });
         _bands.Follow(Options);
     }
@@ -55,6 +59,15 @@ public partial class RelativePanel : UserControl
         SessionTypeText.Text = label;
 
     public void SetSof(double sof) => SofText.Text = StandingsPanel.FormatSof(sof);
+
+    public void SetConditions(TableConditions conditions)
+    {
+        BrakeBiasText.Text = conditions.BrakeBiasDisplay;
+        AirTempIcon.Condition = conditions.Condition;
+        AirTempText.Text = conditions.AirTempDisplay;
+        TrackTempText.Text = conditions.TrackTempDisplay;
+        HumidityText.Text = conditions.HumidityDisplay;
+    }
 
     public void SetProgress(SessionProgress progress)
     {

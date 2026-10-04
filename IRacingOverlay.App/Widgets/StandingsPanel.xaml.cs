@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using IRacingOverlay.App.ViewModels;
@@ -52,6 +51,10 @@ public partial class StandingsPanel : UserControl
                 [TableInfoElement.Sof] = SofText,
                 [TableInfoElement.SessionLaps] = SessionLapsField,
                 [TableInfoElement.SessionTime] = SessionTimeField,
+                [TableInfoElement.BrakeBias] = BrakeBiasField,
+                [TableInfoElement.AirTemp] = AirTempField,
+                [TableInfoElement.TrackTemp] = TrackTempField,
+                [TableInfoElement.Humidity] = HumidityField,
             });
         _bands.Follow(Options);
     }
@@ -60,24 +63,20 @@ public partial class StandingsPanel : UserControl
 
     public void SetSof(double sof) => SofText.Text = FormatSof(sof);
 
-    /// <summary>"SOF 2.9k": thousands to one decimal, truncated rather than rounded, so 2,987 never
-    /// claims to be a 3k lobby. Under 1,000 the actual SOF, as a whole number; nothing without a
-    /// strength.</summary>
-    internal static string FormatSof(double sof)
-    {
-        if (double.IsNaN(sof) || sof <= 0)
-        {
-            return "";
-        }
-
-        var whole = Math.Round(sof);
-        return whole < 1000
-            ? $"SOF {whole.ToString("0", CultureInfo.InvariantCulture)}"
-            : $"SOF {(Math.Floor(whole / 100) / 10).ToString("0.0", CultureInfo.InvariantCulture)}k";
-    }
+    /// <summary>See <see cref="SofFormat.Format"/>.</summary>
+    internal static string FormatSof(double sof) => SofFormat.Format(sof);
 
     /// <summary>The session type; whether and where it shows is the options' call (TableInfoBands).</summary>
     public void SetSessionType(string label) => SessionTypeText.Text = label;
+
+    public void SetConditions(TableConditions conditions)
+    {
+        BrakeBiasText.Text = conditions.BrakeBiasDisplay;
+        AirTempIcon.Condition = conditions.Condition;
+        AirTempText.Text = conditions.AirTempDisplay;
+        TrackTempText.Text = conditions.TrackTempDisplay;
+        HumidityText.Text = conditions.HumidityDisplay;
+    }
 
     public void SetProgress(SessionProgress progress)
     {

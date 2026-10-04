@@ -607,18 +607,22 @@ internal static class StandingsBuilder
             return 0;
         }
 
-        var iratings = driverInfo.Drivers
-            .Where(d => !d.IsPaceCar && d.IRating > 0)
-            .Select(d => (double)d.IRating)
-            .ToList();
-        if (iratings.Count == 0)
+        return StrengthOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.IRating));
+    }
+
+    /// <summary>iRacing's strength-of-field formula over a set of iRatings; unrated (0) drivers
+    /// are left out, and nobody rated gives 0. Used for the whole field and for each class.</summary>
+    internal static double StrengthOf(IEnumerable<int> iratings)
+    {
+        var rated = iratings.Where(rating => rating > 0).Select(rating => (double)rating).ToList();
+        if (rated.Count == 0)
         {
             return 0;
         }
 
         var br1 = 1600.0 / Math.Log(2);
-        var sum = iratings.Sum(r => Math.Exp(-r / br1));
-        return sum > 0 ? br1 * Math.Log(iratings.Count / sum) : 0;
+        var sum = rated.Sum(r => Math.Exp(-r / br1));
+        return sum > 0 ? br1 * Math.Log(rated.Count / sum) : 0;
     }
 
     /// <summary>
@@ -719,6 +723,8 @@ internal static class StandingsBuilder
             {
                 ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
+                DriverCount = classRows.Count,
+                Sof = StrengthOf(classRows.Select(row => row.IRating)),
             });
 
             display.AddRange(classId == playerClassId ? classRows : classRows.Take(otherClassLimit));
@@ -817,6 +823,8 @@ internal static class StandingsBuilder
             {
                 ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
+                DriverCount = classRows.Count,
+                Sof = StrengthOf(classRows.Select(row => row.IRating)),
             });
 
             if (classId == playerClassId)

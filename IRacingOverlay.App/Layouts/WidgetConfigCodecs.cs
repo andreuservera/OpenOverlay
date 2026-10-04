@@ -196,6 +196,14 @@ internal sealed class DriverTableConfigCodec(
 {
     private bool HasMulticlass => options.Table == DriverTable.Standings;
 
+    private static readonly TableInfoElement[] ExtraElements =
+        Enum.GetValues<TableInfoElement>().Where(element => !DriverTableOptions.HasOwnSwitch(element)).ToArray();
+
+    private static string ShowKey(TableInfoElement element) => $"show{element}";
+
+    private static string SlotKey(TableInfoElement element) =>
+        $"{char.ToLowerInvariant(element.ToString()[0])}{element.ToString()[1..]}Slot";
+
     public override JsonObject Read()
     {
         var columns = new JsonObject();
@@ -219,9 +227,18 @@ internal sealed class DriverTableConfigCodec(
             ["showSessionLaps"] = options.ShowSessionLaps,
             ["showSessionTime"] = options.ShowSessionTime,
         };
+        // Elements added after the first four: "show<Element>" and "<element>Slot".
+        foreach (var element in ExtraElements)
+        {
+            config[ShowKey(element)] = options.IsShown(element);
+            config[SlotKey(element)] = Name(options.SlotOf(element));
+        }
+
         if (HasMulticlass)
         {
             config["showMulticlass"] = options.ShowMulticlass;
+            config["showClassDrivers"] = options.ShowClassDrivers;
+            config["showClassSof"] = options.ShowClassSof;
         }
 
         return config;
@@ -254,11 +271,18 @@ internal sealed class DriverTableConfigCodec(
         Set<TableSlot>(config, "sofSlot", slot => options.SetSlot(TableInfoElement.Sof, slot));
         Set<TableSlot>(config, "sessionLapsSlot", slot => options.SetSlot(TableInfoElement.SessionLaps, slot));
         Set<TableSlot>(config, "sessionTimeSlot", slot => options.SetSlot(TableInfoElement.SessionTime, slot));
+        foreach (var element in ExtraElements)
+        {
+            Set<bool>(config, ShowKey(element), shown => options.SetShown(element, shown));
+            Set<TableSlot>(config, SlotKey(element), slot => options.SetSlot(element, slot));
+        }
         Set<bool>(config, "showSessionLaps", value => options.ShowSessionLaps = value);
         Set<bool>(config, "showSessionTime", value => options.ShowSessionTime = value);
         if (HasMulticlass)
         {
             Set<bool>(config, "showMulticlass", value => options.ShowMulticlass = value);
+            Set<bool>(config, "showClassDrivers", value => options.ShowClassDrivers = value);
+            Set<bool>(config, "showClassSof", value => options.ShowClassSof = value);
         }
     }
 

@@ -131,6 +131,24 @@ public static class WidgetSettings
                     context.Standings.ShowMulticlass = value;
                     context.Persist(() => DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value));
                 }),
+            new ToggleSetting(
+                "Drivers per class",
+                "A helmet and the number of drivers in each class's title bar.",
+                context.Standings.ShowClassDrivers,
+                value =>
+                {
+                    context.Standings.ShowClassDrivers = value;
+                    context.Persist(() => DriverTableOptionsStore.SaveClassDrivers(DriverTable.Standings, value));
+                }),
+            new ToggleSetting(
+                "SOF per class",
+                "Each class's own strength of field in its title bar.",
+                context.Standings.ShowClassSof,
+                value =>
+                {
+                    context.Standings.ShowClassSof = value;
+                    context.Persist(() => DriverTableOptionsStore.SaveClassSof(DriverTable.Standings, value));
+                }),
             ColumnHeadersToggle(context.Standings, context))
         .With(InfoPlacements(context.Standings, context).ToArray());
 
@@ -175,14 +193,21 @@ public static class WidgetSettings
             TableInfoElement.SessionType => "Session type",
             TableInfoElement.Sof => "SOF",
             TableInfoElement.SessionLaps => "Session laps",
-            _ => "Session time",
+            TableInfoElement.SessionTime => "Session time",
+            TableInfoElement.BrakeBias => "Brake bias",
+            TableInfoElement.AirTemp => "Air temp",
+            TableInfoElement.TrackTemp => "Track temp",
+            _ => "Humidity",
         },
         element switch
         {
             TableInfoElement.SessionType => "RACE, QUALIFYING or PRACTICE.",
             TableInfoElement.Sof => "The lobby's strength of field, e.g. SOF 2.9k.",
             TableInfoElement.SessionLaps => "Current lap over total. Estimated in timed races.",
-            _ => "Elapsed session time over its length.",
+            TableInfoElement.SessionTime => "Elapsed session time over its length.",
+            TableInfoElement.BrakeBias => "Your current setting, as the car's black box shows it.",
+            TableInfoElement.AirTemp => "With the sky as an icon.",
+            _ => null,
         },
         SlotChoices,
         options.IsShown(element) ? (int)options.SlotOf(element) + 1 : 0,
@@ -197,22 +222,11 @@ public static class WidgetSettings
 
             context.Persist(() =>
             {
-                SaveShown(element, options.Table, shown);
+                DriverTableOptionsStore.SaveInfoShown(options.Table, element, shown);
                 DriverTableOptionsStore.SaveInfoSlot(options.Table, element, options.SlotOf(element));
             });
             context.TableHeaderChanged?.Invoke(options.Table);
         });
-
-    private static void SaveShown(TableInfoElement element, DriverTable table, bool shown)
-    {
-        switch (element)
-        {
-            case TableInfoElement.SessionType: DriverTableOptionsStore.SaveClassName(table, shown); break;
-            case TableInfoElement.Sof: DriverTableOptionsStore.SaveSof(table, shown); break;
-            case TableInfoElement.SessionLaps: DriverTableOptionsStore.SaveSessionLaps(table, shown); break;
-            default: DriverTableOptionsStore.SaveSessionTime(table, shown); break;
-        }
-    }
 
     private static void SetFocusSize(DriverTableOptions options, double value, WidgetSettingsContext context)
     {

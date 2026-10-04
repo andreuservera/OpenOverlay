@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
+             xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <!-- Columns, cell styles and the row template all come from Themes/DriverTable.xaml, merged
          application-wide and shared with RelativePanel. -->
@@ -23,6 +24,33 @@
                 <StackPanel x:Name="SessionTimeField" Orientation="Horizontal">
                     <TextBlock Text="TIME" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
                     <TextBlock x:Name="SessionTimeText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
+                <!-- Conditions, shown when picked: brake bias, then the weather in the Weather and
+                     Track & session widgets' own icons. -->
+                <StackPanel x:Name="BrakeBiasField" Orientation="Horizontal" ToolTip="Brake bias">
+                    <TextBlock Text="BB" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="BrakeBiasText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
+                <StackPanel x:Name="AirTempField" Orientation="Horizontal" ToolTip="Air temperature">
+                    <w:WeatherIcon x:Name="AirTempIcon" Width="17" Height="17" VerticalAlignment="Center" Margin="0,0,5,0"
+                                   SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
+                                   CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
+                                   RainBrush="{StaticResource State.Info}"/>
+                    <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
+                <StackPanel x:Name="TrackTempField" Orientation="Horizontal" ToolTip="Track temperature">
+                    <Path Data="{StaticResource Icon.Road}" Fill="{StaticResource Text.Secondary}" Stretch="Uniform" Height="12"
+                          VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
+                <StackPanel x:Name="HumidityField" Orientation="Horizontal" ToolTip="Relative humidity">
+                    <Path Data="{StaticResource Icon.Drop}" Fill="{StaticResource State.Info}" Stretch="Uniform" Height="11"
+                          VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource DataCell}"
                                FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
                 </StackPanel>
             </StackPanel>
@@ -138,6 +166,20 @@
                                 <TextBlock Text="{Binding ClassName}" Style="{StaticResource PanelTitle}"
                                            Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"
                                            Margin="12,0,0,0"/>
+                                <!-- The class's own field: how many drivers (helmet) and its SOF, each
+                                     shown when switched on. -->
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal" ToolTip="Drivers in this class"
+                                                Visibility="{Binding Options.ShowClassDrivers, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
+                                        <Path Data="{StaticResource Icon.Helmet}" Fill="{StaticResource Text.Primary}" Stretch="Uniform"
+                                              Height="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding DriverCountDisplay}" Style="{StaticResource PanelTitle}"
+                                                   Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding SofDisplay}" Style="{StaticResource PanelTitle}" Margin="12,0,0,0"
+                                               Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center" ToolTip="Strength of field in this class"
+                                               Visibility="{Binding Options.ShowClassSof, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
                             </Grid>
                         </DataTemplate>
 

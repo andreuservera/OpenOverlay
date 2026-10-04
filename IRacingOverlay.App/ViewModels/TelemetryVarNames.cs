@@ -150,6 +150,9 @@ internal static class TelemetryVarNames
     /// <summary>All measured "at the start/finish line" per iRacing's own variable descriptions —
     /// live weather, unlike WeekendInfo's YAML fields which only reflect conditions at session start.</summary>
     public const string AirTemp = "AirTemp";
+
+    /// <summary>The in-car brake bias setting, as the car's black box shows it (front %, on most cars).</summary>
+    public const string BrakeBias = "dcBrakeBias";
     /// <summary>Not "TrackTemp" (that one's documented as deprecated, kept only for back-compat).</summary>
     public const string TrackTempCrew = "TrackTempCrew";
     public const string WindVel = "WindVel";

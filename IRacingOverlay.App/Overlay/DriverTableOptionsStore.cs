@@ -20,6 +20,10 @@ internal static class DriverTableOptionsStore
     private const string OrderKeyPrefix = "Order.";
     // Where each piece of session information sits around the table, under "Slot.<Element>".
     private const string SlotKeyPrefix = "Slot.";
+    // Shown or not, for elements added after the first four (which keep their own keys).
+    private const string ShowKeyPrefix = "Show.";
+    private const string ShowClassDriversKey = "ShowClassDrivers";
+    private const string ShowClassSofKey = "ShowClassSof";
     private const string ShowSessionTimeKey = "ShowSessionTime";
 
     private static readonly string FilePath = Path.Combine(
@@ -56,6 +60,23 @@ internal static class DriverTableOptionsStore
     public static void SaveInfoSlot(DriverTable table, TableInfoElement element, TableSlot slot) =>
         Set(table, SlotKeyPrefix + element, (int)slot);
 
+    /// <summary>Whether an element shows, under the key it has always had.</summary>
+    public static void SaveInfoShown(DriverTable table, TableInfoElement element, bool shown)
+    {
+        switch (element)
+        {
+            case TableInfoElement.SessionType: SaveClassName(table, shown); break;
+            case TableInfoElement.Sof: SaveSof(table, shown); break;
+            case TableInfoElement.SessionLaps: SaveSessionLaps(table, shown); break;
+            case TableInfoElement.SessionTime: SaveSessionTime(table, shown); break;
+            default: Set(table, ShowKeyPrefix + element, shown ? 1 : 0); break;
+        }
+    }
+
+    public static void SaveClassDrivers(DriverTable table, bool isVisible) => Set(table, ShowClassDriversKey, isVisible ? 1 : 0);
+
+    public static void SaveClassSof(DriverTable table, bool isVisible) => Set(table, ShowClassSofKey, isVisible ? 1 : 0);
+
     public static void SaveColumnOrder(DriverTable table, IReadOnlyList<DriverTableColumn> order)
     {
         Load();
@@ -84,7 +105,14 @@ internal static class DriverTableOptionsStore
         foreach (var element in Enum.GetValues<TableInfoElement>())
         {
             _cache[Key(options.Table, SlotKeyPrefix + element)] = (int)options.SlotOf(element);
+            if (!DriverTableOptions.HasOwnSwitch(element))
+            {
+                _cache[Key(options.Table, ShowKeyPrefix + element)] = options.IsShown(element) ? 1 : 0;
+            }
         }
+
+        _cache[Key(options.Table, ShowClassDriversKey)] = options.ShowClassDrivers ? 1 : 0;
+        _cache[Key(options.Table, ShowClassSofKey)] = options.ShowClassSof ? 1 : 0;
 
         SettingsFile.WriteJson(FilePath, _cache);
     }
@@ -110,7 +138,14 @@ internal static class DriverTableOptionsStore
         foreach (var element in Enum.GetValues<TableInfoElement>())
         {
             options.SetSlot(element, (TableSlot)Get(options.Table, SlotKeyPrefix + element, (int)DriverTableOptions.DefaultSlot(element)));
+            if (!DriverTableOptions.HasOwnSwitch(element))
+            {
+                options.SetShown(element, Get(options.Table, ShowKeyPrefix + element, 0) != 0);
+            }
         }
+
+        options.ShowClassDrivers = Get(options.Table, ShowClassDriversKey, 0) != 0;
+        options.ShowClassSof = Get(options.Table, ShowClassSofKey, 0) != 0;
 
         options.FocusSize = Get(options.Table, FocusSizeKey, options.Table == DriverTable.Standings
             ? DriverTableOptions.DefaultStandingsFocusSize

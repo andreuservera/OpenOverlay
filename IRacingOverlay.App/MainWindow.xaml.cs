@@ -442,12 +442,14 @@ public partial class MainWindow : Window
             w.UpdateRows([]);
             w.SetSof(0);
             w.SetProgress(SessionProgress.Empty);
+            w.SetConditions(TableConditions.Empty);
         });
         Clear(WidgetCatalog.Standings, Standings, w =>
         {
             w.UpdateRows([]);
             w.SetSof(0);
             w.SetProgress(SessionProgress.Empty);
+            w.SetConditions(TableConditions.Empty);
         });
         Clear(WidgetCatalog.Cockpit, Cockpit, w => w.UpdateState(CockpitState.Empty));
         Clear(WidgetCatalog.Flag, Flags, w => w.UpdateState([FlagState.None]));
@@ -695,18 +697,27 @@ public partial class MainWindow : Window
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
 
-        // The tables' footer: the clock moves every tick, so not on the once-a-second standings beat.
+        // The tables' session information: the clock, brake bias and conditions move every tick, so
+        // not on the once-a-second standings beat.
         Feed(
             WidgetCatalog.Standings,
             Standings,
-            () => SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
-            (widget, progress) => widget.SetProgress(progress),
-            (dashboard, progress) => dashboard.UpdateSessionProgress(progress));
+            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry)),
+            (widget, info) =>
+            {
+                widget.SetProgress(info.Progress);
+                widget.SetConditions(info.Conditions);
+            },
+            (dashboard, info) => dashboard.UpdateSessionProgress(info.Progress));
         Feed(
             WidgetCatalog.Relative,
             Relative,
-            () => SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
-            (widget, progress) => widget.SetProgress(progress),
+            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry)),
+            (widget, info) =>
+            {
+                widget.SetProgress(info.Progress);
+                widget.SetConditions(info.Conditions);
+            },
             null);
 
         Feed(

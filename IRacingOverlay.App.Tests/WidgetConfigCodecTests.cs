@@ -22,6 +22,10 @@ public sealed class WidgetConfigCodecTests
         ["sofSlot"] = typeof(TableSlot),
         ["sessionLapsSlot"] = typeof(TableSlot),
         ["sessionTimeSlot"] = typeof(TableSlot),
+        ["brakeBiasSlot"] = typeof(TableSlot),
+        ["airTempSlot"] = typeof(TableSlot),
+        ["trackTempSlot"] = typeof(TableSlot),
+        ["humiditySlot"] = typeof(TableSlot),
     };
 
     // Integer keys that only take multiples of a step, so a test moves them by that step.

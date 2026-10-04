@@ -360,6 +360,16 @@ public static class PreviewData
         TrackWetness = 2,
     };
 
+    public static TableConditions TableConditions() => new()
+    {
+        BrakeBias = 54.5,
+        AirTempC = 21.4,
+        TrackTempC = 33.8,
+        HumidityPct = 54,
+        Condition = WeatherCondition.PartlyCloudy,
+        UnitSystem = Units.Current,
+    };
+
     public static TrackInfoState TrackInfo() => new()
     {
         UnitSystem = Units.Current,

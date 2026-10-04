@@ -29,6 +29,10 @@ public enum TableInfoElement
     Sof,
     SessionLaps,
     SessionTime,
+    BrakeBias,
+    AirTemp,
+    TrackTemp,
+    Humidity,
 }
 
 /// <summary>Where a <see cref="TableInfoElement"/> sits: a corner or the middle, above or below the table.</summary>
@@ -86,6 +90,11 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private IReadOnlyList<DriverTableColumn> _columnOrder = DriverTableColumnLayout.DefaultOrder;
     private readonly Dictionary<TableInfoElement, TableSlot> _infoSlots = Enum.GetValues<TableInfoElement>()
         .ToDictionary(element => element, DefaultSlot);
+    // Shown elements beyond the original four, which keep their own switches. Off until chosen, so
+    // adding an element never changes a table someone has already set up.
+    private readonly HashSet<TableInfoElement> _shownExtras = [];
+    private bool _showClassDrivers;
+    private bool _showClassSof;
     private DriverTableColumnLayout? _columns;
 
     public DriverTableOptions(DriverTable table)
@@ -239,8 +248,14 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         TableInfoElement.SessionType => TableSlot.TopLeft,
         TableInfoElement.Sof => TableSlot.TopRight,
         TableInfoElement.SessionLaps => TableSlot.BottomLeft,
-        _ => TableSlot.BottomRight,
+        TableInfoElement.SessionTime => TableSlot.BottomRight,
+        // Conditions gather in the middle of the top band when switched on.
+        _ => TableSlot.TopCenter,
     };
+
+    /// <summary>The elements that keep the switch they had before they could be moved; every other
+    /// one is shown or hidden through <see cref="SetShown"/> alone.</summary>
+    public static bool HasOwnSwitch(TableInfoElement element) => element <= TableInfoElement.SessionTime;
 
     public static bool IsBottom(TableSlot slot) => slot >= TableSlot.BottomLeft;
 
@@ -267,7 +282,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         TableInfoElement.SessionType => ShowClassName,
         TableInfoElement.Sof => ShowSof,
         TableInfoElement.SessionLaps => ShowSessionLaps,
-        _ => ShowSessionTime,
+        TableInfoElement.SessionTime => ShowSessionTime,
+        _ => _shownExtras.Contains(element),
     };
 
     public void SetShown(TableInfoElement element, bool shown)
@@ -277,8 +293,35 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
             case TableInfoElement.SessionType: ShowClassName = shown; break;
             case TableInfoElement.Sof: ShowSof = shown; break;
             case TableInfoElement.SessionLaps: ShowSessionLaps = shown; break;
-            default: ShowSessionTime = shown; break;
+            case TableInfoElement.SessionTime: ShowSessionTime = shown; break;
+            default:
+                if (shown ? _shownExtras.Add(element) : _shownExtras.Remove(element))
+                {
+                    OnPropertyChanged(nameof(InfoShown));
+                    OnPropertyChanged(nameof(ShowTopInfo));
+                    OnPropertyChanged(nameof(ShowFooter));
+                }
+
+                break;
         }
+    }
+
+    /// <summary>The elements shown beyond the original four; changes whenever one is switched.</summary>
+    public IReadOnlyCollection<TableInfoElement> InfoShown => _shownExtras;
+
+    /// <summary>Standings, split by class: the number of drivers in each class, with a helmet, in
+    /// the class's title bar.</summary>
+    public bool ShowClassDrivers
+    {
+        get => _showClassDrivers;
+        set => SetField(ref _showClassDrivers, value);
+    }
+
+    /// <summary>Standings, split by class: each class's own strength of field in its title bar.</summary>
+    public bool ShowClassSof
+    {
+        get => _showClassSof;
+        set => SetField(ref _showClassSof, value);
     }
 
     /// <summary>How much of the field to show around the player. Standings reads it as the total
