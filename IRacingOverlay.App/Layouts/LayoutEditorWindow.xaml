@@ -236,6 +236,11 @@
                     <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
 
                     <Button Style="{StaticResource Cp.Button}" Content="Monitor and resolution…" Click="OnChangeTarget"/>
+                    <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
+
+                    <ToggleButton x:Name="AutoSaveToggle" Style="{StaticResource Cp.ToggleButton}" Content="Auto-save"
+                                  Click="OnAutoSaveToggled"
+                                  ToolTip="Save every change as you make it. With this layout open, you see each change on screen."/>
                     <Button x:Name="SaveButton" Style="{StaticResource Ed.SaveButton}" Content="Save" MinWidth="84"
                             Margin="12,0,0,0" Click="OnSave"/>
                     <Button Style="{StaticResource Cp.Button}" Content="Close" Margin="6,0,0,0" Click="OnCloseClicked"/>

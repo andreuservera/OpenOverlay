@@ -45,6 +45,10 @@ public partial class LayoutEditorWindow : Window
     private string _settingsBasis = "";
     private bool _applyingSettings;
 
+    // Auto-save: a change is saved once things have been still for this long, so a run of arrow-key
+    // nudges or typed digits is one save, and a drag is saved when it is let go.
+    private readonly System.Windows.Threading.DispatcherTimer _autoSave = new() { Interval = TimeSpan.FromMilliseconds(350) };
+
     private Point? _catalogPress;
     private long _catalogRemovedAt = long.MinValue / 2;
     private Gesture? _gesture;
@@ -59,8 +63,11 @@ public partial class LayoutEditorWindow : Window
         _newWidget = newWidget;
         SizeBox.ItemsSource = ScaleLevels.Labels;
         Items.ItemsSource = _items;
+        AutoSaveToggle.IsChecked = LayoutEditorAutoSaveStore.Get();
+        _autoSave.Tick += (_, _) => AutoSaveNow();
         _model = Attach(new LayoutEditorModel(layout));
         Closing += OnClosing;
+        Closed += (_, _) => _autoSave.Stop();
         Sync();
     }
 
@@ -106,6 +113,7 @@ public partial class LayoutEditorWindow : Window
     private LayoutEditorModel Attach(LayoutEditorModel model)
     {
         model.Changed += Sync;
+        model.Changed += ScheduleAutoSave;
         SnapToggle.IsChecked = model.Layout.SnapEnabled;
         GridSizeBox.Text = model.Layout.GridSize.ToString(CultureInfo.InvariantCulture);
         return model;
@@ -488,7 +496,21 @@ public partial class LayoutEditorWindow : Window
     private void OnCatalogMouseDown(object sender, MouseButtonEventArgs e)
     {
         _catalogPress = e.GetPosition(Catalog);
-        if (e.ClickCount != 2 || (e.OriginalSource as DependencyObject)?.FindAncestor<ButtonBase>() is not null)
+        if ((e.OriginalSource as DependencyObject)?.FindAncestor<ButtonBase>() is not null)
+        {
+            return;
+        }
+
+        // A widget already in the layout: a click selects it, so its settings come up on the right.
+        if (e.ClickCount == 1
+            && (e.OriginalSource as DependencyObject)?.FindAncestorDataContext<CatalogEntry>() is { IsAvailable: false } placed
+            && Environment.TickCount64 - _catalogRemovedAt >= CatalogRemoveGrace)
+        {
+            Select(placed.Descriptor.Key);
+            return;
+        }
+
+        if (e.ClickCount != 2)
         {
             return;
         }
@@ -818,6 +840,7 @@ public partial class LayoutEditorWindow : Window
         _gesture = null;
         GuideLayer.Children.Clear();
         _model.EndGesture();
+        ScheduleAutoSave();
     }
 
     private void DrawGuides(IReadOnlyList<Guide> guides)
@@ -975,6 +998,50 @@ public partial class LayoutEditorWindow : Window
 
     private void OnSave(object sender, RoutedEventArgs e) => Save();
 
+    private bool IsAutoSaving => AutoSaveToggle.IsChecked == true;
+
+    private void OnAutoSaveToggled(object sender, RoutedEventArgs e)
+    {
+        LayoutEditorAutoSaveStore.Save(IsAutoSaving);
+        if (!IsAutoSaving)
+        {
+            _autoSave.Stop();
+            Status("Auto-save off: changes wait for Save.");
+            return;
+        }
+
+        Status(_store.Open?.LayoutId == LayoutId
+            ? "Auto-save on: every change is saved and shown on screen."
+            : "Auto-save on: every change is saved. Open the layout to see changes on screen as you make them.");
+        ScheduleAutoSave();
+    }
+
+    /// <summary>Starts (or restarts) the wait before an automatic save.</summary>
+    private void ScheduleAutoSave()
+    {
+        if (IsAutoSaving && _model.IsDirty)
+        {
+            _autoSave.Stop();
+            _autoSave.Start();
+        }
+    }
+
+    private void AutoSaveNow()
+    {
+        _autoSave.Stop();
+        // Mid-drag the widget is still on its way; it is saved once let go.
+        if (_gesture is not null)
+        {
+            _autoSave.Start();
+            return;
+        }
+
+        if (IsAutoSaving && _model.IsDirty)
+        {
+            Save();
+        }
+    }
+
     private bool Save()
     {
         try
@@ -1010,6 +1077,13 @@ public partial class LayoutEditorWindow : Window
         if (!_model.IsDirty)
         {
             return true;
+        }
+
+        // Saving as you go means there is nothing to ask: whatever is pending is saved now.
+        if (IsAutoSaving)
+        {
+            _autoSave.Stop();
+            return Save();
         }
 
         var answer = LayoutDialog.Ask(
