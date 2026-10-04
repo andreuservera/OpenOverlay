@@ -34,6 +34,8 @@
     <!-- Backdrop the control panel previews widgets against. Embedded rather than shipped loose so
          it can't go missing from an install and leave the preview pane empty. -->
     <Resource Include="Assets\spa2.jpg" />
+    <!-- Barlow Semi Condensed (SIL OFL, see Assets/Fonts/OFL.txt): the driver tables' names and figures. -->
+    <Resource Include="Assets\Fonts\*.ttf" />
     <!-- Make logos for the driver tables, read by name (see Widgets/CarBrandIcon.cs). -->
     <EmbeddedResource Include="Assets\CarBrands\*.svg" LogicalName="OpenOverlay.CarBrands.%(Filename).svg" />
     <!-- Country flags for the driver tables, matched to iRacing's FlairName (see Widgets/CountryFlags.cs). -->

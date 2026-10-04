@@ -66,14 +66,17 @@
     </Style>
     <!-- Three tiers of ink on a row: primary (position, name, gap), secondary (lap times) and meta
          (iRating, lap count). The eye lands on the first tier and only reads the rest on purpose. -->
+    <!-- The row's figures in the names' face and weight, so the line reads as one piece. -->
     <Style x:Key="NumCell" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
         <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.TableNumericFontFamily}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FontSize" Value="15"/>
     </Style>
     <Style x:Key="MetaCell" TargetType="TextBlock" BasedOn="{StaticResource NumCell}">
         <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
     </Style>
     <Style x:Key="PrimaryCell" TargetType="TextBlock" BasedOn="{StaticResource NumCell}">
-        <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
     </Style>
     <Style x:Key="ChipText" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
@@ -210,10 +213,10 @@
                         <w:PenaltyFlagTag DockPanel.Dock="Right" Width="24" Height="15" Margin="6,0,0,0" VerticalAlignment="Center"
                                           Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
-                        <!-- One pixel over the body size on the same line box: mixed-case names need
+                        <!-- Two pixels over the body size on the same line box: mixed-case names need
                              the extra x-height to read as quickly as the old all-caps ones. -->
                         <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="15"
+                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="16" FontWeight="Medium"
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
 
