@@ -26,6 +26,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     private readonly double _defaultLeft;
     private readonly double _defaultTop;
     private bool _isEditMode;
+    private bool _constrainWhenShown;
     private ScalablePanel? _scaler;
     private double _widgetOpacity;
 
@@ -83,6 +84,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         // Scaling up near an edge would otherwise push half the widget off the monitor, where it is
         // both unreadable and impossible to grab again.
         SizeChanged += (_, _) => ConstrainToScreen();
+        IsVisibleChanged += (_, _) => ConstrainOnceShown();
         Closing += (_, _) => SaveLayout();
 
         ApplyOpacity();
@@ -292,6 +294,23 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         Top = Math.Max(top, Math.Min(Top, bottom - ActualHeight));
     }
 
+    /// <summary>The clamp <see cref="MoveTo"/> skipped while hidden. Deferred past layout, so it
+    /// measures the size the window has now rather than the one it was hidden with.</summary>
+    private void ConstrainOnceShown()
+    {
+        if (!IsVisible || !_constrainWhenShown)
+        {
+            return;
+        }
+
+        _constrainWhenShown = false;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            ConstrainToScreen();
+            SaveLayout();
+        });
+    }
+
     private void ApplyClickThrough()
     {
         if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
@@ -301,12 +320,26 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     }
 
     /// <summary>Moves the widget to a position chosen elsewhere (a layout), and remembers it. Still
-    /// kept on the desktop like any other placement.</summary>
+    /// kept on the desktop like any other placement.
+    ///
+    /// A hidden window is not clamped here: its ActualWidth/Height are still those of the last time
+    /// it was on screen, and a layout changes its size level just before moving it. Clamping a
+    /// widget near the bottom edge with the bigger size it had at its individual level pushed it up
+    /// for good (reported live: Tires overlapping Weather every time the layout was reopened). It is
+    /// clamped once it is back on screen and laid out at its new size instead.</summary>
     public void MoveTo(double left, double top)
     {
         Left = left;
         Top = top;
-        ConstrainToScreen();
+        if (IsVisible)
+        {
+            ConstrainToScreen();
+        }
+        else
+        {
+            _constrainWhenShown = true;
+        }
+
         SaveLayout();
         HasSavedLayout = true;
     }
