@@ -44,7 +44,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource Surface.ChipBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource Radius.Row}"/>
-            <Setter Property="Padding" Value="9,6,10,8"/>
+            <Setter Property="Padding" Value="10,6,10,8"/>
         </Style>
         <!-- A card's contents: top-aligned when stacked; centred side by side, where every card
              takes the height of the tallest one. -->
@@ -95,12 +95,16 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- Stacked, the speed is centred under the dial: left-aligned, its empty right side made
+             the (centred) dial read as sitting left. Side by side it lines up with the caption. -->
         <Style x:Key="WindSpeedPlacement" TargetType="FrameworkElement">
             <Setter Property="Grid.Row" Value="2"/>
             <Setter Property="Grid.Column" Value="1"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                     <Setter Property="VerticalAlignment" Value="Top"/>
+                    <Setter Property="HorizontalAlignment" Value="Left"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
