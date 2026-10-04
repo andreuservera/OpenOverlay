@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using IRacingOverlay.App.Diagnostics;
+using IRacingOverlay.App.Overlay;
 using SharpVectors.Converters;
 using SharpVectors.Renderers.Wpf;
 
@@ -245,6 +246,17 @@ public sealed class CountryFlagIcon : FrameworkElement
         set => SetValue(CountryProperty, value);
     }
 
+    // The panels are scaled by a LayoutTransform (the widget's S/M/L… size) that the screen's DPI
+    // doesn't include. Each flag is therefore drawn for the largest size and scaled down, smoothly,
+    // to whatever size the widget is at: sharp at every size, and through a size change, without
+    // redrawing it.
+    private static readonly double Oversample = ScaleLevels.FactorOf(ScaleLevel.XXXL);
+
+    public CountryFlagIcon()
+    {
+        RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
+    }
+
     protected override void OnRender(DrawingContext dc)
     {
         if (ActualWidth <= 0 || ActualHeight <= 0 || CountryFlags.KeyOf(Country) is not { } key)
@@ -253,14 +265,15 @@ public sealed class CountryFlagIcon : FrameworkElement
         }
 
         var dpi = VisualTreeHelper.GetDpi(this);
-        var bitmap = CountryFlags.TryGetBitmap(key, (int)Math.Round(ActualWidth * dpi.DpiScaleX), (int)Math.Round(ActualHeight * dpi.DpiScaleY), this);
+        var scaleX = dpi.DpiScaleX * Oversample;
+        var scaleY = dpi.DpiScaleY * Oversample;
+        var bitmap = CountryFlags.TryGetBitmap(key, (int)Math.Round(ActualWidth * scaleX), (int)Math.Round(ActualHeight * scaleY), this);
         if (bitmap is not BitmapSource pixels)
         {
             return;
         }
 
-        // Whole device pixels, centred, so the bitmap lands one-to-one rather than resampled again.
-        var size = new Size(pixels.PixelWidth / dpi.DpiScaleX, pixels.PixelHeight / dpi.DpiScaleY);
+        var size = new Size(pixels.PixelWidth / scaleX, pixels.PixelHeight / scaleY);
         var rect = new Rect(new Point((ActualWidth - size.Width) / 2, (ActualHeight - size.Height) / 2), size);
         dc.DrawImage(pixels, rect);
         // A hairline edge, so a mostly white or dark flag still reads as a flag on the row.
