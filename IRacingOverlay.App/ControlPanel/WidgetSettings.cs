@@ -72,18 +72,18 @@ public static class WidgetSettings
     private static SettingsGroup RelativeColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
         .With(ColumnList(context.Relative, context));
 
-    private static ColumnOrderSetting ColumnList(DriverTableOptions options, WidgetSettingsContext context) => new(
+    private static ReorderListSetting ColumnList(DriverTableOptions options, WidgetSettingsContext context) => new(
         "Visible columns",
         "Drag a row by its handle to change the order.",
         options.ColumnOrder.Select(column => column == DriverTableColumn.IRating
-            ? new ColumnOrderItem(
+            ? new ReorderListItem(
                 column,
                 Column("iRating", DriverTableColumn.IRating, options, context),
                 Column("Δ", DriverTableColumn.IRatingDelta, options, context))
-            : new ColumnOrderItem(column, Column(ColumnLabel(column), column, options, context))),
+            : new ReorderListItem(column, Column(ColumnLabel(column), column, options, context))),
         order =>
         {
-            options.ColumnOrder = order;
+            options.ColumnOrder = order.Cast<DriverTableColumn>().ToList();
             context.Persist(() => DriverTableOptionsStore.SaveColumnOrder(options.Table, options.ColumnOrder));
         });
 
@@ -378,27 +378,35 @@ public static class WidgetSettings
     {
         var options = context.TrackInfo;
         return new SettingsGroup("ELEMENTS")
-            .With(new ChipGroupSetting(
+            .With(new ReorderListSetting(
                 "Visible elements",
-                null,
-                [
-                    TrackInfoChip("Track name", options.ShowTrackName, v => options.ShowTrackName = v, context),
-                    TrackInfoChip("Session", options.ShowSession, v => options.ShowSession = v, context),
-                    TrackInfoChip("Air temp", options.ShowAirTemp, v => options.ShowAirTemp = v, context),
-                    TrackInfoChip("Track temp", options.ShowTrackTemp, v => options.ShowTrackTemp = v, context),
-                    TrackInfoChip("Wind", options.ShowWind, v => options.ShowWind = v, context),
-                    TrackInfoChip("Humidity", options.ShowHumidity, v => options.ShowHumidity = v, context),
-                    TrackInfoChip("Track usage", options.ShowTrackUsage, v => options.ShowTrackUsage = v, context),
-                    TrackInfoChip("Time left", options.ShowTimeLeft, v => options.ShowTimeLeft = v, context),
-                    TrackInfoChip("Lap", options.ShowLap, v => options.ShowLap = v, context),
-                ]));
+                "Drag a row by its handle to change the order.",
+                options.FieldOrder.Select(field => new ReorderListItem(field, TrackInfoChip(field, options, context))),
+                order =>
+                {
+                    options.FieldOrder = order.Cast<TrackInfoField>().ToList();
+                    context.Persist(() => TrackInfoOptionsStore.Save(options));
+                }));
     }
 
-    private static ChipSetting TrackInfoChip(string label, bool value, Action<bool> assign, WidgetSettingsContext context) =>
-        new(label, null, value, isVisible =>
+    private static string TrackInfoLabel(TrackInfoField field) => field switch
+    {
+        TrackInfoField.TrackName => "Track name",
+        TrackInfoField.Session => "Session",
+        TrackInfoField.AirTemp => "Air temp",
+        TrackInfoField.TrackTemp => "Track temp",
+        TrackInfoField.Wind => "Wind",
+        TrackInfoField.Humidity => "Humidity",
+        TrackInfoField.TrackUsage => "Track usage",
+        TrackInfoField.TimeLeft => "Time left",
+        _ => "Lap",
+    };
+
+    private static ChipSetting TrackInfoChip(TrackInfoField field, TrackInfoOptions options, WidgetSettingsContext context) =>
+        new(TrackInfoLabel(field), null, options.IsVisible(field), isVisible =>
         {
-            assign(isVisible);
-            context.Persist(() => TrackInfoOptionsStore.Save(context.TrackInfo));
+            options.SetVisible(field, isVisible);
+            context.Persist(() => TrackInfoOptionsStore.Save(options));
         });
 
     // ===== Cockpit =====

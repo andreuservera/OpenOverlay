@@ -6,7 +6,6 @@ using System.Windows.Input;
 using IRacingOverlay.App.About;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
-using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -373,20 +372,21 @@ public sealed class ChipGroupSetting : SettingItem
     public IReadOnlyList<ChipSetting> Chips { get; }
 }
 
-/// <summary>One column in a <see cref="ColumnOrderSetting"/>: its show/hide switch and, for a column
-/// that carries a second part (iRating and its delta), that part's switch too.</summary>
-public sealed class ColumnOrderItem : INotifyPropertyChanged
+/// <summary>One entry in a <see cref="ReorderListSetting"/>: its show/hide switch and, for an entry
+/// that carries a second part (a table's iRating and its delta), that part's switch too.</summary>
+public sealed class ReorderListItem : INotifyPropertyChanged
 {
     private bool _isDragging;
 
-    public ColumnOrderItem(DriverTableColumn column, ChipSetting visible, ChipSetting? companion = null)
+    public ReorderListItem(Enum key, ChipSetting visible, ChipSetting? companion = null)
     {
-        Column = column;
+        Key = key;
         Visible = visible;
         Companion = companion;
     }
 
-    public DriverTableColumn Column { get; }
+    /// <summary>What the entry stands for: a table column, a bar field.</summary>
+    public Enum Key { get; }
 
     public ChipSetting Visible { get; }
 
@@ -412,26 +412,27 @@ public sealed class ColumnOrderItem : INotifyPropertyChanged
 }
 
 /// <summary>
-/// A driver table's columns as a list to reorder by dragging, each row with its show/hide switch.
+/// Things shown side by side (a table's columns, a bar's fields) as a list to reorder by dragging,
+/// each row with its show/hide switch.
 /// While a row is dragged only the list moves; the new order is applied once, on release, so a
 /// drag is one change (one save, one undo step) however far it travels.
 /// </summary>
-public sealed class ColumnOrderSetting : SettingItem
+public sealed class ReorderListSetting : SettingItem
 {
-    private readonly Action<IReadOnlyList<DriverTableColumn>> _apply;
-    private IReadOnlyList<DriverTableColumn> _applied;
+    private readonly Action<IReadOnlyList<Enum>> _apply;
+    private IReadOnlyList<Enum> _applied;
 
-    public ColumnOrderSetting(string label, string? hint, IEnumerable<ColumnOrderItem> items, Action<IReadOnlyList<DriverTableColumn>> apply)
+    public ReorderListSetting(string label, string? hint, IEnumerable<ReorderListItem> items, Action<IReadOnlyList<Enum>> apply)
         : base(label, hint)
     {
-        Items = new ObservableCollection<ColumnOrderItem>(items);
+        Items = new ObservableCollection<ReorderListItem>(items);
         _applied = Order;
         _apply = apply;
     }
 
-    public ObservableCollection<ColumnOrderItem> Items { get; }
+    public ObservableCollection<ReorderListItem> Items { get; }
 
-    private IReadOnlyList<DriverTableColumn> Order => Items.Select(item => item.Column).ToList();
+    private IReadOnlyList<Enum> Order => Items.Select(item => item.Key).ToList();
 
     /// <summary>Moves a row in the list only, as a drag passes over the others.</summary>
     public void MoveLive(int from, int to)

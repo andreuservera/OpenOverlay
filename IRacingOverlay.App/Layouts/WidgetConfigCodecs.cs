@@ -372,6 +372,7 @@ internal sealed class TrackInfoConfigCodec(TrackInfoOptions options, Action<Trac
         ["showTrackUsage"] = options.ShowTrackUsage,
         ["showTimeLeft"] = options.ShowTimeLeft,
         ["showLap"] = options.ShowLap,
+        ["fieldOrder"] = new JsonArray(options.FieldOrder.Select(field => (JsonNode)Name(field)).ToArray()),
     };
 
     protected override void Assign(JsonObject config)
@@ -385,6 +386,15 @@ internal sealed class TrackInfoConfigCodec(TrackInfoOptions options, Action<Trac
         Set<bool>(config, "showTrackUsage", value => options.ShowTrackUsage = value);
         Set<bool>(config, "showTimeLeft", value => options.ShowTimeLeft = value);
         Set<bool>(config, "showLap", value => options.ShowLap = value);
+        // As the driver tables' column order: unknown names skipped, missing fields keep their place.
+        if (config["fieldOrder"] is JsonArray order)
+        {
+            options.FieldOrder = order
+                .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                    Enum.TryParse<TrackInfoField>(name, ignoreCase: true, out var field) ? field : (TrackInfoField?)null)
+                .OfType<TrackInfoField>()
+                .ToList();
+        }
     }
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);

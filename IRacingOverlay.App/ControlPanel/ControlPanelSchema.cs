@@ -72,7 +72,7 @@ public sealed partial class ControlPanelViewModel
                         chip.TracePath = $"{path}{chips.Label} › ";
                     }
                 }
-                else if (setting is ColumnOrderSetting columns)
+                else if (setting is ReorderListSetting columns)
                 {
                     foreach (var chip in columns.Items.SelectMany(column => new[] { column.Visible, column.Companion }).OfType<ChipSetting>())
                     {
@@ -161,7 +161,7 @@ public sealed partial class ControlPanelViewModel
                 ChoiceSetting choice => choice.Options,
                 SegmentedSetting segmented => segmented.Options,
                 ChipGroupSetting chips => chips.Chips.SelectMany(chip => new[] { chip.Label, chip.Hint ?? "" }),
-                ColumnOrderSetting columns => columns.Items.Select(column => column.Label),
+                ReorderListSetting columns => columns.Items.Select(column => column.Label),
                 HotkeySetting hotkey => [hotkey.Display],
                 _ => [],
             };

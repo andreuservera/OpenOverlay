@@ -6,22 +6,22 @@ using System.Windows.Media;
 namespace IRacingOverlay.App.ControlPanel;
 
 /// <summary>
-/// Drag-to-reorder for a <see cref="ColumnOrderSetting"/>'s list, by plain mouse capture rather than
+/// Drag-to-reorder for a <see cref="ReorderListSetting"/>'s list, by plain mouse capture rather than
 /// WPF drag-and-drop (the same choice the layout editor made): press on a row's handle, move, and
 /// the row trades places with each neighbour it passes; release applies the order once.
 /// Set <c>IsEnabled</c> on the ItemsControl and <c>IsHandle</c> on the grip inside each row.
 /// </summary>
-public static class ColumnOrderDrag
+public static class ReorderListDrag
 {
     public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
-        "IsEnabled", typeof(bool), typeof(ColumnOrderDrag), new PropertyMetadata(false, OnIsEnabledChanged));
+        "IsEnabled", typeof(bool), typeof(ReorderListDrag), new PropertyMetadata(false, OnIsEnabledChanged));
 
     public static readonly DependencyProperty IsHandleProperty = DependencyProperty.RegisterAttached(
-        "IsHandle", typeof(bool), typeof(ColumnOrderDrag), new PropertyMetadata(false));
+        "IsHandle", typeof(bool), typeof(ReorderListDrag), new PropertyMetadata(false));
 
     // The row being dragged, per list; only one drag can be under way at a time.
     private static readonly DependencyProperty DraggedProperty = DependencyProperty.RegisterAttached(
-        "Dragged", typeof(ColumnOrderItem), typeof(ColumnOrderDrag), new PropertyMetadata(null));
+        "Dragged", typeof(ReorderListItem), typeof(ReorderListDrag), new PropertyMetadata(null));
 
     public static bool GetIsEnabled(DependencyObject element) => (bool)element.GetValue(IsEnabledProperty);
 
@@ -48,7 +48,7 @@ public static class ColumnOrderDrag
     {
         var list = (ItemsControl)sender;
         if (!OnHandle(e.OriginalSource as DependencyObject, list) ||
-            (e.OriginalSource as FrameworkElement)?.DataContext is not ColumnOrderItem item)
+            (e.OriginalSource as FrameworkElement)?.DataContext is not ReorderListItem item)
         {
             return;
         }
@@ -62,7 +62,7 @@ public static class ColumnOrderDrag
     private static void OnMove(object sender, MouseEventArgs e)
     {
         var list = (ItemsControl)sender;
-        if (list.GetValue(DraggedProperty) is not ColumnOrderItem item || list.DataContext is not ColumnOrderSetting setting)
+        if (list.GetValue(DraggedProperty) is not ReorderListItem item || list.DataContext is not ReorderListSetting setting)
         {
             return;
         }
@@ -89,14 +89,14 @@ public static class ColumnOrderDrag
     private static void OnLostCapture(object sender, MouseEventArgs e)
     {
         var list = (ItemsControl)sender;
-        if (list.GetValue(DraggedProperty) is not ColumnOrderItem item)
+        if (list.GetValue(DraggedProperty) is not ReorderListItem item)
         {
             return;
         }
 
         list.ClearValue(DraggedProperty);
         item.IsDragging = false;
-        (list.DataContext as ColumnOrderSetting)?.CommitOrder();
+        (list.DataContext as ReorderListSetting)?.CommitOrder();
     }
 
     /// <summary>The row whose box the pointer is in; above the first or below the last, that end.</summary>

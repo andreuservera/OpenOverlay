@@ -95,11 +95,11 @@ public class DriverTableColumnOrderTests
     [Fact]
     public void Dragging_OnlyMovesTheList_AndReleasingAppliesTheOrderOnce()
     {
-        var applied = new List<IReadOnlyList<DriverTableColumn>>();
-        var setting = new ColumnOrderSetting(
+        var applied = new List<IReadOnlyList<Enum>>();
+        var setting = new ReorderListSetting(
             "Columns",
             null,
-            DriverTableColumnLayout.DefaultOrder.Select(column => new ColumnOrderItem(column, new ChipSetting(column.ToString(), null, true, _ => { }))),
+            DriverTableColumnLayout.DefaultOrder.Select(column => new ReorderListItem(column, new ChipSetting(column.ToString(), null, true, _ => { }))),
             applied.Add);
 
         setting.MoveLive(0, 1);
@@ -110,18 +110,18 @@ public class DriverTableColumnOrderTests
         setting.CommitOrder();
 
         var order = Assert.Single(applied);
-        Assert.Equal(DriverTableColumn.Position, order[2]);
-        Assert.Equal(DriverTableColumn.CarNumber, order[0]);
+        Assert.Equal(DriverTableColumn.Position, (DriverTableColumn)order[2]);
+        Assert.Equal(DriverTableColumn.CarNumber, (DriverTableColumn)order[0]);
     }
 
     [Fact]
     public void ADragThatEndsWhereItStarted_AppliesNothing()
     {
         var applied = 0;
-        var setting = new ColumnOrderSetting(
+        var setting = new ReorderListSetting(
             "Columns",
             null,
-            DriverTableColumnLayout.DefaultOrder.Select(column => new ColumnOrderItem(column, new ChipSetting(column.ToString(), null, true, _ => { }))),
+            DriverTableColumnLayout.DefaultOrder.Select(column => new ReorderListItem(column, new ChipSetting(column.ToString(), null, true, _ => { }))),
             _ => applied++);
 
         setting.MoveLive(0, 3);

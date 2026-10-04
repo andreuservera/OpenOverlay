@@ -292,7 +292,7 @@ public partial class LayoutEditorWindow : Window
                         chip.TracePath = $"{path}{chips.Label} › ";
                     }
                 }
-                else if (setting is ColumnOrderSetting columns)
+                else if (setting is ReorderListSetting columns)
                 {
                     foreach (var chip in columns.Items.SelectMany(column => new[] { column.Visible, column.Companion }).OfType<ChipSetting>())
                     {

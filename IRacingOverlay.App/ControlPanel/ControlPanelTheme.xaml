@@ -1133,11 +1133,11 @@
     </DataTemplate>
 
     <!-- Driver-table columns: one row per column, in display order. The grip on the left drags the
-         row (see ColumnOrderDrag); the switch on the right shows or hides the column, and iRating
+         row (see ReorderListDrag); the switch on the right shows or hides the column, and iRating
          carries a small chip for its delta, which travels with it. -->
-    <DataTemplate DataType="{x:Type cp:ColumnOrderSetting}">
+    <DataTemplate DataType="{x:Type cp:ReorderListSetting}">
         <ContentControl Template="{StaticResource Cp.SettingStack}">
-            <ItemsControl ItemsSource="{Binding Items}" cp:ColumnOrderDrag.IsEnabled="True">
+            <ItemsControl ItemsSource="{Binding Items}" cp:ReorderListDrag.IsEnabled="True">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border x:Name="Row" Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
@@ -1149,7 +1149,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Border cp:ColumnOrderDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
+                                <Border cp:ReorderListDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
                                         ToolTip="Drag to reorder">
                                     <!-- Six dots, the usual "this can be dragged" grip. -->
                                     <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">

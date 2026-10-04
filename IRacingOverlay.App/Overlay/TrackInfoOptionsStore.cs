@@ -16,7 +16,9 @@ internal static class TrackInfoOptionsStore
         bool ShowHumidity = true,
         bool ShowTrackUsage = true,
         bool ShowTimeLeft = true,
-        bool ShowLap = true);
+        bool ShowLap = true,
+        // Field names left to right; missing (older files) keeps the default order.
+        string[]? FieldOrder = null);
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -38,6 +40,13 @@ internal static class TrackInfoOptionsStore
         options.ShowTrackUsage = saved.ShowTrackUsage;
         options.ShowTimeLeft = saved.ShowTimeLeft;
         options.ShowLap = saved.ShowLap;
+        if (saved.FieldOrder is { } order)
+        {
+            options.FieldOrder = order
+                .Select(name => Enum.TryParse<TrackInfoField>(name, out var field) ? field : (TrackInfoField?)null)
+                .OfType<TrackInfoField>()
+                .ToList();
+        }
     }
 
     public static void Save(TrackInfoOptions options) =>
@@ -50,5 +59,6 @@ internal static class TrackInfoOptionsStore
             options.ShowHumidity,
             options.ShowTrackUsage,
             options.ShowTimeLeft,
-            options.ShowLap));
+            options.ShowLap,
+            options.FieldOrder.Select(field => field.ToString()).ToArray()));
 }
