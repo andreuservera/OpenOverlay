@@ -382,8 +382,9 @@ public static class PreviewData
         WindSpeedMs = 3.6,
         WindDirRad = 2.1,
         HumidityPct = 54,
-        TimeRemainingSeconds = 1284,
-        Progress = new SessionProgress { CurrentLap = 7, TotalLaps = 23 },
+        // The same timed race the driver tables preview: 23:15 run of an hour, laps estimated.
+        TimeRemainingSeconds = 3600 - 1395,
+        Progress = Progress(),
     };
 
     /// <summary>Cars spread around the lap with the pack bunched where it usually is — behind the
