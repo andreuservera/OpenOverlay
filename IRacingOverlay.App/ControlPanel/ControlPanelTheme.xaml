@@ -472,6 +472,53 @@
         </Setter>
     </Style>
 
+    <!-- A column's companion switch inside its row (iRating's gain / loss): the chip shape, smaller,
+         led by the table's own up and down arrows so it says what it adds. Off, the arrows go grey. -->
+    <Style x:Key="Cp.CompanionChip" TargetType="ToggleButton">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.Field}" CornerRadius="12"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                            Padding="8,0,10,0" SnapsToDevicePixels="True">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path x:Name="Up" Data="M0,4 L3.5,0.5 L7,4" Width="7" Height="4.5" Stretch="Fill"
+                                  Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  VerticalAlignment="Center" Margin="0,0,2,0"/>
+                            <Path x:Name="Down" Data="M0,0.5 L3.5,4 L7,0.5" Width="7" Height="4.5" Stretch="Fill"
+                                  Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#66FFD24D"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Up" Property="Stroke" Value="{StaticResource Cp.Live}"/>
+                            <Setter TargetName="Down" Property="Stroke" Value="{StaticResource Cp.Danger}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Segmented selector =====
          One press, one value, whole range visible. Used for the size ladder, where seeing that XS
          and XL exist is half the information. -->
@@ -1229,9 +1276,9 @@
                                 </Border>
                                 <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Cp.Body}"
                                            Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
-                                <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.Chip}" Height="24" Margin="0,0,10,0"
+                                <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.CompanionChip}" Margin="0,0,10,0"
                                               Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
-                                              ToolTip="iRating change"/>
+                                              ToolTip="The estimated iRating gain or loss for this race, beside the rating"/>
                                 <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
                                           IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
                             </Grid>

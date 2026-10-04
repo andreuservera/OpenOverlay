@@ -80,7 +80,7 @@ public static class WidgetSettings
             ? new ReorderListItem(
                 column,
                 Column("iRating", DriverTableColumn.IRating, options, context),
-                Column("Δ", DriverTableColumn.IRatingDelta, options, context))
+                Column("Gain / loss", DriverTableColumn.IRatingDelta, options, context))
             : new ReorderListItem(column, Column(ColumnLabel(column), column, options, context))),
         order =>
         {
@@ -96,7 +96,7 @@ public static class WidgetSettings
         DriverTableColumn.LastPitStop => "Last pit",
         DriverTableColumn.TireCompound => "Tire",
         DriverTableColumn.IRating => "iRating",
-        DriverTableColumn.IRatingDelta => "Δ",
+        DriverTableColumn.IRatingDelta => "Gain / loss",
         DriverTableColumn.License => "SR",
         DriverTableColumn.Lap => "Lap",
         DriverTableColumn.BestLap => "Best",
