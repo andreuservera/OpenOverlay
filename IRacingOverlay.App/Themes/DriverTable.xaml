@@ -155,11 +155,12 @@
                         <ColumnDefinition Width="{Binding Options.Columns.Width10, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width11, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width12, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <ColumnDefinition Width="{Binding Options.Columns.Width13, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <!-- Not a column: the fastest-lap mark's slot, always last. -->
                         <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="13"
+                    <Grid Grid.Column="14"
                           Visibility="{Binding Options.ShowFastestLapMark, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                         <Border Style="{StaticResource FastestLapBadge}"
                                 Visibility="{Binding IsSessionFastestLap, Mode=OneTime, Converter={StaticResource BoolToVis}}">
@@ -190,6 +191,12 @@
                     <w:CarBrandIcon Grid.Column="{Binding Options.Columns.CarBrand, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="24" Height="16" HorizontalAlignment="Center" Margin="0,0,4,0"
                                     Logo="{Binding CarBrandLogo, Mode=OneTime}" Monogram="{Binding CarBrandMonogram, Mode=OneTime}"
                                     Visibility="{Binding Options.ShowCarBrand, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <!-- The driver's flag, from their iRacing flair. Blank for no flair, "Global", or a
+                         country there's no flag for. -->
+                    <w:CountryFlagIcon Grid.Column="{Binding Options.Columns.CountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="22" Height="15" HorizontalAlignment="Center" Margin="0,0,4,0"
+                                       Country="{Binding FlairName, Mode=OneTime}"
+                                       Visibility="{Binding Options.ShowCountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- Status badges take their room out of the name, never out of another column. -->
                     <DockPanel Grid.Column="{Binding Options.Columns.Driver, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,8,0"

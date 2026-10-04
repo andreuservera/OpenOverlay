@@ -154,4 +154,22 @@ public class SessionInfoParserTests
 
         Assert.Equal("[OO] Racing", session.DriverInfo!.Drivers[0].TeamName);
     }
+
+    [Theory]
+    [InlineData("Spain", "Spain")]
+    [InlineData("TÃ¼rkiye", "Türkiye")] // UTF-8 read as Windows-1252, as the session block arrives
+    [InlineData("Hákon", "Hákon")] // genuine Windows-1252 text is left alone
+    public void RepairUtf8_UndoesUtf8ReadAsWindows1252(string raw, string expected) =>
+        Assert.Equal(expected, SessionInfoParser.RepairUtf8(raw));
+
+    [Fact]
+    public void Parse_ReadsEachDriversFlair()
+    {
+        var yaml = ValidYaml.Replace("IRating: 2500", "IRating: 2500\n   FlairName: Spain\n   FlairID: 198");
+
+        var driver = SessionInfoParser.Parse(yaml).Session.DriverInfo!.Drivers[0];
+
+        Assert.Equal("Spain", driver.FlairName);
+        Assert.Equal(198, driver.FlairID);
+    }
 }

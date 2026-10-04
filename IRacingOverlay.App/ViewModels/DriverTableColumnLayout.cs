@@ -2,14 +2,14 @@ namespace IRacingOverlay.App.ViewModels;
 
 /// <summary>
 /// Where each driver-table column sits and how wide it is, for one column order and set of visible
-/// columns. Header and rows share one 13-slot grid; a cell asks for its slot here instead of naming a
+/// columns. Header and rows share one 14-slot grid; a cell asks for its slot here instead of naming a
 /// fixed one, so reordering is just a new layout. iRating and its delta are one unit in the order —
 /// they share a badge — so the delta always takes the slot right after the rating. Immutable: the
 /// options build a new one whenever the order or a column's visibility changes.
 /// </summary>
 public sealed class DriverTableColumnLayout
 {
-    public const int SlotCount = 13;
+    public const int SlotCount = 14;
 
     /// <summary>The order the columns have always had, and the order anything not in a saved order
     /// falls back to.</summary>
@@ -18,6 +18,7 @@ public sealed class DriverTableColumnLayout
         DriverTableColumn.Position,
         DriverTableColumn.CarNumber,
         DriverTableColumn.CarBrand,
+        DriverTableColumn.CountryFlag,
         DriverTableColumn.Driver,
         DriverTableColumn.LastPitStop,
         DriverTableColumn.TireCompound,
@@ -73,6 +74,7 @@ public sealed class DriverTableColumnLayout
         DriverTableColumn.BestLap => 64,
         DriverTableColumn.LastLap => 64,
         DriverTableColumn.CarBrand => 38,
+        DriverTableColumn.CountryFlag => 34,
         _ => 58,
     };
 
@@ -92,6 +94,7 @@ public sealed class DriverTableColumnLayout
     public double Width10 => _widths[10];
     public double Width11 => _widths[11];
     public double Width12 => _widths[12];
+    public double Width13 => _widths[13];
 
     public int Position => SlotOf(DriverTableColumn.Position);
     public int CarNumber => SlotOf(DriverTableColumn.CarNumber);
@@ -105,6 +108,7 @@ public sealed class DriverTableColumnLayout
     public int LastLap => SlotOf(DriverTableColumn.LastLap);
     public int Gap => SlotOf(DriverTableColumn.Gap);
     public int CarBrand => SlotOf(DriverTableColumn.CarBrand);
+    public int CountryFlag => SlotOf(DriverTableColumn.CountryFlag);
 
     private void Place(DriverTableColumn column, int slot, Func<DriverTableColumn, bool> isVisible)
     {

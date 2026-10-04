@@ -157,6 +157,7 @@ public static class SessionInfoParser
                 driver.CarScreenName ??= "";
                 driver.LicString ??= "";
                 driver.CarClassColor ??= "";
+                driver.FlairName = RepairUtf8(driver.FlairName ?? "");
             }
         }
 
@@ -177,5 +178,27 @@ public static class SessionInfoParser
         }
 
         return info;
+    }
+
+    /// <summary>The session block is Windows-1252 (driver names arrive as such), but iRacing writes
+    /// FlairName in UTF-8 inside it, so "Türkiye" decodes as "TÃ¼rkiye". Re-reads such a value as the
+    /// UTF-8 it was; anything that isn't valid UTF-8 that way is left as it came.</summary>
+    internal static string RepairUtf8(string value)
+    {
+        if (value.All(c => c < 0x80))
+        {
+            return value;
+        }
+
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        try
+        {
+            var bytes = Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback).GetBytes(value);
+            return new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes);
+        }
+        catch (Exception ex) when (ex is EncoderFallbackException or DecoderFallbackException or ArgumentException)
+        {
+            return value;
+        }
     }
 }

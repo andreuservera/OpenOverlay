@@ -96,6 +96,9 @@ public abstract class DriverRow
 
     public string CarBrandMonogram => CarBrand?.Monogram ?? "";
 
+    /// <summary>The flag the driver picked on their iRacing profile, by name ("Spain").</summary>
+    public string FlairName { get; init; } = "";
+
     /// <summary>What the GAP column shows. The one thing the two tables genuinely disagree on:
     /// Standings measures to the class leader, Relative to the player.</summary>
     public abstract string GapDisplay { get; }

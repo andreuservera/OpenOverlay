@@ -93,6 +93,7 @@ public static class WidgetSettings
         DriverTableColumn.Position => "Pos",
         DriverTableColumn.CarNumber => "Car #",
         DriverTableColumn.CarBrand => "Make",
+        DriverTableColumn.CountryFlag => "Flag",
         DriverTableColumn.Driver => "Driver",
         DriverTableColumn.LastPitStop => "Last pit",
         DriverTableColumn.TireCompound => "Tire",

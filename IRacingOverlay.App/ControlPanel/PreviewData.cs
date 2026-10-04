@@ -60,6 +60,14 @@ public static class PreviewData
         new("Noah Lindqvist", "2", 740, "R 0.55", 41.006, 0),
     ];
 
+    // Each driver's flair, in the order of Field; Turkey under iRacing's own spelling.
+    private static readonly string[] Flairs =
+    [
+        "Spain", "Spain", "Poland", "Italy", "Spain", "Japan", "United Kingdom", "France",
+        "Spain", "Argentina", "United States", "Denmark", "Türkiye", "Portugal", "Canada", "Sweden",
+        "Brazil", "Finland", "Australia", "Romania", "Germany", "Italy", "Ireland", "Norway",
+    ];
+
     private const double BaseLapTime = 92.418;
 
     private static readonly TireCompound PreviewHard = TireCompound.FromName("Hard");
@@ -116,6 +124,7 @@ public static class PreviewData
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 // Mostly slicks, a few gambling on wets, one on softs: every ring colour shows.
                 TireCompound = i % 7 == 4 ? PreviewWet : i % 11 == 2 ? PreviewSoft : PreviewHard,
+                FlairName = Flairs[i % Flairs.Length],
                 CarBrand = CarBrand.ForCar(Models[classIndex][(classPositions[classIndex] - 1) % Models[classIndex].Length]),
                 CurrentLap = i < 3 ? 18 : 17,
                 // Car 8 has just set a personal best, so the green last-lap state shows too.
@@ -169,6 +178,7 @@ public static class PreviewData
                 LastPitStop = source.LastPitStop,
                 TireCompound = source.TireCompound,
                 CarBrand = source.CarBrand,
+                FlairName = source.FlairName,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,

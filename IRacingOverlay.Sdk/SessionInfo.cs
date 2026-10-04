@@ -91,6 +91,10 @@ public sealed class DriverEntry
     public int IRating { get; set; }
     public string LicString { get; set; } = "";
     public string CarClassColor { get; set; } = "";
+    /// <summary>The flag the member picked on their iRacing profile, e.g. "Spain", "England",
+    /// "Global"; "-none-" when they picked none. The closest thing iRacing has to a nationality.</summary>
+    public string FlairName { get; set; } = "";
+    public int FlairID { get; set; }
 
     public bool IsPaceCar => CarIsPaceCar != 0;
     public bool IsAi => CarIsAI != 0;

@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageReference Include="Velopack" Version="1.2.0" />
+    <!-- Draws the country flags, which are full SVGs (coats of arms, gradients, clip paths). -->
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.6" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -34,6 +36,8 @@
     <Resource Include="Assets\spa2.jpg" />
     <!-- Make logos for the driver tables, read by name (see Widgets/CarBrandIcon.cs). -->
     <EmbeddedResource Include="Assets\CarBrands\*.svg" LogicalName="OpenOverlay.CarBrands.%(Filename).svg" />
+    <!-- Country flags for the driver tables, matched to iRacing's FlairName (see Widgets/CountryFlags.cs). -->
+    <EmbeddedResource Include="Assets\Flags\*.svg" LogicalName="OpenOverlay.Flags.%(Filename).svg" />
     <!-- Must not be an ApplicationDefinition (which auto-generates its own Main) now that
          App.xaml.cs provides one explicitly for Velopack's sake. -->
     <ApplicationDefinition Remove="App.xaml" />

@@ -21,6 +21,8 @@ public enum DriverTableColumn
     Gap,
     /// <summary>The car's make, as its logo. Off by default.</summary>
     CarBrand,
+    /// <summary>The driver's country flag, from their iRacing flair. Off by default.</summary>
+    CountryFlag,
 }
 
 /// <summary>Session information shown around a driver table, above or below it rather than as a
@@ -84,6 +86,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showBestLap = true;
     private bool _showGap = true;
     private bool _showCarBrand;
+    private bool _showCountryFlag;
     private bool _showClassName = true;
     private bool _showSof = true;
     private bool _showColumnHeaders = true;
@@ -190,6 +193,13 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showCarBrand;
         set => SetField(ref _showCarBrand, value);
+    }
+
+    /// <summary>Each driver's flag, from the flair on their iRacing profile. Off by default.</summary>
+    public bool ShowCountryFlag
+    {
+        get => _showCountryFlag;
+        set => SetField(ref _showCountryFlag, value);
     }
 
     /// <summary>Shows the session being run (RACE, QUALIFYING, PRACTICE) next to the panel title.
@@ -399,6 +409,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         DriverTableColumn.LastLap => ShowLastLap,
         DriverTableColumn.BestLap => ShowBestLap,
         DriverTableColumn.CarBrand => ShowCarBrand,
+        DriverTableColumn.CountryFlag => ShowCountryFlag,
         _ => ShowGap,
     };
 
@@ -418,6 +429,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
             case DriverTableColumn.LastLap: ShowLastLap = visible; break;
             case DriverTableColumn.BestLap: ShowBestLap = visible; break;
             case DriverTableColumn.CarBrand: ShowCarBrand = visible; break;
+            case DriverTableColumn.CountryFlag: ShowCountryFlag = visible; break;
             default: ShowGap = visible; break;
         }
     }
