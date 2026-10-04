@@ -358,9 +358,9 @@ public sealed class ChipSetting : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
-/// <summary>A set of peer toggles shown as a chip grid. The right shape whenever the useful question
-/// is "which of these are on" rather than "is this one thing on" — table columns, panel blocks —
-/// because the whole set stays visible in the space a handful of switch rows would eat.</summary>
+/// <summary>A set of peer toggles — "which of these are on" — shown as one row and switch each, like
+/// a reorder list without the grip: for elements whose order is the widget's own (flag types,
+/// weather readouts, the fuel headline).</summary>
 public sealed class ChipGroupSetting : SettingItem
 {
     public ChipGroupSetting(string label, string? hint, IReadOnlyList<ChipSetting> chips)

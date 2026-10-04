@@ -1223,18 +1223,29 @@
         </Grid>
     </DataTemplate>
 
+    <!-- Elements that are only switched on and off (flag types, weather readouts): the driver-table
+         column rows without the grip, since their order is the widget's own. A hint, where there is
+         one, is the row's tooltip. -->
     <DataTemplate DataType="{x:Type cp:ChipGroupSetting}">
         <ContentControl Template="{StaticResource Cp.SettingStack}">
-            <ItemsControl ItemsSource="{Binding Chips}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+            <ItemsControl ItemsSource="{Binding Chips}" Focusable="False">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <ToggleButton Style="{StaticResource Cp.Chip}" Content="{Binding Label}"
-                                      ToolTip="{Binding Hint}" IsChecked="{Binding Value, Mode=TwoWay}"/>
+                        <Border Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
+                                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                                ToolTip="{Binding Hint}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}" Margin="14,0,8,0"
+                                           Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <CheckBox Grid.Column="1" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
+                                          IsChecked="{Binding Value, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
