@@ -161,6 +161,7 @@ public sealed class WidgetConfigCodecTests
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
+            new PedalTraceOptions(),
             new WidgetConfigPersistence(
                 options => _saved.Add($"DriverTable.{options.Table}"),
                 _ => _saved.Add("Flag"),
@@ -168,7 +169,8 @@ public sealed class WidgetConfigCodecTests
                 _ => _saved.Add("Weather"),
                 _ => _saved.Add("TrackInfo"),
                 _ => _saved.Add("FuelCalculator"),
-                _ => _saved.Add("Delta")),
+                _ => _saved.Add("Delta"),
+                _ => _saved.Add("PedalTrace")),
             _headerChanges.Add));
 
     /// <summary>Moves every value to a different valid one: booleans flip, numbers go up, enums

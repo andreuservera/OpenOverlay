@@ -380,7 +380,8 @@ public sealed class LayoutFileTests : IDisposable
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+            new PedalTraceOptions(),
+            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { }));
 
     /// <summary>Today no widget has sensitive fields, so the filter is checked with a stand-in that does.</summary>

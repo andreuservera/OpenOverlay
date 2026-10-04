@@ -141,7 +141,8 @@ public class DriverTableColumnOrderTests
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+            new PedalTraceOptions(),
+            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { }))[options.Table == DriverTable.Standings ? WidgetCatalog.Standings : WidgetCatalog.Relative];
 
     [Fact]

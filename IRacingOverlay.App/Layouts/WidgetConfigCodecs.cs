@@ -43,7 +43,8 @@ public sealed record WidgetConfigPersistence(
     Action<WeatherOptions> Weather,
     Action<TrackInfoOptions> TrackInfo,
     Action<FuelCalculatorOptions> FuelCalculator,
-    Action<DeltaOptions> Delta)
+    Action<DeltaOptions> Delta,
+    Action<PedalTraceOptions> PedalTrace)
 {
     public static WidgetConfigPersistence Stores { get; } = new(
         DriverTableOptionsStore.Save,
@@ -53,7 +54,8 @@ public sealed record WidgetConfigPersistence(
         TrackInfoOptionsStore.Save,
         FuelCalculatorOptionsStore.Save,
         // The Delta reference is deliberately never saved for the individual widget.
-        _ => { });
+        _ => { },
+        PedalTraceOptionsStore.Save);
 }
 
 /// <summary>The live options objects the codecs read and write — the same instances the widgets,
@@ -67,6 +69,7 @@ public sealed record WidgetConfigTargets(
     TrackInfoOptions TrackInfo,
     FuelCalculatorOptions FuelCalculator,
     DeltaOptions Delta,
+    PedalTraceOptions PedalTrace,
     WidgetConfigPersistence Persist,
     Action<DriverTable> TableHeaderChanged);
 
@@ -86,7 +89,7 @@ public static class WidgetConfigCodecs
             new FuelCalculatorConfigCodec(targets.FuelCalculator, targets.Persist.FuelCalculator),
             new DeltaConfigCodec(targets.Delta, targets.Persist.Delta),
             new EmptyConfigCodec(WidgetCatalog.TireInfo),
-            new EmptyConfigCodec(WidgetCatalog.PedalTrace),
+            new PedalTraceConfigCodec(targets.PedalTrace, targets.Persist.PedalTrace),
             new EmptyConfigCodec(WidgetCatalog.Incident),
             new TrackInfoConfigCodec(targets.TrackInfo, targets.Persist.TrackInfo),
             new EmptyConfigCodec(WidgetCatalog.TrackMap),
@@ -425,6 +428,39 @@ internal sealed class TrackInfoConfigCodec(TrackInfoOptions options, Action<Trac
                 .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
                     Enum.TryParse<TrackInfoField>(name, ignoreCase: true, out var field) ? field : (TrackInfoField?)null)
                 .OfType<TrackInfoField>()
+                .ToList();
+        }
+    }
+
+    protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
+}
+
+internal sealed class PedalTraceConfigCodec(PedalTraceOptions options, Action<PedalTraceOptions> persist) : WidgetConfigCodec(WidgetCatalog.PedalTrace)
+{
+    public override JsonObject Read() => new()
+    {
+        ["showGear"] = options.ShowGear,
+        ["showSpeed"] = options.ShowSpeed,
+        ["showSteering"] = options.ShowSteering,
+        ["showTrace"] = options.ShowTrace,
+        ["showPedals"] = options.ShowPedals,
+        ["elementOrder"] = new JsonArray(options.ElementOrder.Select(element => (JsonNode)Name(element)).ToArray()),
+    };
+
+    protected override void Assign(JsonObject config)
+    {
+        Set<bool>(config, "showGear", value => options.ShowGear = value);
+        Set<bool>(config, "showSpeed", value => options.ShowSpeed = value);
+        Set<bool>(config, "showSteering", value => options.ShowSteering = value);
+        Set<bool>(config, "showTrace", value => options.ShowTrace = value);
+        Set<bool>(config, "showPedals", value => options.ShowPedals = value);
+        // As the driver tables' column order: unknown names skipped, missing blocks keep their place.
+        if (config["elementOrder"] is JsonArray order)
+        {
+            options.ElementOrder = order
+                .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                    Enum.TryParse<PedalTraceElement>(name, ignoreCase: true, out var element) ? element : (PedalTraceElement?)null)
+                .OfType<PedalTraceElement>()
                 .ToList();
         }
     }

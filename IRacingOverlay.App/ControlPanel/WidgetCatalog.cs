@@ -70,8 +70,8 @@ public static class WidgetCatalog
         new(Delta, "Delta", "Live gap to your reference lap.",
             "M12,21 A8,8 0 1 0 12,5 A8,8 0 0 0 12,21 Z M12,9.5 V13 L14.5,15 M9.5,2.5 H14.5"),
 
-        new(PedalTrace, "Pedal trace", "Throttle, brake and clutch, with ABS activity marked.",
-            "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewWidth: 340, PreviewHeight: 110),
+        new(PedalTrace, "Pedal trace", "Gear, speed, steering and your pedals, with ABS activity marked.",
+            "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewHeight: 110),
 
         new(Incident, "Incidents", "Your incidents, and your team's in a team race.",
             "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8"),

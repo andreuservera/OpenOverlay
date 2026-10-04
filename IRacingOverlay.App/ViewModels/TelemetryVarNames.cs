@@ -9,6 +9,8 @@ internal static class TelemetryVarNames
     public const string Speed = "Speed";
     public const string Rpm = "RPM";
     public const string Gear = "Gear";
+    /// <summary>Radians at the wheel rim, positive turning left (anticlockwise).</summary>
+    public const string SteeringWheelAngle = "SteeringWheelAngle";
     public const string Throttle = "Throttle";
     public const string Brake = "Brake";
     /// <summary>The player's clutch pedal alone. "Clutch" is what the physics applied, including

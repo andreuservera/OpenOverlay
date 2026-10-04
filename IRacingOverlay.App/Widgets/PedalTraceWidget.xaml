@@ -5,10 +5,10 @@
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
         Title="Pedals">
     <Grid>
-        <!-- The trace plot fills whatever space it is given, so the panel needs a design size to
-             measure against: without one the chart would collapse to its caption. -->
+        <!-- Width from the visible blocks (the trace has its own), so hiding one narrows the widget;
+             the height is the design's. -->
         <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.PedalTrace"
-                          DesignWidth="340" DesignHeight="110">
+                          DesignHeight="110">
             <w:PedalTracePanel/>
         </ov:ScalablePanel>
         <Border Style="{StaticResource EditFrame}"/>

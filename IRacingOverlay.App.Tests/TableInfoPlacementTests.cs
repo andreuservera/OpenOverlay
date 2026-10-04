@@ -38,7 +38,7 @@ public class TableInfoPlacementTests
     {
         var options = new DriverTableOptions(DriverTable.Standings);
         var context = new WidgetSettingsContext(options, new DriverTableOptions(DriverTable.Relative), new FuelCalculatorOptions(),
-            new FlagOptions(), new CockpitOptions(), new WeatherOptions(), new TrackInfoOptions(), new DeltaOptions(), SaveToStores: false);
+            new FlagOptions(), new CockpitOptions(), new WeatherOptions(), new TrackInfoOptions(), new DeltaOptions(), new PedalTraceOptions(), SaveToStores: false);
         var sof = WidgetSettings.For(WidgetCatalog.Standings, context)
             .SelectMany(group => group.Items).OfType<ChoiceSetting>().First(setting => setting.Label == "SOF");
 

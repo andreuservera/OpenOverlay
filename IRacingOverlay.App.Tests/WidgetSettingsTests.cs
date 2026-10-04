@@ -31,7 +31,7 @@ public sealed class WidgetSettingsTests
     [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
     [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
     [InlineData(WidgetCatalog.Cockpit, new[] { "THEME", "UPDATE RATE" })]
-    [InlineData(WidgetCatalog.PedalTrace, new[] { "UPDATE RATE" })]
+    [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS", "UPDATE RATE" })]
     [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
     [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]
     [InlineData(WidgetCatalog.Delta, new[] { "REFERENCE" })]
@@ -106,7 +106,8 @@ public sealed class WidgetSettingsTests
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+            new PedalTraceOptions(),
+            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { });
         var context = new WidgetSettingsContext(
             targets.Standings,
@@ -117,6 +118,7 @@ public sealed class WidgetSettingsTests
             targets.Weather,
             targets.TrackInfo,
             targets.Delta,
+            targets.PedalTrace,
             SaveToStores: false,
             Changed: () => _changes++);
         return (context, type is null ? null : WidgetConfigCodecs.Create(targets)[type]);

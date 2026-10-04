@@ -34,6 +34,7 @@ public sealed partial class ControlPanelViewModel
         WeatherOptions,
         TrackInfoOptions,
         DeltaOptions,
+        PedalTraceOptions,
         SaveToStores: true,
         TableHeaderChanged: table => TableHeaderChanged?.Invoke(table));
 

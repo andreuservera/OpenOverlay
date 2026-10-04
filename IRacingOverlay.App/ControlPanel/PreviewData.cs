@@ -313,6 +313,11 @@ public static class PreviewData
             ClutchHistory = clutch,
             AbsHistory = abs,
             Positions = Enumerable.Range(0, samples).Select(i => i / (double)(samples - 1)).ToArray(),
+            // Back on the power out of the corner: third gear, unwinding a little left lock.
+            Gear = "3",
+            SpeedMs = 128 / 3.6,
+            SteeringRad = 0.6,
+            UnitSystem = Units.Current,
         };
     }
 

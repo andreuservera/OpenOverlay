@@ -24,6 +24,7 @@ public sealed record WidgetSettingsContext(
     WeatherOptions Weather,
     TrackInfoOptions TrackInfo,
     DeltaOptions Delta,
+    PedalTraceOptions PedalTrace,
     bool SaveToStores,
     Action<DriverTable>? TableHeaderChanged = null,
     Action? Changed = null)
@@ -57,7 +58,7 @@ public static class WidgetSettings
         WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
         WidgetCatalog.Flag => [FlagTypes(context), FlagContent(context), FlagLayoutGroup(context)],
         WidgetCatalog.Cockpit => [CockpitThemeGroup(context), HighRateNote()],
-        WidgetCatalog.PedalTrace => [HighRateNote()],
+        WidgetCatalog.PedalTrace => [PedalTraceElements(context), HighRateNote()],
         WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context)],
         WidgetCatalog.TrackInfo => [TrackInfoElements(context)],
         WidgetCatalog.Delta => [DeltaReferenceGroup(context)],
@@ -450,6 +451,39 @@ public static class WidgetSettings
         {
             options.SetVisible(field, isVisible);
             context.Persist(() => TrackInfoOptionsStore.Save(options));
+        });
+
+    // ===== Pedal trace =====
+
+    private static SettingsGroup PedalTraceElements(WidgetSettingsContext context)
+    {
+        var options = context.PedalTrace;
+        return new SettingsGroup("ELEMENTS")
+            .With(new ReorderListSetting(
+                "Visible elements",
+                "Drag a row by its handle to change the order.",
+                options.ElementOrder.Select(element => new ReorderListItem(element, PedalTraceChip(element, options, context))),
+                order =>
+                {
+                    options.ElementOrder = order.Cast<PedalTraceElement>().ToList();
+                    context.Persist(() => PedalTraceOptionsStore.Save(options));
+                }));
+    }
+
+    private static string PedalTraceLabel(PedalTraceElement element) => element switch
+    {
+        PedalTraceElement.Gear => "Gear",
+        PedalTraceElement.Speed => "Speed",
+        PedalTraceElement.Steering => "Steering wheel",
+        PedalTraceElement.Trace => "Pedal trace",
+        _ => "Pedal bars",
+    };
+
+    private static ChipSetting PedalTraceChip(PedalTraceElement element, PedalTraceOptions options, WidgetSettingsContext context) =>
+        new(PedalTraceLabel(element), null, options.IsVisible(element), isVisible =>
+        {
+            options.SetVisible(element, isVisible);
+            context.Persist(() => PedalTraceOptionsStore.Save(options));
         });
 
     // ===== Cockpit =====

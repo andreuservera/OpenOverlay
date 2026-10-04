@@ -3,37 +3,64 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
+    <UserControl.Resources>
+        <Style x:Key="PedalPercent" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
+            <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+        </Style>
+        <Style x:Key="PedalTrack" TargetType="Border">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Background" Value="{StaticResource Surface.Track}"/>
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
+        </Style>
+        <Style x:Key="WheelStroke" TargetType="Path">
+            <Setter Property="Stroke" Value="{StaticResource Text.Secondary}"/>
+            <Setter Property="StrokeThickness" Value="5"/>
+            <Setter Property="StrokeStartLineCap" Value="Round"/>
+            <Setter Property="StrokeEndLineCap" Value="Round"/>
+            <Setter Property="StrokeLineJoin" Value="Round"/>
+        </Style>
+    </UserControl.Resources>
+
     <Border Style="{StaticResource OverlayPanel}" Padding="12,10">
-        <!-- Gauges and plot share the full height, so each bar's 0-100 % travel lines up with the
-             same 0-100 % on the trace beside it. The bars carry their pedal's trace colour, so they
-             need no letters. -->
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Border x:Name="ThrottleTrack" Grid.Column="0" Width="20" Margin="0,0,5,0" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
-                <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" RenderTransformOrigin="0.5,1">
-                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
-                </Rectangle>
-            </Border>
-            <Border x:Name="BrakeTrack" Grid.Column="1" Width="20" Margin="0,0,5,0" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
-                <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" RenderTransformOrigin="0.5,1">
-                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
-                </Rectangle>
-            </Border>
-            <Border x:Name="ClutchTrack" Grid.Column="2" Width="20" Background="{StaticResource Surface.Track}" CornerRadius="{StaticResource Radius.Chip}">
-                <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" RenderTransformOrigin="0.5,1">
-                    <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
-                </Rectangle>
-            </Border>
+        <!-- The blocks are placed by the code-behind, in the order and with the visibility the
+             options give; the trace takes whatever width is left. -->
+        <Grid x:Name="Strip">
+            <!-- Gear: the number the eye goes to first, in the accent colour. -->
+            <TextBlock x:Name="GearBlock" Text="–" MinWidth="34" TextAlignment="Center" VerticalAlignment="Center"
+                       FontFamily="{DynamicResource Theme.NumericFontFamily}" FontSize="52" FontWeight="Bold"
+                       Foreground="{StaticResource State.Accent}"/>
+
+            <!-- Speed: a fixed width, so the strip doesn't shift as the digits change. -->
+            <StackPanel x:Name="SpeedBlock" Width="66" VerticalAlignment="Center">
+                <TextBlock x:Name="SpeedText" Text="—" HorizontalAlignment="Center"
+                           FontFamily="{DynamicResource Theme.NumericFontFamily}" FontSize="31" FontWeight="SemiBold"
+                           Foreground="{StaticResource Text.Primary}"/>
+                <TextBlock x:Name="SpeedUnitText" Text="KPH" Style="{StaticResource FieldLabel}" HorizontalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- Steering: the wheel turns as the real one does. The red mark is top dead centre. -->
+            <Viewbox x:Name="SteeringBlock" Width="66" Height="66" VerticalAlignment="Center">
+                <Grid Width="64" Height="64" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <RotateTransform x:Name="WheelRotation"/>
+                    </Grid.RenderTransform>
+                    <Canvas>
+                        <Path Style="{StaticResource WheelStroke}" StrokeThickness="6" Data="M32,4 A28,28 0 1 1 31.99,4 Z"/>
+                        <Path Style="{StaticResource WheelStroke}" StrokeThickness="4" Data="M32,25 A8,8 0 1 1 31.99,25 Z"/>
+                        <Path Style="{StaticResource WheelStroke}" Data="M8,33 L24,33 M40,33 L56,33 M32,41 L32,57"/>
+                        <Path Stroke="{StaticResource State.Critical}" StrokeThickness="6" Data="M26.2,4.6 A28,28 0 0 1 37.8,4.6"/>
+                    </Canvas>
+                </Grid>
+            </Viewbox>
 
             <!-- The plot sits on its own inset well rather than directly on the panel: the darker
                  rounded field makes the traces read as a chart, and matches the rounded gauge
-                 tracks beside it instead of being the one square-cornered element in the panel. -->
-            <Border Grid.Column="3" Margin="12,0,0,0" Background="{DynamicResource Surface.Inset}" CornerRadius="{StaticResource Radius.Chip}">
+                 tracks beside it. -->
+            <Border x:Name="TraceBlock" MinWidth="{Binding TraceMinWidth, ElementName=Root}" Background="{DynamicResource Surface.Inset}" CornerRadius="{StaticResource Radius.Chip}">
                 <Grid>
                     <!-- Half-travel guide: the one reference line worth drawing, and faint. -->
                     <Rectangle Height="1" VerticalAlignment="Center" Fill="{StaticResource Surface.DividerFade}" Opacity="0.6"/>
@@ -41,6 +68,38 @@
                                        BrakeBrush="{StaticResource State.Critical}" AbsBrush="{StaticResource State.Accent}"/>
                 </Grid>
             </Border>
+
+            <!-- Clutch, brake, throttle, each with its percentage above. The bars carry their pedal's
+                 trace colour, so they need no letters. -->
+            <Grid x:Name="PedalsBlock">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28"/>
+                    <ColumnDefinition Width="28"/>
+                    <ColumnDefinition Width="28"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="ClutchText" Grid.Column="0" Text="0" Style="{StaticResource PedalPercent}"/>
+                <TextBlock x:Name="BrakeText" Grid.Column="1" Text="0" Style="{StaticResource PedalPercent}"/>
+                <TextBlock x:Name="ThrottleText" Grid.Column="2" Text="0" Style="{StaticResource PedalPercent}"/>
+                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource PedalTrack}">
+                    <Rectangle x:Name="ClutchFill" Fill="{StaticResource State.Info}" RenderTransformOrigin="0.5,1">
+                        <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                    </Rectangle>
+                </Border>
+                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource PedalTrack}">
+                    <Rectangle x:Name="BrakeFill" Fill="{StaticResource State.Critical}" RenderTransformOrigin="0.5,1">
+                        <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                    </Rectangle>
+                </Border>
+                <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource PedalTrack}">
+                    <Rectangle x:Name="ThrottleFill" Fill="{StaticResource State.Positive}" RenderTransformOrigin="0.5,1">
+                        <Rectangle.RenderTransform><ScaleTransform ScaleY="0"/></Rectangle.RenderTransform>
+                    </Rectangle>
+                </Border>
+            </Grid>
         </Grid>
     </Border>
 </UserControl>

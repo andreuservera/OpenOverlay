@@ -196,4 +196,43 @@ public class PedalTraceBuilderTests
 
         Assert.All(state.AbsHistory, abs => Assert.False(abs));
     }
+
+    [Fact]
+    public void Build_ReadsGearSpeedAndSteering()
+    {
+        var builder = PedalVars();
+        builder.AddVar("Gear", IrsdkVarType.Int);
+        builder.AddVar("Speed", IrsdkVarType.Float);
+        builder.AddVar("SteeringWheelAngle", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("Gear", 3);
+            w.SetFloat("Speed", 128 / 3.6f);
+            w.SetFloat("SteeringWheelAngle", (float)(Math.PI / 2)); // a quarter turn left
+        }, 1);
+
+        var state = new PedalTraceBuilder().Build(snapshot);
+
+        Assert.Equal("3", state.Gear);
+        Assert.Equal("128", state.SpeedDisplay);
+        Assert.Equal(-90, state.SteeringIconAngle, precision: 3); // anticlockwise on screen
+    }
+
+    [Fact]
+    public void Build_WithoutGearSpeedOrSteering_ShowsDashesAndAStraightWheel()
+    {
+        var state = new PedalTraceBuilder().Build(Pedals(PedalVars(), 1, 0.5f));
+
+        Assert.Equal("–", state.Gear);
+        Assert.Equal("—", state.SpeedDisplay);
+        Assert.Equal(0, state.SteeringIconAngle);
+    }
+
+    [Theory]
+    [InlineData(0.0, "0")]
+    [InlineData(0.064, "6")]
+    [InlineData(1.0, "100")]
+    [InlineData(1.4, "100")]
+    public void Percent_IsTheWholePedalPercentage(double pedal, string expected) =>
+        Assert.Equal(expected, PedalTraceState.Percent(pedal));
 }
