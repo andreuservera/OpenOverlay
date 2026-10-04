@@ -279,6 +279,7 @@
                         <Grid x:Name="Surface" Background="#090C0F" AllowDrop="True"
                               DragOver="OnSurfaceDragOver" DragLeave="OnSurfaceDragLeave" Drop="OnSurfaceDrop"
                               MouseLeftButtonDown="OnSurfaceMouseDown" PreviewMouseDown="OnSurfacePreviewMouseDown"
+                              PreviewKeyDown="OnSurfaceKeyDown"
                               Focusable="True" FocusVisualStyle="{x:Null}">
                             <cp:PreviewBackdrop/>
                             <Rectangle x:Name="GridLines" IsHitTestVisible="False"/>

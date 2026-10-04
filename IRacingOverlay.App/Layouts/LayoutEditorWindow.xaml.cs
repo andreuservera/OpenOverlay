@@ -654,6 +654,38 @@ public partial class LayoutEditorWindow : Window
         }
     }
 
+    /// <summary>
+    /// Arrow keys move the selected widget: one layout pixel per press, or one grid step with Shift.
+    /// Only while the canvas has the keyboard (it takes it on any click), so typing in the
+    /// position or grid boxes is never hijacked.
+    /// </summary>
+    private void OnSurfaceKeyDown(object sender, KeyEventArgs e)
+    {
+        var (dx, dy) = e.Key switch
+        {
+            Key.Left => (-1, 0),
+            Key.Right => (1, 0),
+            Key.Up => (0, -1),
+            Key.Down => (0, 1),
+            _ => (0, 0),
+        };
+        if ((dx, dy) == (0, 0) || SelectedItem is not { } item || _gesture is not null)
+        {
+            return;
+        }
+
+        // Handled either way, so an arrow never moves the keyboard focus off the canvas instead.
+        e.Handled = true;
+        if (item.IsLocked)
+        {
+            Status($"{item.Descriptor.Name} is locked. Unlock it to move it.");
+            return;
+        }
+
+        var step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? _model.Layout.GridSize : 1;
+        _model.Nudge(item.Type, dx * step, dy * step);
+    }
+
     private void OnItemMouseDown(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not EditorWidgetItem item)

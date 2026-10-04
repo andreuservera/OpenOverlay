@@ -90,6 +90,14 @@ public sealed class LayoutEditorModel
         widget.Y = y;
     });
 
+    /// <summary>Moves a widget by an offset, kept on the canvas. A run of nudges in quick succession
+    /// (an arrow key held or tapped) is one undo step.</summary>
+    public void Nudge(string type, double dx, double dy) => ChangeUnlocked(type, widget =>
+    {
+        widget.X = Math.Clamp(widget.X + dx, 0, Math.Max(0, Layout.Width - widget.Width));
+        widget.Y = Math.Clamp(widget.Y + dy, 0, Math.Max(0, Layout.Height - widget.Height));
+    }, $"nudge:{type}");
+
     /// <summary>Sets the size level, and the position along with it so a resize can keep its
     /// opposite corner where it was.</summary>
     public void Resize(string type, ScaleLevel scale, double x, double y) => ChangeUnlocked(type, widget =>
@@ -237,11 +245,11 @@ public sealed class LayoutEditorModel
     }
 
     /// <summary>Position and size are what locking protects; a locked widget ignores both.</summary>
-    private void ChangeUnlocked(string type, Action<LayoutWidget> change)
+    private void ChangeUnlocked(string type, Action<LayoutWidget> change, string? mergeKey = null)
     {
         if (Layout.WidgetOf(type) is { Locked: false } widget)
         {
-            Change(() => change(widget));
+            Change(() => change(widget), mergeKey);
         }
     }
 

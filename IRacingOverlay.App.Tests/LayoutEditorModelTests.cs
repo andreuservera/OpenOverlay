@@ -347,6 +347,41 @@ public sealed class LayoutEditorModelTests
         Assert.Equal(0.9, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Opacity);
     }
 
+    [Fact]
+    public void Nudge_MovesByTheOffset_AndARunOfNudgesIsOneUndoStep()
+    {
+        var now = new DateTime(2026, 10, 4, 12, 0, 0, DateTimeKind.Utc);
+        var model = NewModel(() => now, WidgetCatalog.Relative);
+        model.Move(WidgetCatalog.Relative, 100, 100);
+        now += TimeSpan.FromSeconds(5);
+
+        model.Nudge(WidgetCatalog.Relative, 1, 0);
+        now += TimeSpan.FromMilliseconds(100);
+        model.Nudge(WidgetCatalog.Relative, 1, 0);
+        now += TimeSpan.FromMilliseconds(100);
+        model.Nudge(WidgetCatalog.Relative, 0, -10);
+        Assert.Equal((102.0, 90.0), XY(model));
+
+        model.Undo();
+        Assert.Equal((100.0, 100.0), XY(model));
+    }
+
+    [Fact]
+    public void Nudge_KeepsTheWidgetOnTheCanvas_AndLeavesALockedOneAlone()
+    {
+        var model = NewModel(WidgetCatalog.Relative);
+        model.Nudge(WidgetCatalog.Relative, -5, -5);
+        Assert.Equal((0.0, 0.0), XY(model));
+
+        model.Move(WidgetCatalog.Relative, 1715, 975);
+        model.Nudge(WidgetCatalog.Relative, 20, 20);
+        Assert.Equal((1720.0, 980.0), XY(model)); // 1920 - 200 wide, 1080 - 100 high
+
+        model.SetLocked(WidgetCatalog.Relative, true);
+        model.Nudge(WidgetCatalog.Relative, -20, -20);
+        Assert.Equal((1720.0, 980.0), XY(model));
+    }
+
     private static (ScaleLevel, double, double) Placement(LayoutEditorModel model, string type)
     {
         var widget = model.Layout.WidgetOf(type)!;
