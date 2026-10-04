@@ -210,6 +210,7 @@ internal sealed class DriverTableConfigCodec(
             ["focusSize"] = options.FocusSize,
             ["showClassName"] = options.ShowClassName,
             ["showSof"] = options.ShowSof,
+            ["showColumnHeaders"] = options.ShowColumnHeaders,
             ["showSessionLaps"] = options.ShowSessionLaps,
             ["showSessionTime"] = options.ShowSessionTime,
         };
@@ -232,6 +233,7 @@ internal sealed class DriverTableConfigCodec(
         Set<int>(config, "focusSize", value => options.FocusSize = value);
         Set<bool>(config, "showClassName", value => options.ShowClassName = value);
         Set<bool>(config, "showSof", value => options.ShowSof = value);
+        Set<bool>(config, "showColumnHeaders", value => options.ShowColumnHeaders = value);
         Set<bool>(config, "showSessionLaps", value => options.ShowSessionLaps = value);
         Set<bool>(config, "showSessionTime", value => options.ShowSessionTime = value);
         if (HasMulticlass)

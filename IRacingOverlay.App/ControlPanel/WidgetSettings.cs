@@ -118,6 +118,7 @@ public static class WidgetSettings
                     context.Standings.ShowMulticlass = value;
                     context.Persist(() => DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value));
                 }),
+            ColumnHeadersToggle(context.Standings, context),
             ClassNameToggle(context.Standings, context),
             SofToggle(context.Standings, context),
             SessionLapsToggle(context.Standings, context),
@@ -135,10 +136,22 @@ public static class WidgetSettings
                 "0",
                 null,
                 value => SetFocusSize(context.Relative, value, context)),
+            ColumnHeadersToggle(context.Relative, context),
             ClassNameToggle(context.Relative, context),
             SofToggle(context.Relative, context),
             SessionLapsToggle(context.Relative, context),
             SessionTimeToggle(context.Relative, context));
+
+    // Bound straight in the panels, so the row goes (and the widget shrinks) without a header nudge.
+    private static ToggleSetting ColumnHeadersToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
+        "Show column headers",
+        "POS, DRIVER, GAP… above the table.",
+        options.ShowColumnHeaders,
+        value =>
+        {
+            options.ShowColumnHeaders = value;
+            context.Persist(() => DriverTableOptionsStore.SaveColumnHeaders(options.Table, value));
+        });
 
     // The header used to name the player's class here; same switch, so saved settings carry over.
     private static ToggleSetting ClassNameToggle(DriverTableOptions options, WidgetSettingsContext context) => new(

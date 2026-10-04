@@ -57,6 +57,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showGap = true;
     private bool _showClassName = true;
     private bool _showSof = true;
+    private bool _showColumnHeaders = true;
     private bool _showMulticlass = true;
     private bool _showSessionLaps = true;
     private bool _showSessionTime = true;
@@ -159,6 +160,14 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showSof;
         set => SetField(ref _showSof, value);
+    }
+
+    /// <summary>The row of column names (POS, DRIVER, GAP…) above the table. Hidden, the widget
+    /// gets that much shorter.</summary>
+    public bool ShowColumnHeaders
+    {
+        get => _showColumnHeaders;
+        set => SetField(ref _showColumnHeaders, value);
     }
 
     /// <summary>Standings only. Splits the widget into one block per car class, each with its own

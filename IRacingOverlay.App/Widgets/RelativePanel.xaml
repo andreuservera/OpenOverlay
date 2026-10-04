@@ -18,7 +18,10 @@
                 </StackPanel>
             </Grid>
 
-            <Grid DockPanel.Dock="Top" Margin="{StaticResource RulerInset}">
+            <!-- The column names. Collapsed when switched off, which takes its height out of the
+                 widget: the window sizes to its content. -->
+            <Grid DockPanel.Dock="Top" Margin="{StaticResource RulerInset}"
+                  Visibility="{Binding Options.ShowColumnHeaders, ElementName=Root, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Pos}}"/>
                     <ColumnDefinition Width="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.Car}}"/>

@@ -128,9 +128,7 @@
     <!-- In the pits: a warm band, a PIT badge, and the row's content recedes (see the row template). -->
     <SolidColorBrush x:Key="Row.Pit" Color="#1FF5A524"/>
     <sys:Double x:Key="Row.PitOpacity">0.7</sys:Double>
-    <!-- Relative: a lapped car isn't in your race, so it steps back further than a car in the pits.
-         Lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
-    <sys:Double x:Key="Row.LappedOpacity">0.55</sys:Double>
+    <!-- Relative: lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
     <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Row.LappingInk" Color="#FF6B6B"/>
 

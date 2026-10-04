@@ -12,6 +12,7 @@ internal static class DriverTableOptionsStore
     // Stored under its original name, so the setting survives the car-name → class-name change.
     private const string ShowClassNameKey = "ShowCarName";
     private const string ShowSofKey = "ShowSof";
+    private const string ShowColumnHeadersKey = "ShowColumnHeaders";
     private const string ShowMulticlassKey = "ShowMulticlass";
     private const string ShowSessionLapsKey = "ShowSessionLaps";
     private const string ShowSessionTimeKey = "ShowSessionTime";
@@ -32,6 +33,9 @@ internal static class DriverTableOptionsStore
 
     public static void SaveSof(DriverTable table, bool isVisible) =>
         Set(table, ShowSofKey, isVisible ? 1 : 0);
+
+    public static void SaveColumnHeaders(DriverTable table, bool isVisible) =>
+        Set(table, ShowColumnHeadersKey, isVisible ? 1 : 0);
 
     public static void SaveMulticlass(DriverTable table, bool isEnabled) =>
         Set(table, ShowMulticlassKey, isEnabled ? 1 : 0);
@@ -56,6 +60,7 @@ internal static class DriverTableOptionsStore
 
         _cache![Key(options.Table, ShowClassNameKey)] = options.ShowClassName ? 1 : 0;
         _cache[Key(options.Table, ShowSofKey)] = options.ShowSof ? 1 : 0;
+        _cache[Key(options.Table, ShowColumnHeadersKey)] = options.ShowColumnHeaders ? 1 : 0;
         _cache[Key(options.Table, ShowMulticlassKey)] = options.ShowMulticlass ? 1 : 0;
         _cache[Key(options.Table, ShowSessionLapsKey)] = options.ShowSessionLaps ? 1 : 0;
         _cache[Key(options.Table, ShowSessionTimeKey)] = options.ShowSessionTime ? 1 : 0;
@@ -76,6 +81,7 @@ internal static class DriverTableOptionsStore
 
         options.ShowClassName = Get(options.Table, ShowClassNameKey, 1) != 0;
         options.ShowSof = Get(options.Table, ShowSofKey, 1) != 0;
+        options.ShowColumnHeaders = Get(options.Table, ShowColumnHeadersKey, 1) != 0;
         options.ShowMulticlass = Get(options.Table, ShowMulticlassKey, 1) != 0;
         options.ShowSessionLaps = Get(options.Table, ShowSessionLapsKey, 1) != 0;
         options.ShowSessionTime = Get(options.Table, ShowSessionTimeKey, 1) != 0;

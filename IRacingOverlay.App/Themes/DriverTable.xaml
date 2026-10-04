@@ -273,12 +273,11 @@
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
             </DataTrigger>
             <!-- Lap traffic, in iRacing's colours as ink on the name and gap only — never a fill that
-                 could read as a class: blue a lap or more down, red a lap or more up. A lapped car
-                 that isn't close also steps back; the one just up the road stays full strength. -->
+                 could read as a class: blue a lap or more down, red a lap or more up. Always at full
+                 strength, so the blue reads as clearly as the red and as every other row's ink. -->
             <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.Lapped}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
-                <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.LappedOpacity}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding LapRelation, Mode=OneTime}" Value="{x:Static vm:LapRelation.BeingLapped}">
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.LappedInk}"/>
