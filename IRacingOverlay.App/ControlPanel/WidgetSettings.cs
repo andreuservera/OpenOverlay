@@ -67,31 +67,44 @@ public static class WidgetSettings
     // ===== Driver tables =====
 
     private static SettingsGroup StandingsColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
-        .With(ColumnChips(context.Standings, context));
+        .With(ColumnList(context.Standings, context));
 
     private static SettingsGroup RelativeColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
-        .With(ColumnChips(context.Relative, context));
+        .With(ColumnList(context.Relative, context));
 
-    private static ChipGroupSetting ColumnChips(DriverTableOptions options, WidgetSettingsContext context) => new(
+    private static ColumnOrderSetting ColumnList(DriverTableOptions options, WidgetSettingsContext context) => new(
         "Visible columns",
-        null,
-        [
-            Column("Pos", DriverTableColumn.Position, options.ShowPosition, options, context),
-            Column("Car #", DriverTableColumn.CarNumber, options.ShowCarNumber, options, context),
-            Column("Driver", DriverTableColumn.Driver, options.ShowDriver, options, context),
-            Column("Last pit", DriverTableColumn.LastPitStop, options.ShowLastPitStop, options, context),
-            Column("Tire", DriverTableColumn.TireCompound, options.ShowTireCompound, options, context),
-            Column("iR", DriverTableColumn.IRating, options.ShowIRating, options, context),
-            Column("iRΔ", DriverTableColumn.IRatingDelta, options.ShowIRatingDelta, options, context),
-            Column("SR", DriverTableColumn.License, options.ShowLicense, options, context),
-            Column("Lap", DriverTableColumn.Lap, options.ShowLap, options, context),
-            Column("Best", DriverTableColumn.BestLap, options.ShowBestLap, options, context),
-            Column("Last", DriverTableColumn.LastLap, options.ShowLastLap, options, context),
-            Column("Gap", DriverTableColumn.Gap, options.ShowGap, options, context),
-        ]);
+        "Drag a row by its handle to change the order.",
+        options.ColumnOrder.Select(column => column == DriverTableColumn.IRating
+            ? new ColumnOrderItem(
+                column,
+                Column("iRating", DriverTableColumn.IRating, options, context),
+                Column("Δ", DriverTableColumn.IRatingDelta, options, context))
+            : new ColumnOrderItem(column, Column(ColumnLabel(column), column, options, context))),
+        order =>
+        {
+            options.ColumnOrder = order;
+            context.Persist(() => DriverTableOptionsStore.SaveColumnOrder(options.Table, options.ColumnOrder));
+        });
 
-    private static ChipSetting Column(string label, DriverTableColumn column, bool value, DriverTableOptions options, WidgetSettingsContext context) =>
-        new(label, null, value, isVisible =>
+    private static string ColumnLabel(DriverTableColumn column) => column switch
+    {
+        DriverTableColumn.Position => "Pos",
+        DriverTableColumn.CarNumber => "Car #",
+        DriverTableColumn.Driver => "Driver",
+        DriverTableColumn.LastPitStop => "Last pit",
+        DriverTableColumn.TireCompound => "Tire",
+        DriverTableColumn.IRating => "iRating",
+        DriverTableColumn.IRatingDelta => "Δ",
+        DriverTableColumn.License => "SR",
+        DriverTableColumn.Lap => "Lap",
+        DriverTableColumn.BestLap => "Best",
+        DriverTableColumn.LastLap => "Last",
+        _ => "Gap",
+    };
+
+    private static ChipSetting Column(string label, DriverTableColumn column, DriverTableOptions options, WidgetSettingsContext context) =>
+        new(label, null, options.IsVisible(column), isVisible =>
         {
             options.SetVisible(column, isVisible);
             context.Persist(() => DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible));

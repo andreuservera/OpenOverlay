@@ -148,6 +148,14 @@ public sealed class WidgetSettingsTests
                 case SliderSetting slider:
                     yield return new Row(slider.Label, () => slider.Value += slider.Value + slider.Step <= slider.Maximum ? slider.Step : -slider.Step);
                     break;
+                case ColumnOrderSetting columns:
+                    yield return new Row($"{columns.Label} › order", () => columns.Move(0, columns.Items.Count - 1));
+                    foreach (var chip in columns.Items.SelectMany(column => new[] { column.Visible, column.Companion }).OfType<ChipSetting>())
+                    {
+                        yield return new Row($"{columns.Label} › {chip.Label}", () => chip.Value = !chip.Value);
+                    }
+
+                    break;
                 case ChipGroupSetting chips:
                     foreach (var chip in chips.Chips)
                     {

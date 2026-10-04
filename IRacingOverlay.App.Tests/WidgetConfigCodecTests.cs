@@ -170,6 +170,8 @@ public sealed class WidgetConfigCodecTests
             config[key] = node switch
             {
                 JsonObject nested => Modified(nested),
+                // A list (the column order) changes to its reverse: still complete and valid.
+                JsonArray list => new JsonArray(list.Reverse().Select(node => node?.DeepClone()).ToArray()),
                 JsonValue value when value.TryGetValue<bool>(out var flag) => !flag,
                 JsonValue value when value.TryGetValue<int>(out var number) => number + SteppedKeys.GetValueOrDefault(key, 1),
                 JsonValue value when value.TryGetValue<double>(out var number) => number + 0.5,

@@ -207,6 +207,7 @@ internal sealed class DriverTableConfigCodec(
         var config = new JsonObject
         {
             ["columns"] = columns,
+            ["columnOrder"] = new JsonArray(options.ColumnOrder.Select(column => (JsonNode)Name(column)).ToArray()),
             ["focusSize"] = options.FocusSize,
             ["showClassName"] = options.ShowClassName,
             ["showSof"] = options.ShowSof,
@@ -228,6 +229,17 @@ internal sealed class DriverTableConfigCodec(
         foreach (var column in Enum.GetValues<DriverTableColumn>())
         {
             Set<bool>(columns, Name(column), visible => options.SetVisible(column, visible));
+        }
+
+        // An order is taken as given and normalised by the options: names this version doesn't
+        // know are skipped, and columns the file leaves out keep their default place.
+        if (config["columnOrder"] is JsonArray order)
+        {
+            options.ColumnOrder = order
+                .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                    Enum.TryParse<DriverTableColumn>(name, ignoreCase: true, out var column) ? column : (DriverTableColumn?)null)
+                .OfType<DriverTableColumn>()
+                .ToList();
         }
 
         Set<int>(config, "focusSize", value => options.FocusSize = value);

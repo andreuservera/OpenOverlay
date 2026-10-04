@@ -6,6 +6,7 @@ using System.Windows.Input;
 using IRacingOverlay.App.About;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
+using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -370,6 +371,99 @@ public sealed class ChipGroupSetting : SettingItem
     }
 
     public IReadOnlyList<ChipSetting> Chips { get; }
+}
+
+/// <summary>One column in a <see cref="ColumnOrderSetting"/>: its show/hide switch and, for a column
+/// that carries a second part (iRating and its delta), that part's switch too.</summary>
+public sealed class ColumnOrderItem : INotifyPropertyChanged
+{
+    private bool _isDragging;
+
+    public ColumnOrderItem(DriverTableColumn column, ChipSetting visible, ChipSetting? companion = null)
+    {
+        Column = column;
+        Visible = visible;
+        Companion = companion;
+    }
+
+    public DriverTableColumn Column { get; }
+
+    public ChipSetting Visible { get; }
+
+    public ChipSetting? Companion { get; }
+
+    public string Label => Visible.Label;
+
+    /// <summary>True while the row is being dragged, so the list can lift it.</summary>
+    public bool IsDragging
+    {
+        get => _isDragging;
+        set
+        {
+            if (_isDragging != value)
+            {
+                _isDragging = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDragging)));
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+/// <summary>
+/// A driver table's columns as a list to reorder by dragging, each row with its show/hide switch.
+/// While a row is dragged only the list moves; the new order is applied once, on release, so a
+/// drag is one change (one save, one undo step) however far it travels.
+/// </summary>
+public sealed class ColumnOrderSetting : SettingItem
+{
+    private readonly Action<IReadOnlyList<DriverTableColumn>> _apply;
+    private IReadOnlyList<DriverTableColumn> _applied;
+
+    public ColumnOrderSetting(string label, string? hint, IEnumerable<ColumnOrderItem> items, Action<IReadOnlyList<DriverTableColumn>> apply)
+        : base(label, hint)
+    {
+        Items = new ObservableCollection<ColumnOrderItem>(items);
+        _applied = Order;
+        _apply = apply;
+    }
+
+    public ObservableCollection<ColumnOrderItem> Items { get; }
+
+    private IReadOnlyList<DriverTableColumn> Order => Items.Select(item => item.Column).ToList();
+
+    /// <summary>Moves a row in the list only, as a drag passes over the others.</summary>
+    public void MoveLive(int from, int to)
+    {
+        if (from == to || from < 0 || to < 0 || from >= Items.Count || to >= Items.Count)
+        {
+            return;
+        }
+
+        Items.Move(from, to);
+    }
+
+    /// <summary>Applies the list's order if it differs from the last one applied.</summary>
+    public void CommitOrder()
+    {
+        var order = Order;
+        if (order.SequenceEqual(_applied))
+        {
+            return;
+        }
+
+        _applied = order;
+        Trace(string.Join(", ", Items.Select(item => item.Label)));
+        _apply(order);
+    }
+
+    /// <summary>A move and its commit in one step.</summary>
+    public void Move(int from, int to)
+    {
+        MoveLive(from, to);
+        CommitOrder();
+    }
 }
 
 /// <summary>A row whose control is a button — something that happens rather than something that is

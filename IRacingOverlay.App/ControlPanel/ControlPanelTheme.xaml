@@ -1132,6 +1132,67 @@
         </ContentControl>
     </DataTemplate>
 
+    <!-- Driver-table columns: one row per column, in display order. The grip on the left drags the
+         row (see ColumnOrderDrag); the switch on the right shows or hides the column, and iRating
+         carries a small chip for its delta, which travels with it. -->
+    <DataTemplate DataType="{x:Type cp:ColumnOrderSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingStack}">
+            <ItemsControl ItemsSource="{Binding Items}" cp:ColumnOrderDrag.IsEnabled="True">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border x:Name="Row" Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
+                                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border cp:ColumnOrderDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
+                                        ToolTip="Drag to reorder">
+                                    <!-- Six dots, the usual "this can be dragged" grip. -->
+                                    <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path.Data>
+                                            <GeometryGroup>
+                                                <EllipseGeometry Center="1.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="6.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="1.5,7" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="6.5,7" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="1.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="6.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
+                                            </GeometryGroup>
+                                        </Path.Data>
+                                    </Path>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Cp.Body}"
+                                           Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
+                                <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.Chip}" Height="24" Margin="0,0,10,0"
+                                              Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
+                                              ToolTip="iRating change"/>
+                                <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
+                                          IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Companion}" Value="{x:Null}">
+                                <Setter TargetName="CompanionChip" Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.TextMuted}"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ContentControl>
+    </DataTemplate>
+
     <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. -->
     <DataTemplate DataType="{x:Type cp:SettingsGroup}">
         <Border Style="{StaticResource Cp.Card}">

@@ -62,6 +62,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showSessionLaps = true;
     private bool _showSessionTime = true;
     private int _focusSize;
+    private IReadOnlyList<DriverTableColumn> _columnOrder = DriverTableColumnLayout.DefaultOrder;
+    private DriverTableColumnLayout? _columns;
 
     public DriverTableOptions(DriverTable table)
     {
@@ -223,6 +225,31 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         }
     }
 
+    /// <summary>The order the columns appear in, left to right. iRating stands for its delta too:
+    /// the two share a badge and always move together. Assigning normalises the order (see
+    /// <see cref="DriverTableColumnLayout.Normalize"/>).</summary>
+    public IReadOnlyList<DriverTableColumn> ColumnOrder
+    {
+        get => _columnOrder;
+        set
+        {
+            var order = DriverTableColumnLayout.Normalize(value);
+            if (order.SequenceEqual(_columnOrder))
+            {
+                return;
+            }
+
+            _columnOrder = order;
+            _columns = null;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(Columns));
+        }
+    }
+
+    /// <summary>Each column's slot and width for the current order and visibility; what the header
+    /// and the rows bind their grid to.</summary>
+    public DriverTableColumnLayout Columns => _columns ??= new DriverTableColumnLayout(_columnOrder, IsVisible);
+
     public bool IsVisible(DriverTableColumn column) => column switch
     {
         DriverTableColumn.Position => ShowPosition,
@@ -267,6 +294,9 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
 
         field = value;
         OnPropertyChanged(propertyName);
+        // A column switched on or off changes the widths the grid is laid out with.
+        _columns = null;
+        OnPropertyChanged(nameof(Columns));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
