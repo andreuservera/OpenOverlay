@@ -2371,4 +2371,16 @@ public class StandingsBuilderTests
     {
         Assert.Equal(expected, StandingsBuilder.SessionTypeLabel(type));
     }
+
+    [Theory]
+    [InlineData("GT3 Class", 1, "GT3")]
+    [InlineData("LMP2", 2, "LMP2")]
+    [InlineData("Class A", 3, "A")]
+    [InlineData("classic cars", 4, "CLASSIC CARS")]
+    [InlineData("Class", 5, "CLASS 5")]
+    [InlineData("", 6, "CLASS 6")]
+    public void ClassHeaderLabel_DropsTheWordClass(string name, int classId, string expected)
+    {
+        Assert.Equal(expected, StandingsBuilder.ClassHeaderLabel(name, classId));
+    }
 }

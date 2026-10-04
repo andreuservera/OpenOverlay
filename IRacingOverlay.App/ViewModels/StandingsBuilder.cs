@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
@@ -716,7 +717,7 @@ internal static class StandingsBuilder
             var className = classRows[0].CarClassName;
             display.Add(new StandingsHeaderRow
             {
-                ClassName = string.IsNullOrWhiteSpace(className) ? $"CLASS {classId}" : className.ToUpperInvariant(),
+                ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
             });
 
@@ -814,7 +815,7 @@ internal static class StandingsBuilder
             var className = classRows[0].CarClassName;
             display.Add(new StandingsHeaderRow
             {
-                ClassName = string.IsNullOrWhiteSpace(className) ? $"CLASS {classId}" : className.ToUpperInvariant(),
+                ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
             });
 
@@ -881,6 +882,19 @@ internal static class StandingsBuilder
         {
             display.Add(rows[i]);
         }
+    }
+
+    /// <summary>
+    /// A class block's header: the class name in capitals without the word "Class" iRacing often
+    /// appends ("GT3 Class" → "GT3"). A spec series leaves the name blank, and a name that is only
+    /// "Class" says nothing either; both fall back to "CLASS n", the one place the word still earns
+    /// its keep, since a bare number wouldn't read as a class.
+    /// </summary>
+    internal static string ClassHeaderLabel(string? className, int classId)
+    {
+        var name = Regex.Replace(className ?? "", @"\bclass\b", " ", RegexOptions.IgnoreCase);
+        name = Regex.Replace(name, @"\s+", " ").Trim();
+        return name.Length == 0 ? $"CLASS {classId}" : name.ToUpperInvariant();
     }
 
     /// <summary>

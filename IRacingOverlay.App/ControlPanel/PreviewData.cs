@@ -25,9 +25,9 @@ public static class PreviewData
 
     private static readonly (string Name, string Color)[] Classes =
     [
-        ("GT3 CLASS", "#33CEFF"),
-        ("GT4 CLASS", "#FFB238"),
-        ("TCR CLASS", "#FF4F8B"),
+        ("GT3", "#33CEFF"),
+        ("GT4", "#FFB238"),
+        ("TCR", "#FF4F8B"),
     ];
 
     // Names are invented but shaped like the real thing — a mix of lengths, including two long
@@ -122,7 +122,7 @@ public static class PreviewData
                 IsSessionFastestLap = classPositions[classIndex] == 1,
                 ClassColor = multiClass ? Classes[entry.ClassIndex].Color : "#B9C4CF",
                 CarClassID = multiClass ? entry.ClassIndex + 1 : 1,
-                CarClassName = multiClass ? Classes[entry.ClassIndex].Name : "GT3 CLASS",
+                CarClassName = multiClass ? Classes[entry.ClassIndex].Name : "GT3",
                 GapToLeaderSeconds = entry.Pace,
             });
         }
