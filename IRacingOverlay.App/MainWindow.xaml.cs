@@ -271,7 +271,7 @@ public partial class MainWindow : Window
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions);
         DataContext = _vm;
 
         foreach (var descriptor in WidgetCatalog.All)

@@ -295,6 +295,17 @@
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
 
+    <!-- ===== Icons =====
+         Line icons shared by the Weather and Track & session widgets, in a 24-unit box (the drop in
+         a 10 x 14 one), so the same reading always wears the same picture. Drawn with a Path set to
+         Stretch="Uniform". -->
+    <!-- Track temperature: a road in perspective, its lane dashes cut out of the surface. -->
+    <Geometry x:Key="Icon.Road">F0 M9,3 H15 L21,21 H3 Z M11.45,5 H12.55 V8 H11.45 Z M11.3,10.5 H12.7 V14 H11.3 Z M11.1,16.5 H12.9 V20 H11.1 Z</Geometry>
+    <!-- Wind: three gusts; stroked, not filled. -->
+    <Geometry x:Key="Icon.Wind">M2,8 H14 A3,3 0 1 0 11,5 M2,12 H18 A3,3 0 1 1 15,15 M2,16 H9</Geometry>
+    <!-- Humidity: a drop. -->
+    <Geometry x:Key="Icon.Drop">M5,0 C6.5,2.5 10,6.2 10,9 A5,5 0 0 1 0,9 C0,6.2 3.5,2.5 5,0 Z</Geometry>
+
     <!-- ===== Meters =====
          Gauge track + fill, shared by the fuel level and tire wear bars. -->
     <Style x:Key="MeterTrack" TargetType="Border">

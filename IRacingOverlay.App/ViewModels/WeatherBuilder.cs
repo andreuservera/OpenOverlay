@@ -15,10 +15,7 @@ internal static class WeatherBuilder
 
     public static WeatherState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
-        var precipitation = Read(telemetry, TelemetryVarNames.Precipitation, 0, 1);
-        var raining = precipitation > RainingThreshold ||
-            (telemetry.HasVariable(TelemetryVarNames.WeatherDeclaredWet) && telemetry.GetBool(TelemetryVarNames.WeatherDeclaredWet));
-
+        var raining = IsRaining(telemetry);
         var chance = ParsePercent(session?.WeekendInfo?.TrackPrecipitation);
         if (raining)
         {
@@ -42,6 +39,14 @@ internal static class WeatherBuilder
             UnitSystem = Units.Read(telemetry),
         };
     }
+
+    /// <summary>The sky the sim reports right now, as the forecast icon draws it. Also used by the
+    /// Track &amp; session bar, so the two widgets always show the same picture.</summary>
+    internal static WeatherCondition Condition(TelemetrySnapshot telemetry) => ConditionOf(telemetry, IsRaining(telemetry));
+
+    private static bool IsRaining(TelemetrySnapshot telemetry) =>
+        Read(telemetry, TelemetryVarNames.Precipitation, 0, 1) > RainingThreshold ||
+        (telemetry.HasVariable(TelemetryVarNames.WeatherDeclaredWet) && telemetry.GetBool(TelemetryVarNames.WeatherDeclaredWet));
 
     /// <summary>WindDir is where the wind blows from, clockwise from north; subtracting the car's own
     /// heading turns it into "from the nose".</summary>

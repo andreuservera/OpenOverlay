@@ -363,6 +363,7 @@ public static class PreviewData
     public static TrackInfoState TrackInfo() => new()
     {
         UnitSystem = Units.Current,
+        Condition = WeatherCondition.PartlyCloudy,
         TrackName = "Spa-Francorchamps",
         SessionLabel = "Race",
         TrackUsage = "moderately high usage",

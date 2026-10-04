@@ -51,6 +51,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         FuelCalculatorOptionsStore.ApplyTo(FuelCalculatorOptions);
         FlagOptionsStore.ApplyTo(FlagOptions);
         WeatherOptionsStore.ApplyTo(WeatherOptions);
+        TrackInfoOptionsStore.ApplyTo(TrackInfoOptions);
         CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
@@ -110,6 +111,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public FlagOptions FlagOptions { get; } = new();
     public CockpitOptions CockpitOptions { get; } = new();
     public WeatherOptions WeatherOptions { get; } = new();
+
+    public TrackInfoOptions TrackInfoOptions { get; } = new();
     public DeltaOptions DeltaOptions { get; } = new();
 
     /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
@@ -389,7 +392,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.Delta => new DeltaWidget(),
         WidgetCatalog.PedalTrace => new PedalTraceWidget(),
         WidgetCatalog.Incident => new IncidentWidget(),
-        WidgetCatalog.TrackInfo => new TrackInfoWidget(),
+        WidgetCatalog.TrackInfo => Configured(new TrackInfoWidget(), w => w.SetOptions(TrackInfoOptions)),
         WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
@@ -405,6 +408,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             FlagOptions,
             CockpitOptions,
             WeatherOptions,
+            TrackInfoOptions,
             FuelCalculatorOptions,
             DeltaOptions,
             WidgetConfigPersistence.Stores,

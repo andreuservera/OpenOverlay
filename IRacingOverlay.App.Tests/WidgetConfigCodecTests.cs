@@ -148,6 +148,7 @@ public sealed class WidgetConfigCodecTests
             new FlagOptions(),
             new CockpitOptions(),
             new WeatherOptions(),
+            new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
             new WidgetConfigPersistence(
@@ -155,6 +156,7 @@ public sealed class WidgetConfigCodecTests
                 _ => _saved.Add("Flag"),
                 _ => _saved.Add("Cockpit"),
                 _ => _saved.Add("Weather"),
+                _ => _saved.Add("TrackInfo"),
                 _ => _saved.Add("FuelCalculator"),
                 _ => _saved.Add("Delta")),
             _headerChanges.Add));

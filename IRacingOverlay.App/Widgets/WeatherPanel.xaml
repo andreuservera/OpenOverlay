@@ -122,7 +122,7 @@
                 <StackPanel Orientation="Horizontal">
                     <Path Style="{StaticResource Glyph}" Margin="0,0,8,0"
                           Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
-                          Data="F0 M9,3 H15 L21,21 H3 Z M11.45,5 H12.55 V8 H11.45 Z M11.3,10.5 H12.7 V14 H11.3 Z M11.1,16.5 H12.9 V20 H11.1 Z"/>
+                          Data="{StaticResource Icon.Road}"/>
                     <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource CardValue}"/>
                     <TextBlock x:Name="TrackUnitText" Text="°C" Style="{StaticResource Unit}"/>
                 </StackPanel>
@@ -144,7 +144,7 @@
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,4" ToolTip="Relative humidity"
                                 Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
                         <Path Style="{StaticResource Glyph}" Fill="{StaticResource State.Info}" Width="8" Height="11" Margin="0,0,4,0"
-                              Data="M5,0 C6.5,2.5 10,6.2 10,9 A5,5 0 0 1 0,9 C0,6.2 3.5,2.5 5,0 Z"/>
+                              Data="{StaticResource Icon.Drop}"/>
                         <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource FieldLabel}" Foreground="{StaticResource Text.Secondary}"
                                    FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"/>
                     </StackPanel>
@@ -224,7 +224,7 @@
                             Visibility="{Binding Options.ShowWindSpeed, ElementName=Root, Converter={StaticResource BoolToVis}}">
                     <Path Style="{StaticResource Glyph}" Fill="{x:Null}" Stroke="{StaticResource Text.Secondary}"
                           StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="20" Height="16" Margin="0,0,7,0"
-                          Data="M2,8 H14 A3,3 0 1 0 11,5 M2,12 H18 A3,3 0 1 1 15,15 M2,16 H9"/>
+                          Data="{StaticResource Icon.Wind}"/>
                     <TextBlock x:Name="WindSpeedText" Text="—" Style="{StaticResource ValueTextLarge}"/>
                     <TextBlock x:Name="WindUnitText" Text="km/h" Style="{StaticResource Unit}"/>
                 </StackPanel>

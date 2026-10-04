@@ -41,6 +41,7 @@ public sealed record WidgetConfigPersistence(
     Action<FlagOptions> Flag,
     Action<CockpitTheme> Cockpit,
     Action<WeatherOptions> Weather,
+    Action<TrackInfoOptions> TrackInfo,
     Action<FuelCalculatorOptions> FuelCalculator,
     Action<DeltaOptions> Delta)
 {
@@ -49,6 +50,7 @@ public sealed record WidgetConfigPersistence(
         FlagOptionsStore.Save,
         CockpitThemeStore.Save,
         WeatherOptionsStore.Save,
+        TrackInfoOptionsStore.Save,
         FuelCalculatorOptionsStore.Save,
         // The Delta reference is deliberately never saved for the individual widget.
         _ => { });
@@ -62,6 +64,7 @@ public sealed record WidgetConfigTargets(
     FlagOptions Flag,
     CockpitOptions Cockpit,
     WeatherOptions Weather,
+    TrackInfoOptions TrackInfo,
     FuelCalculatorOptions FuelCalculator,
     DeltaOptions Delta,
     WidgetConfigPersistence Persist,
@@ -85,7 +88,7 @@ public static class WidgetConfigCodecs
             new EmptyConfigCodec(WidgetCatalog.TireInfo),
             new EmptyConfigCodec(WidgetCatalog.PedalTrace),
             new EmptyConfigCodec(WidgetCatalog.Incident),
-            new EmptyConfigCodec(WidgetCatalog.TrackInfo),
+            new TrackInfoConfigCodec(targets.TrackInfo, targets.Persist.TrackInfo),
             new EmptyConfigCodec(WidgetCatalog.TrackMap),
         ];
 
@@ -337,6 +340,37 @@ internal sealed class WeatherConfigCodec(WeatherOptions options, Action<WeatherO
         Set<WeatherGraphicSize>(config, "iconSize", value => options.IconSize = value);
         Set<WeatherGraphicSize>(config, "arrowSize", value => options.ArrowSize = value);
         Set<int>(config, "compassRefreshHz", value => options.CompassRefreshHz = value);
+    }
+
+    protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
+}
+
+internal sealed class TrackInfoConfigCodec(TrackInfoOptions options, Action<TrackInfoOptions> persist) : WidgetConfigCodec(WidgetCatalog.TrackInfo)
+{
+    public override JsonObject Read() => new()
+    {
+        ["showTrackName"] = options.ShowTrackName,
+        ["showSession"] = options.ShowSession,
+        ["showAirTemp"] = options.ShowAirTemp,
+        ["showTrackTemp"] = options.ShowTrackTemp,
+        ["showWind"] = options.ShowWind,
+        ["showHumidity"] = options.ShowHumidity,
+        ["showTrackUsage"] = options.ShowTrackUsage,
+        ["showTimeLeft"] = options.ShowTimeLeft,
+        ["showLap"] = options.ShowLap,
+    };
+
+    protected override void Assign(JsonObject config)
+    {
+        Set<bool>(config, "showTrackName", value => options.ShowTrackName = value);
+        Set<bool>(config, "showSession", value => options.ShowSession = value);
+        Set<bool>(config, "showAirTemp", value => options.ShowAirTemp = value);
+        Set<bool>(config, "showTrackTemp", value => options.ShowTrackTemp = value);
+        Set<bool>(config, "showWind", value => options.ShowWind = value);
+        Set<bool>(config, "showHumidity", value => options.ShowHumidity = value);
+        Set<bool>(config, "showTrackUsage", value => options.ShowTrackUsage = value);
+        Set<bool>(config, "showTimeLeft", value => options.ShowTimeLeft = value);
+        Set<bool>(config, "showLap", value => options.ShowLap = value);
     }
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);

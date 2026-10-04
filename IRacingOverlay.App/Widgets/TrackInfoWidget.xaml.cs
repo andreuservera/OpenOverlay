@@ -14,5 +14,7 @@ public partial class TrackInfoWidget : OverlayWindowBase
         _panel = (TrackInfoPanel)Scaler.ScalableContent!;
     }
 
+    public void SetOptions(TrackInfoOptions options) => _panel.Options = options;
+
     public void UpdateState(TrackInfoState state) => _panel.UpdateState(state);
 }

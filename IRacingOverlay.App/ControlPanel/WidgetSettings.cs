@@ -22,6 +22,7 @@ public sealed record WidgetSettingsContext(
     FlagOptions Flag,
     CockpitOptions Cockpit,
     WeatherOptions Weather,
+    TrackInfoOptions TrackInfo,
     DeltaOptions Delta,
     bool SaveToStores,
     Action<DriverTable>? TableHeaderChanged = null,
@@ -58,6 +59,7 @@ public static class WidgetSettings
         WidgetCatalog.Cockpit => [CockpitThemeGroup(context), HighRateNote()],
         WidgetCatalog.PedalTrace => [HighRateNote()],
         WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context)],
+        WidgetCatalog.TrackInfo => [TrackInfoElements(context)],
         WidgetCatalog.Delta => [DeltaReferenceGroup(context)],
         _ => [],
     };
@@ -342,6 +344,35 @@ public static class WidgetSettings
         change();
         context.Persist(() => WeatherOptionsStore.Save(context.Weather));
     }
+
+    // ===== Track & session =====
+
+    private static SettingsGroup TrackInfoElements(WidgetSettingsContext context)
+    {
+        var options = context.TrackInfo;
+        return new SettingsGroup("ELEMENTS")
+            .With(new ChipGroupSetting(
+                "Visible elements",
+                null,
+                [
+                    TrackInfoChip("Track name", options.ShowTrackName, v => options.ShowTrackName = v, context),
+                    TrackInfoChip("Session", options.ShowSession, v => options.ShowSession = v, context),
+                    TrackInfoChip("Air temp", options.ShowAirTemp, v => options.ShowAirTemp = v, context),
+                    TrackInfoChip("Track temp", options.ShowTrackTemp, v => options.ShowTrackTemp = v, context),
+                    TrackInfoChip("Wind", options.ShowWind, v => options.ShowWind = v, context),
+                    TrackInfoChip("Humidity", options.ShowHumidity, v => options.ShowHumidity = v, context),
+                    TrackInfoChip("Track usage", options.ShowTrackUsage, v => options.ShowTrackUsage = v, context),
+                    TrackInfoChip("Time left", options.ShowTimeLeft, v => options.ShowTimeLeft = v, context),
+                    TrackInfoChip("Lap", options.ShowLap, v => options.ShowLap = v, context),
+                ]));
+    }
+
+    private static ChipSetting TrackInfoChip(string label, bool value, Action<bool> assign, WidgetSettingsContext context) =>
+        new(label, null, value, isVisible =>
+        {
+            assign(isVisible);
+            context.Persist(() => TrackInfoOptionsStore.Save(context.TrackInfo));
+        });
 
     // ===== Cockpit =====
 

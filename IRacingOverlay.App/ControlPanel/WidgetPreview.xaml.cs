@@ -29,6 +29,7 @@ public partial class WidgetPreview : UserControl
     private FlagPreviewScenario? _flagPreview;
     private CockpitOptions? _cockpitOptions;
     private WeatherOptions? _weatherOptions;
+    private TrackInfoOptions? _trackInfoOptions;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -60,7 +61,8 @@ public partial class WidgetPreview : UserControl
         FlagOptions flagOptions,
         FlagPreviewScenario flagPreview,
         CockpitOptions cockpitOptions,
-        WeatherOptions weatherOptions)
+        WeatherOptions weatherOptions,
+        TrackInfoOptions trackInfoOptions)
     {
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
@@ -70,6 +72,7 @@ public partial class WidgetPreview : UserControl
         _cockpitOptions = cockpitOptions;
         // The weather panel follows its options itself, so no rebuild subscription is needed.
         _weatherOptions = weatherOptions;
+        _trackInfoOptions = trackInfoOptions;
         // Previews show sample data in whatever units iRacing last reported.
         Units.CurrentChanged += Refresh;
 
@@ -187,5 +190,6 @@ public partial class WidgetPreview : UserControl
         _flagOptions,
         _flagPreview,
         _cockpitOptions,
-        _weatherOptions);
+        _weatherOptions,
+        _trackInfoOptions);
 }

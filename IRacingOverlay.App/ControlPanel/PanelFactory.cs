@@ -13,7 +13,8 @@ public sealed record PreviewOptions(
     FlagOptions? Flag = null,
     FlagPreviewScenario? FlagPreview = null,
     CockpitOptions? Cockpit = null,
-    WeatherOptions? Weather = null);
+    WeatherOptions? Weather = null,
+    TrackInfoOptions? TrackInfo = null);
 
 /// <summary>
 /// Builds a widget's production panel and feeds it sample data through the same UpdateState/SetRows
@@ -32,7 +33,7 @@ public static class PanelFactory
         WidgetCatalog.Delta => new DeltaPanel(),
         WidgetCatalog.PedalTrace => new PedalTracePanel(),
         WidgetCatalog.Incident => new IncidentPanel(),
-        WidgetCatalog.TrackInfo => new TrackInfoPanel(),
+        WidgetCatalog.TrackInfo => new TrackInfoPanel { Options = options.TrackInfo ?? new TrackInfoOptions() },
         WidgetCatalog.Weather => new WeatherPanel { Options = options.Weather ?? new WeatherOptions() },
         WidgetCatalog.TrackMap => new TrackMapPanel(),
         WidgetCatalog.FuelCalculator => new FuelCalculatorPanel { Options = options.FuelCalculator ?? new FuelCalculatorOptions() },

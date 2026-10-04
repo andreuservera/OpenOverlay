@@ -32,6 +32,7 @@ public sealed partial class ControlPanelViewModel
         FlagOptions,
         CockpitOptions,
         WeatherOptions,
+        TrackInfoOptions,
         DeltaOptions,
         SaveToStores: true,
         TableHeaderChanged: table => TableHeaderChanged?.Invoke(table));

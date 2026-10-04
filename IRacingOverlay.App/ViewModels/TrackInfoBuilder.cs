@@ -48,6 +48,7 @@ internal static class TrackInfoBuilder
             WindDirRad = GetFloatOrZero(telemetry, TelemetryVarNames.WindDir),
             // iRacing's "%" unit is a 0-1 fraction (same as Throttle/FuelLevelPct), so 38% arrives as 0.38.
             HumidityPct = GetFloatOrZero(telemetry, TelemetryVarNames.RelativeHumidity) * 100,
+            Condition = WeatherBuilder.Condition(telemetry),
             TimeRemainingSeconds = SessionClock.TimeRemaining(telemetry),
             Progress = SessionProgressBuilder.Build(telemetry, session, recentRacingLapSeconds),
             UnitSystem = Units.Read(telemetry),

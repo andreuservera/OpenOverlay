@@ -33,6 +33,7 @@ public sealed class WidgetSettingsTests
     [InlineData(WidgetCatalog.Cockpit, new[] { "THEME", "UPDATE RATE" })]
     [InlineData(WidgetCatalog.PedalTrace, new[] { "UPDATE RATE" })]
     [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
+    [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]
     [InlineData(WidgetCatalog.Delta, new[] { "REFERENCE" })]
     [InlineData(WidgetCatalog.TireInfo, new string[0])]
     public void For_ReturnsTheWidgetPagesOwnGroups_InPageOrder(string type, string[] titles)
@@ -102,9 +103,10 @@ public sealed class WidgetSettingsTests
             new FlagOptions(),
             new CockpitOptions(),
             new WeatherOptions(),
+            new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { });
         var context = new WidgetSettingsContext(
             targets.Standings,
@@ -113,6 +115,7 @@ public sealed class WidgetSettingsTests
             targets.Flag,
             targets.Cockpit,
             targets.Weather,
+            targets.TrackInfo,
             targets.Delta,
             SaveToStores: false,
             Changed: () => _changes++);
