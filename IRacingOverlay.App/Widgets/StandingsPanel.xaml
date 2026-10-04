@@ -163,7 +163,8 @@
                                         Background="{Binding ClassColor, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.55}"/>
                                 <Border Width="3" HorizontalAlignment="Left" Background="{Binding ClassColor}"
                                         CornerRadius="3,0,0,3"/>
-                                <!-- The class name, then how many drivers it has (helmet), when switched on. -->
+                                <!-- The class name, then how many drivers it has (helmet) and its own strength
+                                     of field, each when switched on. -->
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                                     <TextBlock Text="{Binding ClassName}" Style="{StaticResource PanelTitle}"
                                                Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
@@ -174,12 +175,10 @@
                                         <TextBlock Text="{Binding DriverCountDisplay}" Style="{StaticResource PanelTitle}"
                                                    Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center"/>
                                     </StackPanel>
+                                    <TextBlock Text="{Binding SofDisplay}" Style="{StaticResource PanelTitle}" Margin="10,0,0,0"
+                                               Foreground="{StaticResource Text.Primary}" VerticalAlignment="Center" ToolTip="Strength of field in this class"
+                                               Visibility="{Binding Options.ShowClassSof, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}"/>
                                 </StackPanel>
-                                <!-- The class's own strength of field, on the right, when switched on. -->
-                                <TextBlock Text="{Binding SofDisplay}" Style="{StaticResource PanelTitle}" Margin="0,0,8,0"
-                                           HorizontalAlignment="Right" VerticalAlignment="Center"
-                                           Foreground="{StaticResource Text.Primary}" ToolTip="Strength of field in this class"
-                                           Visibility="{Binding Options.ShowClassSof, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}"/>
                             </Grid>
                         </DataTemplate>
 
