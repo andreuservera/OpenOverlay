@@ -154,11 +154,12 @@
                         <ColumnDefinition Width="{Binding Options.Columns.Width9, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width10, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width11, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <ColumnDefinition Width="{Binding Options.Columns.Width12, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <!-- Not a column: the fastest-lap mark's slot, always last. -->
                         <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="12"
+                    <Grid Grid.Column="13"
                           Visibility="{Binding Options.ShowFastestLapMark, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                         <Border Style="{StaticResource FastestLapBadge}"
                                 Visibility="{Binding IsSessionFastestLap, Mode=OneTime, Converter={StaticResource BoolToVis}}">
@@ -183,6 +184,12 @@
                             Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <TextBlock Text="{Binding CarNumberDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
                     </Border>
+
+                    <!-- The make: its logo in the secondary ink, or a monogram where the logo can't be
+                         read. Cars of no make the app knows (spec and dirt cars) get iRacing's emblem. -->
+                    <w:CarBrandIcon Grid.Column="{Binding Options.Columns.CarBrand, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="24" Height="16" HorizontalAlignment="Center" Margin="0,0,4,0"
+                                    Logo="{Binding CarBrandLogo, Mode=OneTime}" Monogram="{Binding CarBrandMonogram, Mode=OneTime}"
+                                    Visibility="{Binding Options.ShowCarBrand, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- Status badges take their room out of the name, never out of another column. -->
                     <DockPanel Grid.Column="{Binding Options.Columns.Driver, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,8,0"

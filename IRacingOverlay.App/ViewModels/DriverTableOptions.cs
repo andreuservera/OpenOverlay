@@ -19,6 +19,8 @@ public enum DriverTableColumn
     LastLap,
     BestLap,
     Gap,
+    /// <summary>The car's make, as its logo. Off by default.</summary>
+    CarBrand,
 }
 
 /// <summary>Session information shown around a driver table, above or below it rather than as a
@@ -81,6 +83,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showLastLap = true;
     private bool _showBestLap = true;
     private bool _showGap = true;
+    private bool _showCarBrand;
     private bool _showClassName = true;
     private bool _showSof = true;
     private bool _showColumnHeaders = true;
@@ -180,6 +183,13 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showGap;
         set => SetField(ref _showGap, value);
+    }
+
+    /// <summary>The make of each car, as its logo (or a monogram where the app has none). Off by default.</summary>
+    public bool ShowCarBrand
+    {
+        get => _showCarBrand;
+        set => SetField(ref _showCarBrand, value);
     }
 
     /// <summary>Shows the session being run (RACE, QUALIFYING, PRACTICE) next to the panel title.
@@ -388,6 +398,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         DriverTableColumn.Lap => ShowLap,
         DriverTableColumn.LastLap => ShowLastLap,
         DriverTableColumn.BestLap => ShowBestLap,
+        DriverTableColumn.CarBrand => ShowCarBrand,
         _ => ShowGap,
     };
 
@@ -406,6 +417,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
             case DriverTableColumn.Lap: ShowLap = visible; break;
             case DriverTableColumn.LastLap: ShowLastLap = visible; break;
             case DriverTableColumn.BestLap: ShowBestLap = visible; break;
+            case DriverTableColumn.CarBrand: ShowCarBrand = visible; break;
             default: ShowGap = visible; break;
         }
     }

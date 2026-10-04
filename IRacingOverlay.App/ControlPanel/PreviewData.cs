@@ -66,6 +66,14 @@ public static class PreviewData
     private static readonly TireCompound PreviewSoft = TireCompound.FromName("Soft");
     private static readonly TireCompound PreviewWet = TireCompound.FromName("Wet");
 
+    // A mixed grid per class, run through the same name matching as a live session.
+    private static readonly string[][] Models =
+    [
+        ["Porsche 911 GT3 R (992)", "BMW M4 GT3 EVO", "Ferrari 296 GT3", "Mercedes-AMG GT3 2020", "McLaren 720S GT3 EVO", "Audi R8 LMS EVO II GT3", "Lamborghini Huracan GT3 EVO"],
+        ["Aston Martin Vantage GT4", "Porsche 718 Cayman GT4 Clubsport MR", "BMW M4 G82 GT4", "McLaren 570S GT4"],
+        ["Hyundai Elantra N TC", "Honda Civic Type R TCR", "Audi RS 3 LMS TCR"],
+    ];
+
     /// <summary>A timed race a third of the way in: the lap total is the estimate from pace.</summary>
     public static SessionProgress Progress() => new()
     {
@@ -108,6 +116,7 @@ public static class PreviewData
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 // Mostly slicks, a few gambling on wets, one on softs: every ring colour shows.
                 TireCompound = i % 7 == 4 ? PreviewWet : i % 11 == 2 ? PreviewSoft : PreviewHard,
+                CarBrand = CarBrand.ForCar(Models[classIndex][(classPositions[classIndex] - 1) % Models[classIndex].Length]),
                 CurrentLap = i < 3 ? 18 : 17,
                 // Car 8 has just set a personal best, so the green last-lap state shows too.
                 LastLapTime = i == 7
@@ -159,6 +168,7 @@ public static class PreviewData
                 HasMeatballFlag = source.HasMeatballFlag,
                 LastPitStop = source.LastPitStop,
                 TireCompound = source.TireCompound,
+                CarBrand = source.CarBrand,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,

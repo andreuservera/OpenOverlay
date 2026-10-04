@@ -89,6 +89,13 @@ public abstract class DriverRow
 
     public string TireCompoundColor => TireCompound?.Color ?? "#8E99A5";
 
+    /// <summary>The car's make, or the placeholder for one the app doesn't know.</summary>
+    public CarBrand? CarBrand { get; init; }
+
+    public string CarBrandLogo => CarBrand?.Logo ?? "";
+
+    public string CarBrandMonogram => CarBrand?.Monogram ?? "";
+
     /// <summary>What the GAP column shows. The one thing the two tables genuinely disagree on:
     /// Standings measures to the class leader, Relative to the player.</summary>
     public abstract string GapDisplay { get; }

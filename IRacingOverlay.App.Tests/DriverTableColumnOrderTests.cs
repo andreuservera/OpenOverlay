@@ -8,18 +8,21 @@ namespace IRacingOverlay.App.Tests;
 public class DriverTableColumnOrderTests
 {
     [Fact]
-    public void DefaultOrder_KeepsEveryColumnInTheSlotItAlwaysHad()
+    public void DefaultOrder_PutsTheMakeBetweenTheNumberAndTheDriver_HiddenSoNothingMoves()
     {
         var layout = new DriverTableOptions(DriverTable.Standings).Columns;
 
         Assert.Equal(0, layout.Position);
-        Assert.Equal(2, layout.Driver);
-        Assert.Equal(5, layout.IRating);
-        Assert.Equal(6, layout.SlotOf(DriverTableColumn.IRatingDelta));
-        Assert.Equal(9, layout.BestLap);
-        Assert.Equal(10, layout.LastLap);
-        Assert.Equal(11, layout.Gap);
-        Assert.Equal(128, layout.Width2);
+        Assert.Equal(1, layout.CarNumber);
+        Assert.Equal(2, layout.CarBrand);
+        Assert.Equal(0, layout.Width2);
+        Assert.Equal(3, layout.Driver);
+        Assert.Equal(6, layout.IRating);
+        Assert.Equal(7, layout.SlotOf(DriverTableColumn.IRatingDelta));
+        Assert.Equal(10, layout.BestLap);
+        Assert.Equal(11, layout.LastLap);
+        Assert.Equal(12, layout.Gap);
+        Assert.Equal(128, layout.Width3);
     }
 
     [Fact]
@@ -47,8 +50,8 @@ public class DriverTableColumnOrderTests
         var options = new DriverTableOptions(DriverTable.Standings);
         options.SetVisible(DriverTableColumn.Driver, false);
 
-        Assert.Equal(2, options.Columns.Driver);
-        Assert.Equal(0, options.Columns.Width2);
+        Assert.Equal(3, options.Columns.Driver);
+        Assert.Equal(0, options.Columns.Width3);
     }
 
     [Fact]

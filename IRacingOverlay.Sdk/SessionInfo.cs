@@ -84,6 +84,8 @@ public sealed class DriverEntry
     public double CarClassEstLapTime { get; set; }
     public int CarID { get; set; }
     public string CarScreenNameShort { get; set; } = "";
+    /// <summary>e.g. "Porsche 911 GT3 R (992)": the full model name, which starts with the make.</summary>
+    public string CarScreenName { get; set; } = "";
     public int CarIsPaceCar { get; set; }
     public int CarIsAI { get; set; }
     public int IRating { get; set; }

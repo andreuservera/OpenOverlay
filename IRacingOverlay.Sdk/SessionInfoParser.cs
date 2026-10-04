@@ -154,6 +154,7 @@ public static class SessionInfoParser
                 driver.CarNumber ??= "";
                 driver.CarClassShortName ??= "";
                 driver.CarScreenNameShort ??= "";
+                driver.CarScreenName ??= "";
                 driver.LicString ??= "";
                 driver.CarClassColor ??= "";
             }

@@ -32,6 +32,8 @@
     <!-- Backdrop the control panel previews widgets against. Embedded rather than shipped loose so
          it can't go missing from an install and leave the preview pane empty. -->
     <Resource Include="Assets\spa2.jpg" />
+    <!-- Make logos for the driver tables, read by name (see Widgets/CarBrandIcon.cs). -->
+    <EmbeddedResource Include="Assets\CarBrands\*.svg" LogicalName="OpenOverlay.CarBrands.%(Filename).svg" />
     <!-- Must not be an ApplicationDefinition (which auto-generates its own Main) now that
          App.xaml.cs provides one explicitly for Velopack's sake. -->
     <ApplicationDefinition Remove="App.xaml" />
