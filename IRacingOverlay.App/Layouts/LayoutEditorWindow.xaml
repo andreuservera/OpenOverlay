@@ -103,25 +103,29 @@
                     <Rectangle x:Name="Outline" StrokeThickness="{Binding OutlineThickness}" IsHitTestVisible="False"
                                Stroke="#55FFFFFF"/>
 
-                    <!-- Badges: what state this widget is in, drawn at screen size. -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top"
-                                IsHitTestVisible="False" Margin="0">
-                        <StackPanel.LayoutTransform>
-                            <ScaleTransform ScaleX="{Binding BadgeScale}" ScaleY="{Binding BadgeScale}"/>
-                        </StackPanel.LayoutTransform>
-                        <Border Background="{StaticResource Cp.Danger}" CornerRadius="3" Padding="5,1" Margin="2"
-                                Visibility="{Binding IsOffCanvas, Converter={StaticResource Cp.BoolToVis}}">
-                            <TextBlock Text="OFF SCREEN" FontSize="10" FontWeight="Bold" Foreground="#101316"/>
-                        </Border>
-                        <Border Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="3" Padding="5,1" Margin="2"
-                                Visibility="{Binding IsLocked, Converter={StaticResource Cp.BoolToVis}}">
-                            <TextBlock Text="LOCKED" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Cp.TextSoft}"/>
-                        </Border>
-                        <Border Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="3" Padding="5,1" Margin="2"
-                                Visibility="{Binding IsHidden, Converter={StaticResource Cp.BoolToVis}}">
-                            <TextBlock Text="HIDDEN" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Cp.TextSoft}"/>
-                        </Border>
-                    </StackPanel>
+                    <!-- Badges: what state this widget is in, drawn at screen size. In a Canvas, which
+                         measures as nothing, so they never count towards the widget's size: scaled up
+                         to screen size at a low zoom, "OFF SCREEN" could otherwise be wider than the
+                         widget, stretch it past the canvas edge and so keep itself showing. -->
+                    <Canvas HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False">
+                        <StackPanel Orientation="Horizontal" IsHitTestVisible="False" Margin="0">
+                            <StackPanel.LayoutTransform>
+                                <ScaleTransform ScaleX="{Binding BadgeScale}" ScaleY="{Binding BadgeScale}"/>
+                            </StackPanel.LayoutTransform>
+                            <Border Background="{StaticResource Cp.Danger}" CornerRadius="3" Padding="5,1" Margin="2"
+                                    Visibility="{Binding IsOffCanvas, Converter={StaticResource Cp.BoolToVis}}">
+                                <TextBlock Text="OFF SCREEN" FontSize="10" FontWeight="Bold" Foreground="#101316"/>
+                            </Border>
+                            <Border Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="3" Padding="5,1" Margin="2"
+                                    Visibility="{Binding IsLocked, Converter={StaticResource Cp.BoolToVis}}">
+                                <TextBlock Text="LOCKED" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Cp.TextSoft}"/>
+                            </Border>
+                            <Border Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="3" Padding="5,1" Margin="2"
+                                    Visibility="{Binding IsHidden, Converter={StaticResource Cp.BoolToVis}}">
+                                <TextBlock Text="HIDDEN" FontSize="10" FontWeight="Bold" Foreground="{StaticResource Cp.TextSoft}"/>
+                            </Border>
+                        </StackPanel>
+                    </Canvas>
 
                     <Border Style="{StaticResource Ed.Handle}" Tag="TopLeft" HorizontalAlignment="Left" VerticalAlignment="Top"
                             Cursor="SizeNWSE"/>
