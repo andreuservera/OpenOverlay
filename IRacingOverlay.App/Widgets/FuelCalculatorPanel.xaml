@@ -76,22 +76,8 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="UsageRow" TargetType="UniformGrid" BasedOn="{StaticResource CellRow}">
-            <Setter Property="Grid.Row" Value="0"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
-                    <Setter Property="Grid.Row" Value="2"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="StrategyRow" TargetType="UniformGrid" BasedOn="{StaticResource CellRow}">
-            <Setter Property="Grid.Row" Value="2"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Options.Vertical, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
-                    <Setter Property="Grid.Row" Value="0"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <!-- Which group sits above the gap (row 0) and which below (row 2), and the cells' order
+             inside each, are set by the code-behind from the options. -->
 
         <!-- One readout: a band holding a two-by-two grid whose caption stays top-left while the
              value moves — under the caption in the strip, to the right of it in the list. -->
@@ -202,9 +188,9 @@
                     </Grid.RowDefinitions>
 
                     <!-- Per-lap usage: up to four compact cells, each independently toggleable. -->
-                    <UniformGrid Style="{StaticResource UsageRow}"
+                    <UniformGrid x:Name="UsageCells" Style="{StaticResource CellRow}"
                                  Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <Border Style="{StaticResource StatCell}"
+                        <Border x:Name="LastLapCell" Style="{StaticResource StatCell}"
                                 Visibility="{Binding Options.ShowLastLap, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -223,7 +209,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource StatCell}"
+                        <Border x:Name="AverageCell" Style="{StaticResource StatCell}"
                                 Visibility="{Binding Options.ShowAverage, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -245,7 +231,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource StatCell}"
+                        <Border x:Name="MinimumCell" Style="{StaticResource StatCell}"
                                 Visibility="{Binding Options.ShowMinimum, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -264,7 +250,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource StatCell}"
+                        <Border x:Name="MaximumCell" Style="{StaticResource StatCell}"
                                 Visibility="{Binding Options.ShowMaximum, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -288,8 +274,8 @@
                                Visibility="{Binding Options.ShowAnyUsage, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
 
                     <!-- Strategy: what you act on, so a size step up from the usage cells. -->
-                    <UniformGrid Style="{StaticResource StrategyRow}">
-                        <Border Style="{StaticResource StrategyCell}"
+                    <UniformGrid x:Name="StrategyCells" Style="{StaticResource CellRow}">
+                        <Border x:Name="FuelRemainingCell" Style="{StaticResource StrategyCell}"
                                 Visibility="{Binding Options.ShowFuelRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -308,7 +294,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource StrategyCell}"
+                        <Border x:Name="FuelToFinishCell" Style="{StaticResource StrategyCell}"
                                 Visibility="{Binding Options.ShowFuelToFinish, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -327,7 +313,7 @@
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource StrategyCell}"
+                        <Border x:Name="RefuelCell" Style="{StaticResource StrategyCell}"
                                 Visibility="{Binding Options.ShowRefuel, ElementName=Root, Converter={StaticResource BoolToVis}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>

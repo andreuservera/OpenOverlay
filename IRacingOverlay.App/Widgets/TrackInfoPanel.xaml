@@ -3,10 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
-    <!-- Three groups — track and session, conditions, timing — with a separator between groups
-         that are both showing. Every field binds its own toggle; SpacedStackPanel only spaces
-         visible children and the group/separator flags are derived in TrackInfoOptions, so hiding
-         anything closes the gap. -->
+    <!-- The fields are laid out by the code-behind, in the order and with the visibility the
+         options give: a separator wherever neighbouring fields belong to different groups (track
+         and session, conditions, timing), and a field's gap to the one before it otherwise. -->
     <UserControl.Resources>
         <!-- Every field in this bar is the same shape — caption, then value — so the reading rhythm
              stays constant all the way across and the eye can jump straight to the one it wants.
@@ -46,90 +45,67 @@
         </Style>
     </UserControl.Resources>
     <Border Style="{StaticResource OverlayPanel}" Padding="16,9">
-        <w:SpacedStackPanel Orientation="Horizontal" Spacing="18" HorizontalAlignment="Center">
-            <w:SpacedStackPanel Orientation="Horizontal" Spacing="11"
-                                Visibility="{Binding Options.ShowHeader, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <!-- Capped + trimmed: this bar is one long horizontal row, so an unusually long
-                     circuit name would otherwise push the session clock off the right-hand end. -->
-                <TextBlock x:Name="TrackNameText" Text="—" Style="{StaticResource ValueText}" VerticalAlignment="Center"
-                           MaxWidth="220" TextTrimming="CharacterEllipsis"
-                           Visibility="{Binding Options.ShowTrackName, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-                <TextBlock x:Name="SessionLabelText" Text="—" Style="{StaticResource PanelTitle}"
-                           VerticalAlignment="Center" Margin="0,2,0,0"
-                           Visibility="{Binding Options.ShowSession, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-            </w:SpacedStackPanel>
-
-            <Rectangle Style="{StaticResource BarSeparator}"
-                       Visibility="{Binding Options.ShowFirstSeparator, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
+        <StackPanel x:Name="Bar" Orientation="Horizontal" HorizontalAlignment="Center">
+            <!-- Capped + trimmed: this bar is one long horizontal row, so an unusually long
+                 circuit name would otherwise push the session clock off the right-hand end. -->
+            <TextBlock x:Name="TrackNameText" Text="—" Style="{StaticResource ValueText}" VerticalAlignment="Center"
+                       MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="SessionLabelText" Text="—" Style="{StaticResource PanelTitle}"
+                       VerticalAlignment="Center" Margin="0,2,0,0"/>
 
             <!-- Weather is context, read on purpose rather than at a glance: secondary ink
                  throughout, with colour left to the one field here that carries a state (usage). -->
-            <w:SpacedStackPanel Orientation="Horizontal" Spacing="21"
-                                Visibility="{Binding Options.ShowConditions, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <StackPanel Style="{StaticResource BarField}" ToolTip="Air temperature"
-                            Visibility="{Binding Options.ShowAirTemp, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <w:WeatherIcon x:Name="SkyIcon" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,5,0"
-                                   SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
-                                   CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
-                                   RainBrush="{StaticResource State.Info}"/>
-                    <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource BarValue}"/>
-                </StackPanel>
+            <StackPanel x:Name="FieldAirTemp" Style="{StaticResource BarField}" ToolTip="Air temperature">
+                <w:WeatherIcon x:Name="SkyIcon" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,5,0"
+                               SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
+                               CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
+                               RainBrush="{StaticResource State.Info}"/>
+                <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource BarValue}"/>
+            </StackPanel>
 
-                <StackPanel Style="{StaticResource BarField}" ToolTip="Track temperature"
-                            Visibility="{Binding Options.ShowTrackTemp, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Road}"/>
-                    <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource BarValue}"/>
-                </StackPanel>
+            <StackPanel x:Name="FieldTrackTemp" Style="{StaticResource BarField}" ToolTip="Track temperature">
+                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Road}"/>
+                <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource BarValue}"/>
+            </StackPanel>
 
-                <StackPanel Style="{StaticResource BarField}" ToolTip="Wind"
-                            Visibility="{Binding Options.ShowWind, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Wind}" Height="13" Fill="{x:Null}"
-                          Stroke="{StaticResource Text.Secondary}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                    <TextBlock x:Name="WindText" Text="—" Style="{StaticResource BarValue}"/>
-                </StackPanel>
+            <StackPanel x:Name="FieldWind" Style="{StaticResource BarField}" ToolTip="Wind">
+                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Wind}" Height="13" Fill="{x:Null}"
+                      Stroke="{StaticResource Text.Secondary}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                <TextBlock x:Name="WindText" Text="—" Style="{StaticResource BarValue}"/>
+            </StackPanel>
 
-                <StackPanel Style="{StaticResource BarField}" ToolTip="Relative humidity"
-                            Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Drop}" Height="13" Fill="{StaticResource State.Info}"/>
-                    <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}"/>
-                </StackPanel>
+            <StackPanel x:Name="FieldHumidity" Style="{StaticResource BarField}" ToolTip="Relative humidity">
+                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Drop}" Height="13"/>
+                <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}"/>
+            </StackPanel>
 
-                <StackPanel Style="{StaticResource BarField}"
-                            Visibility="{Binding Options.ShowTrackUsage, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="USAGE" Style="{StaticResource BarCaption}"/>
-                    <StackPanel x:Name="TrackUsageBar" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0">
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}"/>
-                        <Rectangle Style="{StaticResource UsageSegment}" Margin="0"/>
-                    </StackPanel>
-                    <TextBlock x:Name="TrackUsageText" Text="—" Style="{StaticResource BarValue}"/>
+            <StackPanel x:Name="FieldTrackUsage" Style="{StaticResource BarField}">
+                <TextBlock Text="USAGE" Style="{StaticResource BarCaption}"/>
+                <StackPanel x:Name="TrackUsageBar" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0">
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}"/>
+                    <Rectangle Style="{StaticResource UsageSegment}" Margin="0"/>
                 </StackPanel>
-            </w:SpacedStackPanel>
-
-            <Rectangle Style="{StaticResource BarSeparator}"
-                       Visibility="{Binding Options.ShowSecondSeparator, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock x:Name="TrackUsageText" Text="—" Style="{StaticResource BarValue}"/>
+            </StackPanel>
 
             <!-- Time left and the lap count are what a driver actually glances up for mid-stint, so
-                 they end the bar in primary ink rather than the secondary the weather fields use. -->
-            <w:SpacedStackPanel Orientation="Horizontal" Spacing="21"
-                                Visibility="{Binding Options.ShowTiming, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                <StackPanel Style="{StaticResource BarField}"
-                            Visibility="{Binding Options.ShowTimeLeft, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="TIME LEFT" Style="{StaticResource BarCaption}"/>
-                    <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
-                </StackPanel>
+                 they end the bar by default, in primary ink rather than the secondary the weather
+                 fields use. -->
+            <StackPanel x:Name="FieldTimeLeft" Style="{StaticResource BarField}">
+                <TextBlock Text="TIME LEFT" Style="{StaticResource BarCaption}"/>
+                <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
+            </StackPanel>
 
-                <StackPanel Style="{StaticResource BarField}"
-                            Visibility="{Binding Options.ShowLap, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="LAP" Style="{StaticResource BarCaption}"/>
-                    <TextBlock x:Name="LapText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
-                </StackPanel>
-            </w:SpacedStackPanel>
-        </w:SpacedStackPanel>
+            <StackPanel x:Name="FieldLap" Style="{StaticResource BarField}">
+                <TextBlock Text="LAP" Style="{StaticResource BarCaption}"/>
+                <TextBlock x:Name="LapText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
     </Border>
 </UserControl>

@@ -55,7 +55,7 @@ public class SessionProgressTests
         var progress = SessionProgressBuilder.Build(
             Snapshot(timeTotal: 3600, timeRemain: 2205, lastLap: 120), null, recentRacingLapSeconds: 90);
 
-        Assert.Equal("7/30.8", progress.LapDisplay);
+        Assert.Equal("7/~30.8", progress.LapDisplay);
         Assert.Equal("0:23:15 / 1:00:00", progress.TimeDisplay);
     }
 
@@ -73,7 +73,7 @@ public class SessionProgressTests
     {
         var progress = SessionProgressBuilder.Build(Snapshot(timeTotal: 1800, timeRemain: 0, lastLap: 100, pct: 0.1f), null, 0);
 
-        Assert.Equal("7/7.0", progress.LapDisplay);
+        Assert.Equal("7/~7.0", progress.LapDisplay);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class SessionProgressTests
 
         var progress = SessionProgressBuilder.Build(Snapshot(lap: 1, timeTotal: 1800, timeRemain: 1800, pct: 0), session, 0);
 
-        Assert.Equal("1/18.0", progress.LapDisplay);
+        Assert.Equal("1/~18.0", progress.LapDisplay);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class SessionProgressTests
     {
         var state = TrackInfoBuilder.Build(Snapshot(timeTotal: 1800, timeRemain: 450), session: null, recentRacingLapSeconds: 90);
 
-        Assert.Equal("7/11.3", state.LapDisplay);
+        Assert.Equal("7/~11.3", state.LapDisplay);
     }
 
     [Fact]

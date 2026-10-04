@@ -321,6 +321,18 @@ public sealed class LayoutFileTests : IDisposable
 
     // ===== Helpers =====
 
+    [Fact]
+    public void Export_LeavesTheLayoutsShortcutOut()
+    {
+        var layout = SampleLayout();
+        layout.Hotkey = new Hotkey(System.Windows.Input.ModifierKeys.Control | System.Windows.Input.ModifierKeys.Shift, System.Windows.Input.Key.D1);
+
+        var json = Export(layout);
+
+        Assert.DoesNotContain("hotkey", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(LayoutFile.Import(json, Codecs(), "x").Layout!.Hotkey);
+    }
+
     private static string Export(Layout layout) => LayoutFile.Export(layout, Codecs(), "0.8.0", ExportedAt);
 
     private static Layout SampleLayout()
@@ -380,7 +392,8 @@ public sealed class LayoutFileTests : IDisposable
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+            new PedalTraceOptions(),
+            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { }));
 
     /// <summary>Today no widget has sensitive fields, so the filter is checked with a stand-in that does.</summary>

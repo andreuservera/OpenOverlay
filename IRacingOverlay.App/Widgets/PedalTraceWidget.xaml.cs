@@ -15,4 +15,6 @@ public partial class PedalTraceWidget : OverlayWindowBase
     }
 
     public void UpdateState(PedalTraceState state) => _panel.UpdateState(state);
+
+    public void SetOptions(PedalTraceOptions options) => _panel.Options = options;
 }

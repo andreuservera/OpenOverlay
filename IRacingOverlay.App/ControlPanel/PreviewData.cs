@@ -25,9 +25,9 @@ public static class PreviewData
 
     private static readonly (string Name, string Color)[] Classes =
     [
-        ("GT3 CLASS", "#33CEFF"),
-        ("GT4 CLASS", "#FFB238"),
-        ("TCR CLASS", "#FF4F8B"),
+        ("GT3", "#33CEFF"),
+        ("GT4", "#FFB238"),
+        ("TCR", "#FF4F8B"),
     ];
 
     // Names are invented but shaped like the real thing — a mix of lengths, including two long
@@ -122,7 +122,7 @@ public static class PreviewData
                 IsSessionFastestLap = classPositions[classIndex] == 1,
                 ClassColor = multiClass ? Classes[entry.ClassIndex].Color : "#B9C4CF",
                 CarClassID = multiClass ? entry.ClassIndex + 1 : 1,
-                CarClassName = multiClass ? Classes[entry.ClassIndex].Name : "GT3 CLASS",
+                CarClassName = multiClass ? Classes[entry.ClassIndex].Name : "GT3",
                 GapToLeaderSeconds = entry.Pace,
             });
         }
@@ -313,6 +313,11 @@ public static class PreviewData
             ClutchHistory = clutch,
             AbsHistory = abs,
             Positions = Enumerable.Range(0, samples).Select(i => i / (double)(samples - 1)).ToArray(),
+            // Back on the power out of the corner: third gear, unwinding a little left lock.
+            Gear = "3",
+            SpeedMs = 128 / 3.6,
+            SteeringRad = 0.6,
+            UnitSystem = Units.Current,
         };
     }
 
@@ -360,6 +365,17 @@ public static class PreviewData
         TrackWetness = 2,
     };
 
+    public static TableConditions TableConditions() => new()
+    {
+        BrakeBias = 54.5,
+        AirTempC = 21.4,
+        TrackTempC = 33.8,
+        HumidityPct = 54,
+        Condition = WeatherCondition.PartlyCloudy,
+        UnitSystem = Units.Current,
+        Incidents = new IncidentState { MyIncidentCount = 7, TeamIncidentCount = null, Limit = 17 },
+    };
+
     public static TrackInfoState TrackInfo() => new()
     {
         UnitSystem = Units.Current,
@@ -372,8 +388,9 @@ public static class PreviewData
         WindSpeedMs = 3.6,
         WindDirRad = 2.1,
         HumidityPct = 54,
-        TimeRemainingSeconds = 1284,
-        Progress = new SessionProgress { CurrentLap = 7, TotalLaps = 23 },
+        // The same timed race the driver tables preview: 23:15 run of an hour, laps estimated.
+        TimeRemainingSeconds = 3600 - 1395,
+        Progress = Progress(),
     };
 
     /// <summary>Cars spread around the lap with the pack bunched where it usually is — behind the

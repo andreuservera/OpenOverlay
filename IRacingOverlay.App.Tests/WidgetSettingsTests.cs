@@ -31,7 +31,7 @@ public sealed class WidgetSettingsTests
     [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
     [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
     [InlineData(WidgetCatalog.Cockpit, new[] { "THEME", "UPDATE RATE" })]
-    [InlineData(WidgetCatalog.PedalTrace, new[] { "UPDATE RATE" })]
+    [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS", "UPDATE RATE" })]
     [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
     [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]
     [InlineData(WidgetCatalog.Delta, new[] { "REFERENCE" })]
@@ -70,11 +70,11 @@ public sealed class WidgetSettingsTests
     public void HeaderToggles_DoNotNudgeAnyLiveWidget_WhenThereIsNone()
     {
         var (context, _) = NewContext(WidgetCatalog.Relative);
-        var toggle = WidgetSettings.For(WidgetCatalog.Relative, context)
-            .SelectMany(group => group.Items).OfType<ToggleSetting>()
-            .First(setting => setting.Label == "Show SOF");
+        var placement = WidgetSettings.For(WidgetCatalog.Relative, context)
+            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
+            .First(setting => setting.Label == "SOF");
 
-        toggle.Value = !toggle.Value;
+        placement.SelectedIndex = 0; // Hidden
 
         Assert.False(context.Relative.ShowSof);
         Assert.Equal(1, _changes);
@@ -86,11 +86,11 @@ public sealed class WidgetSettingsTests
         var nudged = new List<DriverTable>();
         var (context, _) = NewContext();
         context = context with { TableHeaderChanged = nudged.Add };
-        var toggle = WidgetSettings.For(WidgetCatalog.Standings, context)
-            .SelectMany(group => group.Items).OfType<ToggleSetting>()
-            .First(setting => setting.Label == "Show session type");
+        var placement = WidgetSettings.For(WidgetCatalog.Standings, context)
+            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
+            .First(setting => setting.Label == "Session type");
 
-        toggle.Value = !toggle.Value;
+        placement.SelectedIndex = 0; // Hidden
 
         Assert.Equal([DriverTable.Standings], nudged);
     }
@@ -106,7 +106,8 @@ public sealed class WidgetSettingsTests
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
-            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+            new PedalTraceOptions(),
+            new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
             _ => { });
         var context = new WidgetSettingsContext(
             targets.Standings,
@@ -117,6 +118,7 @@ public sealed class WidgetSettingsTests
             targets.Weather,
             targets.TrackInfo,
             targets.Delta,
+            targets.PedalTrace,
             SaveToStores: false,
             Changed: () => _changes++);
         return (context, type is null ? null : WidgetConfigCodecs.Create(targets)[type]);
@@ -147,6 +149,14 @@ public sealed class WidgetSettingsTests
                     break;
                 case SliderSetting slider:
                     yield return new Row(slider.Label, () => slider.Value += slider.Value + slider.Step <= slider.Maximum ? slider.Step : -slider.Step);
+                    break;
+                case ReorderListSetting columns:
+                    yield return new Row($"{columns.Label} › order", () => columns.Move(0, columns.Items.Count - 1));
+                    foreach (var chip in columns.Items.SelectMany(column => new[] { column.Visible, column.Companion }).OfType<ChipSetting>())
+                    {
+                        yield return new Row($"{columns.Label} › {chip.Label}", () => chip.Value = !chip.Value);
+                    }
+
                     break;
                 case ChipGroupSetting chips:
                     foreach (var chip in chips.Chips)

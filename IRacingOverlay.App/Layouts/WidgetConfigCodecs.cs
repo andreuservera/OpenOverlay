@@ -43,7 +43,8 @@ public sealed record WidgetConfigPersistence(
     Action<WeatherOptions> Weather,
     Action<TrackInfoOptions> TrackInfo,
     Action<FuelCalculatorOptions> FuelCalculator,
-    Action<DeltaOptions> Delta)
+    Action<DeltaOptions> Delta,
+    Action<PedalTraceOptions> PedalTrace)
 {
     public static WidgetConfigPersistence Stores { get; } = new(
         DriverTableOptionsStore.Save,
@@ -53,7 +54,8 @@ public sealed record WidgetConfigPersistence(
         TrackInfoOptionsStore.Save,
         FuelCalculatorOptionsStore.Save,
         // The Delta reference is deliberately never saved for the individual widget.
-        _ => { });
+        _ => { },
+        PedalTraceOptionsStore.Save);
 }
 
 /// <summary>The live options objects the codecs read and write — the same instances the widgets,
@@ -67,6 +69,7 @@ public sealed record WidgetConfigTargets(
     TrackInfoOptions TrackInfo,
     FuelCalculatorOptions FuelCalculator,
     DeltaOptions Delta,
+    PedalTraceOptions PedalTrace,
     WidgetConfigPersistence Persist,
     Action<DriverTable> TableHeaderChanged);
 
@@ -86,7 +89,7 @@ public static class WidgetConfigCodecs
             new FuelCalculatorConfigCodec(targets.FuelCalculator, targets.Persist.FuelCalculator),
             new DeltaConfigCodec(targets.Delta, targets.Persist.Delta),
             new EmptyConfigCodec(WidgetCatalog.TireInfo),
-            new EmptyConfigCodec(WidgetCatalog.PedalTrace),
+            new PedalTraceConfigCodec(targets.PedalTrace, targets.Persist.PedalTrace),
             new EmptyConfigCodec(WidgetCatalog.Incident),
             new TrackInfoConfigCodec(targets.TrackInfo, targets.Persist.TrackInfo),
             new EmptyConfigCodec(WidgetCatalog.TrackMap),
@@ -196,6 +199,14 @@ internal sealed class DriverTableConfigCodec(
 {
     private bool HasMulticlass => options.Table == DriverTable.Standings;
 
+    private static readonly TableInfoElement[] ExtraElements =
+        Enum.GetValues<TableInfoElement>().Where(element => !DriverTableOptions.HasOwnSwitch(element)).ToArray();
+
+    private static string ShowKey(TableInfoElement element) => $"show{element}";
+
+    private static string SlotKey(TableInfoElement element) =>
+        $"{char.ToLowerInvariant(element.ToString()[0])}{element.ToString()[1..]}Slot";
+
     public override JsonObject Read()
     {
         var columns = new JsonObject();
@@ -207,16 +218,30 @@ internal sealed class DriverTableConfigCodec(
         var config = new JsonObject
         {
             ["columns"] = columns,
+            ["columnOrder"] = new JsonArray(options.ColumnOrder.Select(column => (JsonNode)Name(column)).ToArray()),
             ["focusSize"] = options.FocusSize,
             ["showClassName"] = options.ShowClassName,
             ["showSof"] = options.ShowSof,
             ["showColumnHeaders"] = options.ShowColumnHeaders,
+            ["sessionTypeSlot"] = Name(options.SlotOf(TableInfoElement.SessionType)),
+            ["sofSlot"] = Name(options.SlotOf(TableInfoElement.Sof)),
+            ["sessionLapsSlot"] = Name(options.SlotOf(TableInfoElement.SessionLaps)),
+            ["sessionTimeSlot"] = Name(options.SlotOf(TableInfoElement.SessionTime)),
             ["showSessionLaps"] = options.ShowSessionLaps,
             ["showSessionTime"] = options.ShowSessionTime,
         };
+        // Elements added after the first four: "show<Element>" and "<element>Slot".
+        foreach (var element in ExtraElements)
+        {
+            config[ShowKey(element)] = options.IsShown(element);
+            config[SlotKey(element)] = Name(options.SlotOf(element));
+        }
+
         if (HasMulticlass)
         {
             config["showMulticlass"] = options.ShowMulticlass;
+            config["showClassDrivers"] = options.ShowClassDrivers;
+            config["showClassSof"] = options.ShowClassSof;
         }
 
         return config;
@@ -230,15 +255,37 @@ internal sealed class DriverTableConfigCodec(
             Set<bool>(columns, Name(column), visible => options.SetVisible(column, visible));
         }
 
+        // An order is taken as given and normalised by the options: names this version doesn't
+        // know are skipped, and columns the file leaves out keep their default place.
+        if (config["columnOrder"] is JsonArray order)
+        {
+            options.ColumnOrder = order
+                .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                    Enum.TryParse<DriverTableColumn>(name, ignoreCase: true, out var column) ? column : (DriverTableColumn?)null)
+                .OfType<DriverTableColumn>()
+                .ToList();
+        }
+
         Set<int>(config, "focusSize", value => options.FocusSize = value);
         Set<bool>(config, "showClassName", value => options.ShowClassName = value);
         Set<bool>(config, "showSof", value => options.ShowSof = value);
         Set<bool>(config, "showColumnHeaders", value => options.ShowColumnHeaders = value);
+        Set<TableSlot>(config, "sessionTypeSlot", slot => options.SetSlot(TableInfoElement.SessionType, slot));
+        Set<TableSlot>(config, "sofSlot", slot => options.SetSlot(TableInfoElement.Sof, slot));
+        Set<TableSlot>(config, "sessionLapsSlot", slot => options.SetSlot(TableInfoElement.SessionLaps, slot));
+        Set<TableSlot>(config, "sessionTimeSlot", slot => options.SetSlot(TableInfoElement.SessionTime, slot));
+        foreach (var element in ExtraElements)
+        {
+            Set<bool>(config, ShowKey(element), shown => options.SetShown(element, shown));
+            Set<TableSlot>(config, SlotKey(element), slot => options.SetSlot(element, slot));
+        }
         Set<bool>(config, "showSessionLaps", value => options.ShowSessionLaps = value);
         Set<bool>(config, "showSessionTime", value => options.ShowSessionTime = value);
         if (HasMulticlass)
         {
             Set<bool>(config, "showMulticlass", value => options.ShowMulticlass = value);
+            Set<bool>(config, "showClassDrivers", value => options.ShowClassDrivers = value);
+            Set<bool>(config, "showClassSof", value => options.ShowClassSof = value);
         }
     }
 
@@ -360,6 +407,7 @@ internal sealed class TrackInfoConfigCodec(TrackInfoOptions options, Action<Trac
         ["showTrackUsage"] = options.ShowTrackUsage,
         ["showTimeLeft"] = options.ShowTimeLeft,
         ["showLap"] = options.ShowLap,
+        ["fieldOrder"] = new JsonArray(options.FieldOrder.Select(field => (JsonNode)Name(field)).ToArray()),
     };
 
     protected override void Assign(JsonObject config)
@@ -373,6 +421,48 @@ internal sealed class TrackInfoConfigCodec(TrackInfoOptions options, Action<Trac
         Set<bool>(config, "showTrackUsage", value => options.ShowTrackUsage = value);
         Set<bool>(config, "showTimeLeft", value => options.ShowTimeLeft = value);
         Set<bool>(config, "showLap", value => options.ShowLap = value);
+        // As the driver tables' column order: unknown names skipped, missing fields keep their place.
+        if (config["fieldOrder"] is JsonArray order)
+        {
+            options.FieldOrder = order
+                .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                    Enum.TryParse<TrackInfoField>(name, ignoreCase: true, out var field) ? field : (TrackInfoField?)null)
+                .OfType<TrackInfoField>()
+                .ToList();
+        }
+    }
+
+    protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
+}
+
+internal sealed class PedalTraceConfigCodec(PedalTraceOptions options, Action<PedalTraceOptions> persist) : WidgetConfigCodec(WidgetCatalog.PedalTrace)
+{
+    public override JsonObject Read() => new()
+    {
+        ["showGear"] = options.ShowGear,
+        ["showSpeed"] = options.ShowSpeed,
+        ["showSteering"] = options.ShowSteering,
+        ["showTrace"] = options.ShowTrace,
+        ["showPedals"] = options.ShowPedals,
+        ["elementOrder"] = new JsonArray(options.ElementOrder.Select(element => (JsonNode)Name(element)).ToArray()),
+    };
+
+    protected override void Assign(JsonObject config)
+    {
+        Set<bool>(config, "showGear", value => options.ShowGear = value);
+        Set<bool>(config, "showSpeed", value => options.ShowSpeed = value);
+        Set<bool>(config, "showSteering", value => options.ShowSteering = value);
+        Set<bool>(config, "showTrace", value => options.ShowTrace = value);
+        Set<bool>(config, "showPedals", value => options.ShowPedals = value);
+        // As the driver tables' column order: unknown names skipped, missing blocks keep their place.
+        if (config["elementOrder"] is JsonArray order)
+        {
+            options.ElementOrder = order
+                .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                    Enum.TryParse<PedalTraceElement>(name, ignoreCase: true, out var element) ? element : (PedalTraceElement?)null)
+                .OfType<PedalTraceElement>()
+                .ToList();
+        }
     }
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
@@ -397,6 +487,9 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         ["marginLaps"] = options.MarginLaps,
         ["marginLiters"] = options.MarginLiters,
         ["vertical"] = options.Vertical,
+        ["usageOrder"] = new JsonArray(options.UsageOrder.Select(cell => (JsonNode)Name(cell)).ToArray()),
+        ["strategyOrder"] = new JsonArray(options.StrategyOrder.Select(cell => (JsonNode)Name(cell)).ToArray()),
+        ["firstGroup"] = Name(options.FirstGroup),
     };
 
     protected override void Assign(JsonObject config)
@@ -414,7 +507,24 @@ internal sealed class FuelCalculatorConfigCodec(FuelCalculatorOptions options, A
         Set<double>(config, "marginLaps", value => options.MarginLaps = value);
         Set<double>(config, "marginLiters", value => options.MarginLiters = value);
         Set<bool>(config, "vertical", value => options.Vertical = value);
+        Set<FuelGroupOrder>(config, "firstGroup", value => options.FirstGroup = value);
+        // As the driver tables' column order: unknown names skipped, missing cells keep their place.
+        if (config["usageOrder"] is JsonArray usage)
+        {
+            options.UsageOrder = Cells(usage);
+        }
+
+        if (config["strategyOrder"] is JsonArray strategy)
+        {
+            options.StrategyOrder = Cells(strategy);
+        }
     }
+
+    private static List<FuelCell> Cells(JsonArray names) => names
+        .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+            Enum.TryParse<FuelCell>(name, ignoreCase: true, out var cell) ? cell : (FuelCell?)null)
+        .OfType<FuelCell>()
+        .ToList();
 
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
 }

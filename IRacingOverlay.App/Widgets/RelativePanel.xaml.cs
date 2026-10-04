@@ -16,7 +16,9 @@ public partial class RelativePanel : UserControl
     // instance later has to be a DependencyProperty change to be noticed.
     public static readonly DependencyProperty OptionsProperty = DependencyProperty.Register(
         nameof(Options), typeof(DriverTableOptions), typeof(RelativePanel),
-        new PropertyMetadata(new DriverTableOptions(DriverTable.Relative)));
+        new PropertyMetadata(new DriverTableOptions(DriverTable.Relative), (d, e) => ((RelativePanel)d)._bands?.Follow((DriverTableOptions)e.NewValue)));
+
+    private readonly TableInfoBands _bands;
 
     public DriverTableOptions Options
     {
@@ -27,14 +29,48 @@ public partial class RelativePanel : UserControl
     public RelativePanel()
     {
         InitializeComponent();
+        _bands = new TableInfoBands(
+            new Dictionary<TableSlot, Panel>
+            {
+                [TableSlot.TopLeft] = TopLeftSlot,
+                [TableSlot.TopCenter] = TopCenterSlot,
+                [TableSlot.TopRight] = TopRightSlot,
+                [TableSlot.BottomLeft] = BottomLeftSlot,
+                [TableSlot.BottomCenter] = BottomCenterSlot,
+                [TableSlot.BottomRight] = BottomRightSlot,
+            },
+            new Dictionary<TableInfoElement, FrameworkElement>
+            {
+                [TableInfoElement.SessionType] = SessionTypeText,
+                [TableInfoElement.Sof] = SofText,
+                [TableInfoElement.SessionLaps] = SessionLapsField,
+                [TableInfoElement.SessionTime] = SessionTimeField,
+                [TableInfoElement.BrakeBias] = BrakeBiasField,
+                [TableInfoElement.AirTemp] = AirTempField,
+                [TableInfoElement.TrackTemp] = TrackTempField,
+                [TableInfoElement.Humidity] = HumidityField,
+                [TableInfoElement.Incidents] = IncidentsField,
+            });
+        _bands.Follow(Options);
     }
 
     public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Relative");
 
     public void SetSessionType(string label) =>
-        SessionTypeText.Text = Options.ShowClassName ? label : "";
+        SessionTypeText.Text = label;
 
-    public void SetSof(double sof) => SofText.Text = Options.ShowSof ? StandingsPanel.FormatSof(sof) : "";
+    public void SetSof(double sof) => SofText.Text = StandingsPanel.FormatSof(sof);
+
+    public void SetConditions(TableConditions conditions)
+    {
+        BrakeBiasText.Text = conditions.BrakeBiasDisplay;
+        AirTempIcon.Condition = conditions.Condition;
+        AirTempText.Text = conditions.AirTempDisplay;
+        TrackTempText.Text = conditions.TrackTempDisplay;
+        HumidityText.Text = conditions.HumidityDisplay;
+        IncidentsText.Text = conditions.IncidentsDisplay;
+        IncidentsText.Foreground = StandingsPanel.IncidentBrush(conditions.IncidentSeverity);
+    }
 
     public void SetProgress(SessionProgress progress)
     {

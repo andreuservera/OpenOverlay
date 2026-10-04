@@ -34,6 +34,7 @@ public sealed partial class ControlPanelViewModel
         WeatherOptions,
         TrackInfoOptions,
         DeltaOptions,
+        PedalTraceOptions,
         SaveToStores: true,
         TableHeaderChanged: table => TableHeaderChanged?.Invoke(table));
 
@@ -60,6 +61,8 @@ public sealed partial class ControlPanelViewModel
 
         foreach (var group in groups)
         {
+            group.Scope = item.Key;
+            group.KeepOpen = term.Length > 0;
             // Names every change in the activity trail after where the user made it.
             var path = $"{item.Title} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
             foreach (var setting in group.Items)
@@ -70,6 +73,13 @@ public sealed partial class ControlPanelViewModel
                     foreach (var chip in chips.Chips)
                     {
                         chip.TracePath = $"{path}{chips.Label} › ";
+                    }
+                }
+                else if (setting is ReorderListSetting columns)
+                {
+                    foreach (var chip in columns.Items.SelectMany(column => new[] { column.Visible, column.Companion }).OfType<ChipSetting>())
+                    {
+                        chip.TracePath = $"{path}{columns.Label} › ";
                     }
                 }
             }
@@ -154,6 +164,7 @@ public sealed partial class ControlPanelViewModel
                 ChoiceSetting choice => choice.Options,
                 SegmentedSetting segmented => segmented.Options,
                 ChipGroupSetting chips => chips.Chips.SelectMany(chip => new[] { chip.Label, chip.Hint ?? "" }),
+                ReorderListSetting columns => columns.Items.Select(column => column.Label),
                 HotkeySetting hotkey => [hotkey.Display],
                 _ => [],
             };
@@ -238,7 +249,7 @@ public sealed partial class ControlPanelViewModel
         ActionSetting? copy = null;
         copy = new ActionSetting(
             "Copy diagnostics",
-            "A text report for a bug report.",
+            null,
             "Copy",
             () =>
             {
@@ -321,7 +332,7 @@ public sealed partial class ControlPanelViewModel
     {
         var button = new ActionSetting(
             "Second-monitor dashboard",
-            "Every panel at once.",
+            null,
             "Show dashboard",
             () => DashboardToggleRequested?.Invoke());
         if (!_buildingIndex)

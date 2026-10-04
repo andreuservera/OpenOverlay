@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
@@ -606,18 +607,22 @@ internal static class StandingsBuilder
             return 0;
         }
 
-        var iratings = driverInfo.Drivers
-            .Where(d => !d.IsPaceCar && d.IRating > 0)
-            .Select(d => (double)d.IRating)
-            .ToList();
-        if (iratings.Count == 0)
+        return StrengthOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.IRating));
+    }
+
+    /// <summary>iRacing's strength-of-field formula over a set of iRatings; unrated (0) drivers
+    /// are left out, and nobody rated gives 0. Used for the whole field and for each class.</summary>
+    internal static double StrengthOf(IEnumerable<int> iratings)
+    {
+        var rated = iratings.Where(rating => rating > 0).Select(rating => (double)rating).ToList();
+        if (rated.Count == 0)
         {
             return 0;
         }
 
         var br1 = 1600.0 / Math.Log(2);
-        var sum = iratings.Sum(r => Math.Exp(-r / br1));
-        return sum > 0 ? br1 * Math.Log(iratings.Count / sum) : 0;
+        var sum = rated.Sum(r => Math.Exp(-r / br1));
+        return sum > 0 ? br1 * Math.Log(rated.Count / sum) : 0;
     }
 
     /// <summary>
@@ -716,8 +721,10 @@ internal static class StandingsBuilder
             var className = classRows[0].CarClassName;
             display.Add(new StandingsHeaderRow
             {
-                ClassName = string.IsNullOrWhiteSpace(className) ? $"CLASS {classId}" : className.ToUpperInvariant(),
+                ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
+                DriverCount = classRows.Count,
+                Sof = StrengthOf(classRows.Select(row => row.IRating)),
             });
 
             display.AddRange(classId == playerClassId ? classRows : classRows.Take(otherClassLimit));
@@ -814,8 +821,10 @@ internal static class StandingsBuilder
             var className = classRows[0].CarClassName;
             display.Add(new StandingsHeaderRow
             {
-                ClassName = string.IsNullOrWhiteSpace(className) ? $"CLASS {classId}" : className.ToUpperInvariant(),
+                ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
+                DriverCount = classRows.Count,
+                Sof = StrengthOf(classRows.Select(row => row.IRating)),
             });
 
             if (classId == playerClassId)
@@ -881,6 +890,19 @@ internal static class StandingsBuilder
         {
             display.Add(rows[i]);
         }
+    }
+
+    /// <summary>
+    /// A class block's header: the class name in capitals without the word "Class" iRacing often
+    /// appends ("GT3 Class" → "GT3"). A spec series leaves the name blank, and a name that is only
+    /// "Class" says nothing either; both fall back to "CLASS n", the one place the word still earns
+    /// its keep, since a bare number wouldn't read as a class.
+    /// </summary>
+    internal static string ClassHeaderLabel(string? className, int classId)
+    {
+        var name = Regex.Replace(className ?? "", @"\bclass\b", " ", RegexOptions.IgnoreCase);
+        name = Regex.Replace(name, @"\s+", " ").Trim();
+        return name.Length == 0 ? $"CLASS {classId}" : name.ToUpperInvariant();
     }
 
     /// <summary>

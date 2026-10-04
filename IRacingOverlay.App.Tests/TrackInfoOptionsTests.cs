@@ -5,26 +5,54 @@ namespace IRacingOverlay.App.Tests;
 public class TrackInfoOptionsTests
 {
     [Fact]
-    public void SeparatorsOnlySitBetweenGroupsThatAreBothShowing()
+    public void DefaultBar_SeparatesTheThreeGroups()
+    {
+        var bar = new TrackInfoOptions().Bar();
+
+        Assert.Equal(TrackInfoOptions.DefaultOrder, bar.Select(entry => entry.Field));
+        Assert.Equal(
+            [TrackInfoField.AirTemp, TrackInfoField.TimeLeft],
+            bar.Where(entry => entry.SeparatorBefore).Select(entry => entry.Field));
+    }
+
+    [Fact]
+    public void ASeparatorGoesWhereverNeighboursBelongToDifferentGroups()
+    {
+        var options = new TrackInfoOptions
+        {
+            FieldOrder = [TrackInfoField.Lap, TrackInfoField.TrackName, TrackInfoField.AirTemp, TrackInfoField.Wind, TrackInfoField.TimeLeft],
+        };
+
+        var separated = options.Bar().Where(entry => entry.SeparatorBefore).Select(entry => entry.Field).ToList();
+
+        // Lap | track name | air, wind | time left | (the rest, appended in default order)
+        Assert.Equal(TrackInfoField.TrackName, separated[0]);
+        Assert.Equal(TrackInfoField.AirTemp, separated[1]);
+        Assert.Equal(TrackInfoField.TimeLeft, separated[2]);
+        Assert.False(options.Bar()[0].SeparatorBefore);
+    }
+
+    [Fact]
+    public void HiddenFields_LeaveNoSeparatorBehind()
     {
         var options = new TrackInfoOptions();
-        Assert.True(options.ShowFirstSeparator);
-        Assert.True(options.ShowSecondSeparator);
+        foreach (var field in new[] { TrackInfoField.AirTemp, TrackInfoField.TrackTemp, TrackInfoField.Wind, TrackInfoField.Humidity, TrackInfoField.TrackUsage })
+        {
+            options.SetVisible(field, false);
+        }
 
-        // Every condition hidden: the conditions group goes, and so does the separator after it.
-        options.ShowAirTemp = false;
-        options.ShowTrackTemp = false;
-        options.ShowWind = false;
-        options.ShowHumidity = false;
-        Assert.True(options.ShowConditions);
-        options.ShowTrackUsage = false;
-        Assert.False(options.ShowConditions);
-        Assert.False(options.ShowSecondSeparator);
-        Assert.True(options.ShowFirstSeparator);
+        var bar = options.Bar();
 
-        options.ShowTimeLeft = false;
-        options.ShowLap = false;
-        Assert.False(options.ShowTiming);
-        Assert.False(options.ShowFirstSeparator);
+        Assert.Equal([TrackInfoField.TrackName, TrackInfoField.Session, TrackInfoField.TimeLeft, TrackInfoField.Lap], bar.Select(entry => entry.Field));
+        Assert.Equal([false, false, true, false], bar.Select(entry => entry.SeparatorBefore));
+    }
+
+    [Fact]
+    public void FieldOrder_IsNormalised()
+    {
+        var options = new TrackInfoOptions { FieldOrder = [TrackInfoField.Lap, TrackInfoField.Lap, (TrackInfoField)42] };
+
+        Assert.Equal(TrackInfoField.Lap, options.FieldOrder[0]);
+        Assert.Equal(TrackInfoOptions.DefaultOrder.Count, options.FieldOrder.Count);
     }
 }

@@ -40,7 +40,8 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
             FlagPreview: null,
             _targets.Cockpit,
             _targets.Weather,
-            _targets.TrackInfo);
+            _targets.TrackInfo,
+            _targets.PedalTrace);
         Panel = PanelFactory.Create(widget.Type, Options);
         if (Panel is FrameworkElement element)
         {
@@ -153,6 +154,7 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
         _targets.Weather,
         _targets.TrackInfo,
         _targets.Delta,
+        _targets.PedalTrace,
         SaveToStores: false,
         TableHeaderChanged: null,
         Changed: changed);
@@ -197,7 +199,8 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
         new TrackInfoOptions(),
         new FuelCalculatorOptions(),
         new DeltaOptions(),
-        new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
+        new PedalTraceOptions(),
+        new WidgetConfigPersistence(_ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }, _ => { }),
         _ => { });
 
     private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

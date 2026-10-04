@@ -472,6 +472,53 @@
         </Setter>
     </Style>
 
+    <!-- A column's companion switch inside its row (iRating's gain / loss): the chip shape, smaller,
+         led by the table's own up and down arrows so it says what it adds. Off, the arrows go grey. -->
+    <Style x:Key="Cp.CompanionChip" TargetType="ToggleButton">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.Field}" CornerRadius="12"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                            Padding="8,0,10,0" SnapsToDevicePixels="True">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path x:Name="Up" Data="M0,4 L3.5,0.5 L7,4" Width="7" Height="4.5" Stretch="Fill"
+                                  Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  VerticalAlignment="Center" Margin="0,0,2,0"/>
+                            <Path x:Name="Down" Data="M0,0.5 L3.5,4 L7,0.5" Width="7" Height="4.5" Stretch="Fill"
+                                  Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#66FFD24D"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Up" Property="Stroke" Value="{StaticResource Cp.Live}"/>
+                            <Setter TargetName="Down" Property="Stroke" Value="{StaticResource Cp.Danger}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ===== Segmented selector =====
          One press, one value, whole range visible. Used for the size ladder, where seeing that XS
          and XL exist is half the information. -->
@@ -807,15 +854,77 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- A heading that folds what is under it: the rail's sections and every settings group. The
+         whole row is the button; the chevron at its end points down open and right folded. -->
+    <Style x:Key="Cp.SectionHeader" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="6" Padding="8,6">
+                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#1A2028"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Cp.SectionChevron" TargetType="Path">
+        <Setter Property="Data" Value="M0,0 L4,4 L0,8"/>
+        <Setter Property="Width" Value="5"/>
+        <Setter Property="Height" Value="9"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stroke" Value="{StaticResource Cp.TextMuted}"/>
+        <Setter Property="StrokeThickness" Value="1.6"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="StrokeLineJoin" Value="Round"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="10,0,2,0"/>
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <RotateTransform Angle="90"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A rail section folds away its pages, and stays folded next time. While searching every
+         section shows, so a match is never hidden. -->
     <Style x:Key="Cp.NavGroupStyle" TargetType="GroupItem">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="GroupItem">
                     <StackPanel>
-                        <TextBlock Text="{Binding Name}" Style="{StaticResource Cp.Eyebrow}"
-                                   Margin="19,16,0,6"/>
-                        <ItemsPresenter/>
+                        <ToggleButton Style="{StaticResource Cp.SectionHeader}" Margin="11,10,8,0"
+                                      IsChecked="{Binding Name.IsCollapsed, Mode=TwoWay}">
+                            <DockPanel>
+                                <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
+                                <TextBlock Text="{Binding Name.Title}" Style="{StaticResource Cp.Eyebrow}"/>
+                            </DockPanel>
+                        </ToggleButton>
+                        <ItemsPresenter x:Name="Pages"/>
                     </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding Name.IsCollapsed}" Value="True"/>
+                                <Condition Binding="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType=ListBox}}" Value=""/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="Pages" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="Chevron" Property="RenderTransform">
+                                <Setter.Value>
+                                    <RotateTransform Angle="0"/>
+                                </Setter.Value>
+                            </Setter>
+                        </MultiDataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -1114,35 +1223,114 @@
         </Grid>
     </DataTemplate>
 
+    <!-- Elements that are only switched on and off (flag types, weather readouts): the driver-table
+         column rows without the grip, since their order is the widget's own. A hint, where there is
+         one, is the row's tooltip. -->
     <DataTemplate DataType="{x:Type cp:ChipGroupSetting}">
         <ContentControl Template="{StaticResource Cp.SettingStack}">
-            <ItemsControl ItemsSource="{Binding Chips}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
+            <ItemsControl ItemsSource="{Binding Chips}" Focusable="False">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <ToggleButton Style="{StaticResource Cp.Chip}" Content="{Binding Label}"
-                                      ToolTip="{Binding Hint}" IsChecked="{Binding Value, Mode=TwoWay}"/>
+                        <Border Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
+                                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                                ToolTip="{Binding Hint}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}" Margin="14,0,8,0"
+                                           Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <CheckBox Grid.Column="1" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
+                                          IsChecked="{Binding Value, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ContentControl>
     </DataTemplate>
 
-    <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. -->
+    <!-- Driver-table columns: one row per column, in display order. The grip on the left drags the
+         row (see ReorderListDrag); the switch on the right shows or hides the column, and iRating
+         carries a small chip for its delta, which travels with it. -->
+    <DataTemplate DataType="{x:Type cp:ReorderListSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingStack}">
+            <ItemsControl ItemsSource="{Binding Items}" cp:ReorderListDrag.IsEnabled="True">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border x:Name="Row" Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
+                                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border cp:ReorderListDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
+                                        ToolTip="Drag to reorder">
+                                    <!-- Six dots, the usual "this can be dragged" grip. -->
+                                    <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Path.Data>
+                                            <GeometryGroup>
+                                                <EllipseGeometry Center="1.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="6.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="1.5,7" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="6.5,7" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="1.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
+                                                <EllipseGeometry Center="6.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
+                                            </GeometryGroup>
+                                        </Path.Data>
+                                    </Path>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Cp.Body}"
+                                           Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
+                                <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.CompanionChip}" Margin="0,0,10,0"
+                                              Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
+                                              ToolTip="The estimated iRating gain or loss for this race, beside the rating"/>
+                                <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
+                                          IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Companion}" Value="{x:Null}">
+                                <Setter TargetName="CompanionChip" Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.TextMuted}"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ContentControl>
+    </DataTemplate>
+
+    <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. The caption
+         folds the rows away (and remembers it); a group with no rows has nothing to fold. -->
     <DataTemplate DataType="{x:Type cp:SettingsGroup}">
         <Border Style="{StaticResource Cp.Card}">
             <StackPanel>
-                <StackPanel Margin="0,12,0,2">
-                    <TextBlock x:Name="GroupTitle" Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
-                               Foreground="{StaticResource Cp.Accent}"/>
-                    <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Cp.Hint}"
-                               Visibility="{Binding Subtitle, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
-                </StackPanel>
-                <ItemsControl ItemsSource="{Binding Items}">
+                <ToggleButton x:Name="Header" Style="{StaticResource Cp.SectionHeader}" Margin="-8,6,-8,0"
+                              IsChecked="{Binding IsCollapsed, Mode=TwoWay}">
+                    <DockPanel>
+                        <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
+                        <StackPanel>
+                            <TextBlock x:Name="GroupTitle" Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
+                                       Foreground="{StaticResource Cp.Accent}"/>
+                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Cp.Hint}"
+                                       Visibility="{Binding Subtitle, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </ToggleButton>
+                <ItemsControl x:Name="Rows" ItemsSource="{Binding Items}">
                     <ItemsControl.ItemContainerStyle>
                         <Style TargetType="ContentPresenter">
                             <Setter Property="Margin" Value="0"/>
@@ -1154,6 +1342,18 @@
         <DataTemplate.Triggers>
             <DataTrigger Binding="{Binding IsWarning}" Value="True">
                 <Setter TargetName="GroupTitle" Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsCollapsed}" Value="True">
+                <Setter TargetName="Rows" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="Chevron" Property="RenderTransform">
+                    <Setter.Value>
+                        <RotateTransform Angle="0"/>
+                    </Setter.Value>
+                </Setter>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding IsCollapsible}" Value="False">
+                <Setter TargetName="Chevron" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="Header" Property="IsHitTestVisible" Value="False"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>

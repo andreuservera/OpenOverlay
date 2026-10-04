@@ -147,7 +147,7 @@
                     <TextBlock Text="AIR TEMP" Style="{StaticResource Caption}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,4" ToolTip="Relative humidity"
                                 Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
-                        <Path Style="{StaticResource Glyph}" Fill="{StaticResource State.Info}" Width="8" Height="11" Margin="0,0,4,0"
+                        <Path Style="{StaticResource Glyph}" Width="8" Height="11" Margin="0,0,4,0"
                               Data="{StaticResource Icon.Drop}"/>
                         <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource FieldLabel}" Foreground="{StaticResource Text.Secondary}"
                                    FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"/>

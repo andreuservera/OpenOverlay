@@ -358,9 +358,9 @@ public sealed class ChipSetting : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
-/// <summary>A set of peer toggles shown as a chip grid. The right shape whenever the useful question
-/// is "which of these are on" rather than "is this one thing on" — table columns, panel blocks —
-/// because the whole set stays visible in the space a handful of switch rows would eat.</summary>
+/// <summary>A set of peer toggles — "which of these are on" — shown as one row and switch each, like
+/// a reorder list without the grip: for elements whose order is the widget's own (flag types,
+/// weather readouts, the fuel headline).</summary>
 public sealed class ChipGroupSetting : SettingItem
 {
     public ChipGroupSetting(string label, string? hint, IReadOnlyList<ChipSetting> chips)
@@ -370,6 +370,101 @@ public sealed class ChipGroupSetting : SettingItem
     }
 
     public IReadOnlyList<ChipSetting> Chips { get; }
+}
+
+/// <summary>One entry in a <see cref="ReorderListSetting"/>: its show/hide switch and, for an entry
+/// that carries a second part (a table's iRating and its delta), that part's switch too.</summary>
+public sealed class ReorderListItem : INotifyPropertyChanged
+{
+    private bool _isDragging;
+
+    public ReorderListItem(Enum key, ChipSetting visible, ChipSetting? companion = null)
+    {
+        Key = key;
+        Visible = visible;
+        Companion = companion;
+    }
+
+    /// <summary>What the entry stands for: a table column, a bar field.</summary>
+    public Enum Key { get; }
+
+    public ChipSetting Visible { get; }
+
+    public ChipSetting? Companion { get; }
+
+    public string Label => Visible.Label;
+
+    /// <summary>True while the row is being dragged, so the list can lift it.</summary>
+    public bool IsDragging
+    {
+        get => _isDragging;
+        set
+        {
+            if (_isDragging != value)
+            {
+                _isDragging = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsDragging)));
+            }
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+/// <summary>
+/// Things shown side by side (a table's columns, a bar's fields) as a list to reorder by dragging,
+/// each row with its show/hide switch.
+/// While a row is dragged only the list moves; the new order is applied once, on release, so a
+/// drag is one change (one save, one undo step) however far it travels.
+/// </summary>
+public sealed class ReorderListSetting : SettingItem
+{
+    private readonly Action<IReadOnlyList<Enum>> _apply;
+    private IReadOnlyList<Enum> _applied;
+
+    public ReorderListSetting(string label, string? hint, IEnumerable<ReorderListItem> items, Action<IReadOnlyList<Enum>> apply)
+        : base(label, hint)
+    {
+        Items = new ObservableCollection<ReorderListItem>(items);
+        _applied = Order;
+        _apply = apply;
+    }
+
+    public ObservableCollection<ReorderListItem> Items { get; }
+
+    private IReadOnlyList<Enum> Order => Items.Select(item => item.Key).ToList();
+
+    /// <summary>Moves a row in the list only, as a drag passes over the others.</summary>
+    public void MoveLive(int from, int to)
+    {
+        if (from == to || from < 0 || to < 0 || from >= Items.Count || to >= Items.Count)
+        {
+            return;
+        }
+
+        Items.Move(from, to);
+    }
+
+    /// <summary>Applies the list's order if it differs from the last one applied.</summary>
+    public void CommitOrder()
+    {
+        var order = Order;
+        if (order.SequenceEqual(_applied))
+        {
+            return;
+        }
+
+        _applied = order;
+        Trace(string.Join(", ", Items.Select(item => item.Label)));
+        _apply(order);
+    }
+
+    /// <summary>A move and its commit in one step.</summary>
+    public void Move(int from, int to)
+    {
+        MoveLive(from, to);
+        CommitOrder();
+    }
 }
 
 /// <summary>A row whose control is a button — something that happens rather than something that is
@@ -642,17 +737,60 @@ public sealed class ReleaseSetting : SettingItem
     }
 }
 
-/// <summary>A titled block of related settings — the unit the configuration pane is built from.</summary>
-public sealed class SettingsGroup
+/// <summary>A titled block of related settings — the unit the configuration pane is built from.
+/// It can be folded shut down to its title; whether it is outlives the group, which pages rebuild
+/// freely, because it is kept per <see cref="Scope"/> and title in <see cref="CollapseStore"/>.</summary>
+public sealed class SettingsGroup : INotifyPropertyChanged
 {
+    private bool _keepOpen;
+
     public SettingsGroup(string title, string? subtitle = null)
     {
         Title = title;
         Subtitle = subtitle;
     }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public string Title { get; }
     public string? Subtitle { get; }
+
+    /// <summary>The page the group belongs to — a widget's type, so the control panel and the layout
+    /// editor fold that widget's groups together.</summary>
+    public string? Scope { get; set; }
+
+    /// <summary>Shows the group open whatever was saved: set on search results, so a match is never
+    /// hidden inside a folded group.</summary>
+    public bool KeepOpen
+    {
+        get => _keepOpen;
+        set
+        {
+            _keepOpen = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
+        }
+    }
+
+    public string CollapseKey => $"{Scope}/{Title}";
+
+    /// <summary>A group with nothing in it (a notice) has nothing to fold.</summary>
+    public bool IsCollapsible => Items.Count > 0;
+
+    public bool IsCollapsed
+    {
+        get => !KeepOpen && IsCollapsible && CollapseStore.IsCollapsed(CollapseKey);
+        set
+        {
+            if (value == IsCollapsed || !IsCollapsible)
+            {
+                return;
+            }
+
+            KeepOpen = false;
+            CollapseStore.SetCollapsed(CollapseKey, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
+        }
+    }
 
     /// <summary>Draws the title in the danger colour, for a block that asks for attention.</summary>
     public bool IsWarning { get; init; }

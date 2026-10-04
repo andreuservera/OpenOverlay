@@ -1,3 +1,4 @@
+using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
@@ -7,7 +8,7 @@ public partial class TireInfoWidget : OverlayWindowBase
 {
     private readonly TireInfoPanel _panel;
 
-    public TireInfoWidget() : base("Tires", defaultLeft: 320, defaultTop: 420)
+    public TireInfoWidget() : base(WidgetCatalog.TireInfo, defaultLeft: 320, defaultTop: 420)
     {
         InitializeComponent();
         DataContext = this;

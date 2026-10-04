@@ -276,7 +276,7 @@ public partial class MainWindow : Window
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions, _vm.PedalTraceOptions);
         DataContext = _vm;
 
         foreach (var descriptor in WidgetCatalog.All)
@@ -358,6 +358,8 @@ public partial class MainWindow : Window
             }
         };
         _vm.ControlPanelToggleRequested += ToggleControlPanel;
+        // A layout switched to by shortcut is announced from the tray: the sim has the screen.
+        _vm.LayoutSwitchedNotice += (title, text) => _tray?.ShowNotice(title, text);
 
         _tray = new TrayIcon();
         _tray.OpenRequested += RestoreFromTray;
@@ -442,12 +444,14 @@ public partial class MainWindow : Window
             w.UpdateRows([]);
             w.SetSof(0);
             w.SetProgress(SessionProgress.Empty);
+            w.SetConditions(TableConditions.Empty);
         });
         Clear(WidgetCatalog.Standings, Standings, w =>
         {
             w.UpdateRows([]);
             w.SetSof(0);
             w.SetProgress(SessionProgress.Empty);
+            w.SetConditions(TableConditions.Empty);
         });
         Clear(WidgetCatalog.Cockpit, Cockpit, w => w.UpdateState(CockpitState.Empty));
         Clear(WidgetCatalog.Flag, Flags, w => w.UpdateState([FlagState.None]));
@@ -695,18 +699,27 @@ public partial class MainWindow : Window
             },
             (dashboard, rows) => dashboard.UpdateRelativeRows(rows));
 
-        // The tables' footer: the clock moves every tick, so not on the once-a-second standings beat.
+        // The tables' session information: the clock, brake bias, conditions and incidents move every tick, so
+        // not on the once-a-second standings beat.
         Feed(
             WidgetCatalog.Standings,
             Standings,
-            () => SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
-            (widget, progress) => widget.SetProgress(progress),
-            (dashboard, progress) => dashboard.UpdateSessionProgress(progress));
+            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry, session)),
+            (widget, info) =>
+            {
+                widget.SetProgress(info.Progress);
+                widget.SetConditions(info.Conditions);
+            },
+            (dashboard, info) => dashboard.UpdateSessionProgress(info.Progress));
         Feed(
             WidgetCatalog.Relative,
             Relative,
-            () => SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()),
-            (widget, progress) => widget.SetProgress(progress),
+            () => (Progress: SessionProgressBuilder.Build(telemetry, session, _lapLog.RecentLapSeconds()), Conditions: TableConditions.Build(telemetry, session)),
+            (widget, info) =>
+            {
+                widget.SetProgress(info.Progress);
+                widget.SetConditions(info.Conditions);
+            },
             null);
 
         Feed(

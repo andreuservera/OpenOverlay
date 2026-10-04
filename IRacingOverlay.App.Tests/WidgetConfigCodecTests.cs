@@ -17,7 +17,17 @@ public sealed class WidgetConfigCodecTests
         ["iconSize"] = typeof(WeatherGraphicSize),
         ["arrowSize"] = typeof(WeatherGraphicSize),
         ["averageSource"] = typeof(FuelAverageSource),
+        ["firstGroup"] = typeof(FuelGroupOrder),
         ["reference"] = typeof(DeltaReference),
+        ["sessionTypeSlot"] = typeof(TableSlot),
+        ["sofSlot"] = typeof(TableSlot),
+        ["sessionLapsSlot"] = typeof(TableSlot),
+        ["sessionTimeSlot"] = typeof(TableSlot),
+        ["brakeBiasSlot"] = typeof(TableSlot),
+        ["airTempSlot"] = typeof(TableSlot),
+        ["trackTempSlot"] = typeof(TableSlot),
+        ["humiditySlot"] = typeof(TableSlot),
+        ["incidentsSlot"] = typeof(TableSlot),
     };
 
     // Integer keys that only take multiples of a step, so a test moves them by that step.
@@ -151,6 +161,7 @@ public sealed class WidgetConfigCodecTests
             new TrackInfoOptions(),
             new FuelCalculatorOptions(),
             new DeltaOptions(),
+            new PedalTraceOptions(),
             new WidgetConfigPersistence(
                 options => _saved.Add($"DriverTable.{options.Table}"),
                 _ => _saved.Add("Flag"),
@@ -158,7 +169,8 @@ public sealed class WidgetConfigCodecTests
                 _ => _saved.Add("Weather"),
                 _ => _saved.Add("TrackInfo"),
                 _ => _saved.Add("FuelCalculator"),
-                _ => _saved.Add("Delta")),
+                _ => _saved.Add("Delta"),
+                _ => _saved.Add("PedalTrace")),
             _headerChanges.Add));
 
     /// <summary>Moves every value to a different valid one: booleans flip, numbers go up, enums
@@ -170,6 +182,8 @@ public sealed class WidgetConfigCodecTests
             config[key] = node switch
             {
                 JsonObject nested => Modified(nested),
+                // A list (the column order) changes to its reverse: still complete and valid.
+                JsonArray list => new JsonArray(list.Reverse().Select(node => node?.DeepClone()).ToArray()),
                 JsonValue value when value.TryGetValue<bool>(out var flag) => !flag,
                 JsonValue value when value.TryGetValue<int>(out var number) => number + SteppedKeys.GetValueOrDefault(key, 1),
                 JsonValue value when value.TryGetValue<double>(out var number) => number + 0.5,

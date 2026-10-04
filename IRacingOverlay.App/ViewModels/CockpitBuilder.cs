@@ -19,7 +19,7 @@ internal static class CockpitBuilder
 
     public static CockpitState Build(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
-        var gear = BuildGearText(telemetry);
+        var gear = GearText(telemetry);
         var (litCount, blink) = BuildShiftLights(telemetry, session);
         var abs = telemetry.HasVariable(TelemetryVarNames.BrakeAbsActive) && telemetry.GetBool(TelemetryVarNames.BrakeAbsActive);
         var (left, right) = BuildProximity(telemetry, session);
@@ -50,7 +50,8 @@ internal static class CockpitBuilder
     private static double? Optional(TelemetrySnapshot telemetry, string name) =>
         telemetry.HasVariable(name) ? telemetry.GetFloat(name) : null;
 
-    private static string BuildGearText(TelemetrySnapshot telemetry)
+    /// <summary>"R", "N" or the gear number; a dash when the car doesn't report one.</summary>
+    internal static string GearText(TelemetrySnapshot telemetry)
     {
         if (!telemetry.HasVariable(TelemetryVarNames.Gear))
         {

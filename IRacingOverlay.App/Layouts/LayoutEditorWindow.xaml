@@ -11,14 +11,16 @@
         FontFamily="{DynamicResource Theme.FontFamily}"
         FontSize="13"
         UseLayoutRounding="True"
-        TextOptions.TextFormattingMode="Ideal">
+        TextOptions.TextFormattingMode="Ideal"
+        PreviewKeyDown="OnWindowKeyDown">
     <!--
       Three panes, as in the control panel: the widgets you can add, the screen you are designing
       for, and the properties of what is selected. The canvas is the layout's full resolution, scaled
       to fit or shown 1:1; everything on it is the real widget panel with sample data.
 
-      No keyboard shortcuts on purpose: they are a separate task, and every action here is a button
-      or a context menu entry.
+      Fixed keyboard shortcuts (OnWindowKeyDown), each also a button or context menu entry: Ctrl+S save,
+      Ctrl+Z / Ctrl+Y undo and redo, Delete remove, Ctrl+L lock, H hide, 0 fit, Ctrl + wheel zoom, and
+      the arrows to nudge.
     -->
     <Window.Resources>
         <ResourceDictionary>
@@ -222,8 +224,8 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button x:Name="UndoButton" Style="{StaticResource Cp.Button}" Content="Undo" Click="OnUndo"/>
-                    <Button x:Name="RedoButton" Style="{StaticResource Cp.Button}" Content="Redo" Margin="6,0,0,0" Click="OnRedo"/>
+                    <Button x:Name="UndoButton" Style="{StaticResource Cp.Button}" Content="Undo" Click="OnUndo" ToolTip="Undo (Ctrl+Z)"/>
+                    <Button x:Name="RedoButton" Style="{StaticResource Cp.Button}" Content="Redo" Margin="6,0,0,0" Click="OnRedo" ToolTip="Redo (Ctrl+Y)"/>
                     <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
 
                     <ToggleButton x:Name="SnapToggle" Style="{StaticResource Cp.ToggleButton}" Content="Snap to grid"
@@ -236,8 +238,13 @@
                     <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
 
                     <Button Style="{StaticResource Cp.Button}" Content="Monitor and resolution…" Click="OnChangeTarget"/>
+                    <Border Width="1" Height="20" Background="{StaticResource Cp.Border}" Margin="12,0"/>
+
+                    <ToggleButton x:Name="AutoSaveToggle" Style="{StaticResource Cp.ToggleButton}" Content="Auto-save"
+                                  Click="OnAutoSaveToggled"
+                                  ToolTip="Save every change as you make it. With this layout open, you see each change on screen."/>
                     <Button x:Name="SaveButton" Style="{StaticResource Ed.SaveButton}" Content="Save" MinWidth="84"
-                            Margin="12,0,0,0" Click="OnSave"/>
+                            Margin="12,0,0,0" Click="OnSave" ToolTip="Save (Ctrl+S)"/>
                     <Button Style="{StaticResource Cp.Button}" Content="Close" Margin="6,0,0,0" Click="OnCloseClicked"/>
                 </StackPanel>
             </Grid>
@@ -268,7 +275,7 @@
             <!-- ===== Canvas ===== -->
             <ScrollViewer x:Name="Viewport" Grid.Column="1" Background="#06080A" Focusable="False"
                           HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
-                          SizeChanged="OnViewportSizeChanged">
+                          SizeChanged="OnViewportSizeChanged" PreviewMouseWheel="OnViewportMouseWheel">
                 <Grid MinWidth="{Binding ViewportWidth, ElementName=Viewport}"
                       MinHeight="{Binding ViewportHeight, ElementName=Viewport}">
                     <Border x:Name="Frame" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24"
@@ -327,15 +334,15 @@
                     BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
                 <StackPanel Orientation="Horizontal">
                     <Button x:Name="ZoomOutButton" Style="{StaticResource Cp.StepButton}" Content="−" Click="OnZoomOut"
-                            ToolTip="Zoom out"/>
+                            ToolTip="Zoom out (Ctrl + wheel)"/>
                     <Button x:Name="ZoomLabel" Style="{StaticResource Cp.StepButton}" Width="56" FontSize="{StaticResource Cp.Size.Body}"
                             FontWeight="SemiBold" Click="OnZoomActualSize" ToolTip="View at 100% (real size)"/>
                     <Button x:Name="ZoomInButton" Style="{StaticResource Cp.StepButton}" Content="+" Click="OnZoomIn"
-                            ToolTip="Zoom in"/>
+                            ToolTip="Zoom in (Ctrl + wheel)"/>
                     <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="4,0"/>
                     <Button x:Name="ZoomFitButton" Style="{StaticResource Cp.StepButton}" Width="40" Content="Fit"
                             FontSize="{StaticResource Cp.Size.Body}" FontWeight="SemiBold" Click="OnZoomFit"
-                            ToolTip="Fit the whole screen in the window"/>
+                            ToolTip="Fit the whole screen in the window (0)"/>
                 </StackPanel>
             </Border>
 

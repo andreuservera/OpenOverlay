@@ -52,6 +52,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         FlagOptionsStore.ApplyTo(FlagOptions);
         WeatherOptionsStore.ApplyTo(WeatherOptions);
         TrackInfoOptionsStore.ApplyTo(TrackInfoOptions);
+        PedalTraceOptionsStore.ApplyTo(PedalTraceOptions);
         CockpitOptions.Theme = CockpitThemeStore.Get();
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
@@ -94,7 +95,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         _selectedMonitorIndex = MonitorNames.Count > 1 ? 1 : 0;
 
         NavView = CollectionViewSource.GetDefaultView(NavItems);
-        NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Group)));
+        NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
 
         Select(NavItems[0]);
     }
@@ -114,6 +115,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public TrackInfoOptions TrackInfoOptions { get; } = new();
     public DeltaOptions DeltaOptions { get; } = new();
+    public PedalTraceOptions PedalTraceOptions { get; } = new();
 
     /// <summary>Which flag the preview is simulating. Preview-only state: never persisted, never
     /// seen by the live widget.</summary>
@@ -390,7 +392,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.Flag => Configured(new FlagWidget(), w => w.SetOptions(FlagOptions)),
         WidgetCatalog.TireInfo => new TireInfoWidget(),
         WidgetCatalog.Delta => new DeltaWidget(),
-        WidgetCatalog.PedalTrace => new PedalTraceWidget(),
+        WidgetCatalog.PedalTrace => Configured(new PedalTraceWidget(), w => w.SetOptions(PedalTraceOptions)),
         WidgetCatalog.Incident => new IncidentWidget(),
         WidgetCatalog.TrackInfo => Configured(new TrackInfoWidget(), w => w.SetOptions(TrackInfoOptions)),
         WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
@@ -411,6 +413,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             TrackInfoOptions,
             FuelCalculatorOptions,
             DeltaOptions,
+            PedalTraceOptions,
             WidgetConfigPersistence.Stores,
             table => TableHeaderChanged?.Invoke(table)));
 

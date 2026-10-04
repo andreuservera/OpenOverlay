@@ -95,13 +95,14 @@ public sealed class SessionProgress
 
     public bool HasTime => ElapsedSeconds is not null;
 
-    /// <summary>"7/24" in a lap race, "7/23.8" when the total is estimated from the clock, "7" with no end.</summary>
+    /// <summary>"7/24" in a lap race, "7/~23.8" when the total is estimated from the clock (the "~"
+    /// marks the estimate), "7" with no end.</summary>
     public string LapDisplay => CurrentLap is not { } lap
         ? "—"
         : TotalLaps is { } total
             ? string.Create(CultureInfo.InvariantCulture, $"{lap}/{total}")
             : EstimatedTotalLaps is { } estimate
-                ? string.Create(CultureInfo.InvariantCulture, $"{lap}/{estimate:0.0}")
+                ? string.Create(CultureInfo.InvariantCulture, $"{lap}/~{estimate:0.0}")
                 : lap.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>"23:15 / 1:00:00" — elapsed over the session's length, or just elapsed with no end.</summary>

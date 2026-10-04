@@ -43,6 +43,9 @@ public partial class DashboardWindow : Window
         _deltaPanel = (DeltaPanel)DeltaScaler.ScalableContent!;
         _flagPanel = (FlagPanel)FlagScaler.ScalableContent!;
         _pedalTracePanel = (PedalTracePanel)PedalTraceScaler.ScalableContent!;
+        // The dashboard has its own gear and speed readouts: its trace stays bars and plot only.
+        _pedalTracePanel.Options = DashboardPedalOptions();
+        _pedalTracePanel.TraceMinWidth = 140;
         _cockpitPanel = (CockpitPanel)CockpitScaler.ScalableContent!;
 
         ApplyTheme(DashboardThemeStore.Get());
@@ -123,6 +126,15 @@ public partial class DashboardWindow : Window
     public void UpdateDelta(DeltaState state) => _deltaPanel.UpdateState(state);
 
     public void UpdateFuelCalculator(FuelCalculatorState state) => _fuelCalculatorPanel.UpdateState(state);
+
+    private static PedalTraceOptions DashboardPedalOptions()
+    {
+        var options = new PedalTraceOptions { ElementOrder = [PedalTraceElement.Pedals, PedalTraceElement.Trace] };
+        options.ShowGear = false;
+        options.ShowSpeed = false;
+        options.ShowSteering = false;
+        return options;
+    }
 
     public void UpdatePedalTrace(PedalTraceState state) => _pedalTracePanel.UpdateState(state);
 

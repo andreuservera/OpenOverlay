@@ -14,7 +14,8 @@ public sealed record PreviewOptions(
     FlagPreviewScenario? FlagPreview = null,
     CockpitOptions? Cockpit = null,
     WeatherOptions? Weather = null,
-    TrackInfoOptions? TrackInfo = null);
+    TrackInfoOptions? TrackInfo = null,
+    PedalTraceOptions? PedalTrace = null);
 
 /// <summary>
 /// Builds a widget's production panel and feeds it sample data through the same UpdateState/SetRows
@@ -31,7 +32,7 @@ public static class PanelFactory
         WidgetCatalog.Flag => new FlagPanel { Options = options.Flag ?? new FlagOptions() },
         WidgetCatalog.TireInfo => new TireInfoPanel(),
         WidgetCatalog.Delta => new DeltaPanel(),
-        WidgetCatalog.PedalTrace => new PedalTracePanel(),
+        WidgetCatalog.PedalTrace => new PedalTracePanel { Options = options.PedalTrace ?? new PedalTraceOptions() },
         WidgetCatalog.Incident => new IncidentPanel(),
         WidgetCatalog.TrackInfo => new TrackInfoPanel { Options = options.TrackInfo ?? new TrackInfoOptions() },
         WidgetCatalog.Weather => new WeatherPanel { Options = options.Weather ?? new WeatherOptions() },
@@ -57,6 +58,7 @@ public static class PanelFactory
                     standings.SetSof(PreviewData.StrengthOfField());
                     standings.SetSessionType("RACE");
                     standings.SetProgress(PreviewData.Progress());
+                    standings.SetConditions(PreviewData.TableConditions());
                     break;
                 }
 
@@ -67,6 +69,7 @@ public static class PanelFactory
                     relative.SetSessionType("RACE");
                     relative.SetSof(PreviewData.StrengthOfField());
                     relative.SetProgress(PreviewData.Progress());
+                    relative.SetConditions(PreviewData.TableConditions());
                     break;
                 }
 

@@ -130,6 +130,13 @@ public sealed class Layout
 
     public int GridSize { get; set; } = 10;
 
+    /// <summary>The layout's own global shortcut: opens it, or closes it if it's open. Set on the
+    /// Layouts page; the store keeps it when the editor saves, a copy starts without one, and an
+    /// export leaves it out.</summary>
+    public Hotkey? Hotkey { get; set; }
+
+    public bool HotkeyEnabled { get; set; } = true;
+
     [JsonInclude]
     public IReadOnlyList<LayoutWidget> Widgets
     {
@@ -207,6 +214,9 @@ public sealed class Layout
     {
         var copy = CloneAs(Guid.NewGuid(), name, DateTime.UtcNow);
         copy.ModifiedUtc = copy.CreatedUtc;
+        // Two layouts can't share a shortcut.
+        copy.Hotkey = null;
+        copy.HotkeyEnabled = true;
         return copy;
     }
 
@@ -260,6 +270,8 @@ public sealed class Layout
         Height = Height,
         SnapEnabled = SnapEnabled,
         GridSize = GridSize,
+        Hotkey = Hotkey,
+        HotkeyEnabled = HotkeyEnabled,
         _widgets = _widgets.Select(widget => widget.Clone()).ToList(),
     };
 

@@ -51,10 +51,10 @@ internal sealed class PedalTraceBuilder
         }
 
         _lastTick = tick;
-        return _last = Snapshot(throttle, brake, clutch, tick);
+        return _last = Snapshot(throttle, brake, clutch, tick, telemetry);
     }
 
-    private PedalTraceState Snapshot(double throttle, double brake, double clutch, int now)
+    private PedalTraceState Snapshot(double throttle, double brake, double clutch, int now, TelemetrySnapshot telemetry)
     {
         var count = _samples.Count;
         var throttleHistory = new double[count];
@@ -83,8 +83,15 @@ internal sealed class PedalTraceBuilder
             ClutchHistory = clutchHistory,
             AbsHistory = absHistory,
             Positions = positions,
+            Gear = CockpitBuilder.GearText(telemetry),
+            SpeedMs = ReadOptional(telemetry, TelemetryVarNames.Speed),
+            SteeringRad = ReadOptional(telemetry, TelemetryVarNames.SteeringWheelAngle),
+            UnitSystem = Units.Read(telemetry),
         };
     }
+
+    private static double? ReadOptional(TelemetrySnapshot telemetry, string name) =>
+        telemetry.HasVariable(name) && telemetry.GetFloat(name) is var value && double.IsFinite(value) ? value : null;
 
     private static double ReadPedal(TelemetrySnapshot telemetry, string name) =>
         telemetry.HasVariable(name) ? Math.Clamp(telemetry.GetFloat(name), 0, 1) : 0;

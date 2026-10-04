@@ -117,6 +117,20 @@ internal sealed class LayoutStore
         return copy.Clone();
     }
 
+    /// <summary>Sets a layout's own shortcut (null clears it). False if the layout doesn't exist.</summary>
+    public bool SetHotkey(Guid id, Hotkey? hotkey, bool enabled)
+    {
+        if (Find(id) is not { } layout)
+        {
+            return false;
+        }
+
+        layout.Hotkey = hotkey;
+        layout.HotkeyEnabled = enabled;
+        Write();
+        return true;
+    }
+
     public bool Delete(Guid id)
     {
         if (_layouts.RemoveAll(layout => layout.Id == id) == 0)
@@ -139,6 +153,10 @@ internal sealed class LayoutStore
         var index = _layouts.FindIndex(existing => existing.Id == copy.Id);
         if (index >= 0)
         {
+            // The shortcut is set on the Layouts page, never in the editor: an editor saving the copy
+            // it opened must not bring back a shortcut changed since.
+            copy.Hotkey = _layouts[index].Hotkey;
+            copy.HotkeyEnabled = _layouts[index].HotkeyEnabled;
             _layouts[index] = copy;
         }
         else

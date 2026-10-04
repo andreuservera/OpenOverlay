@@ -24,6 +24,7 @@ public sealed record WidgetSettingsContext(
     WeatherOptions Weather,
     TrackInfoOptions TrackInfo,
     DeltaOptions Delta,
+    PedalTraceOptions PedalTrace,
     bool SaveToStores,
     Action<DriverTable>? TableHeaderChanged = null,
     Action? Changed = null)
@@ -57,7 +58,7 @@ public static class WidgetSettings
         WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
         WidgetCatalog.Flag => [FlagTypes(context), FlagContent(context), FlagLayoutGroup(context)],
         WidgetCatalog.Cockpit => [CockpitThemeGroup(context), HighRateNote()],
-        WidgetCatalog.PedalTrace => [HighRateNote()],
+        WidgetCatalog.PedalTrace => [PedalTraceElements(context), HighRateNote()],
         WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context)],
         WidgetCatalog.TrackInfo => [TrackInfoElements(context)],
         WidgetCatalog.Delta => [DeltaReferenceGroup(context)],
@@ -67,41 +68,54 @@ public static class WidgetSettings
     // ===== Driver tables =====
 
     private static SettingsGroup StandingsColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
-        .With(ColumnChips(context.Standings, context));
+        .With(ColumnList(context.Standings, context));
 
     private static SettingsGroup RelativeColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
-        .With(ColumnChips(context.Relative, context));
+        .With(ColumnList(context.Relative, context));
 
-    private static ChipGroupSetting ColumnChips(DriverTableOptions options, WidgetSettingsContext context) => new(
+    private static ReorderListSetting ColumnList(DriverTableOptions options, WidgetSettingsContext context) => new(
         "Visible columns",
-        null,
-        [
-            Column("Pos", DriverTableColumn.Position, options.ShowPosition, options, context),
-            Column("Car #", DriverTableColumn.CarNumber, options.ShowCarNumber, options, context),
-            Column("Driver", DriverTableColumn.Driver, options.ShowDriver, options, context),
-            Column("Last pit", DriverTableColumn.LastPitStop, options.ShowLastPitStop, options, context),
-            Column("Tire", DriverTableColumn.TireCompound, options.ShowTireCompound, options, context),
-            Column("iR", DriverTableColumn.IRating, options.ShowIRating, options, context),
-            Column("iRΔ", DriverTableColumn.IRatingDelta, options.ShowIRatingDelta, options, context),
-            Column("SR", DriverTableColumn.License, options.ShowLicense, options, context),
-            Column("Lap", DriverTableColumn.Lap, options.ShowLap, options, context),
-            Column("Best", DriverTableColumn.BestLap, options.ShowBestLap, options, context),
-            Column("Last", DriverTableColumn.LastLap, options.ShowLastLap, options, context),
-            Column("Gap", DriverTableColumn.Gap, options.ShowGap, options, context),
-        ]);
+        "Drag a row by its handle to change the order.",
+        options.ColumnOrder.Select(column => column == DriverTableColumn.IRating
+            ? new ReorderListItem(
+                column,
+                Column("iRating", DriverTableColumn.IRating, options, context),
+                Column("Gain / loss", DriverTableColumn.IRatingDelta, options, context))
+            : new ReorderListItem(column, Column(ColumnLabel(column), column, options, context))),
+        order =>
+        {
+            options.ColumnOrder = order.Cast<DriverTableColumn>().ToList();
+            context.Persist(() => DriverTableOptionsStore.SaveColumnOrder(options.Table, options.ColumnOrder));
+        });
 
-    private static ChipSetting Column(string label, DriverTableColumn column, bool value, DriverTableOptions options, WidgetSettingsContext context) =>
-        new(label, null, value, isVisible =>
+    private static string ColumnLabel(DriverTableColumn column) => column switch
+    {
+        DriverTableColumn.Position => "Pos",
+        DriverTableColumn.CarNumber => "Car #",
+        DriverTableColumn.Driver => "Driver",
+        DriverTableColumn.LastPitStop => "Last pit",
+        DriverTableColumn.TireCompound => "Tire",
+        DriverTableColumn.IRating => "iRating",
+        DriverTableColumn.IRatingDelta => "Gain / loss",
+        DriverTableColumn.License => "SR",
+        DriverTableColumn.Lap => "Lap",
+        DriverTableColumn.BestLap => "Best",
+        DriverTableColumn.LastLap => "Last",
+        _ => "Gap",
+    };
+
+    private static ChipSetting Column(string label, DriverTableColumn column, DriverTableOptions options, WidgetSettingsContext context) =>
+        new(label, null, options.IsVisible(column), isVisible =>
         {
             options.SetVisible(column, isVisible);
             context.Persist(() => DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible));
         });
 
-    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("TABLE")
+    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("TABLE", "Which drivers to show, and what goes above and below the table.")
         .With(
             new NumberSetting(
                 "Drivers around me",
-                "Shown around your position, besides the top 3.",
+                null,
                 context.Standings.FocusSize,
                 DriverTableOptions.MinFocusSize,
                 60,
@@ -111,24 +125,39 @@ public static class WidgetSettings
                 value => SetFocusSize(context.Standings, value, context)),
             new ToggleSetting(
                 "Split by class",
-                "One block per class, each with its own top 3.",
+                null,
                 context.Standings.ShowMulticlass,
                 value =>
                 {
                     context.Standings.ShowMulticlass = value;
                     context.Persist(() => DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value));
                 }),
-            ColumnHeadersToggle(context.Standings, context),
-            ClassNameToggle(context.Standings, context),
-            SofToggle(context.Standings, context),
-            SessionLapsToggle(context.Standings, context),
-            SessionTimeToggle(context.Standings, context));
+            new ToggleSetting(
+                "Drivers per class",
+                null,
+                context.Standings.ShowClassDrivers,
+                value =>
+                {
+                    context.Standings.ShowClassDrivers = value;
+                    context.Persist(() => DriverTableOptionsStore.SaveClassDrivers(DriverTable.Standings, value));
+                }),
+            new ToggleSetting(
+                "SOF per class",
+                null,
+                context.Standings.ShowClassSof,
+                value =>
+                {
+                    context.Standings.ShowClassSof = value;
+                    context.Persist(() => DriverTableOptionsStore.SaveClassSof(DriverTable.Standings, value));
+                }),
+            ColumnHeadersToggle(context.Standings, context))
+        .With(InfoPlacements(context.Standings, context).ToArray());
 
-    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("TABLE")
+    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("TABLE", "How many cars to show around you, and what goes above and below the table.")
         .With(
             new NumberSetting(
                 "Drivers each side",
-                "Cars ahead and behind you.",
+                null,
                 context.Relative.FocusSize,
                 DriverTableOptions.MinFocusSize,
                 30,
@@ -136,16 +165,13 @@ public static class WidgetSettings
                 "0",
                 null,
                 value => SetFocusSize(context.Relative, value, context)),
-            ColumnHeadersToggle(context.Relative, context),
-            ClassNameToggle(context.Relative, context),
-            SofToggle(context.Relative, context),
-            SessionLapsToggle(context.Relative, context),
-            SessionTimeToggle(context.Relative, context));
+            ColumnHeadersToggle(context.Relative, context))
+        .With(InfoPlacements(context.Relative, context).ToArray());
 
     // Bound straight in the panels, so the row goes (and the widget shrinks) without a header nudge.
     private static ToggleSetting ColumnHeadersToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
         "Show column headers",
-        "POS, DRIVER, GAP… above the table.",
+        null,
         options.ShowColumnHeaders,
         value =>
         {
@@ -153,47 +179,46 @@ public static class WidgetSettings
             context.Persist(() => DriverTableOptionsStore.SaveColumnHeaders(options.Table, value));
         });
 
-    // The header used to name the player's class here; same switch, so saved settings carry over.
-    private static ToggleSetting ClassNameToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show session type",
-        "RACE, QUALIFYING or PRACTICE, next to the title.",
-        options.ShowClassName,
-        value =>
+    private static readonly string[] SlotChoices =
+        ["Hidden", "Top left", "Top center", "Top right", "Bottom left", "Bottom center", "Bottom right"];
+
+    /// <summary>One dropdown per piece of session information: hidden, or the slot it sits in.</summary>
+    private static IEnumerable<SettingItem> InfoPlacements(DriverTableOptions options, WidgetSettingsContext context) =>
+        Enum.GetValues<TableInfoElement>().Select(element => (SettingItem)InfoPlacement(element, options, context));
+
+    // "Hidden" keeps the slot, so showing it again puts it back where it was. The session type is
+    // still saved under the switch that once named the class, so settings and layouts carry over.
+    private static ChoiceSetting InfoPlacement(TableInfoElement element, DriverTableOptions options, WidgetSettingsContext context) => new(
+        element switch
         {
-            options.ShowClassName = value;
-            context.Persist(() => DriverTableOptionsStore.SaveClassName(options.Table, value));
+            TableInfoElement.SessionType => "Session type",
+            TableInfoElement.Sof => "SOF",
+            TableInfoElement.SessionLaps => "Session laps",
+            TableInfoElement.SessionTime => "Session time",
+            TableInfoElement.BrakeBias => "Brake bias",
+            TableInfoElement.AirTemp => "Air temp",
+            TableInfoElement.TrackTemp => "Track temp",
+            TableInfoElement.Incidents => "Incidents",
+            _ => "Humidity",
+        },
+        null,
+        SlotChoices,
+        options.IsShown(element) ? (int)options.SlotOf(element) + 1 : 0,
+        index =>
+        {
+            var shown = index > 0;
+            options.SetShown(element, shown);
+            if (shown)
+            {
+                options.SetSlot(element, (TableSlot)(index - 1));
+            }
+
+            context.Persist(() =>
+            {
+                DriverTableOptionsStore.SaveInfoShown(options.Table, element, shown);
+                DriverTableOptionsStore.SaveInfoSlot(options.Table, element, options.SlotOf(element));
+            });
             context.TableHeaderChanged?.Invoke(options.Table);
-        });
-
-    private static ToggleSetting SofToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show SOF",
-        "The lobby's strength of field, e.g. SOF 2.9k.",
-        options.ShowSof,
-        value =>
-        {
-            options.ShowSof = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSof(options.Table, value));
-            context.TableHeaderChanged?.Invoke(options.Table);
-        });
-
-    private static ToggleSetting SessionLapsToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show laps",
-        "Current lap over total. Estimated in timed races.",
-        options.ShowSessionLaps,
-        value =>
-        {
-            options.ShowSessionLaps = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSessionLaps(options.Table, value));
-        });
-
-    private static ToggleSetting SessionTimeToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Show session time",
-        "Elapsed over total.",
-        options.ShowSessionTime,
-        value =>
-        {
-            options.ShowSessionTime = value;
-            context.Persist(() => DriverTableOptionsStore.SaveSessionTime(options.Table, value));
         });
 
     private static void SetFocusSize(DriverTableOptions options, double value, WidgetSettingsContext context)
@@ -208,21 +233,53 @@ public static class WidgetSettings
     {
         var options = context.FuelCalculator;
         return new SettingsGroup("BLOCKS")
-            .With(new ChipGroupSetting(
-                "Visible blocks",
-                null,
-                [
-                    FuelBlock("Fuel bar", options.ShowFuelBar, v => options.ShowFuelBar = v, context),
-                    FuelBlock("Remaining", options.ShowFuelRemaining, v => options.ShowFuelRemaining = v, context),
-                    FuelBlock("Last lap", options.ShowLastLap, v => options.ShowLastLap = v, context),
-                    FuelBlock("Average", options.ShowAverage, v => options.ShowAverage = v, context),
-                    FuelBlock("Minimum", options.ShowMinimum, v => options.ShowMinimum = v, context),
-                    FuelBlock("Maximum", options.ShowMaximum, v => options.ShowMaximum = v, context),
-                    FuelBlock("Laps left", options.ShowLapsRemaining, v => options.ShowLapsRemaining = v, context),
-                    FuelBlock("To finish", options.ShowFuelToFinish, v => options.ShowFuelToFinish = v, context),
-                    FuelBlock("Refuel", options.ShowRefuel, v => options.ShowRefuel = v, context),
-                ]));
+            .With(
+                new ChipGroupSetting(
+                    "Headline",
+                    null,
+                    [
+                        FuelBlock("Laps left", options.ShowLapsRemaining, v => options.ShowLapsRemaining = v, context),
+                        FuelBlock("Fuel bar", options.ShowFuelBar, v => options.ShowFuelBar = v, context),
+                    ]),
+                FuelCells("Usage", options.UsageOrder, order => options.UsageOrder = order, context),
+                FuelCells("Strategy", options.StrategyOrder, order => options.StrategyOrder = order, context),
+                new SegmentedSetting(
+                    "First group",
+                    "Auto puts usage first across and strategy first when vertical.",
+                    ["Auto", "Usage", "Strategy"],
+                    (int)options.FirstGroup,
+                    index =>
+                    {
+                        options.FirstGroup = (FuelGroupOrder)index;
+                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+                    }));
     }
+
+    /// <summary>One group of cells as a drag list, each with its switch.</summary>
+    private static ReorderListSetting FuelCells(string label, IReadOnlyList<FuelCell> order, Action<IReadOnlyList<FuelCell>> reorder, WidgetSettingsContext context)
+    {
+        var options = context.FuelCalculator;
+        return new ReorderListSetting(
+            label,
+            "Drag a row by its handle to change the order.",
+            order.Select(cell => new ReorderListItem(cell, FuelBlock(FuelCellLabel(cell), options.IsVisible(cell), v => options.SetVisible(cell, v), context))),
+            newOrder =>
+            {
+                reorder(newOrder.Cast<FuelCell>().ToList());
+                context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+            });
+    }
+
+    private static string FuelCellLabel(FuelCell cell) => cell switch
+    {
+        FuelCell.LastLap => "Last lap",
+        FuelCell.Average => "Average",
+        FuelCell.Minimum => "Minimum",
+        FuelCell.Maximum => "Maximum",
+        FuelCell.FuelRemaining => "Fuel left",
+        FuelCell.FuelToFinish => "To finish",
+        _ => "Refuel",
+    };
 
     private static ChipSetting FuelBlock(string label, bool value, Action<bool> assign, WidgetSettingsContext context) =>
         new(label, null, value, isVisible =>
@@ -365,27 +422,68 @@ public static class WidgetSettings
     {
         var options = context.TrackInfo;
         return new SettingsGroup("ELEMENTS")
-            .With(new ChipGroupSetting(
+            .With(new ReorderListSetting(
                 "Visible elements",
-                null,
-                [
-                    TrackInfoChip("Track name", options.ShowTrackName, v => options.ShowTrackName = v, context),
-                    TrackInfoChip("Session", options.ShowSession, v => options.ShowSession = v, context),
-                    TrackInfoChip("Air temp", options.ShowAirTemp, v => options.ShowAirTemp = v, context),
-                    TrackInfoChip("Track temp", options.ShowTrackTemp, v => options.ShowTrackTemp = v, context),
-                    TrackInfoChip("Wind", options.ShowWind, v => options.ShowWind = v, context),
-                    TrackInfoChip("Humidity", options.ShowHumidity, v => options.ShowHumidity = v, context),
-                    TrackInfoChip("Track usage", options.ShowTrackUsage, v => options.ShowTrackUsage = v, context),
-                    TrackInfoChip("Time left", options.ShowTimeLeft, v => options.ShowTimeLeft = v, context),
-                    TrackInfoChip("Lap", options.ShowLap, v => options.ShowLap = v, context),
-                ]));
+                "Drag a row by its handle to change the order.",
+                options.FieldOrder.Select(field => new ReorderListItem(field, TrackInfoChip(field, options, context))),
+                order =>
+                {
+                    options.FieldOrder = order.Cast<TrackInfoField>().ToList();
+                    context.Persist(() => TrackInfoOptionsStore.Save(options));
+                }));
     }
 
-    private static ChipSetting TrackInfoChip(string label, bool value, Action<bool> assign, WidgetSettingsContext context) =>
-        new(label, null, value, isVisible =>
+    private static string TrackInfoLabel(TrackInfoField field) => field switch
+    {
+        TrackInfoField.TrackName => "Track name",
+        TrackInfoField.Session => "Session",
+        TrackInfoField.AirTemp => "Air temp",
+        TrackInfoField.TrackTemp => "Track temp",
+        TrackInfoField.Wind => "Wind",
+        TrackInfoField.Humidity => "Humidity",
+        TrackInfoField.TrackUsage => "Track usage",
+        TrackInfoField.TimeLeft => "Time left",
+        _ => "Lap",
+    };
+
+    private static ChipSetting TrackInfoChip(TrackInfoField field, TrackInfoOptions options, WidgetSettingsContext context) =>
+        new(TrackInfoLabel(field), null, options.IsVisible(field), isVisible =>
         {
-            assign(isVisible);
-            context.Persist(() => TrackInfoOptionsStore.Save(context.TrackInfo));
+            options.SetVisible(field, isVisible);
+            context.Persist(() => TrackInfoOptionsStore.Save(options));
+        });
+
+    // ===== Pedal trace =====
+
+    private static SettingsGroup PedalTraceElements(WidgetSettingsContext context)
+    {
+        var options = context.PedalTrace;
+        return new SettingsGroup("ELEMENTS")
+            .With(new ReorderListSetting(
+                "Visible elements",
+                "Drag a row by its handle to change the order.",
+                options.ElementOrder.Select(element => new ReorderListItem(element, PedalTraceChip(element, options, context))),
+                order =>
+                {
+                    options.ElementOrder = order.Cast<PedalTraceElement>().ToList();
+                    context.Persist(() => PedalTraceOptionsStore.Save(options));
+                }));
+    }
+
+    private static string PedalTraceLabel(PedalTraceElement element) => element switch
+    {
+        PedalTraceElement.Gear => "Gear",
+        PedalTraceElement.Speed => "Speed",
+        PedalTraceElement.Steering => "Steering wheel",
+        PedalTraceElement.Trace => "Pedal trace",
+        _ => "Pedal bars",
+    };
+
+    private static ChipSetting PedalTraceChip(PedalTraceElement element, PedalTraceOptions options, WidgetSettingsContext context) =>
+        new(PedalTraceLabel(element), null, options.IsVisible(element), isVisible =>
+        {
+            options.SetVisible(element, isVisible);
+            context.Persist(() => PedalTraceOptionsStore.Save(options));
         });
 
     // ===== Cockpit =====
@@ -396,9 +494,7 @@ public static class WidgetSettings
         "Default", "GT Sports", "Casual", "Hypercar", "Pit Wall", "Classic Car", "Invisible",
     ];
 
-    private static SettingsGroup CockpitThemeGroup(WidgetSettingsContext context) => new SettingsGroup(
-        "THEME",
-        "Each has its own layout and size.")
+    private static SettingsGroup CockpitThemeGroup(WidgetSettingsContext context) => new SettingsGroup("THEME")
         .With(new ChoiceSetting(
             "Cockpit theme",
             null,

@@ -10,4 +10,14 @@ public sealed class StandingsHeaderRow
 {
     public required string ClassName { get; init; }
     public string ClassColor { get; init; } = "#FFFFFF";
+
+    /// <summary>Every driver in the class, not just the ones the focused view shows.</summary>
+    public int DriverCount { get; init; }
+
+    /// <summary>The class's own strength of field; 0 when nobody in it is rated.</summary>
+    public double Sof { get; init; }
+
+    public string DriverCountDisplay => DriverCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public string SofDisplay => SofFormat.Format(Sof);
 }

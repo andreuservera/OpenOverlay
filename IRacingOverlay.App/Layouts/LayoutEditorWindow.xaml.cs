@@ -45,6 +45,10 @@ public partial class LayoutEditorWindow : Window
     private string _settingsBasis = "";
     private bool _applyingSettings;
 
+    // Auto-save: a change is saved once things have been still for this long, so a run of arrow-key
+    // nudges or typed digits is one save, and a drag is saved when it is let go.
+    private readonly System.Windows.Threading.DispatcherTimer _autoSave = new() { Interval = TimeSpan.FromMilliseconds(350) };
+
     private Point? _catalogPress;
     private long _catalogRemovedAt = long.MinValue / 2;
     private Gesture? _gesture;
@@ -59,8 +63,11 @@ public partial class LayoutEditorWindow : Window
         _newWidget = newWidget;
         SizeBox.ItemsSource = ScaleLevels.Labels;
         Items.ItemsSource = _items;
+        AutoSaveToggle.IsChecked = LayoutEditorAutoSaveStore.Get();
+        _autoSave.Tick += (_, _) => AutoSaveNow();
         _model = Attach(new LayoutEditorModel(layout));
         Closing += OnClosing;
+        Closed += (_, _) => _autoSave.Stop();
         Sync();
     }
 
@@ -106,6 +113,7 @@ public partial class LayoutEditorWindow : Window
     private LayoutEditorModel Attach(LayoutEditorModel model)
     {
         model.Changed += Sync;
+        model.Changed += ScheduleAutoSave;
         SnapToggle.IsChecked = model.Layout.SnapEnabled;
         GridSizeBox.Text = model.Layout.GridSize.ToString(CultureInfo.InvariantCulture);
         return model;
@@ -281,6 +289,9 @@ public partial class LayoutEditorWindow : Window
         // Names each change in the activity log after where it was made, as the control panel does.
         foreach (var group in groups)
         {
+            // Same scope as the widget's page in the control panel, so a group folded there is
+            // folded here too.
+            group.Scope = type;
             var path = $"Layout editor › {item.Descriptor.Name} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
             foreach (var setting in group.Items)
             {
@@ -290,6 +301,13 @@ public partial class LayoutEditorWindow : Window
                     foreach (var chip in chips.Chips)
                     {
                         chip.TracePath = $"{path}{chips.Label} › ";
+                    }
+                }
+                else if (setting is ReorderListSetting columns)
+                {
+                    foreach (var chip in columns.Items.SelectMany(column => new[] { column.Visible, column.Companion }).OfType<ChipSetting>())
+                    {
+                        chip.TracePath = $"{path}{columns.Label} › ";
                     }
                 }
             }
@@ -478,7 +496,21 @@ public partial class LayoutEditorWindow : Window
     private void OnCatalogMouseDown(object sender, MouseButtonEventArgs e)
     {
         _catalogPress = e.GetPosition(Catalog);
-        if (e.ClickCount != 2 || (e.OriginalSource as DependencyObject)?.FindAncestor<ButtonBase>() is not null)
+        if ((e.OriginalSource as DependencyObject)?.FindAncestor<ButtonBase>() is not null)
+        {
+            return;
+        }
+
+        // A widget already in the layout: a click selects it, so its settings come up on the right.
+        if (e.ClickCount == 1
+            && (e.OriginalSource as DependencyObject)?.FindAncestorDataContext<CatalogEntry>() is { IsAvailable: false } placed
+            && Environment.TickCount64 - _catalogRemovedAt >= CatalogRemoveGrace)
+        {
+            Select(placed.Descriptor.Key);
+            return;
+        }
+
+        if (e.ClickCount != 2)
         {
             return;
         }
@@ -808,6 +840,7 @@ public partial class LayoutEditorWindow : Window
         _gesture = null;
         GuideLayer.Children.Clear();
         _model.EndGesture();
+        ScheduleAutoSave();
     }
 
     private void DrawGuides(IReadOnlyList<Guide> guides)
@@ -931,6 +964,119 @@ public partial class LayoutEditorWindow : Window
         }
     }
 
+    // ===== Keyboard shortcuts =====
+
+    /// <summary>
+    /// The editor's fixed shortcuts. Undo, redo and the bare keys (Delete, H, 0) stand down while a
+    /// text box has the keyboard, which needs them for its own text; Ctrl+S and Ctrl+L never do, and
+    /// Ctrl+S commits a value still being typed before saving.
+    /// </summary>
+    private void OnWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        var typing = Keyboard.FocusedElement is TextBoxBase;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var modifiers = Keyboard.Modifiers;
+        if (modifiers == ModifierKeys.Control)
+        {
+            switch (key)
+            {
+                case Key.S:
+                    if (typing)
+                    {
+                        Surface.Focus();
+                    }
+
+                    e.Handled = true;
+                    if (_model.IsDirty)
+                    {
+                        _autoSave.Stop();
+                        Save();
+                    }
+
+                    return;
+                case Key.Z when !typing:
+                    e.Handled = true;
+                    _model.Undo();
+                    return;
+                case Key.Y when !typing:
+                    e.Handled = true;
+                    _model.Redo();
+                    return;
+                case Key.L:
+                    e.Handled = true;
+                    ToggleSelected(lockIt: true);
+                    return;
+            }
+
+            return;
+        }
+
+        if (modifiers != ModifierKeys.None || typing)
+        {
+            return;
+        }
+
+        switch (key)
+        {
+            case Key.Delete when SelectedItem is { } item:
+                e.Handled = true;
+                _model.Remove(item.Type);
+                Status($"Removed {item.Descriptor.Name}. Undo brings it back.");
+                break;
+            case Key.H:
+                e.Handled = true;
+                ToggleSelected(lockIt: false);
+                break;
+            case Key.D0 or Key.NumPad0:
+                e.Handled = true;
+                ZoomTo(null);
+                break;
+        }
+    }
+
+    /// <summary>Locks or unlocks (or hides or shows) the selected widget, saying which it now is.</summary>
+    private void ToggleSelected(bool lockIt)
+    {
+        if (SelectedItem is not { } item)
+        {
+            Status("Select a widget first.");
+            return;
+        }
+
+        var name = item.Descriptor.Name;
+        if (lockIt)
+        {
+            var locked = !item.Widget.Locked;
+            _model.SetLocked(item.Type, locked);
+            Status(locked ? $"{name} locked." : $"{name} unlocked.");
+        }
+        else
+        {
+            var visible = !item.Widget.Visible;
+            _model.SetVisible(item.Type, visible);
+            Status(visible ? $"{name} shown." : $"{name} hidden: kept in the layout, not opened with it.");
+        }
+    }
+
+    /// <summary>Ctrl + wheel zooms the canvas a step, as the − and + buttons do.</summary>
+    private void OnViewportMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (e.Delta > 0)
+        {
+            OnZoomIn(sender, e);
+        }
+        else if (e.Delta < 0)
+        {
+            OnZoomOut(sender, e);
+        }
+    }
+
     private void OnUndo(object sender, RoutedEventArgs e) => _model.Undo();
 
     private void OnRedo(object sender, RoutedEventArgs e) => _model.Redo();
@@ -964,6 +1110,50 @@ public partial class LayoutEditorWindow : Window
     }
 
     private void OnSave(object sender, RoutedEventArgs e) => Save();
+
+    private bool IsAutoSaving => AutoSaveToggle.IsChecked == true;
+
+    private void OnAutoSaveToggled(object sender, RoutedEventArgs e)
+    {
+        LayoutEditorAutoSaveStore.Save(IsAutoSaving);
+        if (!IsAutoSaving)
+        {
+            _autoSave.Stop();
+            Status("Auto-save off: changes wait for Save.");
+            return;
+        }
+
+        Status(_store.Open?.LayoutId == LayoutId
+            ? "Auto-save on: every change is saved and shown on screen."
+            : "Auto-save on: every change is saved. Open the layout to see changes on screen as you make them.");
+        ScheduleAutoSave();
+    }
+
+    /// <summary>Starts (or restarts) the wait before an automatic save.</summary>
+    private void ScheduleAutoSave()
+    {
+        if (IsAutoSaving && _model.IsDirty)
+        {
+            _autoSave.Stop();
+            _autoSave.Start();
+        }
+    }
+
+    private void AutoSaveNow()
+    {
+        _autoSave.Stop();
+        // Mid-drag the widget is still on its way; it is saved once let go.
+        if (_gesture is not null)
+        {
+            _autoSave.Start();
+            return;
+        }
+
+        if (IsAutoSaving && _model.IsDirty)
+        {
+            Save();
+        }
+    }
 
     private bool Save()
     {
@@ -1000,6 +1190,13 @@ public partial class LayoutEditorWindow : Window
         if (!_model.IsDirty)
         {
             return true;
+        }
+
+        // Saving as you go means there is nothing to ask: whatever is pending is saved now.
+        if (IsAutoSaving)
+        {
+            _autoSave.Stop();
+            return Save();
         }
 
         var answer = LayoutDialog.Ask(
