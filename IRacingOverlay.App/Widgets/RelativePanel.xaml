@@ -48,7 +48,7 @@
                                FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
                 </StackPanel>
                 <StackPanel x:Name="HumidityField" Orientation="Horizontal" ToolTip="Relative humidity">
-                    <Path Data="{StaticResource Icon.Drop}" Fill="{StaticResource State.Info}" Stretch="Uniform" Height="11"
+                    <Path Data="{StaticResource Icon.Drop}" Fill="{StaticResource Text.Secondary}" Stretch="Uniform" Height="11"
                           VerticalAlignment="Center" Margin="0,0,5,0"/>
                     <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource DataCell}"
                                FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>

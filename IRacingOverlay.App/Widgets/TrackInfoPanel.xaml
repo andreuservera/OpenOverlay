@@ -75,7 +75,7 @@
             </StackPanel>
 
             <StackPanel x:Name="FieldHumidity" Style="{StaticResource BarField}" ToolTip="Relative humidity">
-                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Drop}" Height="13" Fill="{StaticResource State.Info}"/>
+                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Drop}" Height="13"/>
                 <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
