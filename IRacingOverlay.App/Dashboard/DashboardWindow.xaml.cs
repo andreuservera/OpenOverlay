@@ -17,7 +17,7 @@ namespace IRacingOverlay.App.Dashboard;
 /// </summary>
 public partial class DashboardWindow : Window
 {
-    private readonly FuelPanel _fuelPanel;
+    private readonly FuelCalculatorPanel _fuelCalculatorPanel;
     private readonly IncidentPanel _incidentPanel;
     private readonly TireInfoPanel _tireInfoPanel;
     private readonly StandingsPanel _standingsPanel;
@@ -35,7 +35,7 @@ public partial class DashboardWindow : Window
 
         _trackMapPanel = (TrackMapPanel)TrackMapScaler.ScalableContent!;
         _trackInfoPanel = (TrackInfoPanel)TrackInfoScaler.ScalableContent!;
-        _fuelPanel = (FuelPanel)FuelScaler.ScalableContent!;
+        _fuelCalculatorPanel = (FuelCalculatorPanel)FuelCalculatorScaler.ScalableContent!;
         _incidentPanel = (IncidentPanel)IncidentScaler.ScalableContent!;
         _tireInfoPanel = (TireInfoPanel)TireInfoScaler.ScalableContent!;
         _standingsPanel = (StandingsPanel)StandingsScaler.ScalableContent!;
@@ -111,6 +111,8 @@ public partial class DashboardWindow : Window
 
     public void SetCockpitOptions(CockpitOptions options) => _cockpitPanel.Options = options;
 
+    public void SetFuelCalculatorOptions(FuelCalculatorOptions options) => _fuelCalculatorPanel.Options = options;
+
     // Dashboard has no edit/drag mode of its own — unlike the floating FlagWidget, it always shows
     // an explicit "all clear" placeholder rather than going blank when nothing's happening.
     public void UpdateFlag(IReadOnlyList<FlagState> flags) =>
@@ -120,7 +122,7 @@ public partial class DashboardWindow : Window
 
     public void UpdateDelta(DeltaState state) => _deltaPanel.UpdateState(state);
 
-    public void UpdateFuel(FuelState state) => _fuelPanel.UpdateState(state);
+    public void UpdateFuelCalculator(FuelCalculatorState state) => _fuelCalculatorPanel.UpdateState(state);
 
     public void UpdatePedalTrace(PedalTraceState state) => _pedalTracePanel.UpdateState(state);
 

@@ -243,16 +243,6 @@ public static class PreviewData
         return scenarios;
     }
 
-    public static FuelState Fuel() => new()
-    {
-        UnitSystem = Units.Current,
-        LevelLiters = 31.4,
-        LevelPct = 0.46,
-        PerLapLiters = 2.68,
-        LapsOfFuelRemaining = 11.7,
-        LapsRemainingInSession = 14,
-    };
-
     /// <summary>Deliberately a few liters short of the finish, so the strategy figures render in
     /// their warning state and the refuel line has a real number in it.</summary>
     public static FuelCalculatorState FuelCalculator() => new()

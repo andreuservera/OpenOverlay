@@ -7,8 +7,7 @@ namespace IRacingOverlay.App.ViewModels;
 /// engineer would — the tank level drop across each completed lap — rather than from iRacing's
 /// instantaneous FuelUsePerHour, which swings wildly depending on how a given corner was driven.
 ///
-/// The important difference from the simpler <see cref="FuelBuilder"/> is that this one also works
-/// in <em>timed</em> races: iRacing reports no lap limit at all for those, so laps-to-go is derived
+/// It also works in <em>timed</em> races: iRacing reports no lap limit at all for those, so laps-to-go is derived
 /// from the session clock and lap time instead. Timed races are the common case in iRacing, and
 /// without that fallback every "will I make it" figure is unanswerable for them.
 ///

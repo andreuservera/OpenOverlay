@@ -29,7 +29,7 @@ public sealed class LayoutStoreTests : IDisposable
         var race = store.Create("Race", Ultrawide, 3440, 1440);
         race.Add(Widget(WidgetCatalog.Standings, 40, 60, ScaleLevel.L, new JsonObject { ["focusSize"] = 9, ["showGap"] = false }));
         race.Add(Widget(WidgetCatalog.Relative, 40, 700, ScaleLevel.M, new JsonObject { ["focusSize"] = 3 }));
-        race.Add(Widget(WidgetCatalog.Fuel, 3000, 1200, ScaleLevel.XS, []));
+        race.Add(Widget(WidgetCatalog.Incident, 3000, 1200, ScaleLevel.XS, []));
         race.Widgets[2].Visible = false;
         race.Widgets[1].Locked = true;
         race.SnapEnabled = false;
@@ -135,7 +135,7 @@ public sealed class LayoutStoreTests : IDisposable
         var store = NewStore();
         var race = store.Create("Race", Ultrawide, 3440, 1440);
 
-        store.Get(race.Id)!.Add(Widget(WidgetCatalog.Fuel, 0, 0, ScaleLevel.M, []));
+        store.Get(race.Id)!.Add(Widget(WidgetCatalog.Incident, 0, 0, ScaleLevel.M, []));
 
         Assert.Empty(store.Get(race.Id)!.Widgets);
     }
@@ -165,6 +165,39 @@ public sealed class LayoutStoreTests : IDisposable
         widgets.Add(new JsonObject { ["type"] = "LapTimer" });
         File.WriteAllText(FilePath, root.ToJsonString());
 
+        Assert.Single(NewStore().Get(race.Id)!.Widgets);
+    }
+
+    [Fact]
+    public void Load_AWidgetRemovedFromTheApp_IsDroppedFromLayoutsAndTheOpenSnapshot()
+    {
+        var store = NewStore();
+        var race = store.Create("Race", Ultrawide, 3440, 1440);
+        race.Add(Widget(WidgetCatalog.Relative, 1, 1, ScaleLevel.M, []));
+        store.Save(race);
+        store.SetOpen(new OpenLayoutState(race.Id,
+            [new WidgetSnapshot(WidgetCatalog.Relative, true, 10, 20, ScaleLevel.M, 1, false, [])]));
+
+        // As an older version left it: a layout and an open snapshot that still name the Fuel
+        // widget, which the app no longer has.
+        var root = JsonNode.Parse(File.ReadAllText(FilePath))!.AsObject();
+        var widgets = root["layouts"]![0]!["widgets"]!.AsArray();
+        var removed = widgets[0]!.DeepClone();
+        removed["type"] = "Fuel";
+        widgets.Add(removed);
+        var snapshot = root["open"]!["snapshot"]!.AsArray();
+        var removedSnapshot = snapshot[0]!.DeepClone();
+        removedSnapshot["type"] = "Fuel";
+        snapshot.Insert(0, removedSnapshot);
+        File.WriteAllText(FilePath, root.ToJsonString());
+
+        var reloaded = NewStore();
+        Assert.Equal([WidgetCatalog.Relative], reloaded.Get(race.Id)!.Widgets.Select(widget => widget.Type));
+        Assert.Equal([WidgetCatalog.Relative], reloaded.Open!.Snapshot.Select(entry => entry.Type));
+
+        // The next write leaves a clean file behind, and it loads the same.
+        reloaded.Save(reloaded.Get(race.Id)!);
+        Assert.DoesNotContain("\"Fuel\"", File.ReadAllText(FilePath));
         Assert.Single(NewStore().Get(race.Id)!.Widgets);
     }
 

@@ -177,7 +177,7 @@ public sealed class Layout
     /// <summary>Adds an entry, enforcing every rule about what a layout may contain.</summary>
     public void Add(LayoutWidget widget)
     {
-        if (!WidgetCatalog.All.Any(descriptor => descriptor.Key == widget.Type))
+        if (!WidgetCatalog.Contains(widget.Type))
         {
             throw new LayoutRuleException($"\"{widget.Type}\" is not a widget this version of the app knows.");
         }
@@ -222,7 +222,7 @@ public sealed class Layout
         var kept = new List<LayoutWidget>();
         foreach (var widget in _widgets)
         {
-            if (!WidgetCatalog.All.Any(descriptor => descriptor.Key == widget.Type))
+            if (!WidgetCatalog.Contains(widget.Type))
             {
                 problems.Add($"dropped unknown widget type \"{widget.Type}\"");
             }

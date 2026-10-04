@@ -30,7 +30,6 @@ public static class PanelFactory
         WidgetCatalog.Flag => new FlagPanel { Options = options.Flag ?? new FlagOptions() },
         WidgetCatalog.TireInfo => new TireInfoPanel(),
         WidgetCatalog.Delta => new DeltaPanel(),
-        WidgetCatalog.Fuel => new FuelPanel(),
         WidgetCatalog.PedalTrace => new PedalTracePanel(),
         WidgetCatalog.Incident => new IncidentPanel(),
         WidgetCatalog.TrackInfo => new TrackInfoPanel(),
@@ -89,9 +88,6 @@ public static class PanelFactory
                 break;
             case DeltaPanel delta:
                 delta.UpdateState(PreviewData.Delta());
-                break;
-            case FuelPanel fuel:
-                fuel.UpdateState(PreviewData.Fuel());
                 break;
             case PedalTracePanel pedals:
                 pedals.UpdateState(PreviewData.PedalTrace());

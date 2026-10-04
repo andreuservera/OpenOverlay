@@ -41,7 +41,6 @@ public static class WidgetCatalog
     public const string Flag = "Flag";
     public const string TireInfo = "TireInfo";
     public const string Delta = "Delta";
-    public const string Fuel = "Fuel";
     public const string PedalTrace = "PedalTrace";
     public const string Incident = "Incident";
     public const string TrackInfo = "TrackInfo";
@@ -71,9 +70,6 @@ public static class WidgetCatalog
         new(Delta, "Delta", "Live gap to your reference lap.",
             "M12,21 A8,8 0 1 0 12,5 A8,8 0 0 0 12,21 Z M12,9.5 V13 L14.5,15 M9.5,2.5 H14.5"),
 
-        new(Fuel, "Fuel", "Level, burn rate and how many laps are left in the tank.",
-            "M4,21 V5 A2,2 0 0 1 6,3 H11 A2,2 0 0 1 13,5 V21 M3,21 H14 M4,10 H13 M16,8 L19,11 V17"),
-
         new(PedalTrace, "Pedal trace", "Throttle, brake and clutch, with ABS activity marked.",
             "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewWidth: 340, PreviewHeight: 110),
 
@@ -92,4 +88,8 @@ public static class WidgetCatalog
         new(FuelCalculator, "Fuel calculator", "What you'll burn, what you need, and what to put in.",
             "M5,3 H19 V21 H5 Z M8,7 H16 M8,11.5 H10 M13.5,11.5 H16 M8,16 H10 M13.5,16 H16"),
     ];
+
+    /// <summary>Whether this version of the app has a widget of that type. Saved data can name one
+    /// that was since removed, or that only a newer version has.</summary>
+    public static bool Contains(string type) => All.Any(descriptor => descriptor.Key == type);
 }

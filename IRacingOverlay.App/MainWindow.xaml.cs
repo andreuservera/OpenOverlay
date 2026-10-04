@@ -217,10 +217,9 @@ public partial class MainWindow : Window
         _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
     }
     private PedalTraceBuilder _pedalTraceBuilder = new();
-    // The player's racing laps, observed every tick whatever is open: both fuel readouts average it
+    // The player's racing laps, observed every tick whatever is open: the fuel calculator averages it
     // and the session clock prices a lap with it. Set up by ResetLapHistory.
     private LapLog _lapLog = null!;
-    private FuelBuilder _fuelBuilder = null!;
     private FuelCalculatorBuilder _fuelCalculatorBuilder = null!;
     // Filled on the telemetry thread, where every tick is seen: PlayerIncidents may last just one.
     private readonly IncidentReportLatch _incidentReports = new();
@@ -413,7 +412,6 @@ public partial class MainWindow : Window
     private FlagWidget? Flags => _vm.WidgetOf<FlagWidget>(WidgetCatalog.Flag);
     private TireInfoWidget? Tires => _vm.WidgetOf<TireInfoWidget>(WidgetCatalog.TireInfo);
     private DeltaWidget? Delta => _vm.WidgetOf<DeltaWidget>(WidgetCatalog.Delta);
-    private FuelWidget? Fuel => _vm.WidgetOf<FuelWidget>(WidgetCatalog.Fuel);
     private PedalTraceWidget? Pedals => _vm.WidgetOf<PedalTraceWidget>(WidgetCatalog.PedalTrace);
     private IncidentWidget? Incidents => _vm.WidgetOf<IncidentWidget>(WidgetCatalog.Incident);
     private TrackInfoWidget? TrackInfo => _vm.WidgetOf<TrackInfoWidget>(WidgetCatalog.TrackInfo);
@@ -447,7 +445,6 @@ public partial class MainWindow : Window
         Clear(WidgetCatalog.Flag, Flags, w => w.UpdateState([FlagState.None]));
         Clear(WidgetCatalog.TireInfo, Tires, w => w.UpdateState(TireInfoState.Empty));
         Clear(WidgetCatalog.Delta, Delta, w => w.UpdateState(DeltaState.Empty));
-        Clear(WidgetCatalog.Fuel, Fuel, w => w.UpdateState(FuelState.Empty));
         Clear(WidgetCatalog.PedalTrace, Pedals, w => w.UpdateState(PedalTraceState.Empty));
         Clear(WidgetCatalog.Incident, Incidents, w => w.UpdateState(IncidentState.Empty));
         Clear(WidgetCatalog.TrackInfo, TrackInfo, w => w.UpdateState(TrackInfoState.Empty));
@@ -467,7 +464,7 @@ public partial class MainWindow : Window
                 dashboard.UpdateFlag([FlagState.None]);
                 dashboard.UpdateTireInfo(TireInfoState.Empty);
                 dashboard.UpdateDelta(DeltaState.Empty);
-                dashboard.UpdateFuel(FuelState.Empty);
+                dashboard.UpdateFuelCalculator(FuelCalculatorState.Empty);
                 dashboard.UpdatePedalTrace(PedalTraceState.Empty);
                 dashboard.UpdateIncident(IncidentState.Empty);
                 dashboard.UpdateTrackInfo(TrackInfoState.Empty);
@@ -714,11 +711,8 @@ public partial class MainWindow : Window
         Feed(WidgetCatalog.Delta, Delta, () => DeltaBuilder.Build(telemetry, _vm.DeltaReference),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateDelta(state));
 
-        Feed(WidgetCatalog.Fuel, Fuel, () => _fuelBuilder.Build(telemetry),
-            (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateFuel(state));
-
         Feed(WidgetCatalog.FuelCalculator, FuelCalculator, () => _fuelCalculatorBuilder.Build(telemetry, session, _vm.FuelCalculatorOptions),
-            (widget, state) => widget.UpdateState(state), null);
+            (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateFuelCalculator(state));
 
         Feed(WidgetCatalog.Incident, Incidents, () => IncidentBuilder.Build(telemetry, session, _incidentReports.Latest),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateIncident(state));
@@ -965,6 +959,7 @@ public partial class MainWindow : Window
         var dashboard = new DashboardWindow();
         dashboard.SetFlagOptions(_vm.FlagOptions);
         dashboard.SetCockpitOptions(_vm.CockpitOptions);
+        dashboard.SetFuelCalculatorOptions(_vm.FuelCalculatorOptions);
         dashboard.Closed += (_, _) =>
         {
             // Closed with Alt+F4: a closed window can't be shown again, so the next toggle builds a new one.
@@ -995,9 +990,6 @@ public partial class MainWindow : Window
     {
         switch (key)
         {
-            case WidgetCatalog.Fuel:
-                _fuelBuilder = new(_lapLog);
-                break;
             case WidgetCatalog.FuelCalculator:
                 _fuelCalculatorBuilder = new(_lapLog);
                 break;
@@ -1050,7 +1042,6 @@ public partial class MainWindow : Window
     private void ResetLapHistory()
     {
         _lapLog = new();
-        _fuelBuilder = new(_lapLog);
         _fuelCalculatorBuilder = new(_lapLog);
     }
 

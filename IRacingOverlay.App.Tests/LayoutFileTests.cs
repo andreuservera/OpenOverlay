@@ -160,7 +160,7 @@ public sealed class LayoutFileTests : IDisposable
     [Fact]
     public void Import_SensitiveFieldsInTheFile_AreLeftEmptyAndTheWidgetNeedsConfiguring()
     {
-        var json = File(Widget("Relative", config: new JsonObject { ["apiToken"] = "s3cr3t", ["focusSize"] = 4 }), Widget("Fuel"));
+        var json = File(Widget("Relative", config: new JsonObject { ["apiToken"] = "s3cr3t", ["focusSize"] = 4 }), Widget("Incident"));
 
         var read = LayoutFile.Import(json, CodecsWithSensitive(WidgetCatalog.Relative, "apiToken"), "fallback");
 
@@ -168,7 +168,7 @@ public sealed class LayoutFileTests : IDisposable
         Assert.False(relative.Config.ContainsKey("apiToken"));
         Assert.Equal(4, (int)relative.Config["focusSize"]!);
         Assert.True(relative.RequiresConfiguration);
-        Assert.False(read.Layout.WidgetOf(WidgetCatalog.Fuel)!.RequiresConfiguration);
+        Assert.False(read.Layout.WidgetOf(WidgetCatalog.Incident)!.RequiresConfiguration);
     }
 
     // ===== Import: what is skipped with a warning =====
@@ -190,7 +190,7 @@ public sealed class LayoutFileTests : IDisposable
     [Fact]
     public void Import_RepeatedType_KeepsTheFirstWithAWarning()
     {
-        var json = File(Widget("Relative", x: 10), Widget("Fuel"), Widget("Relative", x: 999));
+        var json = File(Widget("Relative", x: 10), Widget("Incident"), Widget("Relative", x: 999));
 
         var read = LayoutFile.Import(json, Codecs(), "fallback");
 
@@ -205,7 +205,7 @@ public sealed class LayoutFileTests : IDisposable
     {
         const string json = """
             { "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 },
-              "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "M" }, { "type": "Delta", "x": 3, "y": 4, "scale": "XXXL" } ] }
+              "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M" }, { "type": "Delta", "x": 3, "y": 4, "scale": "XXXL" } ] }
             """;
 
         var read = LayoutFile.Import(json, Codecs(), "My file");
@@ -222,7 +222,7 @@ public sealed class LayoutFileTests : IDisposable
     [Fact]
     public void Import_MonitorWithoutEdid_TakesItFromTheDevicePath()
     {
-        var json = JsonNode.Parse(File(Widget("Fuel")))!.AsObject();
+        var json = JsonNode.Parse(File(Widget("Incident")))!.AsObject();
         json["monitor"]!["edidId"] = null;
 
         var read = LayoutFile.Import(json.ToJsonString(), Codecs(), "fallback");
@@ -258,14 +258,14 @@ public sealed class LayoutFileTests : IDisposable
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 } }""", "widgets" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ 5 ] }""", "widget 1" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "x": 1 } ] }""", "type of widget 1" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": "1", "y": 2, "scale": "M" } ] }""", "position of the Fuel widget" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "y": 2, "scale": "M" } ] }""", "position of the Fuel widget" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "HUGE" } ] }""", "isn't one of" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "3" } ] }""", "isn't one of" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "M", "opacity": 2 } ] }""", "between 0 and 1" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "M", "width": -5 } ] }""", "negative" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "M", "visible": "yes" } ] }""", "true or false" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Fuel", "x": 1, "y": 2, "scale": "M", "config": [] } ] }""", "settings of the Fuel widget" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": "1", "y": 2, "scale": "M" } ] }""", "position of the Incidents widget" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "y": 2, "scale": "M" } ] }""", "position of the Incidents widget" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "HUGE" } ] }""", "isn't one of" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "3" } ] }""", "isn't one of" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "opacity": 2 } ] }""", "between 0 and 1" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "width": -5 } ] }""", "negative" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "visible": "yes" } ] }""", "true or false" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "config": [] } ] }""", "settings of the Incidents widget" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "monitor": "PHL", "widgets": [] }""", "monitor" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "LapTimer" } ] }""", "None of the file's widgets" },
     };

@@ -28,7 +28,7 @@ public sealed class LayoutTests
         var layout = NewLayout();
         layout.Add(new LayoutWidget { Type = WidgetCatalog.Relative, ZIndex = 2 });
         layout.Add(new LayoutWidget { Type = WidgetCatalog.Standings, ZIndex = 0 });
-        layout.Add(new LayoutWidget { Type = WidgetCatalog.Fuel, ZIndex = 1, Visible = false });
+        layout.Add(new LayoutWidget { Type = WidgetCatalog.Incident, ZIndex = 1, Visible = false });
         layout.Add(new LayoutWidget { Type = WidgetCatalog.Delta, ZIndex = 2 });
 
         Assert.Equal(
@@ -93,7 +93,7 @@ public sealed class LayoutTests
         var copy = original.Duplicate("Race (2)");
         copy.Widgets[0].X = 500;
         copy.Widgets[0].Config["focusSize"] = 12;
-        copy.Add(new LayoutWidget { Type = WidgetCatalog.Fuel });
+        copy.Add(new LayoutWidget { Type = WidgetCatalog.Incident });
 
         Assert.NotEqual(original.Id, copy.Id);
         Assert.Equal(10, original.Widgets[0].X);

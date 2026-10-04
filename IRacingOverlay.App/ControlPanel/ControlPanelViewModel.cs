@@ -400,7 +400,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.Flag => Configured(new FlagWidget(), w => w.SetOptions(FlagOptions)),
         WidgetCatalog.TireInfo => new TireInfoWidget(),
         WidgetCatalog.Delta => new DeltaWidget(),
-        WidgetCatalog.Fuel => new FuelWidget(),
         WidgetCatalog.PedalTrace => new PedalTraceWidget(),
         WidgetCatalog.Incident => new IncidentWidget(),
         WidgetCatalog.TrackInfo => new TrackInfoWidget(),

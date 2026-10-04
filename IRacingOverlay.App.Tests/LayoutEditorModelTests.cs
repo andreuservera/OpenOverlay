@@ -38,7 +38,7 @@ public sealed class LayoutEditorModelTests
 
         model.Move(WidgetCatalog.Relative, 100, 50);
         model.Resize(WidgetCatalog.Relative, ScaleLevel.XL, 90, 40);
-        model.Add(new LayoutWidget { Type = WidgetCatalog.Fuel });
+        model.Add(new LayoutWidget { Type = WidgetCatalog.Incident });
         model.Remove(WidgetCatalog.Relative);
 
         Assert.False(model.Layout.Contains(WidgetCatalog.Relative));
@@ -46,7 +46,7 @@ public sealed class LayoutEditorModelTests
         model.Undo(); // remove
         Assert.Equal(ScaleLevel.XL, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Scale);
         model.Undo(); // add
-        Assert.False(model.Layout.Contains(WidgetCatalog.Fuel));
+        Assert.False(model.Layout.Contains(WidgetCatalog.Incident));
         model.Undo(); // resize
         Assert.Equal((ScaleLevel.M, 100.0, 50.0), Placement(model, WidgetCatalog.Relative));
         model.Undo(); // move
@@ -135,21 +135,21 @@ public sealed class LayoutEditorModelTests
     {
         var model = NewModel(WidgetCatalog.Relative, WidgetCatalog.Standings);
 
-        model.Add(new LayoutWidget { Type = WidgetCatalog.Fuel });
+        model.Add(new LayoutWidget { Type = WidgetCatalog.Incident });
 
-        Assert.Equal(model.Layout.Widgets.Max(widget => widget.ZIndex), model.Layout.WidgetOf(WidgetCatalog.Fuel)!.ZIndex);
+        Assert.Equal(model.Layout.Widgets.Max(widget => widget.ZIndex), model.Layout.WidgetOf(WidgetCatalog.Incident)!.ZIndex);
     }
 
     [Fact]
     public void BringToFrontAndSendToBack_ReorderTheStack()
     {
-        var model = NewModel(WidgetCatalog.Relative, WidgetCatalog.Standings, WidgetCatalog.Fuel);
+        var model = NewModel(WidgetCatalog.Relative, WidgetCatalog.Standings, WidgetCatalog.Incident);
 
         model.BringToFront(WidgetCatalog.Relative);
-        Assert.Equal([WidgetCatalog.Standings, WidgetCatalog.Fuel, WidgetCatalog.Relative], Stack(model));
+        Assert.Equal([WidgetCatalog.Standings, WidgetCatalog.Incident, WidgetCatalog.Relative], Stack(model));
 
-        model.SendToBack(WidgetCatalog.Fuel);
-        Assert.Equal([WidgetCatalog.Fuel, WidgetCatalog.Standings, WidgetCatalog.Relative], Stack(model));
+        model.SendToBack(WidgetCatalog.Incident);
+        Assert.Equal([WidgetCatalog.Incident, WidgetCatalog.Standings, WidgetCatalog.Relative], Stack(model));
     }
 
     [Fact]
@@ -336,9 +336,9 @@ public sealed class LayoutEditorModelTests
     public void AnUndo_EndsTheRun_SoTheNextChangeIsItsOwnStep()
     {
         var now = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
-        var model = NewModel(() => now, WidgetCatalog.Relative, WidgetCatalog.Fuel);
+        var model = NewModel(() => now, WidgetCatalog.Relative, WidgetCatalog.Incident);
         model.SetOpacity(WidgetCatalog.Relative, 0.9);
-        model.Move(WidgetCatalog.Fuel, 5, 5);
+        model.Move(WidgetCatalog.Incident, 5, 5);
         model.Undo();
 
         model.SetOpacity(WidgetCatalog.Relative, 0.5);

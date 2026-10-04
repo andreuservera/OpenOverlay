@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 
@@ -48,6 +49,19 @@ internal sealed class LayoutStore
             {
                 AppLog.Warn("Layouts", $"Layout \"{layout.Name}\": {problem}");
             }
+        }
+
+        // A widget removed from the app since the snapshot was taken can't be restored: restoring
+        // it would look up a slot and a codec that no longer exist. Its entry is dropped; the rest
+        // of the widgets still go back to how they were.
+        if (_open is not null && _open.Snapshot.Any(entry => !WidgetCatalog.Contains(entry.Type)))
+        {
+            foreach (var entry in _open.Snapshot.Where(entry => !WidgetCatalog.Contains(entry.Type)))
+            {
+                AppLog.Warn("Layouts", $"Open layout snapshot: dropped unknown widget type \"{entry.Type}\"");
+            }
+
+            _open = _open with { Snapshot = _open.Snapshot.Where(entry => WidgetCatalog.Contains(entry.Type)).ToList() };
         }
 
         if (_open is not null && _layouts.All(layout => layout.Id != _open.LayoutId))

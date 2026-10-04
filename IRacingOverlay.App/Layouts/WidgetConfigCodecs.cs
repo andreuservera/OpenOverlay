@@ -83,7 +83,6 @@ public static class WidgetConfigCodecs
             new FuelCalculatorConfigCodec(targets.FuelCalculator, targets.Persist.FuelCalculator),
             new DeltaConfigCodec(targets.Delta, targets.Persist.Delta),
             new EmptyConfigCodec(WidgetCatalog.TireInfo),
-            new EmptyConfigCodec(WidgetCatalog.Fuel),
             new EmptyConfigCodec(WidgetCatalog.PedalTrace),
             new EmptyConfigCodec(WidgetCatalog.Incident),
             new EmptyConfigCodec(WidgetCatalog.TrackInfo),

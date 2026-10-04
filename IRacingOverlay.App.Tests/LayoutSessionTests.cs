@@ -43,13 +43,13 @@ public sealed class LayoutSessionTests : IDisposable
     [Fact]
     public void Close_PutsEveryWidgetBackExactlyAsItWas()
     {
-        var layout = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200), Widget(WidgetCatalog.Fuel, 10, 10));
+        var layout = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200), Widget(WidgetCatalog.Incident, 10, 10));
         _session.Open(layout, new LayoutPlacement(Side, false, 1));
 
         _session.Close();
 
         Assert.Equal(_host.Original(WidgetCatalog.Relative), _host.State[WidgetCatalog.Relative]);
-        Assert.Equal(_host.Original(WidgetCatalog.Fuel), _host.State[WidgetCatalog.Fuel]);
+        Assert.Equal(_host.Original(WidgetCatalog.Incident), _host.State[WidgetCatalog.Incident]);
         Assert.Null(_store.Open);
     }
 
@@ -68,7 +68,7 @@ public sealed class LayoutSessionTests : IDisposable
     public void SwitchingLayouts_MovesSharedWidgetsStraightAcross_AndCloseStillRestoresTheOriginals()
     {
         var race = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200), Widget(WidgetCatalog.Standings, 10, 10));
-        var oval = Layout(Side, Widget(WidgetCatalog.Relative, 700, 20), Widget(WidgetCatalog.Fuel, 50, 50));
+        var oval = Layout(Side, Widget(WidgetCatalog.Relative, 700, 20), Widget(WidgetCatalog.Incident, 50, 50));
         _session.Open(race, new LayoutPlacement(Side, false, 1));
         _host.Calls.Clear();
 
@@ -79,13 +79,13 @@ public sealed class LayoutSessionTests : IDisposable
         Assert.DoesNotContain($"Capture {WidgetCatalog.Relative}", _host.Calls);
         Assert.Equal((4140.0, 377.0), _host.State[WidgetCatalog.Relative].Position);
         Assert.Equal(_host.Original(WidgetCatalog.Standings), _host.State[WidgetCatalog.Standings]);
-        Assert.Contains($"Capture {WidgetCatalog.Fuel}", _host.Calls);
+        Assert.Contains($"Capture {WidgetCatalog.Incident}", _host.Calls);
         Assert.Equal(oval.Id, _store.Open!.LayoutId);
 
         _session.Close();
 
         Assert.Equal(_host.Original(WidgetCatalog.Relative), _host.State[WidgetCatalog.Relative]);
-        Assert.Equal(_host.Original(WidgetCatalog.Fuel), _host.State[WidgetCatalog.Fuel]);
+        Assert.Equal(_host.Original(WidgetCatalog.Incident), _host.State[WidgetCatalog.Incident]);
         Assert.Equal(_host.Original(WidgetCatalog.Standings), _host.State[WidgetCatalog.Standings]);
     }
 
@@ -93,7 +93,7 @@ public sealed class LayoutSessionTests : IDisposable
     public void OpeningAnotherLayout_ReleasesTheFirst_SoOnlyItsWidgetsAreControlled()
     {
         var race = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200));
-        var oval = Layout(Side, Widget(WidgetCatalog.Fuel, 10, 10));
+        var oval = Layout(Side, Widget(WidgetCatalog.Incident, 10, 10));
         _session.Open(race, new LayoutPlacement(Side, false, 1));
 
         _session.Open(oval, new LayoutPlacement(Side, false, 1));
@@ -102,7 +102,7 @@ public sealed class LayoutSessionTests : IDisposable
         Assert.Equal(oval.Id, _store.Open!.LayoutId);
 
         _session.Close();
-        Assert.Equal(_host.Original(WidgetCatalog.Fuel), _host.State[WidgetCatalog.Fuel]);
+        Assert.Equal(_host.Original(WidgetCatalog.Incident), _host.State[WidgetCatalog.Incident]);
     }
 
     [Fact]
@@ -120,15 +120,15 @@ public sealed class LayoutSessionTests : IDisposable
     [Fact]
     public void Reapply_RestoresWidgetsNoLongerControlled_CapturesNewOnes_AndKeepsTheOriginals()
     {
-        var layout = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200), Widget(WidgetCatalog.Fuel, 10, 10));
+        var layout = Layout(Side, Widget(WidgetCatalog.Relative, 100, 200), Widget(WidgetCatalog.Incident, 10, 10));
         _session.Open(layout, new LayoutPlacement(Side, false, 1));
 
-        layout.Remove(WidgetCatalog.Fuel);
+        layout.Remove(WidgetCatalog.Incident);
         layout.WidgetOf(WidgetCatalog.Relative)!.X = 300;
         layout.Add(Widget(WidgetCatalog.Delta, 5, 5));
         _session.Reapply(layout, new LayoutPlacement(Side, false, 1));
 
-        Assert.Equal(_host.Original(WidgetCatalog.Fuel), _host.State[WidgetCatalog.Fuel]);
+        Assert.Equal(_host.Original(WidgetCatalog.Incident), _host.State[WidgetCatalog.Incident]);
         Assert.Equal(3740, _host.State[WidgetCatalog.Relative].Position!.Value.Left);
         Assert.True(_host.State[WidgetCatalog.Delta].Enabled);
 
@@ -216,7 +216,7 @@ public sealed class LayoutSessionTests : IDisposable
 
         public List<string> Calls { get; } = [];
 
-        public WidgetState Original(string type) => new(false, type == WidgetCatalog.Fuel ? (7, 8) : null, ScaleLevel.M, 1, false, $"{{\"own\":\"{type}\"}}");
+        public WidgetState Original(string type) => new(false, type == WidgetCatalog.Incident ? (7, 8) : null, ScaleLevel.M, 1, false, $"{{\"own\":\"{type}\"}}");
 
         public WidgetSnapshot Capture(string type)
         {
