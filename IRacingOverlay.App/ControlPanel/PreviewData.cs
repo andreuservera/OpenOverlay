@@ -135,7 +135,8 @@ public static class PreviewData
                 IsMultiClass = multiClass,
                 IRating = entry.IRating,
                 LicString = entry.Licence,
-                IRatingDelta = 46 - (i * 4.7),
+                // The leader gains three digits, so the badge is judged at its widest delta.
+                IRatingDelta = i == 0 ? 100 : 46 - (i * 4.7),
                 // Pace only grows down the field, so each class's first car holds its fastest lap.
                 IsSessionFastestLap = classPositions[classIndex] == 1,
                 ClassColor = multiClass ? Classes[entry.ClassIndex].Color : "#B9C4CF",

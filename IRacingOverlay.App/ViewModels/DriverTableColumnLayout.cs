@@ -62,12 +62,12 @@ public sealed class DriverTableColumnLayout
     /// <summary>A column's width when shown, in device-independent pixels at size M.</summary>
     public static double WidthOf(DriverTableColumn column) => column switch
     {
-        DriverTableColumn.Position => 36,
+        DriverTableColumn.Position => 28,
         DriverTableColumn.CarNumber => 40,
-        DriverTableColumn.Driver => 128,
+        DriverTableColumn.Driver => 146,
         DriverTableColumn.LastPitStop => 76,
         DriverTableColumn.TireCompound => 36,
-        DriverTableColumn.IRating => 48,
+        DriverTableColumn.IRating => 40,
         DriverTableColumn.IRatingDelta => 44,
         DriverTableColumn.License => 44,
         DriverTableColumn.Lap => 34,

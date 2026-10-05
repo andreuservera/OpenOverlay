@@ -24,7 +24,7 @@ public class DriverTableColumnOrderTests
         Assert.Equal(11, layout.BestLap);
         Assert.Equal(12, layout.LastLap);
         Assert.Equal(13, layout.Gap);
-        Assert.Equal(128, layout.Width4);
+        Assert.Equal(146, layout.Width4);
     }
 
     [Fact]

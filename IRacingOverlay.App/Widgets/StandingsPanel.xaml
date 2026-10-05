@@ -102,7 +102,7 @@
                            Visibility="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.CarNumber, ElementName=Root}" Text="CAR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="{Binding Options.Columns.CarBrand, ElementName=Root}" Text="MAKE" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="{Binding Options.Columns.CarBrand, ElementName=Root}" Text="BRAND" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowCarBrand, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.CountryFlag, ElementName=Root}" Text="FLAG" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowCountryFlag, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>

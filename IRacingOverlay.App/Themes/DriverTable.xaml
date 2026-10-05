@@ -42,11 +42,11 @@
     <sys:String x:Key="W.IRatingDeltaSegment">36</sys:String>
 
     <!-- Header and data cells share one horizontal inset, which is what actually keeps the two
-         grids in line. The left 8 leaves room for the class/player bar without any row's content
+         grids in line. The left 6 clears the 3px class/player bar without any row's content
          shifting when it appears. Rows have a fixed height, so cells centre vertically instead of
          being padded into place. -->
-    <Thickness x:Key="RulerInset">8,0,4,5</Thickness>
-    <Thickness x:Key="CellInset">8,0,4,0</Thickness>
+    <Thickness x:Key="RulerInset">6,0,4,5</Thickness>
+    <Thickness x:Key="CellInset">6,0,4,0</Thickness>
     <!-- Chips fill the row minus 2px top and bottom. -->
     <Thickness x:Key="ChipInset">0,2,6,2</Thickness>
 
