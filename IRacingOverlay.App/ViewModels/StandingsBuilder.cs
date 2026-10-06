@@ -72,6 +72,7 @@ internal static class StandingsBuilder
 
         // Reads the scoring table too: on a mid-session attach the telemetry lap arrays are still empty.
         var results = CurrentSession.Results(telemetry, session);
+        var grid = StartingGrid(telemetry, session);
         var laps = new LapTimeSource(bestLaps, lastLaps, results);
         var fastestLapByClass = FastestLapByClass(racing, laps.Best);
         var isRace = IsRaceSession(telemetry, session);
@@ -255,6 +256,8 @@ internal static class StandingsBuilder
                 CarIdx = driver.CarIdx,
                 Position = PositionOf(driver.CarIdx),
                 ClassPosition = ClassPositionOf(driver.CarIdx),
+                StartPosition = grid.TryGetValue(driver.CarIdx, out var slot) ? slot.Position : 0,
+                StartClassPosition = slot.ClassPosition,
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
@@ -265,6 +268,8 @@ internal static class StandingsBuilder
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 TireCompound = compoundOf(driver.CarIdx),
+                CarBrand = CarBrand.ForCar(driver.CarScreenName),
+                FlairName = driver.FlairName,
                 CurrentLap = LapCountOf(driver.CarIdx),
                 LastLapTime = laps.Last(driver.CarIdx),
                 BestLapTime = bestLapTime,
@@ -362,6 +367,7 @@ internal static class StandingsBuilder
         var isMultiClass = distinctClasses > 1;
 
         var results = CurrentSession.Results(telemetry, session);
+        var grid = StartingGrid(telemetry, session);
         var laps = new LapTimeSource(bestLaps, lastLaps, results);
 
         // CarIdxLap is -1 whenever a car isn't on track — sitting in the garage, or back in the pit
@@ -503,6 +509,8 @@ internal static class StandingsBuilder
                 CarIdx = driver.CarIdx,
                 Position = i + 1,
                 ClassPosition = rank,
+                StartPosition = grid.TryGetValue(driver.CarIdx, out var slot) ? slot.Position : 0,
+                StartClassPosition = slot.ClassPosition,
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
@@ -512,6 +520,8 @@ internal static class StandingsBuilder
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 TireCompound = compoundOf(driver.CarIdx),
+                CarBrand = CarBrand.ForCar(driver.CarScreenName),
+                FlairName = driver.FlairName,
                 CurrentLap = LapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = gap.Seconds,
                 LapsDown = gap.LapsDown,
@@ -924,6 +934,28 @@ internal static class StandingsBuilder
         var t => t.ToUpperInvariant(),
     };
 
+    /// <summary>Each car's starting grid slot (1-based, overall and in class), keyed by CarIdx.
+    /// Empty outside a race: the grid block also sits in the YAML through the weekend's practice
+    /// and qualifying, where "places since the start" means nothing.</summary>
+    internal static Dictionary<int, (int Position, int ClassPosition)> StartingGrid(TelemetrySnapshot telemetry, IracingSessionInfo? session)
+    {
+        var grid = new Dictionary<int, (int, int)>();
+        if (!IsRaceSession(telemetry, session))
+        {
+            return grid;
+        }
+
+        foreach (var slot in session?.QualifyResultsInfo?.Results ?? [])
+        {
+            if (slot.CarIdx >= 0 && slot.Position >= 0)
+            {
+                grid[slot.CarIdx] = (slot.Position + 1, slot.ClassPosition + 1);
+            }
+        }
+
+        return grid;
+    }
+
     private static bool IsRaceSession(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
 
@@ -1008,6 +1040,8 @@ internal static class StandingsBuilder
                 HasMeatballFlag = penalties.Meatball,
                 LastPitStop = LastPitStopOf(lastPitStops, driver.CarIdx),
                 TireCompound = compoundOf(driver.CarIdx),
+                CarBrand = CarBrand.ForCar(driver.CarScreenName),
+                FlairName = driver.FlairName,
                 CurrentLap = lapCountOf(driver.CarIdx),
                 GapToLeaderSeconds = thisTime < double.MaxValue && poleTime < double.MaxValue ? thisTime - poleTime : 0,
                 LastLapTime = laps.Last(driver.CarIdx),

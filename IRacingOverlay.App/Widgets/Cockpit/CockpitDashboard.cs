@@ -7,212 +7,145 @@ using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets.Cockpit;
 
-public enum HAlign
-{
-    Left,
-    Center,
-    Right,
-}
-
-public enum VAlign
-{
-    Top,
-
-    /// <summary>Centre of the capitals/digits rather than of the line box, so numerals sit
-    /// optically centred in whatever they are placed in.</summary>
-    Center,
-    Baseline,
-}
-
 /// <summary>
-/// One cockpit theme: a complete dashboard with its own size, silhouette, layout and drawing
-/// language, rendered straight into a DrawingContext. Every theme reads the same
-/// <see cref="CockpitState"/> — speed, gear, RPM, 14 shift lights (with the flash), ABS and the two
-/// proximity bands — and nothing else; what differs is purely how it is shown.
+/// The cockpit, styled after a GT3 car's display: a black screen with chamfered corners holding a
+/// row of module panels (<see cref="CockpitLayout"/>), the shift lights as a strip of slanted LEDs
+/// across the top and a proximity bar down each side — drawn straight into a DrawingContext so the
+/// whole thing redraws cheaply at the cockpit's high refresh rate.
 ///
-/// Drawing rather than XAML is deliberate: themes differ in geometry (dials, hexagons, skewed
-/// blocks, rings), which a DrawingContext expresses directly, and a single visual per theme redraws
-/// cheaply at the cockpit's high refresh rate.
+/// Each panel has its top-right corner cut and a stripe down its left edge: grey, or for the in-car
+/// adjusters the colour of their rotary on a GT3 wheel (ABS yellow, TC blue, brake bias orange).
+/// Values are heavy condensed italic in tabular figures, so a number never shifts sideways as its
+/// digits change. Otherwise colour marks a state: the shift point, ABS intervening, low fuel, a hot
+/// temperature, incidents near the limit, gaining or losing time.
+///
+/// The screen and panels follow the widget's opacity setting (<see cref="Overlay.BackgroundOpacity"/>,
+/// read off the faded panel brush), so the background fades like any other widget's while the
+/// values stay fully readable.
 /// </summary>
-public abstract class CockpitDashboard : FrameworkElement
+public sealed class CockpitDashboard : FrameworkElement
 {
-    public const int LampCount = CockpitState.ShiftLightCount;
+    public static readonly DependencyProperty PanelBackgroundProperty = DependencyProperty.Register(
+        nameof(PanelBackground), typeof(Brush), typeof(CockpitDashboard),
+        new FrameworkPropertyMetadata(Brushes.Black, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty ValueFontProperty = DependencyProperty.Register(
+        nameof(ValueFont), typeof(FontFamily), typeof(CockpitDashboard),
+        new FrameworkPropertyMetadata(SystemFonts.MessageFontFamily, FrameworkPropertyMetadataOptions.AffectsRender, (d, _) => ((CockpitDashboard)d)._valueFace = null));
+
+    public static readonly DependencyProperty LabelFontProperty = DependencyProperty.Register(
+        nameof(LabelFont), typeof(FontFamily), typeof(CockpitDashboard),
+        new FrameworkPropertyMetadata(SystemFonts.MessageFontFamily, FrameworkPropertyMetadataOptions.AffectsRender, (d, _) => ((CockpitDashboard)d)._labelFace = null));
 
     private const int ShiftFlashHalfPeriodMs = 90;
-    private const int AbsFlashHalfPeriodMs = 150;
+    private const double Padding = 7;
+    private const double LabelSize = 9.5;
+    private const double SmallValueSize = 19;
+
+    // Space the label takes at the top of a card.
+    private const double LabelBand = 12;
+
+    private const string ValueColor = "#F2F5F8";
+    private const string LabelColor = "#8E99A5";
+    private const string TrackColor = "#232931";
+    private const string NeutralGauge = "#C4CCD4";
+    private const string RadarColor = "#F5A524";
+    private const string ScreenFill = "#F5050607";
+    private const string ScreenEdge = "#5A626C";
+    private const string PanelFill = "#FF14171B";
+    private const string PanelEdge = "#3A4149";
+    private const string StripeColor = "#5A646D";
+    private const double ScreenCut = 9;
+    private const double PanelCut = 8;
+    private const double StripeWidth = 3;
+    private const double ItalicSkewDegrees = -12;
+
+    // 5 green, 5 yellow, 4 red; every lamp red at the shift point.
+    private static readonly string[] LampColors = ["#34D399", "#FFD24D", "#F04438"];
+    private const string ShiftPointColor = "#F04438";
 
     private static readonly ConcurrentDictionary<string, Brush> BrushCache = new();
-    private static readonly ConcurrentDictionary<(string, double), Pen> PenCache = new();
+    private static readonly ConcurrentDictionary<string, Pen> PenCache = new();
 
-    // Keeps the flashes on a wall-clock cadence independent of the telemetry refresh rate; only
-    // runs while something is actually flashing.
+    // Keeps the shift-point flash on a wall-clock cadence independent of the telemetry refresh
+    // rate; only runs while the lights are flashing.
     private readonly DispatcherTimer _flashTimer = new() { Interval = TimeSpan.FromMilliseconds(30) };
 
-    private readonly Dictionary<(string Text, Typeface Face, double Size, Brush Brush, double X, double Y, HAlign H, VAlign V), (Drawing Drawing, Rect Bounds)> _labels = new();
+    private readonly Dictionary<(string Text, double X, double Y), Drawing> _labels = new();
 
-    protected CockpitDashboard()
+    private CockpitState _state = CockpitState.Empty;
+    private CockpitLayout _layout = CockpitLayout.Empty;
+    private IReadOnlyList<CockpitModule> _modules = [];
+    private bool _shiftLights;
+    private bool _radar;
+    private Typeface? _valueFace;
+    private Typeface? _labelFace;
+
+    public CockpitDashboard()
     {
         SnapsToDevicePixels = true;
+        SetResourceReference(PanelBackgroundProperty, "Theme.PanelBackground");
+        SetResourceReference(ValueFontProperty, "Theme.GearFontFamily");
+        SetResourceReference(LabelFontProperty, "Theme.LabelFontFamily");
         _flashTimer.Tick += (_, _) => InvalidateVisual();
         Unloaded += (_, _) => _flashTimer.Stop();
-        Loaded += (_, _) => _flashTimer.IsEnabled = IsFlashing;
+        Loaded += (_, _) => _flashTimer.IsEnabled = _state.ShiftBlink;
     }
 
-    protected CockpitState State { get; private set; } = CockpitState.Empty;
+    /// <summary>The app's panel brush. Not drawn: its opacity is how far the widget's opacity
+    /// setting has faded the background, which the screen and panels follow.</summary>
+    public Brush PanelBackground
+    {
+        get => (Brush)GetValue(PanelBackgroundProperty);
+        set => SetValue(PanelBackgroundProperty, value);
+    }
 
-    /// <summary>The theme's footprint at scale level M. Fixed per theme, so every theme has its own
-    /// silhouette and the widget never changes size while driving.</summary>
-    protected abstract Size DesignSize { get; }
+    public FontFamily ValueFont
+    {
+        get => (FontFamily)GetValue(ValueFontProperty);
+        set => SetValue(ValueFontProperty, value);
+    }
+
+    public FontFamily LabelFont
+    {
+        get => (FontFamily)GetValue(LabelFontProperty);
+        set => SetValue(LabelFontProperty, value);
+    }
 
     public void Update(CockpitState state)
     {
-        State = state;
-        _flashTimer.IsEnabled = IsFlashing && IsLoaded;
+        var recompose = !state.Unsupported.SetEquals(_state.Unsupported);
+        _state = state;
+        if (recompose)
+        {
+            Compose();
+        }
+
+        _flashTimer.IsEnabled = state.ShiftBlink && IsLoaded;
         InvalidateVisual();
     }
 
-    protected override Size MeasureOverride(Size availableSize) => DesignSize;
-
-    protected override void OnRender(DrawingContext dc) => Draw(dc);
-
-    protected abstract void Draw(DrawingContext dc);
-
-    private bool IsFlashing => ShiftFlashing || State.AbsActive;
-
-    /// <summary>Whether this theme flashes its shift lights at the shift point. Period-style
-    /// instruments turn the override off and simply stay lit.</summary>
-    protected virtual bool FlashesAtShiftPoint => true;
-
-    private bool ShiftFlashing => State.ShiftBlink && FlashesAtShiftPoint;
-
-    // ===== Data, formatted the same way in every theme =====
-
-    protected string Speed => State.SpeedKph > 0
-        ? Units.Speed(State.SpeedKph, State.UnitSystem).ToString("0", CultureInfo.InvariantCulture)
-        : "—";
-
-    /// <summary>"km/h" or "mph"; themes upper-case it where their labels are capitals.</summary>
-    protected string SpeedUnit => Units.SpeedUnit(State.UnitSystem);
-
-    protected string Rpm => State.Rpm > 0 ? State.Rpm.ToString("0", CultureInfo.InvariantCulture) : "—";
-
-    protected string Gear => State.Gear;
-
-    /// <summary>Fuel in the tank, to one decimal, in litres or gallons.</summary>
-    protected string Fuel => State.FuelLiters is { } liters
-        ? Units.Volume(liters, State.UnitSystem).ToString("0.0", CultureInfo.InvariantCulture)
-        : "—";
-
-    protected string FuelUnit => Units.VolumeUnit(State.UnitSystem);
-
-    /// <summary>A temperature to whole degrees in °C or °F, or a dash when unknown.</summary>
-    protected string Temperature(double? celsius) => celsius is { } c
-        ? Units.Temperature(c, State.UnitSystem).ToString("0", CultureInfo.InvariantCulture)
-        : "—";
-
-    protected string TemperatureUnit => Units.TemperatureUnit(State.UnitSystem);
-
-    protected int LampsLit => Math.Clamp(State.ShiftLightsLit, 0, LampCount);
-
-    /// <summary>False during the "off" half of the shift-point flash; always true otherwise.</summary>
-    protected bool ShiftLampsOn => !ShiftFlashing || Environment.TickCount64 / ShiftFlashHalfPeriodMs % 2 == 0;
-
-    protected bool AtShiftPoint => State.ShiftBlink;
-
-    protected bool AbsActive => State.AbsActive;
-
-    /// <summary>"ABS 3" — the configured level, or plain "ABS" when the car doesn't report one.
-    /// Never "OFF": intervention is shown by colour/flash, not by this text.</summary>
-    protected string AbsLabel => State.AbsLevel is { } level ? $"ABS {level}" : "ABS";
-
-    /// <summary>The configured level alone, for themes that label the value separately.</summary>
-    protected string AbsLevel => State.AbsLevel is { } level ? level.ToString(CultureInfo.InvariantCulture) : "—";
-
-    /// <summary>Bright half of the ABS flash while active.</summary>
-    protected bool AbsFlashOn => State.AbsActive && Environment.TickCount64 / AbsFlashHalfPeriodMs % 2 == 0;
-
-    protected bool IsLampLit(int index) => ShiftLampsOn && index < LampsLit;
-
-    /// <summary>Stage of a shift lamp: 0 for the first five, 1 for the next five, 2 for the last four
-    /// — the same banding every theme colours, in its own palette.</summary>
-    protected static int LampStage(int index) => index < 5 ? 0 : index < 10 ? 1 : 2;
-
-    protected static bool HasCar(ProximitySide side) => side.BandEnd > side.BandStart;
-
-    /// <summary>Human-readable overlap band, for themes that show it as text.</summary>
-    protected static string BandText(ProximitySide side) => HasCar(side)
-        ? $"{Math.Round(side.BandStart * 100):0}–{Math.Round(side.BandEnd * 100):0}%"
-        : "CLEAR";
-
-    // ===== Drawing helpers =====
-
-    protected static Brush B(string hex) => BrushCache.GetOrAdd(hex, static value =>
+    /// <summary>Which modules to show, in order, and whether the lights and the radar are on. The
+    /// dashboard takes the composed size, so the window follows.</summary>
+    public void SetLayout(IReadOnlyList<CockpitModule> modules, bool shiftLights, bool radar)
     {
-        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(value));
-        brush.Freeze();
-        return brush;
-    });
-
-    protected static Pen P(string hex, double thickness) => PenCache.GetOrAdd((hex, thickness), static key =>
-    {
-        var pen = new Pen(B(key.Item1), key.Item2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-        pen.Freeze();
-        return pen;
-    });
-
-    protected static Brush Frozen(Brush brush)
-    {
-        brush.Freeze();
-        return brush;
+        _modules = modules;
+        _shiftLights = shiftLights;
+        _radar = radar;
+        Compose();
     }
 
-    protected static LinearGradientBrush Vertical(string top, string bottom) => (LinearGradientBrush)Frozen(
-        new LinearGradientBrush((Color)ColorConverter.ConvertFromString(top), (Color)ColorConverter.ConvertFromString(bottom), 90));
-
-    protected static LinearGradientBrush Horizontal(string left, string right) => (LinearGradientBrush)Frozen(
-        new LinearGradientBrush((Color)ColorConverter.ConvertFromString(left), (Color)ColorConverter.ConvertFromString(right), 0));
-
-    protected static Typeface Face(string family, FontWeight weight, FontStyle? style = null) =>
-        new(new FontFamily(family), style ?? FontStyles.Normal, weight, FontStretches.Normal);
-
-    protected FormattedText Measure(string text, Typeface face, double size, Brush brush) =>
-        new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, size, brush,
-            VisualTreeHelper.GetDpi(this).PixelsPerDip);
-
-    /// <summary>Draws text anchored at (x, y) by the given alignment and returns its bounds.</summary>
-    protected Rect Text(DrawingContext dc, string text, Typeface face, double size, Brush brush,
-        double x, double y, HAlign h = HAlign.Left, VAlign v = VAlign.Top)
+    /// <summary>Lays out the chosen modules the car can feed.</summary>
+    private void Compose()
     {
-        var formatted = Measure(text, face, size, brush);
-        var origin = Anchor(formatted, size, x, y, h, v);
-        dc.DrawText(formatted, origin);
-        return new Rect(origin, new Size(formatted.WidthIncludingTrailingWhitespace, formatted.Height));
+        var modules = _state.Unsupported.Count == 0 ? _modules : _modules.Where(module => !_state.Unsupported.Contains(module)).ToList();
+        _layout = CockpitLayout.Compose(modules, _shiftLights, _radar);
+        _labels.Clear();
+        InvalidateMeasure();
+        InvalidateVisual();
     }
 
-    /// <summary>Same as <see cref="Text"/>, for text that repeats frame after frame at the same place:
-    /// laid out once, then redrawn from a frozen drawing.</summary>
-    protected Rect CachedText(DrawingContext dc, string text, Typeface face, double size, Brush brush,
-        double x, double y, HAlign h = HAlign.Left, VAlign v = VAlign.Top)
-    {
-        var key = (text, face, size, brush, x, y, h, v);
-        if (!_labels.TryGetValue(key, out var label))
-        {
-            var formatted = Measure(text, face, size, brush);
-            var origin = Anchor(formatted, size, x, y, h, v);
-            var drawing = new DrawingGroup();
-            using (var context = drawing.Open())
-            {
-                context.DrawText(formatted, origin);
-            }
-
-            drawing.Freeze();
-            label = (drawing, new Rect(origin, new Size(formatted.WidthIncludingTrailingWhitespace, formatted.Height)));
-            _labels[key] = label;
-        }
-
-        dc.DrawDrawing(label.Drawing);
-        return label.Bounds;
-    }
+    protected override Size MeasureOverride(Size availableSize) => _layout.Size;
 
     // Cached labels were laid out for the old pixels-per-dip.
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
@@ -221,25 +154,185 @@ public abstract class CockpitDashboard : FrameworkElement
         base.OnDpiChanged(oldDpi, newDpi);
     }
 
-    private static Point Anchor(FormattedText formatted, double size, double x, double y, HAlign h, VAlign v)
+    protected override void OnRender(DrawingContext dc)
     {
-        var left = h switch
+        if (_layout.Size.Width <= 0)
         {
-            HAlign.Center => x - (formatted.WidthIncludingTrailingWhitespace / 2),
-            HAlign.Right => x - formatted.WidthIncludingTrailingWhitespace,
-            _ => x,
-        };
-        var top = v switch
+            return;
+        }
+
+        dc.DrawGeometry(Faded(ScreenFill), FadedPen(ScreenEdge), Chamfer(Inset(new Rect(_layout.Size)), ScreenCut, 0, ScreenCut, 0));
+
+        if (_layout.LeftRadar is { } left && _layout.RightRadar is { } right)
         {
-            // Cap height ≈ 0.7em across the faces used here.
-            VAlign.Center => y - formatted.Baseline + (size * 0.35),
-            VAlign.Baseline => y - formatted.Baseline,
-            _ => y,
-        };
-        return new Point(left, top);
+            Radar(dc, _state.LeftProximity, left);
+            Radar(dc, _state.RightProximity, right);
+        }
+
+        if (_layout.ShiftLights is { } strip)
+        {
+            ShiftLights(dc, strip);
+        }
+
+        foreach (var cell in _layout.Cells)
+        {
+            Module(dc, cell);
+        }
     }
 
-    protected static Geometry Polygon(params Point[] points)
+    /// <summary>How far the opacity setting has faded the background, 0 to 1.</summary>
+    private double Fade => PanelBackground.Opacity;
+
+    private Typeface ValueFace => _valueFace ??= new Typeface(ValueFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+
+    // The label family is already a semibold, semi-condensed cut.
+    private Typeface LabelFace => _labelFace ??= new Typeface(LabelFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+
+    private double PixelsPerDip => VisualTreeHelper.GetDpi(this).PixelsPerDip;
+
+    // ===== Fixed elements =====
+
+    private void Radar(DrawingContext dc, ProximitySide side, Rect track)
+    {
+        dc.DrawRectangle(Faded(PanelFill), FadedPen(PanelEdge), Inset(track));
+        if (side.BandEnd > side.BandStart)
+        {
+            var lit = new Rect(track.X, track.Y + (track.Height * side.BandStart), track.Width,
+                Math.Max(track.Width, track.Height * (side.BandEnd - side.BandStart)));
+            dc.DrawRectangle(B(RadarColor), null, lit);
+        }
+    }
+
+    /// <summary>Slanted LEDs, grouped by stage; an unlit one is a faint tint of its stage.</summary>
+    private void ShiftLights(DrawingContext dc, Rect strip)
+    {
+        const int count = CockpitState.ShiftLightCount;
+        const double gap = 3;
+        const double stageGap = 3;
+        var lean = strip.Height * 0.45;
+        var lit = ShiftLampsOn ? Math.Clamp(_state.ShiftLightsLit, 0, count) : 0;
+        var width = (strip.Width - lean - ((count - 3) * gap) - (2 * stageGap)) / count;
+        var x = strip.X;
+        for (var i = 0; i < count; i++)
+        {
+            if (i > 0)
+            {
+                x += Stage(i) != Stage(i - 1) ? stageGap : gap;
+            }
+
+            var color = _state.ShiftBlink ? ShiftPointColor : LampColors[Stage(i)];
+            var brush = i < lit ? B(color) : B(Tint(color, 0x2E));
+            dc.DrawGeometry(brush, null, Slanted(new Rect(x, strip.Y, width + lean, strip.Height), lean));
+            x += width;
+        }
+    }
+
+    private static int Stage(int index) => index < 5 ? 0 : index < 10 ? 1 : 2;
+
+    /// <summary>False during the "off" half of the shift-point flash; always true otherwise.</summary>
+    private bool ShiftLampsOn => !_state.ShiftBlink || Environment.TickCount64 / ShiftFlashHalfPeriodMs % 2 == 0;
+
+    // ===== Modules =====
+
+    /// <summary>The colour of an in-car adjuster's rotary, as GT3 wheels mark them.</summary>
+    private static string? AdjusterColor(CockpitModule module) => module switch
+    {
+        CockpitModule.Abs => "#FFD24D",
+        CockpitModule.TractionControl => "#4C9AFF",
+        CockpitModule.BrakeBias => "#FF8A3D",
+        _ => null,
+    };
+
+    private void Module(DrawingContext dc, CockpitCell cell)
+    {
+        var spec = CockpitModules.Of(cell.Module);
+        var reading = spec.Read(_state);
+        var r = cell.Bounds;
+        var alarm = reading.Tone is CockpitTone.Warning or CockpitTone.Critical;
+        var tone = ToneColor(reading.Tone);
+        var adjuster = AdjusterColor(cell.Module);
+
+        // An alarm washes the panel and takes over its stripe and label.
+        var shape = Chamfer(r, 0, PanelCut, 0, 0);
+        dc.DrawGeometry(Faded(PanelFill), null, shape);
+        if (alarm)
+        {
+            dc.DrawGeometry(B(Tint(tone, 0x40)), null, shape);
+        }
+
+        dc.DrawRectangle(B(alarm ? tone : adjuster ?? StripeColor), null, new Rect(r.X, r.Y, StripeWidth, r.Height));
+        Label(dc, spec.Label(_state.UnitSystem), r.X + Padding + 1, r.Y + 3, alarm ? tone : adjuster ?? LabelColor);
+        var valueColor = reading.Tone == CockpitTone.Normal ? ValueColor : tone;
+
+        if (reading.Bars is { } bars)
+        {
+            Bars(dc, bars, new Rect(r.X + Padding, r.Y + LabelBand + 4, r.Width - (2 * Padding), r.Height - LabelBand - Padding - 2), cell.FullHeight);
+            return;
+        }
+
+        var maxWidth = r.Width - (2 * Padding);
+        if (!cell.FullHeight)
+        {
+            Figures(dc, reading.Value, SmallValueSize, B(valueColor), r.Right - Padding, r.Y + 21, centered: false, maxWidth);
+            return;
+        }
+
+        var middle = r.Y + LabelBand + ((r.Height - LabelBand) / 2);
+        var x = spec.Centered ? r.X + (r.Width / 2) : r.Right - Padding;
+        Figures(dc, reading.Value, spec.FullSize, B(valueColor), x, middle, spec.Centered, maxWidth);
+
+        if (reading.Gauge is { } gauge)
+        {
+            // Segmented, like a dash's fuel bar.
+            const int segments = 10;
+            var track = new Rect(r.X + Padding, r.Bottom - Padding - 4, r.Width - (2 * Padding), 4);
+            var w = (track.Width - ((segments - 1) * 2)) / segments;
+            var on = (int)Math.Ceiling(Math.Clamp(gauge, 0, 1) * segments);
+            for (var i = 0; i < segments; i++)
+            {
+                var fill = i < on ? (alarm ? tone : NeutralGauge) : TrackColor;
+                dc.DrawRectangle(B(fill), null, new Rect(track.X + (i * (w + 2)), track.Y, w, track.Height));
+            }
+        }
+    }
+
+    /// <summary>Vertical bars side by side when the module has a full column, horizontal bars
+    /// stacked when it shares one.</summary>
+    private static void Bars(DrawingContext dc, IReadOnlyList<CockpitBar> bars, Rect area, bool vertical)
+    {
+        const double gap = 3;
+        var span = ((vertical ? area.Width : area.Height) - ((bars.Count - 1) * gap)) / bars.Count;
+        for (var i = 0; i < bars.Count; i++)
+        {
+            var offset = i * (span + gap);
+            var track = vertical
+                ? new Rect(area.X + offset, area.Y, span, area.Height)
+                : new Rect(area.X, area.Y + offset, area.Width, span);
+            dc.DrawRectangle(B(TrackColor), null, track);
+            var value = Math.Clamp(bars[i].Value, 0, 1);
+            if (value <= 0)
+            {
+                continue;
+            }
+
+            var fill = vertical
+                ? new Rect(track.X, track.Bottom - (track.Height * value), track.Width, track.Height * value)
+                : new Rect(track.X, track.Y, track.Width * value, track.Height);
+            dc.DrawRectangle(B(ToneColor(bars[i].Tone)), null, fill);
+        }
+    }
+
+    /// <summary>A rectangle with its corners cut at 45°: top-left, top-right, bottom-right, bottom-left.</summary>
+    private static Geometry Chamfer(Rect r, double topLeft, double topRight, double bottomRight, double bottomLeft) => Polygon(
+        new Point(r.Left + topLeft, r.Top), new Point(r.Right - topRight, r.Top), new Point(r.Right, r.Top + topRight),
+        new Point(r.Right, r.Bottom - bottomRight), new Point(r.Right - bottomRight, r.Bottom), new Point(r.Left + bottomLeft, r.Bottom),
+        new Point(r.Left, r.Bottom - bottomLeft), new Point(r.Left, r.Top + topLeft));
+
+    /// <summary>A parallelogram leaning right by <paramref name="lean"/> over its height.</summary>
+    private static Geometry Slanted(Rect r, double lean) => Polygon(
+        new Point(r.Left + lean, r.Top), new Point(r.Right, r.Top), new Point(r.Right - lean, r.Bottom), new Point(r.Left, r.Bottom));
+
+    private static Geometry Polygon(params Point[] points)
     {
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
@@ -252,39 +345,146 @@ public abstract class CockpitDashboard : FrameworkElement
         return geometry;
     }
 
-    /// <summary>Arc band between two radii, angles in degrees clockwise from 12 o'clock.</summary>
-    protected static Geometry ArcBand(Point center, double innerRadius, double outerRadius, double fromDeg, double toDeg)
+    private static string ToneColor(CockpitTone tone) => tone switch
     {
-        var geometry = new StreamGeometry();
-        using (var context = geometry.Open())
+        CockpitTone.Positive => "#34D399",
+        CockpitTone.Negative => "#FF6B6B",
+        CockpitTone.Warning => "#F5A524",
+        CockpitTone.Critical => "#F04438",
+        _ => ValueColor,
+    };
+
+    // ===== Text =====
+
+    /// <summary>Labels never change between frames at the same place: laid out once, then redrawn
+    /// from a frozen drawing.</summary>
+    private void Label(DrawingContext dc, string text, double x, double y, string color = LabelColor)
+    {
+        var key = ($"{text}|{color}", x, y);
+        if (!_labels.TryGetValue(key, out var drawing))
         {
-            var large = Math.Abs(toDeg - fromDeg) > 180;
-            context.BeginFigure(OnCircle(center, outerRadius, fromDeg), isFilled: true, isClosed: true);
-            context.ArcTo(OnCircle(center, outerRadius, toDeg), new Size(outerRadius, outerRadius), 0, large, SweepDirection.Clockwise, true, false);
-            context.LineTo(OnCircle(center, innerRadius, toDeg), true, false);
-            context.ArcTo(OnCircle(center, innerRadius, fromDeg), new Size(innerRadius, innerRadius), 0, large, SweepDirection.Counterclockwise, true, false);
+            var group = new DrawingGroup();
+            using (var context = group.Open())
+            {
+                context.DrawText(Formatted(text, LabelFace, LabelSize, B(color)), new Point(x, y));
+            }
+
+            group.Freeze();
+            drawing = group;
+            _labels[key] = drawing;
         }
 
-        geometry.Freeze();
-        return geometry;
+        dc.DrawDrawing(drawing);
     }
 
-    protected static Point OnCircle(Point center, double radius, double degreesFromTop)
+    /// <summary>
+    /// A value in tabular figures: every digit advances by the widest digit's width, so "1" and "8"
+    /// take the same room and a number never shifts as it changes. Anchored by the right edge (or
+    /// the centre), centred vertically on the capitals, and shrunk to fit if it would overflow.
+    /// Leaned into an italic around its own centre line, so it stays where it was anchored. Drawn as
+    /// one glyph run; a face that can't give one falls back to a slot per character.
+    /// </summary>
+    private void Figures(DrawingContext dc, string text, double size, Brush brush, double x, double capCenterY, bool centered, double maxWidth)
     {
-        var radians = (degreesFromTop - 90) * Math.PI / 180;
-        return new Point(center.X + (radius * Math.Cos(radians)), center.Y + (radius * Math.Sin(radians)));
-    }
-
-    /// <summary>A vertical proximity meter: track, plus the overlapping band lit from front (top) to
-    /// rear (bottom) — the one shape every theme needs, drawn in each theme's colours.</summary>
-    protected static void VerticalBand(DrawingContext dc, ProximitySide side, Rect track, Brush trackBrush, Brush litBrush, double radius)
-    {
-        dc.DrawRoundedRectangle(trackBrush, null, track, radius, radius);
-        if (HasCar(side))
+        if (text.Length == 0)
         {
-            var lit = new Rect(track.X, track.Y + (track.Height * side.BandStart), track.Width,
-                Math.Max(radius * 2, track.Height * (side.BandEnd - side.BandStart)));
-            dc.DrawRoundedRectangle(litBrush, null, lit, radius, radius);
+            return;
         }
+
+        dc.PushTransform(new SkewTransform(ItalicSkewDegrees, 0, x, capCenterY));
+        UprightFigures(dc, text, size, brush, x - (size * 0.08), capCenterY, centered, maxWidth);
+        dc.Pop();
+    }
+
+    private void UprightFigures(DrawingContext dc, string text, double size, Brush brush, double x, double capCenterY, bool centered, double maxWidth)
+    {
+        if (!ValueFace.TryGetGlyphTypeface(out var glyphs) || !text.All(c => glyphs.CharacterToGlyphMap.ContainsKey(c)))
+        {
+            FiguresBySlot(dc, text, size, brush, x, capCenterY, centered, maxWidth);
+            return;
+        }
+
+        var indices = new ushort[text.Length];
+        var advances = new double[text.Length];
+        var offsets = new Point[text.Length];
+        var slot = Enumerable.Range('0', 10).Max(digit => glyphs.AdvanceWidths[glyphs.CharacterToGlyphMap[digit]]);
+        for (var i = 0; i < text.Length; i++)
+        {
+            indices[i] = glyphs.CharacterToGlyphMap[text[i]];
+            var own = glyphs.AdvanceWidths[indices[i]];
+            advances[i] = char.IsAsciiDigit(text[i]) ? slot : own;
+            offsets[i] = new Point((advances[i] - own) / 2, 0);
+        }
+
+        size = Math.Min(size, maxWidth / advances.Sum());
+        for (var i = 0; i < text.Length; i++)
+        {
+            advances[i] *= size;
+            offsets[i].X *= size;
+        }
+
+        var total = advances.Sum();
+        var left = centered ? x - (total / 2) : x - total;
+        var baseline = capCenterY + (glyphs.CapsHeight * size / 2);
+        var run = new GlyphRun(glyphs, 0, false, size, (float)PixelsPerDip, indices, new Point(left, baseline),
+            advances, offsets, null, null, null, null, null);
+        dc.DrawGlyphRun(brush, run);
+    }
+
+    private void FiguresBySlot(DrawingContext dc, string text, double size, Brush brush, double x, double capCenterY, bool centered, double maxWidth)
+    {
+        var characters = text.Select(c => Formatted(c.ToString(), ValueFace, size, brush)).ToArray();
+        var slot = Enumerable.Range('0', 10).Max(digit => Formatted(((char)digit).ToString(), ValueFace, size, brush).WidthIncludingTrailingWhitespace);
+        var widths = text.Select((c, i) => char.IsAsciiDigit(c) ? slot : characters[i].WidthIncludingTrailingWhitespace).ToArray();
+        var scale = Math.Min(1, maxWidth / widths.Sum());
+        var total = widths.Sum() * scale;
+        var left = centered ? x - (total / 2) : x - total;
+        if (scale < 1)
+        {
+            dc.PushTransform(new ScaleTransform(scale, scale, left, capCenterY));
+        }
+
+        var position = left;
+        for (var i = 0; i < characters.Length; i++)
+        {
+            var character = characters[i];
+            dc.DrawText(character, new Point(position + ((widths[i] - character.WidthIncludingTrailingWhitespace) / 2), capCenterY - character.Baseline + (size * 0.35)));
+            position += widths[i];
+        }
+
+        if (scale < 1)
+        {
+            dc.Pop();
+        }
+    }
+
+    private FormattedText Formatted(string text, Typeface face, double size, Brush brush) =>
+        new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, face, size, brush, PixelsPerDip);
+
+    // ===== Brushes =====
+
+    /// <summary>Half a pixel in, so a 1px outline lands on whole pixels.</summary>
+    private static Rect Inset(Rect rect) => new(rect.X + 0.5, rect.Y + 0.5, Math.Max(0, rect.Width - 1), Math.Max(0, rect.Height - 1));
+
+    private static string Tint(string hex, int alpha) => $"#{alpha:X2}{hex[^6..]}";
+
+    private static Brush B(string hex) => BrushCache.GetOrAdd(hex, static value =>
+        Frozen(new SolidColorBrush((Color)ColorConverter.ConvertFromString(value))));
+
+    private static Pen Pen(string hex) => PenCache.GetOrAdd(hex, static value => Frozen(new Pen(B(value), 1)));
+
+    private Brush Faded(string hex) => B(FadedHex(hex));
+
+    private Pen FadedPen(string hex) => Pen(FadedHex(hex));
+
+    /// <summary>The colour with its alpha scaled by the panel's fade, in 1% steps so the brush cache
+    /// stays small.</summary>
+    private string FadedHex(string hex) =>
+        Tint(hex, (int)Math.Round(Convert.ToInt32(hex[1..3], 16) * Math.Round(Math.Clamp(Fade, 0, 1), 2)));
+
+    private static T Frozen<T>(T freezable) where T : Freezable
+    {
+        freezable.Freeze();
+        return freezable;
     }
 }

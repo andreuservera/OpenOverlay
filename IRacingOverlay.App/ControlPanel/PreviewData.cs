@@ -60,11 +60,31 @@ public static class PreviewData
         new("Noah Lindqvist", "2", 740, "R 0.55", 41.006, 0),
     ];
 
+    // Each driver's flair, in the order of Field; Turkey under iRacing's own spelling.
+    private static readonly string[] Flairs =
+    [
+        "Spain", "Spain", "Poland", "Italy", "Spain", "Japan", "United Kingdom", "France",
+        "Spain", "Argentina", "United States", "Denmark", "Türkiye", "Portugal", "Canada", "Sweden",
+        "Brazil", "Finland", "Australia", "Romania", "Germany", "Italy", "Ireland", "Norway",
+    ];
+
+    // How many places each car has moved since the start, by running position: positive started
+    // further back (so has gained), negative further up.
+    private static readonly double[] GridShuffle = [0, 3.5, -1.5, 5.5, -3.5, 0, 9.5, -4.5, 2.5, -6.5, 1.5, 12.5, -2.5];
+
     private const double BaseLapTime = 92.418;
 
     private static readonly TireCompound PreviewHard = TireCompound.FromName("Hard");
     private static readonly TireCompound PreviewSoft = TireCompound.FromName("Soft");
     private static readonly TireCompound PreviewWet = TireCompound.FromName("Wet");
+
+    // A mixed grid per class, run through the same name matching as a live session.
+    private static readonly string[][] Models =
+    [
+        ["Porsche 911 GT3 R (992)", "BMW M4 GT3 EVO", "Ferrari 296 GT3", "Mercedes-AMG GT3 2020", "McLaren 720S GT3 EVO", "Audi R8 LMS EVO II GT3", "Lamborghini Huracan GT3 EVO"],
+        ["Aston Martin Vantage GT4", "Porsche 718 Cayman GT4 Clubsport MR", "BMW M4 G82 GT4", "McLaren 570S GT4"],
+        ["Hyundai Elantra N TC", "Honda Civic Type R TCR", "Audi RS 3 LMS TCR"],
+    ];
 
     /// <summary>A timed race a third of the way in: the lap total is the estimate from pace.</summary>
     public static SessionProgress Progress() => new()
@@ -85,6 +105,19 @@ public static class PreviewData
         var rows = new List<StandingsRow>(Field.Length);
         var classPositions = new int[Classes.Length];
 
+        // The grid the race started from: the running order with some cars shuffled a few places,
+        // so the places column shows gains, losses and cars that held station.
+        var startPositions = new int[Field.Length];
+        var startClassPositions = new int[Field.Length];
+        var gridClassPositions = new int[Classes.Length];
+        var gridOrder = Enumerable.Range(0, Field.Length).OrderBy(i => i + GridShuffle[i % GridShuffle.Length]).ThenBy(i => i).ToList();
+        for (var slot = 0; slot < gridOrder.Count; slot++)
+        {
+            var car = gridOrder[slot];
+            startPositions[car] = slot + 1;
+            startClassPositions[car] = ++gridClassPositions[multiClass ? Field[car].ClassIndex : 0];
+        }
+
         for (var i = 0; i < Field.Length; i++)
         {
             var entry = Field[i];
@@ -96,6 +129,8 @@ public static class PreviewData
                 CarIdx = i,
                 Position = i + 1,
                 ClassPosition = classPositions[classIndex],
+                StartPosition = startPositions[i],
+                StartClassPosition = startClassPositions[i],
                 Name = entry.Name,
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
@@ -108,6 +143,8 @@ public static class PreviewData
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 // Mostly slicks, a few gambling on wets, one on softs: every ring colour shows.
                 TireCompound = i % 7 == 4 ? PreviewWet : i % 11 == 2 ? PreviewSoft : PreviewHard,
+                FlairName = Flairs[i % Flairs.Length],
+                CarBrand = CarBrand.ForCar(Models[classIndex][(classPositions[classIndex] - 1) % Models[classIndex].Length]),
                 CurrentLap = i < 3 ? 18 : 17,
                 // Car 8 has just set a personal best, so the green last-lap state shows too.
                 LastLapTime = i == 7
@@ -117,7 +154,8 @@ public static class PreviewData
                 IsMultiClass = multiClass,
                 IRating = entry.IRating,
                 LicString = entry.Licence,
-                IRatingDelta = 46 - (i * 4.7),
+                // The leader gains three digits, so the badge is judged at its widest delta.
+                IRatingDelta = i == 0 ? 100 : 46 - (i * 4.7),
                 // Pace only grows down the field, so each class's first car holds its fastest lap.
                 IsSessionFastestLap = classPositions[classIndex] == 1,
                 ClassColor = multiClass ? Classes[entry.ClassIndex].Color : "#B9C4CF",
@@ -150,6 +188,8 @@ public static class PreviewData
                 CarIdx = source.CarIdx,
                 Position = source.Position,
                 ClassPosition = source.ClassPosition,
+                StartPosition = source.StartPosition,
+                StartClassPosition = source.StartClassPosition,
                 Name = source.Name,
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,
@@ -159,6 +199,8 @@ public static class PreviewData
                 HasMeatballFlag = source.HasMeatballFlag,
                 LastPitStop = source.LastPitStop,
                 TireCompound = source.TireCompound,
+                CarBrand = source.CarBrand,
+                FlairName = source.FlairName,
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,
@@ -206,6 +248,10 @@ public static class PreviewData
         Brake = 0,
         WaterTempC = 88,
         OilTempC = 104,
+        BrakeBias = 54.5,
+        TractionControl = 3,
+        Incidents = Incidents(),
+        Delta = Delta(),
     };
 
     public static DeltaState Delta() => new()

@@ -8,18 +8,25 @@ namespace IRacingOverlay.App.Tests;
 public class DriverTableColumnOrderTests
 {
     [Fact]
-    public void DefaultOrder_KeepsEveryColumnInTheSlotItAlwaysHad()
+    public void DefaultOrder_PutsPlacesGainedAfterThePosition_AndTheMakeAndFlagBeforeTheDriver_HiddenSoNothingMoves()
     {
         var layout = new DriverTableOptions(DriverTable.Standings).Columns;
 
         Assert.Equal(0, layout.Position);
-        Assert.Equal(2, layout.Driver);
-        Assert.Equal(5, layout.IRating);
-        Assert.Equal(6, layout.SlotOf(DriverTableColumn.IRatingDelta));
-        Assert.Equal(9, layout.BestLap);
-        Assert.Equal(10, layout.LastLap);
-        Assert.Equal(11, layout.Gap);
-        Assert.Equal(128, layout.Width2);
+        Assert.Equal(1, layout.PlacesGained);
+        Assert.Equal(0, layout.Width1);
+        Assert.Equal(2, layout.CarNumber);
+        Assert.Equal(3, layout.CarBrand);
+        Assert.Equal(0, layout.Width3);
+        Assert.Equal(4, layout.CountryFlag);
+        Assert.Equal(0, layout.Width4);
+        Assert.Equal(5, layout.Driver);
+        Assert.Equal(8, layout.IRating);
+        Assert.Equal(9, layout.SlotOf(DriverTableColumn.IRatingDelta));
+        Assert.Equal(12, layout.BestLap);
+        Assert.Equal(13, layout.LastLap);
+        Assert.Equal(14, layout.Gap);
+        Assert.Equal(146, layout.Width5);
     }
 
     [Fact]
@@ -47,8 +54,8 @@ public class DriverTableColumnOrderTests
         var options = new DriverTableOptions(DriverTable.Standings);
         options.SetVisible(DriverTableColumn.Driver, false);
 
-        Assert.Equal(2, options.Columns.Driver);
-        Assert.Equal(0, options.Columns.Width2);
+        Assert.Equal(5, options.Columns.Driver);
+        Assert.Equal(0, options.Columns.Width5);
     }
 
     [Fact]
@@ -111,7 +118,7 @@ public class DriverTableColumnOrderTests
 
         var order = Assert.Single(applied);
         Assert.Equal(DriverTableColumn.Position, (DriverTableColumn)order[2]);
-        Assert.Equal(DriverTableColumn.CarNumber, (DriverTableColumn)order[0]);
+        Assert.Equal(DriverTableColumn.PlacesGained, (DriverTableColumn)order[0]);
     }
 
     [Fact]

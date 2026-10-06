@@ -93,13 +93,22 @@
                     <ColumnDefinition Width="{Binding Options.Columns.Width9, ElementName=Root}"/>
                     <ColumnDefinition Width="{Binding Options.Columns.Width10, ElementName=Root}"/>
                     <ColumnDefinition Width="{Binding Options.Columns.Width11, ElementName=Root}"/>
+                    <ColumnDefinition Width="{Binding Options.Columns.Width12, ElementName=Root}"/>
+                    <ColumnDefinition Width="{Binding Options.Columns.Width13, ElementName=Root}"/>
+                    <ColumnDefinition Width="{Binding Options.Columns.Width14, ElementName=Root}"/>
                     <!-- Matches the rows' fastest-lap slot, so the columns stay aligned. -->
                     <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, ElementName=Root}"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="{Binding Options.Columns.Position, ElementName=Root}" Text="POS" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="{Binding Options.Columns.PlacesGained, ElementName=Root}" Text="+/-" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowPlacesGained, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.CarNumber, ElementName=Root}" Text="CAR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="{Binding Options.Columns.CarBrand, ElementName=Root}" Text="BRAND" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowCarBrand, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                <TextBlock Grid.Column="{Binding Options.Columns.CountryFlag, ElementName=Root}" Text="FLAG" Style="{StaticResource HeadCentered}"
+                           Visibility="{Binding Options.ShowCountryFlag, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.Driver, ElementName=Root}" Text="DRIVER" Style="{StaticResource HeadText}"
                            Visibility="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.LastPitStop, ElementName=Root}" Text="LAST PIT" Style="{StaticResource HeadCentered}"

@@ -45,7 +45,7 @@
                     </ItemsControl.ItemContainerStyle>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <ContentPresenter Content="{Binding Panel}" Opacity="{Binding PanelOpacity}"
+                            <ContentPresenter Content="{Binding Panel}"
                                               ov:BackgroundOpacity.Value="{Binding BackgroundOpacity}">
                                 <ContentPresenter.LayoutTransform>
                                     <ScaleTransform ScaleX="{Binding Factor}" ScaleY="{Binding Factor}"/>

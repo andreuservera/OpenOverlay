@@ -33,7 +33,7 @@ public sealed class CockpitState
     public required ProximitySide LeftProximity { get; init; }
     public required ProximitySide RightProximity { get; init; }
 
-    // Secondary readouts some themes show (GT Sports, Pit Wall). Null when the car doesn't report them.
+    // Readouts of the optional modules. Null when the car doesn't report them.
     public double? FuelLiters { get; init; }
     public double? FuelPct { get; init; }
     public double Throttle { get; init; }
@@ -41,7 +41,28 @@ public sealed class CockpitState
     public double? WaterTempC { get; init; }
     public double? OilTempC { get; init; }
 
+    /// <summary>The in-car brake bias, front share in percent; null when the car has no adjuster.</summary>
+    public double? BrakeBias { get; init; }
+
+    /// <summary>The configured traction-control level; null when the car has no adjustable TC.</summary>
+    public int? TractionControl { get; init; }
+
+    /// <summary>The player's incidents and the limit, as the Incidents widget reads them; null when
+    /// not reported.</summary>
+    public IncidentState? Incidents { get; init; }
+
+    /// <summary>The live delta to the session's best lap, as the Delta widget reads it; null when
+    /// the sim doesn't report one.</summary>
+    public DeltaState? Delta { get; init; }
+
+    /// <summary>Modules this car can't feed, known from the variables the sim declares when the car
+    /// loads — so it is fixed for the session and a module never comes and goes while driving. Empty
+    /// unless built from live telemetry: the preview and a disconnected cockpit show every module.</summary>
+    public IReadOnlySet<CockpitModule> Unsupported { get; init; } = NoneUnsupported;
+
     public UnitSystem UnitSystem { get; init; }
+
+    private static readonly IReadOnlySet<CockpitModule> NoneUnsupported = new HashSet<CockpitModule>();
 
     public static CockpitState Empty { get; } = new()
     {

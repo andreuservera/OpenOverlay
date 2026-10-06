@@ -462,4 +462,98 @@ public class CockpitBuilderTests
 
         Assert.Equal(lit, state.LeftProximity.Amount > 0);
     }
+
+    // ===== Brake bias, traction control, incidents, delta =====
+
+    private static TelemetrySnapshot CarSetupSnapshot(bool withAdjusters)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("Gear", IrsdkVarType.Int);
+        if (withAdjusters)
+        {
+            builder.AddVar("dcBrakeBias", IrsdkVarType.Float);
+            builder.AddVar("dcTractionControl", IrsdkVarType.Float);
+            builder.AddVar("PlayerCarMyIncidentCount", IrsdkVarType.Int);
+            builder.AddVar("LapDeltaToSessionBestLap", IrsdkVarType.Float);
+            builder.AddVar("LapDeltaToSessionBestLap_OK", IrsdkVarType.Bool);
+        }
+
+        return TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("Gear", 3);
+            if (withAdjusters)
+            {
+                w.SetFloat("dcBrakeBias", 54.5f);
+                w.SetFloat("dcTractionControl", 3f);
+                w.SetInt("PlayerCarMyIncidentCount", 9);
+                w.SetFloat("LapDeltaToSessionBestLap", -0.25f);
+                w.SetBool("LapDeltaToSessionBestLap_OK", true);
+            }
+        });
+    }
+
+    private static IracingSessionInfo SessionWithIncidentLimit(string limit) => new()
+    {
+        WeekendInfo = new WeekendInfoSection { WeekendOptions = new WeekendOptionsSection { IncidentLimit = limit } },
+    };
+
+    [Fact]
+    public void Build_ReadsBrakeBiasTractionControlIncidentsAndDelta()
+    {
+        var state = CockpitBuilder.Build(CarSetupSnapshot(withAdjusters: true), SessionWithIncidentLimit("17"));
+
+        Assert.Equal(54.5, state.BrakeBias!.Value, precision: 3);
+        Assert.Equal(3, state.TractionControl);
+        Assert.Equal(9, state.Incidents!.CountedTotal);
+        Assert.Equal(17, state.Incidents.Limit);
+        Assert.Equal(IncidentSeverity.Warning, state.Incidents.Severity);
+        Assert.Equal(-0.25, state.Delta!.DeltaSeconds, precision: 3);
+        Assert.True(state.Delta.IsValid);
+        Assert.Empty(state.Unsupported);
+    }
+
+    [Fact]
+    public void Build_TractionControlIsAWholeLevel()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("dcTractionControl", IrsdkVarType.Float);
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetFloat("dcTractionControl", 2.9999f));
+
+        Assert.Equal(3, CockpitBuilder.Build(snapshot, null).TractionControl);
+    }
+
+    [Fact]
+    public void Build_DataTheCarDoesNotReport_IsNull_AndItsModulesUnsupported()
+    {
+        var state = CockpitBuilder.Build(CarSetupSnapshot(withAdjusters: false), null);
+
+        Assert.Null(state.BrakeBias);
+        Assert.Null(state.TractionControl);
+        Assert.Null(state.Incidents);
+        Assert.Null(state.Delta);
+        Assert.Equal(
+            new HashSet<CockpitModule> { CockpitModule.BrakeBias, CockpitModule.TractionControl, CockpitModule.Incidents, CockpitModule.Delta },
+            state.Unsupported);
+    }
+
+    [Fact]
+    public void Build_AnInvalidDelta_IsStillSupported()
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("LapDeltaToSessionBestLap", IrsdkVarType.Float);
+        builder.AddVar("LapDeltaToSessionBestLap_OK", IrsdkVarType.Bool);
+        // No session-best lap yet: the module stays, showing a dash, rather than coming and going.
+        var snapshot = TestSnapshotFactory.Build(builder, w => w.SetBool("LapDeltaToSessionBestLap_OK", false));
+
+        var state = CockpitBuilder.Build(snapshot, null);
+
+        Assert.False(state.Delta!.IsValid);
+        Assert.DoesNotContain(CockpitModule.Delta, state.Unsupported);
+    }
+
+    [Fact]
+    public void EmptyState_HidesNoModule()
+    {
+        Assert.Empty(CockpitState.Empty.Unsupported);
+    }
 }

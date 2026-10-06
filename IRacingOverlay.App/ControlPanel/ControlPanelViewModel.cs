@@ -53,7 +53,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WeatherOptionsStore.ApplyTo(WeatherOptions);
         TrackInfoOptionsStore.ApplyTo(TrackInfoOptions);
         PedalTraceOptionsStore.ApplyTo(PedalTraceOptions);
-        CockpitOptions.Theme = CockpitThemeStore.Get();
+        CockpitOptionsStore.ApplyTo(CockpitOptions);
         _dashboardTheme = DashboardThemeStore.Get();
         _criticalRefreshIndex = CriticalRefreshStore.Get();
         Units.SetPreference(UnitPreferenceStore.Get());

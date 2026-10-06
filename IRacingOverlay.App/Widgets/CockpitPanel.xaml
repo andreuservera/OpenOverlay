@@ -1,7 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.CockpitPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Hosts whichever cockpit theme is active (Widgets/Cockpit/). Each theme is a complete dashboard
-         with its own size and silhouette, so this control has no layout of its own. -->
-    <Border x:Name="Host"/>
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:IRacingOverlay.App.Widgets.Cockpit">
+    <!-- The dashboard draws itself and sizes itself to the modules shown (Widgets/Cockpit/). -->
+    <c:CockpitDashboard x:Name="Dashboard"/>
 </UserControl>

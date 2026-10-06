@@ -1192,6 +1192,44 @@ public class StandingsBuilderTests
         Assert.True(rows.Single(r => r.CarIdx == 1).IsSessionFastestLap);
     }
 
+    /// <summary>The grid as iRacing writes it: 0-based, car 0 on pole, car 1 third.</summary>
+    private static QualifyResultsInfoSection Grid() => new()
+    {
+        Results =
+        [
+            new QualifyResult { CarIdx = 0, Position = 0, ClassPosition = 0 },
+            new QualifyResult { CarIdx = 2, Position = 1, ClassPosition = 1 },
+            new QualifyResult { CarIdx = 1, Position = 2, ClassPosition = 2 },
+        ],
+    };
+
+    [Fact]
+    public void BuildStandings_InARace_CarriesEachCarsGridSlot()
+    {
+        var session = SessionWithScoring("Race", ScoringTable());
+        session.QualifyResultsInfo = Grid();
+
+        var rows = StandingsBuilder.BuildStandings(JustAttachedMidSession(), session);
+
+        var pole = rows.Single(r => r.CarIdx == 0);
+        Assert.Equal(1, pole.StartPosition);
+        Assert.Equal(3, pole.Position);
+        Assert.Equal(-2, pole.PlacesGained);
+        Assert.Equal(2, rows.Single(r => r.CarIdx == 1).PlacesGained);
+    }
+
+    [Fact]
+    public void BuildStandings_OutsideARace_HasNoGridSlots()
+    {
+        // The grid block stays in the YAML through practice; a place count there would be noise.
+        var session = SessionWithScoring("Open Practice", ScoringTable());
+        session.QualifyResultsInfo = Grid();
+
+        var rows = StandingsBuilder.BuildStandings(JustAttachedMidSession(), session, new SessionBestLapTracker());
+
+        Assert.All(rows, r => Assert.Equal("", r.PlacesGainedDisplay));
+    }
+
     [Fact]
     public void BuildStandings_OpenedMidSession_RanksByScoredTimesInsteadOfRosterOrder()
     {

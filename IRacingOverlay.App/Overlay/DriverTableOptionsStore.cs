@@ -124,7 +124,7 @@ internal static class DriverTableOptionsStore
         Load();
         foreach (var column in Enum.GetValues<DriverTableColumn>())
         {
-            var defaultVisible = column == DriverTableColumn.LastPitStop ? 0 : 1;
+            var defaultVisible = column is DriverTableColumn.LastPitStop or DriverTableColumn.CarBrand or DriverTableColumn.CountryFlag or DriverTableColumn.PlacesGained ? 0 : 1;
             options.SetVisible(column, Get(options.Table, column.ToString(), defaultVisible) != 0);
         }
 

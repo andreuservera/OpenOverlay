@@ -38,10 +38,6 @@ last-pit-stop column:
 
 ![Standings and Relative](docs/screenshots/timing-tables.png)
 
-**Cockpit themes** — seven completely different dashboards, switchable from the Control Panel:
-
-![Cockpit themes](docs/screenshots/cockpit-themes.png)
-
 **Weather** — stacked or compact, with a wind compass that turns with your car:
 
 ![Weather widget](docs/screenshots/weather.png)
@@ -50,8 +46,10 @@ last-pit-stop column:
 
 ## Features
 
-- **Cockpit** — speed, gear, RPM, 14 shift lights, ABS and cars alongside, in seven themes:
-  Default, GT Sports, Casual, Hypercar, Pit Wall, Classic Car and Invisible.
+- **Cockpit** — a modular dashboard: gear, speed, RPM, ABS, fuel, inputs, water/oil
+  temperatures, brake bias, traction control, incidents and delta to the session best, in the
+  order you choose, under a strip of 14 shift lights and between two bars
+  that show the cars alongside.
 - **Relative** — cars ahead/behind you on track, gap in seconds, class-colored.
 - **Standings** — full running order with position, iRating and estimated iRating change, safety
   rating, lap, last/best lap time, and gap to the class leader; automatically grouped by class in

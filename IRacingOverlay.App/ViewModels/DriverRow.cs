@@ -37,6 +37,11 @@ public abstract class DriverRow
     public required int CarIdx { get; init; }
     public required int Position { get; init; }
     public required int ClassPosition { get; init; }
+
+    /// <summary>Starting grid slot, overall and in class; 0 when the car has none (not a race, or
+    /// it joined after the grid was set).</summary>
+    public int StartPosition { get; init; }
+    public int StartClassPosition { get; init; }
     public required string Name { get; init; }
     public required string CarNumber { get; init; }
     public required bool IsPlayer { get; init; }
@@ -88,6 +93,16 @@ public abstract class DriverRow
     public string TireCompoundLetter => TireCompound?.Letter ?? "";
 
     public string TireCompoundColor => TireCompound?.Color ?? "#8E99A5";
+
+    /// <summary>The car's make, or the placeholder for one the app doesn't know.</summary>
+    public CarBrand? CarBrand { get; init; }
+
+    public string CarBrandLogo => CarBrand?.Logo ?? "";
+
+    public string CarBrandMonogram => CarBrand?.Monogram ?? "";
+
+    /// <summary>The flag the driver picked on their iRacing profile, by name ("Spain").</summary>
+    public string FlairName { get; init; } = "";
 
     /// <summary>What the GAP column shows. The one thing the two tables genuinely disagree on:
     /// Standings measures to the class leader, Relative to the player.</summary>
@@ -182,6 +197,27 @@ public abstract class DriverRow
     private double RoundedIRatingDelta => Math.Round(IRatingDelta);
 
     private bool HasIRatingDelta => IRating > 0 && RoundedIRatingDelta != 0;
+
+    /// <summary>Places made up since the start, on the same basis as the position shown (in class
+    /// for multiclass); negative for places lost. 0 when there's no grid slot to compare with.</summary>
+    public int PlacesGained
+    {
+        get
+        {
+            var start = IsMultiClass ? StartClassPosition : StartPosition;
+            return start > 0 && RankInOwnRace > 0 ? start - RankInOwnRace : 0;
+        }
+    }
+
+    public bool HasStartPosition => (IsMultiClass ? StartClassPosition : StartPosition) > 0;
+
+    /// <summary>Blank without a grid slot; otherwise the magnitude, "0" for no change (the row
+    /// template puts a dash where the arrow would be).</summary>
+    public string PlacesGainedDisplay => !HasStartPosition ? ""
+        : Math.Abs(PlacesGained).ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>+1 gained, -1 lost, 0 unchanged — picks the arrow, as <see cref="IRatingTrend"/> does.</summary>
+    public int PlacesGainedTrend => Math.Sign(PlacesGained);
 
     /// <summary>The leader of the race — or of the class, in multiclass — gets the accent colour on
     /// their position number. Marking them there rather than with another row background keeps the

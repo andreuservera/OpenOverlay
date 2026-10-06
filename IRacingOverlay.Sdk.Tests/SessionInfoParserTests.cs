@@ -70,6 +70,21 @@ public class SessionInfoParserTests
     }
 
     [Fact]
+    public void Parse_ReadsTheStartingGrid()
+    {
+        // As a recorded race writes it: a top-level block, both positions 0-based.
+        var yaml = ValidYaml.ReplaceLineEndings("\n").Replace(
+            "\n...",
+            "\nQualifyResultsInfo:\n Results:\n - Position: 0\n   ClassPosition: 0\n   CarIdx: 1\n   FastestLap: 0\n   FastestTime: -1.0000\n - Position: 1\n   ClassPosition: 1\n   CarIdx: 0\n   FastestLap: 0\n   FastestTime: -1.0000\n\n...");
+
+        var grid = SessionInfoParser.Parse(yaml).Session.QualifyResultsInfo!.Results;
+
+        Assert.Equal([1, 0], grid.Select(r => r.CarIdx));
+        Assert.Equal([0, 1], grid.Select(r => r.Position));
+        Assert.Equal([0, 1], grid.Select(r => r.ClassPosition));
+    }
+
+    [Fact]
     public void Parse_NoTireCompoundTable_IsEmpty()
     {
         Assert.Empty(SessionInfoParser.Parse(ValidYaml).Session.DriverInfo!.DriverTires);
@@ -153,5 +168,23 @@ public class SessionInfoParserTests
         var session = IracingSessionInfo.Parse(yaml);
 
         Assert.Equal("[OO] Racing", session.DriverInfo!.Drivers[0].TeamName);
+    }
+
+    [Theory]
+    [InlineData("Spain", "Spain")]
+    [InlineData("TÃ¼rkiye", "Türkiye")] // UTF-8 read as Windows-1252, as the session block arrives
+    [InlineData("Hákon", "Hákon")] // genuine Windows-1252 text is left alone
+    public void RepairUtf8_UndoesUtf8ReadAsWindows1252(string raw, string expected) =>
+        Assert.Equal(expected, SessionInfoParser.RepairUtf8(raw));
+
+    [Fact]
+    public void Parse_ReadsEachDriversFlair()
+    {
+        var yaml = ValidYaml.Replace("IRating: 2500", "IRating: 2500\n   FlairName: Spain\n   FlairID: 198");
+
+        var driver = SessionInfoParser.Parse(yaml).Session.DriverInfo!.Drivers[0];
+
+        Assert.Equal("Spain", driver.FlairName);
+        Assert.Equal(198, driver.FlairID);
     }
 }

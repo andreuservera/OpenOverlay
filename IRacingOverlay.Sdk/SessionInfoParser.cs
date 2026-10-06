@@ -29,7 +29,7 @@ public static class SessionInfoParser
         .IgnoreUnmatchedProperties()
         .Build();
 
-    private static readonly string[] Sections = [nameof(IracingSessionInfo.WeekendInfo), nameof(IracingSessionInfo.SessionInfo), nameof(IracingSessionInfo.DriverInfo)];
+    private static readonly string[] Sections = [nameof(IracingSessionInfo.WeekendInfo), nameof(IracingSessionInfo.SessionInfo), nameof(IracingSessionInfo.DriverInfo), nameof(IracingSessionInfo.QualifyResultsInfo)];
 
     // Free-text fields iRacing does not quote (the same set other SDK ports repair).
     private static readonly Regex FreeTextField = new(
@@ -77,6 +77,9 @@ public static class SessionInfoParser
                     break;
                 case nameof(IracingSessionInfo.SessionInfo):
                     result.SessionInfo = parsed?.SessionInfo ?? previous?.SessionInfo;
+                    break;
+                case nameof(IracingSessionInfo.QualifyResultsInfo):
+                    result.QualifyResultsInfo = parsed?.QualifyResultsInfo ?? previous?.QualifyResultsInfo;
                     break;
                 default:
                     result.DriverInfo = parsed?.DriverInfo ?? previous?.DriverInfo;
@@ -154,8 +157,10 @@ public static class SessionInfoParser
                 driver.CarNumber ??= "";
                 driver.CarClassShortName ??= "";
                 driver.CarScreenNameShort ??= "";
+                driver.CarScreenName ??= "";
                 driver.LicString ??= "";
                 driver.CarClassColor ??= "";
+                driver.FlairName = RepairUtf8(driver.FlairName ?? "");
             }
         }
 
@@ -175,6 +180,34 @@ public static class SessionInfoParser
             }
         }
 
+        if (info.QualifyResultsInfo is { } grid)
+        {
+            grid.Results ??= [];
+            grid.Results.RemoveAll(r => r is null);
+        }
+
         return info;
+    }
+
+    /// <summary>The session block is Windows-1252 (driver names arrive as such), but iRacing writes
+    /// FlairName in UTF-8 inside it, so "Türkiye" decodes as "TÃ¼rkiye". Re-reads such a value as the
+    /// UTF-8 it was; anything that isn't valid UTF-8 that way is left as it came.</summary>
+    internal static string RepairUtf8(string value)
+    {
+        if (value.All(c => c < 0x80))
+        {
+            return value;
+        }
+
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        try
+        {
+            var bytes = Encoding.GetEncoding(1252, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback).GetBytes(value);
+            return new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes);
+        }
+        catch (Exception ex) when (ex is EncoderFallbackException or DecoderFallbackException or ArgumentException)
+        {
+            return value;
+        }
     }
 }

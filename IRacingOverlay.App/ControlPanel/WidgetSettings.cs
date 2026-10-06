@@ -1,5 +1,6 @@
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
+using IRacingOverlay.App.Widgets.Cockpit;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -57,7 +58,7 @@ public static class WidgetSettings
         WidgetCatalog.Relative => [RelativeColumns(context), RelativeTable(context)],
         WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
         WidgetCatalog.Flag => [FlagTypes(context), FlagContent(context), FlagLayoutGroup(context)],
-        WidgetCatalog.Cockpit => [CockpitThemeGroup(context), HighRateNote()],
+        WidgetCatalog.Cockpit => [CockpitModulesGroup(context), HighRateNote()],
         WidgetCatalog.PedalTrace => [PedalTraceElements(context), HighRateNote()],
         WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context)],
         WidgetCatalog.TrackInfo => [TrackInfoElements(context)],
@@ -91,7 +92,10 @@ public static class WidgetSettings
     private static string ColumnLabel(DriverTableColumn column) => column switch
     {
         DriverTableColumn.Position => "Pos",
+        DriverTableColumn.PlacesGained => "Places +/-",
         DriverTableColumn.CarNumber => "Car #",
+        DriverTableColumn.CarBrand => "Brand",
+        DriverTableColumn.CountryFlag => "Flag",
         DriverTableColumn.Driver => "Driver",
         DriverTableColumn.LastPitStop => "Last pit",
         DriverTableColumn.TireCompound => "Tire",
@@ -488,23 +492,38 @@ public static class WidgetSettings
 
     // ===== Cockpit =====
 
-    // Index order matches CockpitTheme.
-    private static readonly string[] CockpitThemeNames =
-    [
-        "Default", "GT Sports", "Casual", "Hypercar", "Pit Wall", "Classic Car", "Invisible",
-    ];
+    private static SettingsGroup CockpitModulesGroup(WidgetSettingsContext context)
+    {
+        var options = context.Cockpit;
+        return new SettingsGroup("MODULES")
+            .With(
+                new ReorderListSetting(
+                    "Visible modules",
+                    "Drag a row by its handle to change the order. Two small modules in a row share a column.",
+                    options.ModuleOrder.Select(module => new ReorderListItem(module, CockpitModuleChip(module, options, context))),
+                    order =>
+                    {
+                        options.ModuleOrder = order.Cast<CockpitModule>().ToList();
+                        context.Persist(() => CockpitOptionsStore.Save(options));
+                    }),
+                new ToggleSetting("Shift lights", null, options.ShowShiftLights, value =>
+                {
+                    options.ShowShiftLights = value;
+                    context.Persist(() => CockpitOptionsStore.Save(options));
+                }),
+                new ToggleSetting("Proximity radar", null, options.ShowProximityRadar, value =>
+                {
+                    options.ShowProximityRadar = value;
+                    context.Persist(() => CockpitOptionsStore.Save(options));
+                }));
+    }
 
-    private static SettingsGroup CockpitThemeGroup(WidgetSettingsContext context) => new SettingsGroup("THEME")
-        .With(new ChoiceSetting(
-            "Cockpit theme",
-            null,
-            CockpitThemeNames,
-            (int)context.Cockpit.Theme,
-            index =>
-            {
-                context.Cockpit.Theme = (CockpitTheme)index;
-                context.Persist(() => CockpitThemeStore.Save(context.Cockpit.Theme));
-            }));
+    private static ChipSetting CockpitModuleChip(CockpitModule module, CockpitOptions options, WidgetSettingsContext context) =>
+        new(CockpitModules.Of(module).Name, null, options.IsVisible(module), isVisible =>
+        {
+            options.SetVisible(module, isVisible);
+            context.Persist(() => CockpitOptionsStore.Save(options));
+        });
 
     // ===== Flags =====
 

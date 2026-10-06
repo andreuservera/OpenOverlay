@@ -102,8 +102,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
 
     /// <summary>
     /// The widget's own opacity, 0 to 1. Fades only the widget's background (see
-    /// <see cref="BackgroundOpacity"/>), so the data on it stays fully readable; widgets that draw
-    /// their own background (<see cref="WidgetCatalog.FadesWholeWidget"/>) fade as a whole instead.
+    /// <see cref="BackgroundOpacity"/>), so the data on it stays fully readable.
     /// </summary>
     public double WidgetOpacity
     {
@@ -126,14 +125,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     private void ApplyOpacity()
     {
         var opacity = _isEditMode ? Math.Max(_widgetOpacity, EditModeMinimumOpacity) : _widgetOpacity;
-        if (WidgetCatalog.FadesWholeWidget(_widgetName))
-        {
-            Opacity = opacity;
-        }
-        else
-        {
-            BackgroundOpacity.SetValue(this, opacity);
-        }
+        BackgroundOpacity.SetValue(this, opacity);
     }
 
     /// <summary>

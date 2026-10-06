@@ -42,11 +42,11 @@
     <sys:String x:Key="W.IRatingDeltaSegment">36</sys:String>
 
     <!-- Header and data cells share one horizontal inset, which is what actually keeps the two
-         grids in line. The left 8 leaves room for the class/player bar without any row's content
+         grids in line. The left 6 clears the 3px class/player bar without any row's content
          shifting when it appears. Rows have a fixed height, so cells centre vertically instead of
          being padded into place. -->
-    <Thickness x:Key="RulerInset">8,0,4,5</Thickness>
-    <Thickness x:Key="CellInset">8,0,4,0</Thickness>
+    <Thickness x:Key="RulerInset">6,0,4,5</Thickness>
+    <Thickness x:Key="CellInset">6,0,4,0</Thickness>
     <!-- Chips fill the row minus 2px top and bottom. -->
     <Thickness x:Key="ChipInset">0,2,6,2</Thickness>
 
@@ -66,14 +66,17 @@
     </Style>
     <!-- Three tiers of ink on a row: primary (position, name, gap), secondary (lap times) and meta
          (iRating, lap count). The eye lands on the first tier and only reads the rest on purpose. -->
+    <!-- The row's figures in the names' face and weight, so the line reads as one piece. -->
     <Style x:Key="NumCell" TargetType="TextBlock" BasedOn="{StaticResource DataCellNumeric}">
         <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.TableNumericFontFamily}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FontSize" Value="15"/>
     </Style>
     <Style x:Key="MetaCell" TargetType="TextBlock" BasedOn="{StaticResource NumCell}">
         <Setter Property="Foreground" Value="{StaticResource Text.Muted}"/>
     </Style>
     <Style x:Key="PrimaryCell" TargetType="TextBlock" BasedOn="{StaticResource NumCell}">
-        <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
     </Style>
     <Style x:Key="ChipText" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
@@ -97,6 +100,8 @@
     <!-- iRating trend: a filled chevron (^ / v), centred in the 7 x 9 box. -->
     <Geometry x:Key="Geometry.ArrowUp">M0,5.3 L3.5,1.8 L7,5.3 L7,7.5 L3.5,4 L0,7.5 Z</Geometry>
     <Geometry x:Key="Geometry.ArrowDown">M0,3.7 L3.5,7.2 L7,3.7 L7,1.5 L3.5,5 L0,1.5 Z</Geometry>
+    <!-- No change: a dash in the same box, as thick as the chevrons' strokes. -->
+    <Geometry x:Key="Geometry.Level">M0,3.6 L7,3.6 L7,5.4 L0,5.4 Z</Geometry>
     <Style x:Key="TrendArrow" TargetType="Path">
         <Setter Property="Width" Value="7"/>
         <Setter Property="Height" Value="9"/>
@@ -154,11 +159,14 @@
                         <ColumnDefinition Width="{Binding Options.Columns.Width9, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width10, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <ColumnDefinition Width="{Binding Options.Columns.Width11, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <ColumnDefinition Width="{Binding Options.Columns.Width12, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <ColumnDefinition Width="{Binding Options.Columns.Width13, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        <ColumnDefinition Width="{Binding Options.Columns.Width14, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                         <!-- Not a column: the fastest-lap mark's slot, always last. -->
                         <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="12"
+                    <Grid Grid.Column="15"
                           Visibility="{Binding Options.ShowFastestLapMark, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                         <Border Style="{StaticResource FastestLapBadge}"
                                 Visibility="{Binding IsSessionFastestLap, Mode=OneTime, Converter={StaticResource BoolToVis}}">
@@ -176,6 +184,14 @@
                                Foreground="{Binding PositionForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowPosition, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
+                    <!-- Places since the start: the iRating badge's arrow and figure, without the plate —
+                         the arrow carries the colour, the figure stays in plain ink. -->
+                    <StackPanel Grid.Column="{Binding Options.Columns.PlacesGained, RelativeSource={RelativeSource AncestorType=UserControl}}" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,6,0"
+                                Visibility="{Binding Options.ShowPlacesGained, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                        <Path x:Name="PlacesArrow" Style="{StaticResource TrendArrow}" Data="{StaticResource Geometry.ArrowUp}" Fill="{StaticResource State.Positive}"/>
+                        <TextBlock Text="{Binding PlacesGainedDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
+                    </StackPanel>
+
                     <!-- Neutral plate: the class is already on the row's edge, so a filled chip in the
                          class colour would only repeat it at full volume. -->
                     <Border x:Name="CarChip" Grid.Column="{Binding Options.Columns.CarNumber, RelativeSource={RelativeSource AncestorType=UserControl}}" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
@@ -183,6 +199,18 @@
                             Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <TextBlock Text="{Binding CarNumberDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
                     </Border>
+
+                    <!-- The make: its logo in the secondary ink, or a monogram where the logo can't be
+                         read. Cars of no make the app knows (spec and dirt cars) get iRacing's emblem. -->
+                    <w:CarBrandIcon Grid.Column="{Binding Options.Columns.CarBrand, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="24" Height="16" HorizontalAlignment="Center" Margin="0,0,4,0"
+                                    Logo="{Binding CarBrandLogo, Mode=OneTime}" Monogram="{Binding CarBrandMonogram, Mode=OneTime}"
+                                    Visibility="{Binding Options.ShowCarBrand, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+
+                    <!-- The driver's flag, from their iRacing flair. Blank for no flair, "Global", or a
+                         country there's no flag for. -->
+                    <w:CountryFlagIcon Grid.Column="{Binding Options.Columns.CountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="22" Height="15" HorizontalAlignment="Center" Margin="0,0,4,0"
+                                       Country="{Binding FlairName, Mode=OneTime}"
+                                       Visibility="{Binding Options.ShowCountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- Status badges take their room out of the name, never out of another column. -->
                     <DockPanel Grid.Column="{Binding Options.Columns.Driver, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,8,0"
@@ -196,10 +224,10 @@
                         <w:PenaltyFlagTag DockPanel.Dock="Right" Width="24" Height="15" Margin="6,0,0,0" VerticalAlignment="Center"
                                           Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
-                        <!-- One pixel over the body size on the same line box: mixed-case names need
+                        <!-- Two pixels over the body size on the same line box: mixed-case names need
                              the extra x-height to read as quickly as the old all-caps ones. -->
                         <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="15"
+                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="16" FontWeight="Medium"
                                    Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
                     </DockPanel>
 
@@ -332,6 +360,17 @@
             </DataTrigger>
             <DataTrigger Binding="{Binding IRatingTrend, Mode=OneTime}" Value="0">
                 <Setter TargetName="TrendArrow" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding PlacesGainedTrend, Mode=OneTime}" Value="-1">
+                <Setter TargetName="PlacesArrow" Property="Data" Value="{StaticResource Geometry.ArrowDown}"/>
+                <Setter TargetName="PlacesArrow" Property="Fill" Value="{StaticResource State.Negative}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding PlacesGainedTrend, Mode=OneTime}" Value="0">
+                <Setter TargetName="PlacesArrow" Property="Data" Value="{StaticResource Geometry.Level}"/>
+                <Setter TargetName="PlacesArrow" Property="Fill" Value="{StaticResource Text.Primary}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding HasStartPosition, Mode=OneTime}" Value="False">
+                <Setter TargetName="PlacesArrow" Property="Visibility" Value="Collapsed"/>
             </DataTrigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>

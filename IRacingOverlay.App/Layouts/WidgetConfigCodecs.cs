@@ -39,7 +39,7 @@ public interface IWidgetConfigCodec
 public sealed record WidgetConfigPersistence(
     Action<DriverTableOptions> DriverTable,
     Action<FlagOptions> Flag,
-    Action<CockpitTheme> Cockpit,
+    Action<CockpitOptions> Cockpit,
     Action<WeatherOptions> Weather,
     Action<TrackInfoOptions> TrackInfo,
     Action<FuelCalculatorOptions> FuelCalculator,
@@ -49,7 +49,7 @@ public sealed record WidgetConfigPersistence(
     public static WidgetConfigPersistence Stores { get; } = new(
         DriverTableOptionsStore.Save,
         FlagOptionsStore.Save,
-        CockpitThemeStore.Save,
+        CockpitOptionsStore.Save,
         WeatherOptionsStore.Save,
         TrackInfoOptionsStore.Save,
         FuelCalculatorOptionsStore.Save,
@@ -346,13 +346,52 @@ internal sealed class FlagConfigCodec(FlagOptions options, Action<FlagOptions> p
     protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
 }
 
-internal sealed class CockpitConfigCodec(CockpitOptions options, Action<CockpitTheme> persist) : WidgetConfigCodec(WidgetCatalog.Cockpit)
+/// <summary>The modules left to right, which are shown, and the two fixed elements. Unlike the other
+/// codecs a config without a module order is not applied key by key: it is a cockpit from before
+/// modules (a "theme") or not a cockpit at all, and loads the defaults. A module the order doesn't
+/// name — one added since the layout was saved — is appended hidden; an unknown one is dropped.</summary>
+internal sealed class CockpitConfigCodec(CockpitOptions options, Action<CockpitOptions> persist) : WidgetConfigCodec(WidgetCatalog.Cockpit)
 {
-    public override JsonObject Read() => new() { ["theme"] = Name(options.Theme) };
+    public override JsonObject Read()
+    {
+        var modules = new JsonObject();
+        foreach (var module in options.ModuleOrder)
+        {
+            modules[Name(module)] = options.IsVisible(module);
+        }
 
-    protected override void Assign(JsonObject config) => Set<CockpitTheme>(config, "theme", value => options.Theme = value);
+        return new JsonObject
+        {
+            ["moduleOrder"] = new JsonArray(options.ModuleOrder.Select(module => (JsonNode)Name(module)).ToArray()),
+            ["modules"] = modules,
+            ["showShiftLights"] = options.ShowShiftLights,
+            ["showProximityRadar"] = options.ShowProximityRadar,
+        };
+    }
 
-    protected override void OnChanged(JsonObject before, JsonObject after) => persist(options.Theme);
+    protected override void Assign(JsonObject config)
+    {
+        if (config["moduleOrder"] is not JsonArray order)
+        {
+            options.Reset();
+            return;
+        }
+
+        var visible = config["modules"] as JsonObject;
+        var modules = order
+            .Select(node => node is JsonValue value && value.TryGetValue<string>(out var name) &&
+                Enum.TryParse<CockpitModule>(name, ignoreCase: true, out var module) && Enum.IsDefined(module) ? module : (CockpitModule?)null)
+            .OfType<CockpitModule>()
+            .ToList();
+        var shown = modules.Where(module => visible?[Name(module)] is JsonValue value && value.TryGetValue<bool>(out var on) && on);
+        var lights = true;
+        var radar = true;
+        Set<bool>(config, "showShiftLights", value => lights = value);
+        Set<bool>(config, "showProximityRadar", value => radar = value);
+        options.Load(modules, shown.ToList(), lights, radar);
+    }
+
+    protected override void OnChanged(JsonObject before, JsonObject after) => persist(options);
 }
 
 internal sealed class WeatherConfigCodec(WeatherOptions options, Action<WeatherOptions> persist) : WidgetConfigCodec(WidgetCatalog.Weather)
