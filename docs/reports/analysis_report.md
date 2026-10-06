@@ -1,767 +1,422 @@
 # OpenOverlay — Product, Architecture & UX Audit
 
-> Scope: full source review of `IRacingOverlay.Sdk`, `IRacingOverlay.App` and both test projects, the README
-> screenshots, CI/release workflows and packaging scripts, plus a render of the Control Panel produced from the
-> production XAML and view model.
+> **Revision 2 — 2026-10-06** (code at `6a2c77e`, version 0.11.0). Re-scores the first audit
+> (2026-09-29, v0.4.0) against the current code. Each area shows the previous score, the new one and what
+> moved it. Reliability details live in [reliability_report.md](reliability_report.md) and performance details
+> in [performance_report.md](performance_report.md).
 >
-> Evidence gathered during the audit:
+> Evidence gathered for this revision:
 >
-> | Check | Result |
-> |---|---|
-> | Full Release rebuild (`--no-incremental`, nullable enabled) | **0 warnings, 0 errors** |
-> | Automated tests | **294 / 294 passing** (281 App + 13 SDK) |
-> | Code size | App ≈ 15.1k lines C#/XAML · SDK ≈ 0.7k · Tests ≈ 5.0k |
-> | History | 49 commits (Jul 22 → Sep 29, 2026), tags `v0.1.0` → `v0.4.0`, 2 active contributors |
-> | Product surface | 13 floating widgets, 1 fullscreen dashboard, 7 cockpit themes, 3 dashboard themes |
+> | Check | 2026-09-29 | 2026-10-06 |
+> |---|---|---|
+> | Full Release rebuild (`--no-incremental`, nullable enabled) | 0 warnings, 0 errors | **0 warnings, 0 errors** |
+> | Automated tests | 294 passing (281 App + 13 SDK) | **973 / 973 passing** (920 App + 53 SDK) |
+> | Code size (tracked C#/XAML) | App ≈ 15.1k · SDK ≈ 0.7k · Tests ≈ 5.0k | App ≈ 33.3k · SDK ≈ 1.5k · Tests ≈ 12.3k |
+> | History | 49 commits, `v0.1.0` → `v0.4.0` | 157 commits, CHANGELOG up to **0.11.0** (7 versions in 2 weeks) |
+> | Product surface | 13 widgets, 7 cockpit themes, 3 dashboard themes | 12 widgets (Fuel merged into Fuel calculator; Weather, Pedal trace, Incidents added), modular Cockpit, 3 dashboard themes, **Layouts** with editor |
 
 ---
 
 # Executive Summary
 
-## Overall score: **6.3 / 10** — Semi-Professional
+## Overall score: **7.0 / 10** (was 6.3) — Semi-Professional, close to Professional
 
-OpenOverlay has a **professional-grade core** (clean SDK, pure testable builders, a real design system, a
-preview-driven control panel, an automated installer + auto-update pipeline) wrapped in **indie-grade product
-operations** (no crash safety net, no logs, unsigned binaries, near-zero marketing). The fastest path to a
-genuinely professional product is not new features — it is making the app **impossible to fail silently**, then
-removing the three frictions users hit first (SmartScreen warning, metric-only units, no in-sim hotkeys).
+In one week the project closed the two weaknesses that defined the first audit: **it no longer fails
+silently** (global and per-widget containment, self-healing reader, atomic settings, structured logs, run journal,
+crash reports) and **it covers the daily-use gaps** (tray, global and per-layout hotkeys, metric/imperial units,
+layouts with import/export, version/About/What's new). Feature depth and configurability are now well above
+the free-tool average.
+
+What did **not** move is everything outside the code: unsigned binaries, .NET 8 reaching end of support in
+**35 days** (Nov 10, 2026), a README that no longer describes the product, no community or launch, and the
+accessibility/contrast findings. Two new risks come from the pace itself: the orchestrator (`MainWindow`) has
+grown from ~490 to ~1,240 lines, and 0.11.0 removed cockpit themes and **reset users' saved cockpits** in a
+minor release.
 
 ### Scorecard
 
-| # | Area | Score | Priority |
-|---:|---|---:|---|
-| 1 | Value Proposition & Goals | 7.0 | Medium |
-| 2 | Features & Functionality | 7.0 | High |
-| 3 | UX | 6.5 | High |
-| 4 | UI | 8.0 | Medium |
-| 5 | Window/Layout Design | 7.0 | Medium |
-| 6 | Performance | 6.5 | High |
-| 7 | Architecture | 7.0 | Medium |
-| 8 | Code Quality | 7.5 | Medium |
-| 9 | Accessibility | 5.0 | Medium |
-| 10 | Configuration & Customization | 7.0 | High |
-| 11 | Error Handling | 4.0 | **Critical** |
-| 12 | Security | 6.5 | High |
-| 13 | Installation & Deployment | 7.0 | High |
-| 14 | Telemetry & Observability | 4.5 | High |
-| 15 | Documentation | 7.0 | Medium |
-| 16 | Marketing & Visibility | 3.0 | High |
-| 17 | Competitive Differentiation | 5.0 | High |
-| 18 | Future Scalability | 6.0 | Medium |
-| 19 | Perceived Quality | 7.0 | High |
-| 20 | Dedicated UI Audit | 7.5 | Medium |
-| | **Overall (unweighted mean)** | **6.3** | |
+| # | Area | Before | Now | Δ | Priority |
+|---:|---|---:|---:|---:|---|
+| 1 | Value Proposition & Goals | 7.0 | 7.0 | = | Medium |
+| 2 | Features & Functionality | 7.0 | 8.0 | +1.0 | Medium |
+| 3 | UX | 6.5 | 7.5 | +1.0 | Medium |
+| 4 | UI | 8.0 | 8.0 | = | Medium |
+| 5 | Window/Layout Design | 7.0 | 8.0 | +1.0 | Low |
+| 6 | Performance | 6.5 | 7.5 | +1.0 | Medium |
+| 7 | Architecture | 7.0 | 7.0 | = | **High** |
+| 8 | Code Quality | 7.5 | 7.5 | = | Medium |
+| 9 | Accessibility | 5.0 | 5.0 | = | Medium |
+| 10 | Configuration & Customization | 7.0 | 8.5 | +1.5 | Low |
+| 11 | Error Handling | 4.0 | 8.0 | +4.0 | Low |
+| 12 | Security | 6.5 | 6.5 | = | **High** |
+| 13 | Installation & Deployment | 7.0 | 7.0 | = | **Critical** |
+| 14 | Telemetry & Observability | 4.5 | 7.5 | +3.0 | Medium |
+| 15 | Documentation | 7.0 | 6.5 | −0.5 | **High** |
+| 16 | Marketing & Visibility | 3.0 | 3.0 | = | **High** |
+| 17 | Competitive Differentiation | 5.0 | 6.0 | +1.0 | High |
+| 18 | Future Scalability | 6.0 | 6.0 | = | High |
+| 19 | Perceived Quality | 7.0 | 7.5 | +0.5 | High |
+| 20 | Dedicated UI Audit | 7.5 | 7.5 | = | Medium |
+| | **Overall (unweighted mean)** | **6.3** | **7.0** | **+0.7** | |
 
 ### Pillar roll-up
 
-| Pillar | Areas | Score | Read |
-|---|---|---:|---|
-| Product | 1, 2, 3, 10, 17, 19 | 6.6 | Deep where it exists; parity gaps users notice early |
-| Design | 4, 5, 9, 20 | 6.9 | Strong visual system; accessibility and layout flexibility lag |
-| Engineering | 6, 7, 8, 11, 18 | 6.2 | Clean core dragged down by missing failure handling |
-| Delivery & Ops | 12, 13, 14, 15 | 6.3 | Great pipeline, but unsigned, no logs, runtime near EOL |
-| Growth | 16 | 3.0 | Essentially no go-to-market |
+| Pillar | Areas | Before | Now | Read |
+|---|---|---:|---:|---|
+| Product | 1, 2, 3, 10, 17, 19 | 6.6 | 7.4 | Parity gaps closed; layouts are a real differentiator |
+| Design | 4, 5, 9, 20 | 6.9 | 7.1 | Layout editor lifts it; contrast and accessibility unchanged |
+| Engineering | 6, 7, 8, 11, 18 | 6.2 | 7.2 | Reliability solved; orchestrator growth is the new debt |
+| Delivery & Ops | 12, 13, 14, 15 | 6.3 | 7.0 | Great observability; unsigned, EOL runtime, stale README |
+| Growth | 16 | 3.0 | 3.0 | Still no go-to-market |
 
 ## Top 5 strengths
 
-1. **Real domain depth.** Timed-race fuel math, refuel/out-lap detection, class-aware gaps, practice/qualifying
-   ranking that remembers parked cars, continuous running order, pit-stop timing, SOF, flag priorities — with the
-   iRacing quirks behind each decision documented in code (Windows-1252 YAML, `CarLeftRight` typed as int,
-   sentinel values).
-2. **Clean, testable core.** Dependency-free SDK with race-free triple-buffer reads, parser separated from OS I/O,
-   a synthetic shared-memory builder for tests, pure static builders — 294 green tests and a warning-free build.
-3. **A genuine design system.** Type scale + fixed line grid, semantic state palette, four font roles on
-   Bahnschrift (DIN) with tabular numerals; broadcast-quality tables and seven distinct cockpit themes.
-4. **Preview-driven, schema-based Control Panel.** Pick → configure → see it, using the *production* panels with
-   sample data; adding an option is one line in `ControlPanelSchema`.
-5. **Real delivery pipeline and privacy stance.** Velopack per-user installer, silent delta updates, tag-triggered
-   releases, CI on PRs; read-only shared memory and nothing leaves the machine.
+1. **Fails loudly, contained and recoverable.** Global handlers, per-widget circuit breakers, a reader that
+   reconnects with backoff and survives malformed YAML, atomic settings with `.bak`, a UI watchdog, run journal,
+   error references and diagnostics export (see [reliability_report.md](reliability_report.md)).
+2. **Layouts.** Presets with per-widget position, size and settings, an editor at the monitor's real resolution
+   (zoom, grid, nudge, drag from catalog), JSON import/export with a schema, per-layout hotkeys and auto-save.
+   This is the power-user feature most competitors charge for or lack.
+3. **Domain depth keeps growing.** Live race positions in Relative, timing-screen Standings, per-class fastest
+   lap and SOF, places gained, penalties, incidents, pit stops, flags and car brands, weather with car-relative
+   wind, fuel calculator with configurable cells.
+4. **Clean, heavily tested core.** 973 green tests (3.3× the first audit), warning-free build, pure builders,
+   synthetic shared-memory tests including stall/restart/corrupt-YAML scenarios.
+5. **In-sim workflow.** Tray icon with close-to-tray, global hotkeys, single-instance activation, units that
+   follow iRacing's `DisplayUnits`, version + What's new after silent updates.
 
 ## Top 5 weaknesses
 
-1. **No crash safety net.** No global exception handlers; one exception in any builder or panel during the UI tick
-   closes the app mid-race, and the telemetry thread dies permanently on any non-`IOException` (e.g. malformed
-   session YAML) while the UI shows "WAITING FOR IRACING".
-2. **Zero diagnostics.** No log file, no crash report, no version shown, no telemetry record/replay — bugs can only
-   be reproduced "live" (the code comments say so repeatedly).
-3. **Distribution trust and lifecycle.** Unsigned installer and executable with silent auto-update; .NET 8 reaches
-   end of support on **Nov 10, 2026**; the shipped build skips ReadyToRun.
-4. **Market-expected features missing.** Imperial units (only Weather has them), global hotkeys, tray mode,
-   profiles, a standalone radar, a real track map, VR/streaming output.
-5. **Near-zero go-to-market.** No landing page, video, badges, community channel or comparison — the real
-   differentiators (open source, no account, local-only, polish) are not communicated.
+1. **.NET 8 end of support on Nov 10, 2026** — still `net8.0-windows`, release still without ReadyToRun, `vpk`
+   still unpinned. The only item with a hard deadline.
+2. **Distribution trust.** Unsigned installer and executable with silent auto-update; no Dependabot,
+   `SECURITY.md` or SHA-pinned actions.
+3. **The README describes an older product.** No mention of layouts, hotkeys, tray, units or the new widgets;
+   placeholder clone URL; "Delta bar" claim; no badges, video or community. The best features are invisible.
+4. **Orchestrator and settings sprawl.** `MainWindow.xaml.cs` ≈ 1,240 lines; ~25 `*Store` classes; no
+   `ITelemetrySource`, so no record/replay. Every feature now costs more than the last.
+5. **Release discipline at this pace.** 7 versions in 2 weeks; 0.11.0 dropped cockpit themes and reset saved
+   cockpits (also inside layouts) without a migration; the last commit fixes an "app closed" bug — regressions
+   are reaching users between releases.
+
+---
+
+# Progress since the first audit
+
+| Item (2026-09-29 roadmap) | Status | Evidence |
+|---|---|---|
+| QW1 Global handlers + per-widget isolation | **Done** | `Diagnostics/GlobalExceptionHandler.cs`, circuit breakers, reliability report §3 |
+| QW2 Resilient SDK loop, header reset, YAML sanitising | **Done** | `IRacingConnection.cs`, SDK tests 13 → 53 |
+| QW3 Rolling logs + version + open logs | **Done** | `AppLog`, `RollingFileSink`, `RunJournal`, `DiagnosticsReport`, version in status bar |
+| QW4 Atomic settings writes | **Done** | `Overlay/SettingsFile.cs` (temp + `File.Replace` + `.bak`) |
+| QW5 Units from `DisplayUnits` | **Done** | `ViewModels/Units.cs` with user override |
+| QW6 .NET 10 + ReadyToRun + pinned `vpk` | **Open** | all projects `net8.0-windows`; `release.yml` `dotnet tool install -g vpk` |
+| QW7 Per-class iRating Δ | **Done** (2026-10-06, after this revision) | `EstimateIRatingDeltas` rates each class as its own race; covered by a multiclass test |
+| QW8 Persist Delta reference / dashboard monitor | Partial | `DeltaOptions` persisted and in layouts; dashboard monitor not verified |
+| QW9 Gate the render loop, skip idle builders | **Done** | critical tick driven by telemetry, not `CompositionTarget.Rendering` |
+| QW10 Clear on disconnect; tire freshness labels | Partial | disconnect reset done; tires still not labelled COLD / last pit |
+| QW11 Control Panel contrast | **Open** | `Cp.TextFaint` still `#5A646D` |
+| QW12 Preview "Fit" | Partial | Fit in the layout editor; widget preview still clips at L/XL |
+| QW13 Lean Relative defaults; fuel hierarchy | Partial | columns reorderable/hideable, fuel status redesigned |
+| QW14 README badges, placeholder, screenshot, FAQ, CHANGELOG | Partial | CHANGELOG + in-app changelog done; README not updated |
+| QW15 CI hygiene | **Open** | no Dependabot, no `SECURITY.md`, CI without `permissions:` |
+| NI1 Tray + global hotkeys | **Done** | `TrayIcon`, `GlobalHotkeyManager`, layout hotkeys; autostart missing |
+| NI2 Code signing | **Open** | — |
+| NI3 In-place rows, brush caching | **Done** | unchanged rows skipped, `CachedBrushConverter`, 0.8.0 perf work |
+| NI4 Telemetry record/replay | **Open** | no `ITelemetrySource` |
+| NI5 Standalone Radar widget | Partial | proximity radar is a Cockpit module, not its own widget |
+| NI6 Profiles + import/export | Mostly done | Layouts; auto-switch by car/series/session missing |
+| NI7 Single versioned settings | Partial | shared `SettingsFile`, versioned layout schema; still ~25 store files |
+| NI8 PerMonitorV2 + dashboard presets + snapping | Partial | layout editor grid/nudge; no DPI manifest, fixed dashboard |
+| NI9 Onboarding + About/What's new | Partial | About/What's new/update notice done; no first-run onboarding |
+| NI10 Accessibility pass | **Open** | — |
+| NI11 Launch kit | **Open** | — |
+
+**Score:** 11 of 26 items done or mostly done, 10 partial, 9 open. Everything that lived inside the app moved;
+almost everything outside it (runtime, signing, CI, README, marketing, accessibility) did not.
 
 ---
 
 # Detailed Evaluation
 
-## 1. Value Proposition & Goals
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | Medium |
-
-**Strengths**
-- Clear promise: a free, open-source iRacing overlay with floating click-through widgets plus a second-monitor dashboard.
-- Privacy is explicit ("No telemetry ever leaves your machine") and backed by the code (read-only shared memory, no accounts).
-- Single-sim focus enables depth (multiclass, iRating estimate, flags, fuel) that multi-sim tools rarely match.
-- Honest positioning on safety: official SDK only, no memory writes, clear disclaimer.
-
-**Weaknesses**
-- The README pitches a feature list, not a reason to switch from RaceLab, iOverlay, Kapps, SimHub or irDashies.
-- No target persona (league racer? endurance team? low-end PC? privacy-conscious?) and no stated product goals.
-- The strongest differentiators (no account, MIT, local-only, "never clipped" widgets, live preview) are implicit.
-
-**Risks**
-- Perceived as "yet another free overlay" regardless of quality.
-- Scope creep toward incumbent feature parity without a niche to defend.
-
-**Recommended improvements**
-- One-line positioning + three proof points at the top of the README (e.g. *"The privacy-first, no-account iRacing
-  overlay — open source, native, built to be read at 250 km/h"*).
-- Pick a beachhead: **multiclass, endurance and league racers** — where the fuel calculator, class-aware standings
-  and pit-stop tracking already shine.
-- Publish a short public roadmap (GitHub Projects or Discussions).
-
-## 2. Features & Functionality
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | High |
-
-**Strengths**
-- 13 widgets + dashboard; 7 cockpit themes; 3 dashboard themes; per-widget auto-hide when not driving.
-- Fuel calculator supports timed races (clock ÷ lap time), refuel detection, out-lap baselines, rolling windows,
-  margins, and usable tank capacity with series restrictions.
-- Standings: continuous ordering (not frozen until the S/F line), class-leader gaps, best-lap ranking in
-  practice/qualifying that survives cars parking, SOF via the published formula, last-pit-stop column.
-- Flags: full bitfield decode, grouped priorities, hold timers, per-flag toggles.
-
-**Weaknesses**
-- **Multiclass iRating Δ is computed across the whole field**, not per class
-  ([StandingsBuilder.cs#L422](IRacingOverlay.App/ViewModels/StandingsBuilder.cs#L422)); a slower-class leader
-  "loses duels" to every faster-class car ahead overall.
-- Track map is a one-dimensional bar with overlapping badges — no track outline.
-- No standalone radar/spotter widget (proximity only exists inside the Cockpit).
-- Metric only (km/h, kPa, L, °C) except Weather.
-- The Tires widget's headline number is the **cold** (garage) pressure, and temps/wear refresh only in the pit stall
-  on most cars ([TireInfoBuilder.cs](IRacingOverlay.App/ViewModels/TireInfoBuilder.cs)) — the UI doesn't say so,
-  so users will read frozen numbers as live.
-- After leaving a session, widgets keep rendering the last snapshot (frozen data) unless auto-hide is on.
-- No lap/sector history, pit window, stint timer, hotkeys or profiles.
-
-**Risks**
-- Wrong or stale numbers erode trust faster than missing features.
-- A feature-parity race against better-funded incumbents.
-
-**Recommended improvements**
-- Group by `CarClassID` before `EstimateIRatingDeltas` (per-class iRating).
-- Label tire data ("COLD", "last pit: L24") and dim it while driving.
-- Show a "Waiting for session" placeholder when disconnected instead of stale rows.
-- Ship a Radar widget reusing `CockpitBuilder`'s proximity logic.
-- Follow iRacing's `DisplayUnits` for all units (see §10).
-
-## 3. UX
-
-| Score | Priority |
-|---:|---|
-| 6.5 / 10 | High |
-
-**Strengths**
-- Three-pane Control Panel (pick → configure → preview) with realistic sample data, search by name *or* purpose,
-  and three honest widget states (VISIBLE / HIDDEN / WAITING FOR CAR).
-- "Hide when I'm not driving", one global "Edit layout" mode, widgets restored on launch, invisible auto-updates.
-- Fixed five-step size ladder (hover −/+, Ctrl+wheel) that can never break a layout.
-
-**Weaknesses**
-- **No in-sim control:** no global hotkeys, no tray icon; the Control Panel must stay open (closing it quits the
-  app) and changing anything mid-session requires Alt+Tab away from the sim.
-- **No first-run onboarding:** the single most important setup step (Borderless display mode) lives only in the
-  README; "WAITING FOR IRACING" doesn't tell the user what to do.
-- No recovery tools (reset a widget, reset all, bring all widgets to the primary monitor).
-- Some choices aren't remembered: Delta reference
-  ([ControlPanelSchema.cs#L320](IRacingOverlay.App/ControlPanel/ControlPanelSchema.cs#L320)) and dashboard monitor
-  ([ControlPanelSchema.cs#L483](IRacingOverlay.App/ControlPanel/ControlPanelSchema.cs#L483)); the dashboard isn't
-  reopened on launch.
-- The preview clips at L/XL (horizontal scrolling) instead of fitting the pane.
-- No version, About, Help or "What's new" after silent updates.
-
-**Risks**
-- First-session failure ("overlay doesn't show" in exclusive fullscreen) → uninstall.
-- Silent updates change behaviour with no release notes.
-
-**Recommended improvements**
-- Tray icon + global hotkeys (toggle overlays, toggle edit mode, show panel), start minimized.
-- First-run checklist: detect iRacing, remind Borderless, offer a recommended widget preset.
-- Persist every choice; add a "Fit" preview zoom; add an About page with version, changelog, "Open settings/logs
-  folder" and "Reset".
-
-## 4. UI
-
-| Score | Priority |
-|---:|---|
-| 8.0 / 10 | Medium |
-
-**Strengths**
-- [DesignTokens.xaml](IRacingOverlay.App/Themes/DesignTokens.xaml): type scale + fixed line grid, semantic palette,
-  surfaces; `StatePalette` mirrors it in code.
-- Four font roles on Bahnschrift with tabular numerals — digits don't dance while values change.
-- Broadcast-grade tables: class colour bands, licence chips, iRating trend arrows, purple/green lap colouring, PIT
-  badge family, unmistakable player row.
-- The Control Panel has its own isolated theme that cannot leak into the previews.
-
-**Weaknesses**
-- Colour strings hard-coded in view-models duplicate the tokens
-  ([DriverRow.cs#L80](IRacingOverlay.App/ViewModels/DriverRow.cs#L80)).
-- Fuel calculator paints LAPS LEFT, TO FINISH and REFUEL all red: no hierarchy, and "−6.1 L" is ambiguous.
-- The Delta widget is a number on a colour wash; the README markets a "Delta bar"
-  ([README.md#L61](README.md#L61)).
-- Relative ships with 10 visible columns by default
-  ([DriverTableOptionsStore.cs#L44](IRacingOverlay.App/Overlay/DriverTableOptionsStore.cs#L44)) — too dense for a
-  glance widget.
-- Tire temperatures aren't heat-coloured; the wear bar is unlabeled.
-
-**Risks**
-- Visual density slows glance reading at speed — the one job an overlay has.
-
-**Recommended improvements**
-- Lean Relative defaults (POS · CAR · DRIVER · iR/SR · GAP).
-- Fuel hierarchy: REFUEL as the hero value; colour only the failing status; "SHORT 6.1 L" wording.
-- Optional ±1 s delta bar; tire temperature colour scale; derive row colours from tokens.
-
-## 5. Window/Layout Design
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | Medium |
-
-**Strengths**
-- Borderless, transparent, topmost, click-through (`WS_EX_TRANSPARENT`) widgets that never steal focus
-  (`ShowActivated = false`); edit-mode opacity floor so a 0 % widget can still be found.
-- Native drag via `WM_NCLBUTTONDOWN`; clamping to the virtual desktop avoids the "widget migrates to monitor 2" bug.
-- `SizeToContent` + `LayoutTransform` scaling: a frame can never be smaller than its content.
-
-**Weaknesses**
-- The dashboard is a fixed grid; the screenshot shows large dead regions and half-empty tables.
-- No snapping, alignment guides or numeric positioning for widgets.
-- No `app.manifest` declaring PerMonitorV2 DPI awareness → bitmap-scaled (blurry) windows on mixed-DPI rigs.
-- Five discrete sizes can be coarse on 1440p/4K/ultrawide/triple-screen setups.
-- Topmost isn't re-asserted; monitor hot-plug isn't handled beyond clamping.
-
-**Risks**
-- Widgets lost off-screen after display changes; the dashboard looks empty on large monitors.
-
-**Recommended improvements**
-- PerMonitorV2 manifest; 2–3 dashboard presets ("Timing", "Strategy", "Broadcast") with tables filling height;
-  edge/widget snapping while dragging; "Reset positions".
-
-## 6. Performance
-
-| Score | Priority |
-|---:|---|
-| 6.5 / 10 | High |
-
-**Strengths**
-- One shared connection that waits on iRacing's data-ready event; per-snapshot array cache; Standings throttled to
-  1 Hz; high-rate displays on a frame-synchronised loop with a user-selectable rate.
-- Pooled track-map badges; cockpits drawn in `DrawingContext` with frozen, cached brushes and pens.
-- Built-in diagnostics (tick avg/max, worst frame gap, GC generation counts).
-
-**Weaknesses**
-- `CompositionTarget.Rendering` is subscribed for the app's whole lifetime
-  ([MainWindow.xaml.cs#L105](IRacingOverlay.App/MainWindow.xaml.cs#L105)) — WPF renders every display frame even
-  at the main menu with iRacing closed.
-- 13 separate `AllowsTransparency` (layered) windows
-  ([OverlayWindowBase.cs#L34](IRacingOverlay.App/Overlay/OverlayWindowBase.cs#L34)) — the most expensive WPF
-  window mode, running next to a GPU/CPU-hungry sim.
-- Relative rows are replaced item-by-item at 10 Hz
-  ([RelativePanel.xaml.cs#L39](IRacingOverlay.App/Widgets/RelativePanel.xaml.cs#L39)); each replace tears down and
-  re-templates the row's visual tree.
-- `BuildRelative` runs every tick even when neither Relative nor the dashboard is open
-  ([MainWindow.xaml.cs#L209](IRacingOverlay.App/MainWindow.xaml.cs#L209)).
-- Per-tick allocations: header/data byte arrays, LINQ in buffer selection, a new `SolidColorBrush` plus colour-string
-  parsing per track-map marker ([TrackMapPanel.xaml.cs#L92](IRacingOverlay.App/Widgets/TrackMapPanel.xaml.cs#L92)).
-- Synchronous disk writes on the UI thread for every setting change (the opacity slider writes a file per step).
-- No performance budget or benchmark.
-
-**Risks**
-- Frame-time spikes in iRacing on mid-range CPUs; "the overlay costs me FPS" reviews; laptop battery/thermals.
-
-**Recommended improvements**
-- Subscribe to `Rendering` only while connected *and* a high-rate consumer is visible.
-- Stable row view-models updated in place (`INotifyPropertyChanged`) instead of item replacement.
-- Skip builders with no consumer; cache frozen brushes per class colour; debounce settings writes.
-- Define and track a budget (e.g. CPU per tick, allocations per second) using the existing diagnostics.
-
-## 7. Architecture
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | Medium |
-
-**Strengths**
-- Two layers: a dependency-free SDK (header parsing, race-free reads, YAML) and the WPF app; the parser is
-  isolated from OS I/O for testing.
-- Poll model: a background reader publishes immutable snapshots, the UI thread pulls `Latest` — no cross-thread UI.
-- Builders are pure static functions; stateful trackers (fuel, pit stops, best laps) are isolated classes.
-- `WidgetCatalog` + `WidgetSlot` + schema-driven `SettingItem`s rendered by implicit DataTemplates.
-- The preview reuses the production panels — no second implementation to drift.
-
-**Weaknesses**
-- `MainWindow` is both the Control Panel host and the telemetry orchestrator (~490 lines) and grows with each widget.
-- Adding a widget touches ~8 places (catalog, factory, window, panel, options + store, schema, preview, loop).
-- No telemetry source abstraction → no replay, no loop tests, no path to other sims.
-- Twelve near-identical `*Store` classes writing twelve files, with no versioning or migration.
-- Connection lifecycle: var headers are cached per shared-memory handle rather than per sim session
-  ([IRacingConnection.cs#L120](IRacingOverlay.Sdk/IRacingConnection.cs#L120)).
-
-**Risks**
-- Linear growth of the orchestrator; subtle bugs after sim restarts; configuration sprawl.
-
-**Recommended improvements (incremental, no rewrite)**
-- Extract a `TelemetryLoop` from `MainWindow`.
-- Introduce an `IWidgetModule` (descriptor + factory + builder + update) registered in the catalog.
-- One versioned `SettingsStore` behind the existing static APIs.
-- `ITelemetrySource` with `SharedMemorySource` and `RecordingSource`.
-
-## 8. Code Quality
-
-| Score | Priority |
-|---:|---|
-| 7.5 / 10 | Medium |
-
-**Strengths**
-- Nullable enabled, warning-free Release build, modern C# (records, collection expressions, pattern matching).
-- 294 tests pinning tricky behaviour (qualifying, pit stops, fuel, flags, colours); synthetic memory builder.
-- Comments explain *why* and preserve empirically confirmed iRacing behaviour — rare institutional knowledge.
-
-**Weaknesses**
-- Comment verbosity: many multi-paragraph "history" comments ("reported live", "an earlier version…") raise
-  reading cost; history belongs in commits or decision records.
-- Duplication: the store classes; the class-grouping logic in `GroupForDisplay` and `BuildMulticlassView`.
-- Weak typing: `List<object>` for mixed row types.
-- Exception-driven type probing on every tick (`DeltaBuilder`, `FlagBuilder`) instead of an SDK-level
-  type-agnostic read.
-- No `.editorconfig`, analyzers or format gate; very large files (`StandingsBuilder.cs` ~900 lines, its tests
-  ~1,900 lines).
-
-**Recommended improvements**
-- `.editorconfig` + `dotnet format --verify-no-changes` in CI + `AnalysisLevel=latest-recommended` +
-  `TreatWarningsAsErrors`.
-- Move history out of comments into `docs/decisions/`; add `TryGetInt32Like`-style SDK reads; a generic store.
-
-## 9. Accessibility
-
-| Score | Priority |
-|---:|---|
-| 5.0 / 10 | Medium |
-
-**Strengths**
-- State is usually double-encoded: trend arrows, "PIT" text, flag names + descriptions, licence letter + colour,
-  signed deltas.
-- Overlay contrast is deliberate (muted text ≈ 6.5:1; ~95 % opaque panels over bright scenery); 5 sizes + opacity.
-
-**Weaknesses**
-- Control Panel eyebrow text `#5A646D`
-  ([ControlPanelTheme.xaml#L40](IRacingOverlay.App/ControlPanel/ControlPanelTheme.xaml#L40)) measures ≈ 3.0:1 on the
-  rail and ≈ 2.7:1 on the status pill at 10.5 px — below WCAG AA (4.5:1). It is used for the **connection status**,
-  the most important state in the window.
-- Small text overall in the Control Panel (hints at 11.5 px).
-- Purple vs green lap colours and red/green delta rely on hue; no colour-blind palette.
-- No `AutomationProperties` on icon-only/switch controls; no designed focus visuals; no high-contrast support.
-- English-only, hard-coded strings (no resources) for a global community.
-
-**Recommended improvements**
-- Lift `Cp.TextFaint` to ≥ 4.5:1 and render the connection label in `Cp.Text`.
-- Colour-blind-safe palette option (e.g. blue/orange); `AutomationProperties.Name` on switches and chips; a focus
-  visual style; move strings to `.resx` (enables es, de, fr, pt-BR, it).
-
-## 10. Configuration & Customization
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | High |
-
-**Strengths**
-- Per-widget columns, blocks and elements; cockpit and dashboard themes; flag selection and hold time; fuel window
-  and margins; weather units and sizes; per-widget size, opacity and auto-hide; high-rate refresh.
-
-**Weaknesses**
-- No global units (mph, °F, psi, gal) — weather only.
-- No profiles (road/oval, per car/series, practice/race), no import/export/share, no reset to defaults.
-- Delta reference and dashboard monitor aren't persisted (see §3).
-- Settings spread over twelve files in `%LOCALAPPDATA%\IRacingOverlay` (folder name ≠ brand; legacy files from older
-  builds never cleaned up).
-- Dashboard layout isn't configurable.
-
-**Recommended improvements**
-- Units from iRacing's `DisplayUnits` variable with an override.
-- Profiles that auto-switch by car/series/session type, with JSON export/import.
-- "Reset widget" and "Reset all"; persist every option.
-
-## 11. Error Handling
-
-| Score | Priority |
-|---:|---|
-| 4.0 / 10 | **Critical** |
-
-**Strengths**
-- Defensive telemetry reads (`HasVariable` everywhere), plausibility bounds on tire data, sentinel handling for
-  laps/time, tick-race retries on buffer reads, silent update-check failures, JSON parse errors don't block startup.
-
-**Weaknesses**
-- **No global handlers** (`DispatcherUnhandledException`, `AppDomain.UnhandledException`,
-  `TaskScheduler.UnobservedTaskException`) in [App.xaml.cs](IRacingOverlay.App/App.xaml.cs). `UiTimer_Tick` has only
-  `try/finally` ([MainWindow.xaml.cs#L139](IRacingOverlay.App/MainWindow.xaml.cs#L139)), so any exception in a
-  builder or panel terminates the app mid-race without a message.
-- **The SDK loop only catches `IOException`**
-  ([IRacingConnection.cs#L89](IRacingOverlay.Sdk/IRacingConnection.cs#L89)). A `YamlException` from an unusual
-  driver/team name (other SDK ports sanitize those fields before parsing) or an out-of-range read during a partially
-  written header faults the background task: telemetry stops forever while the UI says "WAITING FOR IRACING".
-- **Var headers aren't re-read when the sim reconnects** on the same shared-memory handle
-  ([IRacingConnection.cs#L113](IRacingOverlay.Sdk/IRacingConnection.cs#L113)); the official irsdk client re-resolves
-  per connection, so stale offsets are possible after changing cars without restarting the overlay (verify live).
-- Store writes are non-atomic `File.WriteAllText` with no `IOException` handling
-  ([WidgetLayoutStore.cs#L32](IRacingOverlay.App/Overlay/WidgetLayoutStore.cs#L32)); a corrupt file silently resets
-  to empty and the next save **permanently overwrites** the user's layout.
-- No user-facing error surface.
-
-**Risks**
-- The worst possible failure mode for this product: the overlay vanishes or freezes during a race, with no evidence.
-
-**Recommended improvements**
-1. Global handlers → log + non-modal notice; keep running.
-2. Per-widget isolation: wrap each build/update pair; a failing widget shows "paused — see log", the others keep working.
-3. SDK: catch-all with backoff and restart; reset var headers and the session-info counter on every
-   disconnected → connected transition or header-layout change; pre-sanitize YAML name fields.
-4. Stores: write temp file + `File.Replace` with `.bak`; restore from backup on parse failure; catch I/O errors.
-
-## 12. Security
-
-| Score | Priority |
-|---:|---|
-| 6.5 / 10 | High |
-
-**Strengths**
-- Least privilege: read-only memory-mapped file, per-user install without admin, no accounts, no PII, no outbound
-  traffic except update checks.
-- Typed YAML deserialization; text-only rendering (no HTML/script surface).
-- The release workflow scopes its token to `contents: write`.
-
-**Weaknesses**
-- Unsigned executable and installer — SmartScreen/AV friction and no way for users to verify origin.
-- Silent auto-update trusts whatever appears on GitHub Releases: a compromised maintainer account or workflow ships
-  to every install.
-- Supply chain: `vpk` installed unpinned ([release.yml#L36](.github/workflows/release.yml#L36)) while the app pins
-  Velopack 1.2.0; actions pinned by tag, not SHA; CI uses default token permissions; no Dependabot; no `SECURITY.md`.
-
-**Recommended improvements**
-- Authenticode signing (SignPath Foundation is free for OSS; Azure Trusted Signing is low-cost).
-- 2FA, protected `v*` tags, required reviews and an approval environment for releases.
-- Pin `vpk` and actions (SHA); `permissions: contents: read` by default; Dependabot; `SECURITY.md`.
-
-## 13. Installation & Deployment
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | High |
-
-**Strengths**
-- Velopack `Setup.exe`: per-user, shortcuts, launches on completion; delta updates; portable package.
-- Tag → test → publish → pack → upload, fully automated; CI builds and tests every PR.
-
-**Weaknesses**
-- **.NET 8 LTS support ends Nov 10, 2026** — no runtime security fixes after that; framework-dependent users must
-  keep an EOL runtime.
-- Unsigned → "Unknown publisher" on first run (the biggest install drop-off for small Windows apps).
-- The shipped build doesn't use ReadyToRun ([release.yml#L33](.github/workflows/release.yml#L33)) although the local
-  script does — slower cold start for real users.
-- No in-app update notice or changelog; no winget/Scoop listing; no "start with Windows" or "launch with iRacing".
-- Parallel local build paths (PowerShell script + untracked Bash script and Spanish guide) can drift.
-
-**Recommended improvements**
-- Retarget to `net10.0-windows` (LTS); add `-p:PublishReadyToRun=true` to the release; sign; add a winget manifest;
-  show "What's new" after an update; optional autostart.
-
-## 14. Telemetry & Observability
-
-| Score | Priority |
-|---:|---|
-| 4.5 / 10 | High |
-
-*Two halves: ingesting iRacing telemetry is strong; observing the app itself is weak.*
-
-**Strengths**
-- Ingestion: tick-verified triple-buffer reads, data-ready event, Windows-1252 YAML fix, centralized variable names
-  with documented types and units.
-- A live diagnostics line (working set, GC counts, tick avg/max, worst frame gap).
-
-**Weaknesses**
-- No log file, crash dump, support bundle or version display — every bug report arrives with zero evidence.
-- No telemetry recorder/replayer; bugs are "reported live" and "confirmed live", i.e. reproducible only in a session.
-- No opt-in usage data: no idea which widgets or themes matter.
-- The diagnostics line is developer jargon shown to every user.
-
-**Recommended improvements**
-- `Microsoft.Extensions.Logging` + rolling file under `%LOCALAPPDATA%\OpenOverlay\logs`.
-- "Report a problem" button that zips logs, settings and version.
-- `ITelemetrySource` + recorder (header, var headers, YAML, N ticks) + replay mode for development and tests.
-- Optional, off-by-default, anonymous crash reporting that keeps the privacy promise.
-
-## 15. Documentation
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | Medium |
-
-**Strengths**
-- README with screenshots rendered by the app itself, features, the crucial Borderless instruction, sizing/editing,
-  build/test/release instructions, project layout and disclaimer.
-- CONTRIBUTING with testing expectations and a provenance rule for telemetry claims; rich code comments.
-
-**Weaknesses**
-- No CHANGELOG or release notes (combined with silent updates).
-- No troubleshooting/FAQ (overlay not visible, SmartScreen, VR, performance, "frozen" tires).
-- No architecture guide or "adding a widget" guide — that checklist exists only outside the repo.
-- Placeholder clone URL ([README.md#L132](README.md#L132)); "Delta bar" claim; no Control Panel screenshot.
-- Mixed-language, untracked docs (`GENERAR-OPENOVERLAY-EXE.md`).
-
-**Recommended improvements**
-- `CHANGELOG.md` feeding release notes; `docs/ARCHITECTURE.md`; `docs/ADDING-A-WIDGET.md`; FAQ; per-widget notes
-  (iRΔ is an estimate, fuel math, tire data limitations).
-
-## 16. Marketing & Visibility
-
-| Score | Priority |
-|---:|---|
-| 3.0 / 10 | High |
-
-**Strengths**
-- Attractive, honest screenshots; clear license; a name, logo and consistent brand.
-
-**Weaknesses**
-- No landing page, demo video/GIF, badges (CI, release, downloads, license), community channel, social proof or
-  comparison; "OpenOverlay" is generic and doesn't contain "iRacing" (poor discoverability); no release
-  announcements.
-
-**Risks**
-- A good product nobody finds.
-
-**Recommended improvements**
-- A 60–90 s demo video + GIF at the top of the README; a GitHub Pages landing page; badges.
-- A "Why OpenOverlay" comparison table; GitHub Discussions or Discord.
-- Launch and release posts in r/iRacing, the iRacing forums and sim-racing Discords; reach out to creators.
-- A tagline that contains "iRacing overlay".
-
-## 17. Competitive Differentiation
-
-| Score | Priority |
-|---:|---|
-| 5.0 / 10 | High |
-
-**Landscape:** RaceLab, iOverlay, Kapps and SimHub (free/freemium, large communities) and irDashies (open source).
-
-**Where OpenOverlay wins**
-- MIT license, no account, local-only data.
-- Design quality and consistency; preview-driven configuration; never-clipped scalable widgets.
-- Deep multiclass, fuel and qualifying logic; seven cockpit themes.
-
-**Where it loses**
-- No VR, no streaming/OBS output, no real track map, no radar, no hotkeys/profiles, metric-only, small community.
-
-**Risks**
-- Competing on breadth against incumbents with years of head start.
-
-**Recommended improvements**
-- Own a niche: **"the privacy-first, best-in-class multiclass & endurance overlay"** — fuel windows, stint and
-  driver-swap timers, pit-loss estimates, class-aware everything.
-- Close the three parity gaps users notice first: units, hotkeys, radar.
-
-## 18. Future Scalability
-
-| Score | Priority |
-|---:|---|
-| 6.0 / 10 | Medium |
-
-**Strengths**
-- Catalog/schema pattern, reusable SDK, pure builders, strong test base.
-
-**Weaknesses**
-- High cost per widget; no plugin model; no source abstraction (replay, other sims); unversioned settings sprawl;
-  orchestrator growth; hard-coded strings; bus factor of two.
-
-**Risks**
-- Each new feature gets slower to ship and riskier to change.
-
-**Recommended improvements**
-- `IWidgetModule` registry; `ITelemetrySource`; a single versioned settings file with migrations; resources for
-  strings; lightweight decision records. **Keep WPF** — it is the right tool for a Windows-only sim.
-
-## 19. Perceived Quality
-
-| Score | Priority |
-|---:|---|
-| 7.0 / 10 | High |
-
-**Strengths**
-- Screenshots and Control Panel look like a commercial product; the installer and silent updates feel professional;
-  typography and colour semantics are consistent everywhere; previews are labelled "SAMPLE DATA".
-
-**Weaknesses**
-- The first touch is a SmartScreen warning; crashes happen without a message; tire numbers look frozen; widgets keep
-  stale data after a session; no version or About; a corrupted file silently wipes the layout; developer diagnostics
-  in the status bar.
-
-**Risks**
-- Users judge the whole product by its worst moment, which today is an unexplained disappearance mid-race.
-
-**Recommended improvements**
-- Sign the binaries; crash-proof the loops; label data freshness; add an About page; a friendly status bar.
-
-## 20. Dedicated UI Audit
-
-| Score | Priority |
-|---:|---|
-| 7.5 / 10 | Medium |
-
-**What is excellent**
-- Type scale with a fixed line grid; tabular numerals; condensed DIN faces that fit dense tables.
-- Class colour bands and gradient headers; the player row highlight; one badge family (PIT, last pit, licence).
-- Flag cards with icon + name + one-line instruction; wind compass relative to car heading.
-- The three-pane Control Panel with rail switches, three-state labels and live previews.
-
-**Findings**
+## 1. Value Proposition & Goals — 7.0 → **7.0** · Medium
+
+**Changed:** layouts and in-sim control make the "power user, privacy-first" pitch credible.
+**Still open:** the README still lists features instead of a reason to switch; no persona, no public roadmap.
+**Do next:** one-line positioning + three proof points at the top of the README; target multiclass, endurance and
+league racers; publish a roadmap.
+
+## 2. Features & Functionality — 7.0 → **8.0** · Medium
+
+**Changed:** Weather (four cards, car-relative wind), Pedal trace with clutch/gear/speed/steering, Incidents,
+modular Cockpit with radar and shift lights, live race positions in Relative, timing-screen Standings, country
+flags, car brands, places gained, penalty flags, per-class fastest lap and SOF, configurable Track & session and
+Fuel calculator cells, units everywhere.
+**Still open:**
+- ~~iRating Δ computed across the whole field in multiclass~~ — fixed: each class is now rated as its own race.
+- Tire data still unlabelled (cold pressure as hero, temps/wear refresh only in the pits).
+- Track map redesigned but still 1-D; radar only inside the Cockpit; no stint timer or pit window.
+**Do next:** per-class iRating; tire freshness labels; extract the Cockpit radar module into a standalone widget.
+
+## 3. UX — 6.5 → **7.5** · Medium
+
+**Changed:** tray icon and close-to-tray, global hotkeys plus per-layout hotkeys, single-instance activation,
+layout selector in the toolbar, collapsible sections that remember their state, About/What's new and a one-time
+update notice, widgets reset on disconnect.
+**Still open:** no first-run onboarding (Borderless reminder, recommended layout); widget preview still clips at
+L/XL; no autostart; 0.11.0 reset users' cockpits on update — a migration or at least a notice is the UX
+expectation for a silent updater.
+**Do next:** first-run checklist with a starter layout; preview "Fit"; settings migrations whenever an option is
+removed.
+
+## 4. UI — 8.0 → **8.0** · Medium
+
+**Changed:** widget redesigns (Weather, Tires, Track map, Fuel calculator, Relative/Standings), condensed
+Barlow font for tables, flags and brand logos, background-only opacity so data stays readable.
+**Still open:** 47 hard-coded colour literals in view-models; Control Panel faint text unchanged; more optional
+columns raise the density risk for a glance widget; Delta still has no bar.
+**Do next:** derive colours from tokens; keep Relative defaults lean as columns grow.
+
+## 5. Window/Layout Design — 7.0 → **8.0** · Low
+
+**Changed:** layout editor at real monitor resolution with zoom/fit, grid, pixel and grid nudging, stacking
+order, off-screen badges, monitor targeting on import; widgets no longer shift when switching layouts.
+**Still open:** no PerMonitorV2 manifest (blurry on mixed-DPI rigs); dashboard is still a fixed grid.
+**Do next:** `app.manifest` with PerMonitorV2; dashboard as a layout or with presets.
+
+## 6. Performance — 6.5 → **7.5** · Medium
+
+**Changed:** critical tick driven by telemetry instead of `CompositionTarget.Rendering`; unchanged table rows
+skipped; less WPF work in Relative/Standings/Tires; a repeatable measurement method (performance report §8).
+**Still open:** every widget is still an `AllowsTransparency` layered window
+([OverlayWindowBase.cs#L40](IRacingOverlay.App/Overlay/OverlayWindowBase.cs#L40)) — the dominant cost with many
+widgets open; new columns (flags, logos) add render work; settings writes still on the UI thread; no budget
+tracked in CI.
+**Do next:** re-measure 0.11.0 with the same method; debounce settings writes; evaluate a single composited
+surface per monitor (performance report §6.3).
+
+## 7. Architecture — 7.0 → **7.0** · **High**
+
+**Changed (+):** layout model with per-widget config codecs and a JSON schema; `CockpitModules` catalog; shared
+`SettingsFile`; diagnostics as its own module.
+**Changed (−):** `MainWindow.xaml.cs` grew from ~490 to **~1,240 lines**; `StandingsBuilder.cs` to ~1,120; the
+number of `*Store` classes roughly doubled. Adding a widget still touches many places, now including the codecs.
+**Do next:** extract `TelemetryLoop` from `MainWindow` before the next feature; `IWidgetModule` (descriptor +
+factory + builder + codec); `ITelemetrySource`.
+
+## 8. Code Quality — 7.5 → **7.5** · Medium
+
+**Changed:** test count 294 → 973, including reader fault scenarios and layout schema validation; still
+warning-free.
+**Still open:** no `.editorconfig`, analyzers or format gate; very large files; exception-driven type probing in
+`DeltaBuilder`/`FlagBuilder`; history-style comments.
+**Do next:** `.editorconfig` + `AnalysisLevel=latest-recommended` + `TreatWarningsAsErrors`; SDK `TryGet*` reads.
+
+## 9. Accessibility — 5.0 → **5.0** · Medium
+
+**Unchanged:** `Cp.TextFaint` `#5A646D` (≈ 2.7–3.0:1) still used for status text; hue-only purple/green and
+red/green; no `AutomationProperties`, focus visuals or `.resx`.
+**Do next:** lift `Cp.TextFaint` to ≥ 4.5:1; colour-blind palette option; automation names on switches.
+
+## 10. Configuration & Customization — 7.0 → **8.5** · Low
+
+**Changed:** layouts act as profiles with import/export; column reorder/hide by drag; session-info placement in
+any corner; reorderable cells in Fuel calculator, Pedal trace, Track & session and Cockpit; units with override;
+hotkeys per action and per layout; auto-save.
+**Still open:** no auto-switch by car/series/session type; no "reset widget to defaults"; dashboard not
+configurable.
+**Do next:** layout auto-switch rules; "Reset to defaults" per widget.
+
+## 11. Error Handling — 4.0 → **8.0** · Low
+
+**Changed:** everything in the first audit's critical list is implemented and tested — see
+[reliability_report.md](reliability_report.md).
+**Still open:** layout-pass exceptions can't be attributed to one widget; tracker state (fuel, pit stops) lost on
+relaunch; regressions still ship (the "app closed" fix in `6a2c77e`).
+**Do next:** run the reliability §11 fault-injection checklist before every release; persist tracker state per
+subsession.
+
+## 12. Security — 6.5 → **6.5** · **High**
+
+**Unchanged:** unsigned binaries with silent auto-update; `vpk` unpinned; actions pinned by tag; CI without
+`permissions:`; no Dependabot or `SECURITY.md`. Single-instance and local-only logs are good additions.
+**Do next:** SignPath Foundation (free for OSS) or Azure Trusted Signing; pin `vpk` and actions by SHA;
+`permissions: contents: read` in CI; Dependabot; `SECURITY.md`; protected `v*` tags.
+
+## 13. Installation & Deployment — 7.0 → **7.0** · **Critical**
+
+**Changed (+):** CHANGELOG-driven versioning, release blocked on tag/CHANGELOG mismatch, manual release trigger,
+in-app What's new.
+**Unchanged (−):** `net8.0-windows` with **35 days** to end of support; release without ReadyToRun; unsigned;
+no autostart, winget or Scoop.
+**Do next:** retarget to `net10.0-windows` and ship it before Nov 10, 2026; add `-p:PublishReadyToRun=true` to
+`release.yml`; pin `vpk`.
+
+## 14. Telemetry & Observability — 4.5 → **7.5** · Medium
+
+**Changed:** structured JSON logs with run IDs, error references shown in the status bar and tray, activity
+trail, run journal detecting unclean exits, per-run problem tally, diagnostics report and copyable version info.
+**Still open:** no telemetry recorder/replay — bugs are still reproduced live; no in-app log viewer; no
+performance counters in the log.
+**Do next:** `ITelemetrySource` + recorder (header, var headers, YAML, N ticks) + replay mode.
+
+## 15. Documentation — 7.0 → **6.5** · **High**
+
+**Changed (+):** CHANGELOG as single source for What's new, in-app changelog and release notes.
+**Changed (−):** the README has fallen behind five releases: no layouts, hotkeys, tray, units, Weather, Pedal
+trace or Incidents; placeholder clone URL ([README.md#L133](README.md#L133)); "Delta bar"
+([README.md#L59](README.md#L59)); no Control Panel or layout editor screenshot. No FAQ, architecture or
+"adding a widget" guide.
+**Do next:** README refresh with new screenshots; FAQ (Borderless, SmartScreen, tire data, performance);
+`docs/ARCHITECTURE.md`.
+
+## 16. Marketing & Visibility — 3.0 → **3.0** · **High**
+
+**Unchanged:** no landing page, video, badges, community channel or launch posts. The product now has a strong
+story (layouts, privacy, reliability) and nobody is telling it.
+**Do next:** 60–90 s demo video built around layouts + hotkeys; badges; GitHub Discussions; r/iRacing post once
+the README is refreshed and the build is signed.
+
+## 17. Competitive Differentiation — 5.0 → **6.0** · High
+
+**Changed:** units, hotkeys, tray, layouts with import/export and a radar (inside the Cockpit) close most of the
+parity gaps listed in the first audit.
+**Still open:** no VR, streaming/OBS output, track outline or standalone radar; small community.
+**Do next:** own multiclass/endurance (stint timer, pit window, pit-loss estimate); shareable layouts as a
+community hook.
+
+## 18. Future Scalability — 6.0 → **6.0** · High
+
+**Changed (+):** versioned layout schema with codecs; module catalog pattern in the Cockpit.
+**Changed (−):** orchestrator growth and store sprawl offset it; bus factor unchanged.
+**Do next:** `TelemetryLoop` + `IWidgetModule` + `ITelemetrySource`; one versioned settings document with
+migrations.
+
+## 19. Perceived Quality — 7.0 → **7.5** · High
+
+**Changed (+):** no silent disappearances, version and About visible, update notice, stale data cleared on
+disconnect, visual polish across every widget.
+**Still open (−):** SmartScreen on first touch; saved cockpits reset by 0.11.0; tire numbers that look live but
+are frozen; a release cadence that ships fixes for the previous release the next day.
+**Do next:** sign; migrate settings on breaking changes; slow to a stabilisation release with the fault
+checklist.
+
+## 20. Dedicated UI Audit — 7.5 → **7.5** · Medium
+
+| ID | Finding (first audit) | Status |
+|---|---|---|
+| U1 | Connection status in faint text (≈ 2.7:1) | **Open** |
+| U2 | Widget preview clips at L/XL | **Open** (fit exists only in the layout editor) |
+| U3 | Dashboard/Performance pages show "Nothing to preview" | Not re-verified |
+| U4 | Cockpit theme chosen from a text dropdown | Obsolete — themes replaced by modules |
+| U5 | Hints wrap beside wide controls | Not re-verified |
+| U6 | Developer diagnostics in the status bar | Partial — version + health shown; diagnostics moved to General › Diagnostics |
+| U7 | No version, About, Help or Reset | Mostly fixed — About/What's new; no Reset |
+| U8 | Relative ships 10 columns by default | Partial — columns reorderable/hideable |
+| U9 | Fuel calculator: three reds, "−6.1 L" | Partial — status redesigned |
+| U10 | Delta numeric only, README promises a bar | **Open** |
+| U11 | Tires: cold pressure, no freshness label, no heat colours | Partial — redesigned, still unlabelled |
+| U12 | Track map 1-D, overlapping badges | Partial — redesigned with multiclass; still 1-D |
+| U13 | Dashboard fixed grid with empty regions | **Open** |
+| U14 | Stale data after leaving a session | **Fixed** |
+| U15 | Edit mode has no gesture hint | Superseded by the layout editor |
+| U16 | No PerMonitorV2 | **Open** |
+
+New findings:
 
 | ID | Surface | Finding | Severity | Recommendation |
 |---|---|---|---|---|
-| U1 | Control Panel | Connection status rendered in faint eyebrow style (≈ 2.7:1) — the most important state is the least legible text | High | Primary text colour + coloured dot + "what to do" hint when waiting |
-| U2 | Control Panel | Preview clips at L/XL; horizontal scrolling required | Medium | "Fit to pane" by default, "100 %" toggle |
-| U3 | Control Panel | Dashboard/Performance pages leave the preview pane empty ("Nothing to preview") | Low | Dashboard thumbnail in the selected theme; a CPU/tick sparkline |
-| U4 | Control Panel | Cockpit theme chosen from a text dropdown of seven names | Medium | Visual thumbnail gallery (renders already exist) |
-| U5 | Control Panel | Hints wrap into narrow columns beside wide controls (e.g. Flags → Simulate) | Low | Stack the control under the label when it is wide |
-| U6 | Control Panel | Status bar shows MB, GC generations and tick milliseconds | Low | Friendly status; move diagnostics to the Performance page |
-| U7 | Control Panel | No version, About, Help or Reset | Medium | About page with version, changelog, folders, reset |
-| U8 | Relative | 10 columns by default, same as Standings | Medium | Lean default column set for a glance widget |
-| U9 | Fuel calculator | Three red values; "−6.1 L" is ambiguous | Medium | REFUEL as hero; "SHORT 6.1 L"; colour only the failing status |
-| U10 | Delta | Numeric only (README promises a bar) | Low | Optional ±1 s bar; fix README wording |
-| U11 | Tires | Cold pressure as the hero value; temps/wear refresh only in the pits; not labelled; no heat colours | Medium | "COLD" label, "last pit" stamp, temperature colour scale |
-| U12 | Track map | 1-D bar; badges overlap in dense packs | Medium | Short term: lane offsets for overlaps; long term: track outline |
-| U13 | Dashboard | Fixed grid leaves large empty regions | Medium | Layout presets; tables fill available height |
-| U14 | All widgets | Stale data remains after leaving a session | Medium | "Waiting for session" placeholder when disconnected |
-| U15 | Edit mode | No on-screen hint of gestures or how to exit | Low | One-time hint banner; Esc exits edit mode |
-| U16 | Multi-monitor | No PerMonitorV2 → blurry on mixed-DPI setups | Medium | `app.manifest` with PerMonitorV2 |
+| U17 | Cockpit | Updating to 0.11.0 resets the user's cockpit (also inside layouts) | Medium | Map old themes to equivalent module sets on first load |
+| U18 | Relative/Standings | Flags, logos, places gained, incidents and info bands make a crowded default easy to reach | Low | Ship 2–3 column presets ("Lean", "Broadcast", "Full") |
 
 ---
 
-# Priority Roadmap
+# Priority Roadmap (updated)
 
-Effort is relative: **Low** = contained change in a few files · **Medium** = a feature-sized change ·
-**High** = a new subsystem.
+Effort: **Low** = contained change in a few files · **Medium** = feature-sized · **High** = new subsystem.
 
-## Quick Wins
-
-*High impact / low effort.*
+## Now — before Nov 10, 2026
 
 | # | Task | Impact | Effort | Reason |
 |---|---|---|---|---|
-| QW1 | Global exception handlers + per-widget `try/catch` in both update loops | High | Low | One exception currently closes the app mid-race |
-| QW2 | Resilient SDK loop: catch-all + backoff; reset var headers and session counter on reconnect; sanitize YAML names | High | Low | Telemetry thread can die silently; stale offsets after sim restart |
-| QW3 | Rolling log file + version in the toolbar + "Open logs folder" | High | Low | Turns "reported live" bugs into evidence |
-| QW4 | Atomic settings writes (temp + replace + `.bak`) with I/O error handling | High | Low | Prevents silent, permanent loss of layouts |
-| QW5 | Units from iRacing `DisplayUnits` (speed, temperature, pressure, fuel) | High | Low | Imperial users are a large share of iRacing |
-| QW6 | Retarget to .NET 10 LTS; ReadyToRun in `release.yml`; pin `vpk` | High | Low | .NET 8 EOL on Nov 10, 2026; faster start; reproducible packaging |
-| QW7 | Per-class iRating Δ | Medium | Low | Wrong numbers in multiclass erode trust |
-| QW8 | Persist Delta reference and dashboard monitor; reopen dashboard on launch | Medium | Low | "It forgot my settings" feels like a bug |
-| QW9 | Gate `CompositionTarget.Rendering`; skip builders with no consumer | Medium | Low | Idle CPU/GPU cost beside the sim |
-| QW10 | Clear widgets on disconnect; label tire data "COLD / last pit" | Medium | Low | Stops presenting stale data as live |
-| QW11 | Control Panel contrast fix + connection guidance text | Medium | Low | Fails WCAG AA on the most critical status |
-| QW12 | Preview "Fit" zoom | Medium | Low | Preview clips at L/XL |
-| QW13 | Lean Relative defaults; fuel colour hierarchy and wording | Medium | Low | Faster glance reading at speed |
-| QW14 | README: badges, fix placeholder, Control Panel screenshot, FAQ, CHANGELOG | Medium | Low | Conversion and support deflection |
-| QW15 | CI hygiene: `permissions: contents: read`, Dependabot, `SECURITY.md` | Medium | Low | Supply-chain basics |
+| P1 | Retarget to `net10.0-windows`; ReadyToRun in `release.yml`; pin `vpk` | Very High | Low | .NET 8 support ends in 35 days; faster cold start; reproducible packaging |
+| P2 | Stabilisation release: run the fault-injection checklist, freeze features for one cycle, add a settings migration for the removed cockpit themes | High | Low | Users are getting regressions and resets at a 7-releases-in-2-weeks pace |
+| P3 | ~~Per-class iRating Δ~~ **Done** | Medium | Low | Each class is now rated as its own race |
+| P4 | README refresh: layouts, hotkeys, tray, units, new widgets, screenshots, badges; fix placeholder URL and "Delta bar" | High | Low | The best features are undocumented; prerequisite for any launch |
+| P5 | Control Panel contrast (`Cp.TextFaint` ≥ 4.5:1, status in primary text) | Medium | Low | Unchanged WCAG AA failure on the most important status |
+| P6 | Tire freshness labels (COLD, "last pit: L24") | Medium | Low | Frozen numbers presented as live |
+| P7 | CI hygiene: `permissions: contents: read`, Dependabot, `SECURITY.md`, SHA-pinned actions | Medium | Low | Supply-chain basics for a silent auto-updater |
 
-## Next Improvements
-
-*High impact / medium effort.*
+## Next
 
 | # | Task | Impact | Effort | Reason |
 |---|---|---|---|---|
-| NI1 | Tray icon + global hotkeys (toggle overlays, edit mode, show panel) + start minimized / autostart | High | Medium | In-sim control without Alt+Tab; standard in the category |
-| NI2 | Code signing in the release pipeline (SignPath Foundation or Azure Trusted Signing) | High | Medium | Removes SmartScreen/AV friction; authenticates updates |
-| NI3 | In-place row view-models for Relative/Standings; brush caching; debounced writes | High | Medium | Largest steady-state UI cost |
-| NI4 | Telemetry recorder + replay via `ITelemetrySource` | High | Medium | Reproducible bugs, demo mode, loop-level tests |
-| NI5 | Standalone Radar widget (reuse `CockpitBuilder` proximity) | High | Medium | Highly visible, safety-relevant parity feature; logic already exists |
-| NI6 | Profiles (auto-switch by car/series/session type) + import/export | High | Medium | Top power-user expectation |
-| NI7 | Single versioned settings file with migrations (replaces 12 stores) | Medium | Medium | Removes duplication; prerequisite for profiles |
-| NI8 | PerMonitorV2 manifest + dashboard presets + drag snapping | Medium | Medium | Multi-monitor rigs; dead space |
-| NI9 | First-run onboarding + About/What's-new page | Medium | Medium | Activation and retention |
-| NI10 | Accessibility pass: colour-blind palette, focus visuals, `AutomationProperties` | Medium | Medium | Inclusivity and polish |
-| NI11 | Launch kit: demo video, landing page, Discussions/Discord, community posts | High | Medium | Distribution is the bottleneck, not features |
+| N1 | Code signing (SignPath Foundation / Azure Trusted Signing) | High | Medium | Removes SmartScreen; authenticates updates |
+| N2 | Extract `TelemetryLoop` from `MainWindow`; `IWidgetModule` registry | High | Medium | Orchestrator is 2.5× bigger than at the first audit; cost per feature is rising |
+| N3 | `ITelemetrySource` + recorder/replay | High | Medium | Turns "reproduced live" into tests; enables demo mode for videos |
+| N4 | Launch kit: demo video, Discussions/Discord, r/iRacing post, shareable layouts | High | Medium | Distribution is now the bottleneck, not features |
+| N5 | Standalone Radar widget from the Cockpit radar module | High | Low-Medium | Logic exists; highly visible parity feature |
+| N6 | Layout auto-switch by car/series/session type; "Reset to defaults" per widget | Medium | Medium | Completes profiles |
+| N7 | First-run onboarding with a starter layout; preview "Fit"; autostart option | Medium | Medium | Activation; first-session failure in exclusive fullscreen |
+| N8 | PerMonitorV2 manifest; dashboard as layout/presets | Medium | Medium | Mixed-DPI rigs; dashboard dead space |
+| N9 | Re-measure performance on 0.11.0; debounce settings writes; evaluate one composited surface per monitor | Medium | Medium-High | Layered windows remain the main cost with many widgets |
+| N10 | Accessibility: colour-blind palette, `AutomationProperties`, focus visuals | Medium | Medium | Unchanged since the first audit |
+| N11 | `.editorconfig` + analyzers + format gate; SDK `TryGet*` reads | Medium | Low | Keeps quality as the codebase doubles |
 
-## Strategic Improvements
-
-*Long-term opportunities.*
+## Strategic
 
 | # | Task | Impact | Effort | Reason |
 |---|---|---|---|---|
-| SI1 | Endurance/team suite: stint timer, driver swap, pit-loss estimate, fuel windows, shared strategy | High | High | A defensible niche that builds on existing strengths |
-| SI2 | Real track map from recorded outlines, cached per track and shareable | High | High | Most visible gap versus incumbents |
-| SI3 | VR support (OpenKneeboard/OpenXR layer or SteamVR overlay) | High | High | VR drivers are currently excluded entirely |
-| SI4 | Streaming output (local web server + browser-source overlays) | Medium | High | Streamer segment and free marketing |
-| SI5 | Localization via resources (es, de, fr, pt-BR, it) | Medium | Medium | Global community; maintainers are Spanish-speaking |
-| SI6 | `IWidgetModule` plugin model + extracted `TelemetryLoop` | Medium | Medium | Lower cost per widget; community contributions |
-| SI7 | Opt-in, anonymous crash reporting and feature usage | Medium | Medium | Data-driven roadmap without breaking the privacy promise |
-| SI8 | Sustainability: GitHub Sponsors/Ko-fi; supporter perks (extra themes) without paywalling core | Medium | Low | Funds signing, hosting and maintainer time |
-| SI9 | Multi-sim via `ITelemetrySource` — only after the niche is won | Medium | High | Larger market, but dilutes focus |
+| S1 | Endurance/team suite: stint timer, pit window, pit-loss estimate, driver swap | High | High | Defensible niche on top of the fuel and multiclass work |
+| S2 | Real track map from recorded outlines | High | High | Most visible remaining gap versus incumbents |
+| S3 | VR support (OpenKneeboard/OpenXR or SteamVR overlay) | High | High | VR drivers still excluded |
+| S4 | Streaming output (local web server + browser sources) | Medium | High | Streamer segment and free marketing |
+| S5 | Localization via resources (es, de, fr, pt-BR, it) | Medium | Medium | Global community |
+| S6 | Opt-in anonymous crash reporting | Medium | Medium | Field data without breaking the privacy promise |
+| S7 | Sponsorship (GitHub Sponsors/Ko-fi) | Medium | Low | Funds signing and maintainer time |
+| S8 | Multi-sim via `ITelemetrySource` — only after the niche is won | Medium | High | Larger market, dilutes focus |
 
 ---
 
-# Top 10 Highest ROI Improvements
+# Top 10 Highest ROI Improvements (updated)
 
 | Rank | Improvement | Impact | Effort | Why it ranks here |
 |---:|---|---|---|---|
-| 1 | **Crash-proofing bundle** (QW1 + QW2 + QW4) | Very High | Low | Removes the worst failure mode — the overlay dying or freezing mid-race — and protects user settings |
-| 2 | **Logging + version + "Report a problem"** (QW3) | High | Low | Every future bug becomes diagnosable; multiplies the value of all other fixes |
-| 3 | **.NET 10 LTS + ReadyToRun + pinned `vpk`** (QW6) | High | Low | Hard deadline (Nov 10, 2026) with a small, mechanical change |
-| 4 | **Units from `DisplayUnits`** (QW5) | High | Low | Unlocks the largest user segment with zero new UI |
-| 5 | **Trust fixes** — per-class iRating, persisted choices, stale-data handling, tire labels (QW7, QW8, QW10) | Medium-High | Low | Wrong or stale numbers cost more credibility than missing features |
-| 6 | **Tray + global hotkeys** (NI1) | High | Medium | Fixes the daily workflow; parity with every competitor |
-| 7 | **Code signing** (NI2) | High | Medium | Directly lifts install conversion and secures auto-updates |
-| 8 | **Performance gating + in-place rows** (QW9 + NI3) | High | Low-Medium | "Costs no FPS" is a feature sim racers actively choose on |
-| 9 | **Launch kit** — README polish, video, community posts (QW14 + NI11) | High | Low-Medium | The product is better than its visibility; distribution is the bottleneck |
-| 10 | **Radar widget** (NI5) | High | Medium | Most-requested parity widget; the proximity logic is already written |
-
-*Honourable mention:* telemetry record/replay (NI4) — the biggest multiplier for engineering velocity, just
-below the line only because its payoff is internal.
+| 1 | **.NET 10 + ReadyToRun + pinned `vpk`** (P1) | Very High | Low | Hard deadline, mechanical change |
+| 2 | **Stabilisation release + settings migrations** (P2) | High | Low | Protects the trust the reliability work just earned |
+| 3 | **README refresh** (P4) | High | Low | Unlocks marketing; every new feature since 0.6 is undocumented |
+| 4 | **Code signing** (N1) | High | Medium | First-touch friction and update authenticity |
+| 5 | **Trust fixes** — per-class iRating, tire labels, contrast (P3, P5, P6) | Medium-High | Low | Cheap; the last visible correctness and legibility debts |
+| 6 | **`TelemetryLoop` + `IWidgetModule`** (N2) | High | Medium | Keeps feature velocity from collapsing |
+| 7 | **Record/replay** (N3) | High | Medium | Debugging multiplier and demo-video source |
+| 8 | **Launch kit** (N4) | High | Medium | The product is now clearly ahead of its visibility |
+| 9 | **Standalone Radar** (N5) | High | Low-Medium | Logic already written |
+| 10 | **Layout auto-switch + reset to defaults** (N6) | Medium | Medium | Finishes the strongest differentiator |
 
 ---
 
 # What I Would Personally Change
 
 ## What I would improve
-- Make failure **loud, contained and recoverable**: global handlers, per-widget isolation, a self-healing telemetry
-  loop, atomic settings, logs.
-- Add a **telemetry recorder/replayer** so "reported live" becomes "replayed in a test".
-- Close the **daily-use gaps**: hotkeys, tray, units, profiles, reset tools.
-- Tighten **data honesty**: per-class iRating, freshness labels on tires, blank widgets when disconnected.
-- **Sign, ship and tell people**: signing, .NET 10, changelog, demo video, one community post per release.
-- Trim history-style comments into decision records so the code reads faster.
+- **Slow down for one release.** The code is moving faster than the release process can verify; one feature-free
+  cycle with the fault checklist, a .NET 10 build and settings migrations pays for itself.
+- **Pay the orchestrator debt now**, while `MainWindow` is 1,240 lines and not 2,500.
+- **Ship the story:** README, signing, video, one community post. The product finally deserves it.
+- Close the small honesty debts: per-class iRating, tire freshness, contrast.
 
 ## What I would keep
-- The SDK/App split, the parser/OS separation and the synthetic shared-memory tests.
-- Pure builders and the testing discipline around them.
-- The design tokens, Bahnschrift typography and semantic palette.
-- The fixed scale ladder and its "never clipped" guarantee.
-- The preview that renders production panels with sample data.
-- The schema-driven settings model, the Velopack pipeline, and the privacy stance.
+- The reliability architecture (containment, health model, run journal, atomic settings).
+- Layouts and their schema/codecs — the best product decision since the first audit.
+- The SDK/App split, pure builders and the testing discipline (973 tests).
+- Design tokens, the typography system and the preview that renders production panels.
+- The privacy stance and the Velopack pipeline.
 
 ## What I would avoid changing
-- **No rewrite** in Electron, web or Avalonia — WPF is the right tool for a Windows-only sim and the codebase is healthy.
+- **No rewrite** in Electron, web or Avalonia.
 - **No multi-sim push** until the iRacing niche is won.
-- **No accounts, cloud sync or mandatory telemetry** — they would erase the clearest differentiator.
-- **No return to free-form resizing** — the ladder solved a real class of bugs.
-- **No heavyweight DI/MVVM framework migration** — incremental extraction (`TelemetryLoop`, `IWidgetModule`,
-  `ITelemetrySource`) delivers the benefit without the churn.
+- **No accounts, cloud sync or mandatory telemetry.**
+- **No more removals without migrations** — a silent updater must never reset what a user built.
+- **No heavyweight DI/MVVM framework** — incremental extraction is enough.
 
 ---
 
@@ -769,25 +424,22 @@ below the line only because its payoff is internal.
 
 | Question | Answer |
 |---|---|
-| Classification | **Semi-Professional** — professional-grade core engineering and design; indie-grade reliability operations, distribution and marketing |
-| Would users pay for it? | **Not for a license today.** Strong free options exist and the MIT license makes paywalled code impractical. Users *would* donate for polish and privacy, and could pay later for **services** (team/endurance strategy sync, broadcast packages) — not for widgets |
-| Would I continue development? | **Yes.** The foundation is unusually solid for a ten-week, two-person project, the critical gaps are cheap to close, and a clear niche (privacy-first multiclass/endurance) is available |
-| Highest leverage improvement | **Make it impossible to fail silently**: crash-proof loops, a self-healing telemetry connection, atomic settings and a log file. It protects every race, every user and every future fix |
+| Classification | **Semi-Professional, close to Professional** — engineering, reliability and configurability are professional; distribution, documentation and go-to-market are still indie |
+| Would users pay for it? | **Not for a license**, but layouts + reliability + privacy now justify donations and a supporter tier |
+| Would I continue development? | **Yes** — with a stabilisation cycle first |
+| Highest leverage improvement | **Ship a signed .NET 10 stabilisation release with a refreshed README**, then tell people about it |
 
 ---
 
 # Action Plan
 
-1. **Stabilize (now, before the .NET 8 end of support on Nov 10, 2026):** global and per-widget exception handling,
-   resilient SDK loop with header reset on reconnect, atomic settings writes, rolling logs + version display,
-   retarget to .NET 10 with ReadyToRun and pinned `vpk`. Release `v0.5.0` with a CHANGELOG.
-2. **Remove friction:** units from `DisplayUnits`, persisted choices, per-class iRating, stale-data and tire
-   labels, contrast fix, preview "Fit", tray + global hotkeys, code signing.
-3. **Multiply quality:** gate the render loop, in-place row updates, telemetry record/replay, single versioned
-   settings file.
-4. **Grow:** README polish + demo video + community launch, Radar widget, profiles, first-run onboarding.
-5. **Decide the next bet with data:** endurance/team suite (recommended) versus VR/streaming reach — choose based
-   on logs, feedback and download numbers gathered in steps 1–4.
+1. **Before Nov 10, 2026:** .NET 10 + ReadyToRun + pinned `vpk`; cockpit settings migration; per-class iRating;
+   contrast; tire labels; CI hygiene. Release as a stabilisation version after the fault-injection checklist.
+2. **Trust:** code signing; README refresh with screenshots of layouts and the layout editor; FAQ.
+3. **Velocity:** `TelemetryLoop` + `IWidgetModule`; `ITelemetrySource` with record/replay; analyzers.
+4. **Grow:** demo video, Discussions, community launch, standalone Radar, layout auto-switch, onboarding.
+5. **Next bet:** endurance/team suite (recommended) versus VR/streaming — decided from logs, feedback and
+   download numbers.
 
-**Success metrics to track:** crash-free sessions, installs per release, returning users, issues closed with
-attached logs, and CPU cost per tick.
+**Success metrics:** crash-free sessions (from the run journal), unclean exits per 100 runs, installs per
+release, issues closed with a diagnostics report attached, CPU cost per tick with N widgets open.
