@@ -644,9 +644,21 @@ internal static class StandingsBuilder
     /// uses a commonly-cited community reconstruction (K=200, divided by field size) — it tracks
     /// direction and rough magnitude reliably, but won't necessarily match the official post-race
     /// number. Uses current running order as a live "if it ended right now" position, same as the
-    /// rest of Standings.
+    /// rest of Standings. In multiclass each class is rated as its own race, as iRacing does: a car
+    /// only duels the cars of its class, and the field size is its class's.
     /// </summary>
     private static Dictionary<int, double> EstimateIRatingDeltas(List<DriverEntry> ordered)
+    {
+        var result = new Dictionary<int, double>();
+        foreach (var classField in ordered.GroupBy(d => d.CarClassID))
+        {
+            EstimateClassIRatingDeltas(classField.ToList(), result);
+        }
+
+        return result;
+    }
+
+    private static void EstimateClassIRatingDeltas(List<DriverEntry> ordered, Dictionary<int, double> result)
     {
         var rated = new List<(int CarIdx, int IRating, int Position)>();
         for (var i = 0; i < ordered.Count; i++)
@@ -657,11 +669,10 @@ internal static class StandingsBuilder
             }
         }
 
-        var result = new Dictionary<int, double>();
         var n = rated.Count;
         if (n < 2)
         {
-            return result;
+            return;
         }
 
         var k = 200.0 / n;
@@ -682,8 +693,6 @@ internal static class StandingsBuilder
 
             result[driver.CarIdx] = delta;
         }
-
-        return result;
     }
 
     /// <summary>
