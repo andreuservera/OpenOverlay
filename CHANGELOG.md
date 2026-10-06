@@ -2,6 +2,25 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.11.0] - 2026-10-06
+
+#### Added
+- Relative and Standings: new optional columns for each driver's country flag, their car's brand logo and the places gained or lost since the start of the race.
+- Cockpit rebuilt as a modular dashboard: choose and reorder its readouts — gear, speed, RPM, ABS, fuel, inputs, water and oil temperatures, brake bias, traction control, incidents and delta — and turn the shift lights and proximity radar on or off.
+
+#### Changed
+- Cockpit opacity now fades only its background, like every other widget, so its readouts stay fully readable.
+
+#### Improved
+- Relative and Standings are easier to read, with a new condensed font and a wider driver name column.
+
+#### Removed
+- Cockpit themes. Your cockpit, including the ones saved in layouts, starts from the new default dashboard: pick and order its modules again in the Cockpit settings.
+
+#### Fixed
+- Layout editor: at low zoom, the "OFF SCREEN" badge no longer stretches a widget past the edge of the canvas and keeps itself showing.
+
+
 ### [0.10.0] - 2026-10-05
 
 #### Added

@@ -183,6 +183,11 @@ public partial class MainWindow : Window
                 return;
             }
 
+            if (!_exiting)
+            {
+                AppLog.Activity("Control Panel", "Closed; exiting");
+            }
+
             _exiting = true;
             return;
         }
@@ -400,6 +405,18 @@ public partial class MainWindow : Window
             _connection.Stop();
             _vm.CloseAllWidgets();
             _dashboard?.Close();
+
+            // The app ends with this window (ShutdownMode=OnMainWindowClose). Anything still open
+            // here used to keep the process alive with no window and no tray icon; it is closed
+            // by the shutdown now, and named so the leak can be found.
+            var leftovers = System.Windows.Application.Current.Windows.OfType<Window>()
+                .Where(w => !ReferenceEquals(w, this))
+                .Select(w => w.GetType().Name)
+                .ToList();
+            if (leftovers.Count > 0)
+            {
+                AppLog.Warn("Shutdown", $"Windows still open after the control panel closed: {string.Join(", ", leftovers)}");
+            }
         };
 
         // Re-opens whichever widgets were on screen last run, in the layout mode currently selected.
