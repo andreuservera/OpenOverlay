@@ -9,6 +9,7 @@ public sealed class IracingSessionInfo
     public WeekendInfoSection? WeekendInfo { get; set; }
     public DriverInfoSection? DriverInfo { get; set; }
     public SessionInfoSection? SessionInfo { get; set; }
+    public QualifyResultsInfoSection? QualifyResultsInfo { get; set; }
 
     /// <summary>Parses with the same repair steps as the live connection; see <see cref="SessionInfoParser"/>.</summary>
     public static IracingSessionInfo Parse(string yaml) => SessionInfoParser.Parse(yaml).Session;
@@ -139,4 +140,21 @@ public sealed class SessionResultPosition
 
     /// <summary>Last lap time in seconds, or -1 when the car has never completed one.</summary>
     public double LastTime { get; set; }
+}
+
+/// <summary>The race's starting grid. Present in a race even without a qualifying session (the
+/// grid is then set some other way, e.g. by the AI roster); absent in practice-only and test
+/// sessions.</summary>
+public sealed class QualifyResultsInfoSection
+{
+    public List<QualifyResult> Results { get; set; } = [];
+}
+
+/// <summary>One car's slot on the starting grid. Unlike <see cref="SessionResultPosition"/>, both
+/// positions here are 0-based.</summary>
+public sealed class QualifyResult
+{
+    public int CarIdx { get; set; }
+    public int Position { get; set; }
+    public int ClassPosition { get; set; }
 }

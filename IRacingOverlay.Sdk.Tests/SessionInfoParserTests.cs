@@ -70,6 +70,21 @@ public class SessionInfoParserTests
     }
 
     [Fact]
+    public void Parse_ReadsTheStartingGrid()
+    {
+        // As a recorded race writes it: a top-level block, both positions 0-based.
+        var yaml = ValidYaml.ReplaceLineEndings("\n").Replace(
+            "\n...",
+            "\nQualifyResultsInfo:\n Results:\n - Position: 0\n   ClassPosition: 0\n   CarIdx: 1\n   FastestLap: 0\n   FastestTime: -1.0000\n - Position: 1\n   ClassPosition: 1\n   CarIdx: 0\n   FastestLap: 0\n   FastestTime: -1.0000\n\n...");
+
+        var grid = SessionInfoParser.Parse(yaml).Session.QualifyResultsInfo!.Results;
+
+        Assert.Equal([1, 0], grid.Select(r => r.CarIdx));
+        Assert.Equal([0, 1], grid.Select(r => r.Position));
+        Assert.Equal([0, 1], grid.Select(r => r.ClassPosition));
+    }
+
+    [Fact]
     public void Parse_NoTireCompoundTable_IsEmpty()
     {
         Assert.Empty(SessionInfoParser.Parse(ValidYaml).Session.DriverInfo!.DriverTires);

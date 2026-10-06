@@ -6,11 +6,14 @@ public class StandingsRowTests
 {
     private static StandingsRow Row(
         string licString = "", double iRatingDelta = 0, int iRating = 1000,
-        double lastLap = 0, double bestLap = 0, bool sessionFastest = false, string name = "Driver") => new()
+        double lastLap = 0, double bestLap = 0, bool sessionFastest = false, string name = "Driver",
+        int position = 1, int classPosition = 1, int start = 0, int classStart = 0, bool multiClass = false) => new()
     {
         CarIdx = 0,
-        Position = 1,
-        ClassPosition = 1,
+        Position = position,
+        ClassPosition = classPosition,
+        StartPosition = start,
+        StartClassPosition = classStart,
         Name = name,
         CarNumber = "1",
         IsPlayer = false,
@@ -19,12 +22,35 @@ public class StandingsRowTests
         GapToLeaderSeconds = 0,
         LastLapTime = lastLap,
         BestLapTime = bestLap,
-        IsMultiClass = false,
+        IsMultiClass = multiClass,
         IRating = iRating,
         LicString = licString,
         IRatingDelta = iRatingDelta,
         IsSessionFastestLap = sessionFastest,
     };
+
+    [Theory]
+    [InlineData(4, 9, "5", 1)]  // up from ninth on the grid
+    [InlineData(8, 3, "5", -1)] // down from third
+    [InlineData(6, 6, "0", 0)]  // held station: "0", behind a dash in place of the arrow
+    [InlineData(6, 0, "", 0)]   // no grid slot (not a race, or joined late): blank
+    public void PlacesGained_ComparesWithTheStartingGrid(int position, int start, string display, int trend)
+    {
+        var row = Row(position: position, start: start);
+
+        Assert.Equal(display, row.PlacesGainedDisplay);
+        Assert.Equal(trend, row.PlacesGainedTrend);
+    }
+
+    [Fact]
+    public void PlacesGained_InMulticlass_CountsPlacesInClass()
+    {
+        // Overall the car dropped from 5th to 12th, but only because faster classes went by.
+        var row = Row(position: 12, classPosition: 2, start: 5, classStart: 4, multiClass: true);
+
+        Assert.Equal(2, row.PlacesGained);
+        Assert.Equal("2", row.PlacesGainedDisplay);
+    }
 
     [Theory]
     [InlineData(91.2, 90.5, false, "#C4CCD4")] // slower than their best: plain

@@ -68,6 +68,10 @@ public static class PreviewData
         "Brazil", "Finland", "Australia", "Romania", "Germany", "Italy", "Ireland", "Norway",
     ];
 
+    // How many places each car has moved since the start, by running position: positive started
+    // further back (so has gained), negative further up.
+    private static readonly double[] GridShuffle = [0, 3.5, -1.5, 5.5, -3.5, 0, 9.5, -4.5, 2.5, -6.5, 1.5, 12.5, -2.5];
+
     private const double BaseLapTime = 92.418;
 
     private static readonly TireCompound PreviewHard = TireCompound.FromName("Hard");
@@ -101,6 +105,19 @@ public static class PreviewData
         var rows = new List<StandingsRow>(Field.Length);
         var classPositions = new int[Classes.Length];
 
+        // The grid the race started from: the running order with some cars shuffled a few places,
+        // so the places column shows gains, losses and cars that held station.
+        var startPositions = new int[Field.Length];
+        var startClassPositions = new int[Field.Length];
+        var gridClassPositions = new int[Classes.Length];
+        var gridOrder = Enumerable.Range(0, Field.Length).OrderBy(i => i + GridShuffle[i % GridShuffle.Length]).ThenBy(i => i).ToList();
+        for (var slot = 0; slot < gridOrder.Count; slot++)
+        {
+            var car = gridOrder[slot];
+            startPositions[car] = slot + 1;
+            startClassPositions[car] = ++gridClassPositions[multiClass ? Field[car].ClassIndex : 0];
+        }
+
         for (var i = 0; i < Field.Length; i++)
         {
             var entry = Field[i];
@@ -112,6 +129,8 @@ public static class PreviewData
                 CarIdx = i,
                 Position = i + 1,
                 ClassPosition = classPositions[classIndex],
+                StartPosition = startPositions[i],
+                StartClassPosition = startClassPositions[i],
                 Name = entry.Name,
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
@@ -169,6 +188,8 @@ public static class PreviewData
                 CarIdx = source.CarIdx,
                 Position = source.Position,
                 ClassPosition = source.ClassPosition,
+                StartPosition = source.StartPosition,
+                StartClassPosition = source.StartClassPosition,
                 Name = source.Name,
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,

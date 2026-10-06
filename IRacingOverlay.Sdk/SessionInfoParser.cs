@@ -29,7 +29,7 @@ public static class SessionInfoParser
         .IgnoreUnmatchedProperties()
         .Build();
 
-    private static readonly string[] Sections = [nameof(IracingSessionInfo.WeekendInfo), nameof(IracingSessionInfo.SessionInfo), nameof(IracingSessionInfo.DriverInfo)];
+    private static readonly string[] Sections = [nameof(IracingSessionInfo.WeekendInfo), nameof(IracingSessionInfo.SessionInfo), nameof(IracingSessionInfo.DriverInfo), nameof(IracingSessionInfo.QualifyResultsInfo)];
 
     // Free-text fields iRacing does not quote (the same set other SDK ports repair).
     private static readonly Regex FreeTextField = new(
@@ -77,6 +77,9 @@ public static class SessionInfoParser
                     break;
                 case nameof(IracingSessionInfo.SessionInfo):
                     result.SessionInfo = parsed?.SessionInfo ?? previous?.SessionInfo;
+                    break;
+                case nameof(IracingSessionInfo.QualifyResultsInfo):
+                    result.QualifyResultsInfo = parsed?.QualifyResultsInfo ?? previous?.QualifyResultsInfo;
                     break;
                 default:
                     result.DriverInfo = parsed?.DriverInfo ?? previous?.DriverInfo;
@@ -175,6 +178,12 @@ public static class SessionInfoParser
                 session.ResultsPositions ??= [];
                 session.ResultsPositions.RemoveAll(p => p is null);
             }
+        }
+
+        if (info.QualifyResultsInfo is { } grid)
+        {
+            grid.Results ??= [];
+            grid.Results.RemoveAll(r => r is null);
         }
 
         return info;

@@ -23,6 +23,8 @@ public enum DriverTableColumn
     CarBrand,
     /// <summary>The driver's country flag, from their iRacing flair. Off by default.</summary>
     CountryFlag,
+    /// <summary>Places gained or lost since the start of the race. Off by default.</summary>
+    PlacesGained,
 }
 
 /// <summary>Session information shown around a driver table, above or below it rather than as a
@@ -87,6 +89,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showGap = true;
     private bool _showCarBrand;
     private bool _showCountryFlag;
+    private bool _showPlacesGained;
     private bool _showClassName = true;
     private bool _showSof = true;
     private bool _showColumnHeaders = true;
@@ -200,6 +203,13 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showCountryFlag;
         set => SetField(ref _showCountryFlag, value);
+    }
+
+    /// <summary>Places gained or lost since the start, against the race's starting grid. Off by default.</summary>
+    public bool ShowPlacesGained
+    {
+        get => _showPlacesGained;
+        set => SetField(ref _showPlacesGained, value);
     }
 
     /// <summary>Shows the session being run (RACE, QUALIFYING, PRACTICE) next to the panel title.
@@ -410,6 +420,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         DriverTableColumn.BestLap => ShowBestLap,
         DriverTableColumn.CarBrand => ShowCarBrand,
         DriverTableColumn.CountryFlag => ShowCountryFlag,
+        DriverTableColumn.PlacesGained => ShowPlacesGained,
         _ => ShowGap,
     };
 
@@ -430,6 +441,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
             case DriverTableColumn.BestLap: ShowBestLap = visible; break;
             case DriverTableColumn.CarBrand: ShowCarBrand = visible; break;
             case DriverTableColumn.CountryFlag: ShowCountryFlag = visible; break;
+            case DriverTableColumn.PlacesGained: ShowPlacesGained = visible; break;
             default: ShowGap = visible; break;
         }
     }

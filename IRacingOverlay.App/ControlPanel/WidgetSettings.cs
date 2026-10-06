@@ -91,6 +91,7 @@ public static class WidgetSettings
     private static string ColumnLabel(DriverTableColumn column) => column switch
     {
         DriverTableColumn.Position => "Pos",
+        DriverTableColumn.PlacesGained => "Places +/-",
         DriverTableColumn.CarNumber => "Car #",
         DriverTableColumn.CarBrand => "Brand",
         DriverTableColumn.CountryFlag => "Flag",
