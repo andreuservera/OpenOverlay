@@ -16,10 +16,12 @@ mechanism SimHub, CrewChief, and RaceLab use) and displays it as:
 
 - **Floating widgets** — small, movable, click-through windows that sit on top of the game while
   you drive.
+- **Layouts** — saved arrangements of those widgets, each with its own positions, sizes and
+  settings, that you switch between in one click or with a shortcut.
 - **A fullscreen dashboard** — a fixed, all-in-one layout meant for a dedicated second monitor.
 
-No telemetry ever leaves your machine — everything is read locally from iRacing's shared memory
-and rendered directly by the app.
+No account, no cloud: no telemetry ever leaves your machine — everything is read locally from
+iRacing's shared memory and rendered directly by the app.
 
 ## Screenshots
 
@@ -27,57 +29,117 @@ and rendered directly by the app.
 
 ![Floating widgets](docs/screenshots/floating-widgets.png)
 
-**Fullscreen dashboard**, for a second monitor — track map, standings, relative, tires, fuel calculator,
-incidents, flags, pedals and the cockpit all on one screen:
-
-![Fullscreen dashboard](docs/screenshots/dashboard.png)
-
-**Standings and Relative** — class-coloured rows, iRating badge with the estimated gain/loss,
-safety rating, personal-best and session-best lap colours, the live PIT tag and the optional
-last-pit-stop column:
+**Standings and Relative** — class-coloured rows, car brand and country flag, places gained since
+the start, last pit stop, tire compound, iRating with the estimated gain/loss, safety rating,
+personal-best and session-best lap colours, penalty and PIT tags, and session info in any corner:
 
 ![Standings and Relative](docs/screenshots/timing-tables.png)
 
-**Weather** — stacked or compact, with a wind compass that turns with your car:
+**Cockpit** — a modular dashboard: pick its readouts and their order, with shift lights on top and
+proximity bars down the sides:
 
-![Weather widget](docs/screenshots/weather.png)
+![Cockpit configurations](docs/screenshots/cockpit.png)
+
+**Weather and Track & session** — four weather cards, stacked or side by side, with a wind compass
+that turns with your car; and a one-line session bar with the fields you choose:
+
+![Weather and Track & session](docs/screenshots/weather.png)
+
+**More widgets** — Fuel calculator, Flags, Tires, Pedal trace, Delta, Incidents and Track map:
+
+![More widgets](docs/screenshots/widgets.png)
+
+**Control Panel** — every widget has its own page with a live preview of what you're changing:
+
+![Control Panel](docs/screenshots/control-panel.png)
+
+**Layout editor** — arrange a layout on a canvas at your monitor's real resolution, and set each
+widget's size and settings for that layout:
+
+![Layout editor](docs/screenshots/layout-editor.png)
+
+**Fullscreen dashboard**, for a second monitor — track map, track info, standings, relative, tires,
+flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
+
+![Fullscreen dashboard](docs/screenshots/dashboard.png)
 
 <sub>Screenshots are rendered by the app itself from its built-in preview data.</sub>
 
 ## Features
 
-- **Cockpit** — a modular dashboard: gear, speed, RPM, ABS, fuel, inputs, water/oil
-  temperatures, brake bias, traction control, incidents and delta to the session best, in the
-  order you choose, under a strip of 14 shift lights and between two bars
-  that show the cars alongside.
-- **Relative** — cars ahead/behind you on track, gap in seconds, class-colored.
-- **Standings** — full running order with position, iRating and estimated iRating change, safety
-  rating, lap, last/best lap time, and gap to the class leader; automatically grouped by class in
-  multiclass sessions.
-- **Last pit stop** — optional Standings/Relative column showing the lap of each driver's most
-  recent stop and its pit-lane time (e.g. `L24 | 01:18`).
-- **Delta bar** — live time delta vs. session best, personal best, or optimal lap.
-- **Fuel calculator** — average consumption per lap (computed from your own fuel burn across
-  completed laps, not a jumpy instantaneous rate), laps of fuel remaining, whether you'll make it to
-  the end of the session, and how much to add at the next stop.
+### Widgets
+
+- **Relative** — the cars around you on track, closest first, with gaps that follow each car's real
+  pace around the lap (also in multiclass and after pit stops) and live race positions, so an
+  overtake shows straight away.
+- **Standings** — a classic timing screen: the official order and gaps update at the start/finish
+  line, while pit and penalty tags stay live. Grouped by class in multiclass races, optionally with
+  each class's driver count and SOF; your own battle always in view.
+- **Relative and Standings columns** — position, places gained/lost since the start, car number,
+  car brand, country flag, driver, last pit stop (lap and pit-lane time, e.g. `L24 | 01:18`), tire
+  compound, iRating with the estimated gain/loss (calculated within each class), safety rating,
+  lap, best and last lap, and gap. Show, hide and reorder them by dragging; hide the column headers
+  for a shorter widget.
+- **Session info around the tables** — session type, SOF, laps, time, air/track temperature,
+  humidity, brake bias and your incidents, placed in any corner above or below the table.
+- **Cockpit** — gear, speed, RPM, ABS, fuel, inputs, water/oil temperature, brake bias, traction
+  control, incidents and delta, in the order you choose, with optional shift lights and proximity
+  radar bars showing the cars alongside.
+- **Delta** — live gap to your session best, all-time personal best or optimal lap, on a panel
+  that turns green while you gain time and red while you lose it.
+- **Fuel calculator** — fuel left, last/average/min/max use per lap, laps remaining, fuel to the
+  finish and how much to add at the next stop; works in timed races, ignores refuels and out-laps,
+  and lets you choose, group and reorder its cells, horizontally or vertically.
 - **Flags** — every iRacing flag (track status, flags aimed at you, race progress and advisories),
-  each one individually switchable.
-- **Weather** — air and track temperature, humidity, wind speed, a wind compass relative to your
-  car, the current sky and the chance of rain; every element can be hidden and the widget closes up
-  around it.
-- **Tire info** — tire temps and pressures.
-- **Pedal trace** — a scrolling throttle/brake/clutch trace.
-- **Incidents** — your own and your team's incident count.
-- **Track info / Track map** — session/weather info bar and a schematic track map with live car
-  markers.
-- **Three dashboard themes** — Classic, Digital HUD, and Raw DIY.
-- **Control Panel** — every widget has its own page with a live preview: visible columns and
-  elements, themes, units and sizes, plus opacity and auto-hide when you're not driving.
+  each one individually switchable, with a simulator to preview any flag without iRacing.
+- **Weather** — track and air temperature, humidity, chance of rain, track wetness, wind speed and a
+  wind compass relative to your car (refreshing at 10–60 Hz); every element can be hidden.
+- **Track & session** — track name, session, temperatures, wind, humidity, track usage, time left
+  and lap; choose and reorder the fields.
+- **Tires** — temperatures and tread for every corner. On most cars iRacing only updates these in
+  the pit stall.
+- **Pedal trace** — scrolling throttle, brake and clutch trace with ABS activity marked, plus
+  optional gear, speed and steering; choose and reorder its parts.
+- **Incidents** — your incident count, and your team's in a team race.
+- **Track map** — every car's position around the lap on one bar, coloured by class.
+
+### Layouts
+
+- Save your widgets as **layouts** — each with its own position, size, opacity, auto-hide and
+  settings per widget — and switch between them from the Control Panel toolbar.
+- A **layout editor** with a canvas at the real resolution of the chosen monitor: drag widgets in
+  from the catalog, move them with the mouse or the arrow keys (`Shift` for a grid step), snap to a
+  grid, set the stacking order, and zoom (fit, 100 % and steps in between). Changes can auto-save
+  as you go, so an open layout updates on screen while you edit.
+- **Export and import** layouts as files, choosing the monitor they go on.
+- Give each layout its own **shortcut**, and use global ones to open/close the selected layout,
+  switch to the next or previous one, or edit it.
+
+### Control and comfort
+
+- **Global hotkeys** for the things you need without leaving the sim. Defaults: show/hide overlays
+  `Ctrl+Shift+F9`, unlock widgets `Ctrl+Shift+F10`, show the Control Panel `Ctrl+Shift+F11`, restart
+  overlays `Ctrl+Shift+F8`. Every shortcut can be changed or turned off, and widgets can have their
+  own.
+- **System tray** — closing the Control Panel keeps the overlays running in the tray (or set it to
+  exit instead).
+- **Units** follow iRacing's own setting, or force metric or imperial.
+- **Auto-hide** per widget when you're not driving (menus, garage, replays, spectating).
+- **Opacity** per widget fades only its background, so the data stays fully readable.
+- **Three dashboard themes** — Classic, Digital HUD and Raw DIY.
+- **High-rate displays** (proximity bars, ABS light, pedal trace) refresh at up to ~60 Hz, or slower
+  to save CPU.
+
+### Reliability and support
+
+- A widget that fails is paused and rebuilt on its own while every other widget keeps running;
+  the connection to iRacing recovers by itself after a stall or a sim restart.
+- Settings are saved crash-safe, with a backup of the previous version.
+- **Logs and diagnostics** stay on your PC: one log file per day (kept 30 days), **Copy
+  diagnostics** and **Export report** (a .zip with logs, crash reports and settings) for bug reports.
 - **What's New, Changelog and About** — the version you're running (always in the status bar), its
   build and update channel, what changed in it, and every earlier release. After an update, a short
   notice says what's new, once.
-- Every widget and dashboard panel is independently movable and scalable through five preset sizes
-  (XS · S · M · L · XL).
 
 ## Requirements
 
@@ -100,37 +162,40 @@ last-pit-stop column:
    it. In iRacing, go to **Options → Graphics → Display Mode** and pick **Borderless** (or
    **Windowed** if Borderless isn't available for your setup). Borderless is recommended since it
    still fills the screen edge-to-edge with no visible window chrome.
-3. Launch `OpenOverlay.exe`. A small **Control Panel** window opens — this is where you turn
-   widgets on/off, it also shows the connection status (red = waiting for iRacing, green = live).
-4. Load into an iRacing session. The status dot turns green and every widget you've enabled starts
-   showing live data automatically.
+3. Launch OpenOverlay. The **Control Panel** opens: turn widgets on and off from the list on the
+   left, and set each one up on its page while the preview shows the result. The status at the top
+   says **WAITING FOR IRACING** until a session is running.
+4. Load into an iRacing session. The status turns live and every widget you've enabled starts
+   showing real data automatically.
 
 ### Positioning and sizing widgets
 
-- Check **"Edit layout (move & resize widgets)"** in the Control Panel to unlock them. While
-  unchecked, widgets are locked and click-through (mouse clicks pass straight to iRacing
-  underneath — this is the mode you race in).
+- Click **Unlock widgets** in the Control Panel toolbar (or press `Ctrl+Shift+F10`) to move them.
+  While locked, widgets are click-through (mouse clicks pass straight to iRacing underneath — this
+  is the mode you race in).
 - Drag a widget by its body to move it.
-- Widgets are **not** free-form resizable. Hover one to reveal its **−  M  +** size control in the
-  top-right corner and step through the five preset levels: **XS · S · M · L · XL**. `Ctrl` +
-  mouse wheel does the same thing, and clicking the level badge resets that widget to **M**.
+- Widgets are **not** free-form resizable. Hover one to reveal its **−  M  +** size control and step
+  through the preset sizes, from **XXS** to **XXXL**. `Ctrl` + mouse wheel does the same thing, and
+  clicking the size badge resets that widget to **M**.
 - The whole widget scales as one — type, padding, gaps and bars all keep the same proportions — and
   the frame always resizes itself to fit, so nothing is ever cropped, overlapped or squashed.
-- Positions and size levels are saved automatically and restored next launch.
+- Positions and sizes are saved automatically and restored next launch. For several arrangements,
+  save them as layouts (see above).
 
 ### Fullscreen dashboard (second monitor)
 
-- Pick a monitor from the **"Dashboard monitor"** dropdown and click **"Show dashboard"**.
+- In the Control Panel, pick the dashboard's **Monitor** and click **Show dashboard**.
 - Every dashboard panel has the same **−  M  +** size control (hover over a panel to reveal it), so
   you can rebalance the layout without any panel ever clipping its own content.
-- Pick a **Dashboard theme** from the Control Panel to restyle the whole dashboard at once.
+- Pick a dashboard **Theme** to restyle the whole dashboard at once; floating widgets aren't
+  affected.
 
 ## Building from source
 
 Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```powershell
-git clone https://github.com/<your-org>/OpenOverlay.git
+git clone https://github.com/andreuservera/OpenOverlay.git
 cd OpenOverlay
 dotnet build
 dotnet test
@@ -206,8 +271,17 @@ what to know before opening a PR.
 
 MIT — see [LICENSE](LICENSE). Use it, fork it, sell overlays built on top of it, whatever you like.
 
-Third-party: [YamlDotNet](https://github.com/aaubry/YamlDotNet) (MIT), used to parse iRacing's
-session-info YAML blob.
+Third-party:
+
+- [YamlDotNet](https://github.com/aaubry/YamlDotNet) (MIT), used to parse iRacing's session-info
+  YAML blob.
+- [Velopack](https://velopack.io) (MIT), for the installer and auto-updates.
+- [SharpVectors](https://github.com/ElinamLLC/SharpVectors) (BSD-3-Clause), to draw SVG artwork.
+- [Barlow Semi Condensed](https://github.com/jpt/barlow) (SIL Open Font License), the font of the
+  Relative and Standings tables.
+- Car brand logos: mostly [Simple Icons](https://simpleicons.org) (CC0); see
+  [Assets/CarBrands/README.md](IRacingOverlay.App/Assets/CarBrands/README.md) for each source. The
+  logos remain trademarks of their owners and are shown only to identify each car's make.
 
 ## Disclaimer
 
