@@ -472,6 +472,40 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_MultipleClasses_EstimatesIRatingWithinEachClassOnly()
+    {
+        // Overall: faster-class car 1, then Me, then car 2 of my class. Equal ratings, so leading my
+        // class is a duel won at even odds (K = 200 / 2 cars = +50); the faster car ahead doesn't count.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 6, 5, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.5f, 0.5f, 0.4f, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", CarClassID = 200, IRating = 2000 },
+                    new DriverEntry { CarIdx = 1, UserName = "Faster Class", CarNumber = "1", CarClassID = 100, IRating = 2000 },
+                    new DriverEntry { CarIdx = 2, UserName = "Class Rival", CarNumber = "9", CarClassID = 200, IRating = 2000 },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.Equal([1, 0, 2], rows.Select(r => r.CarIdx));
+        Assert.Equal(50, rows.Single(r => r.CarIdx == 0).IRatingDelta, precision: 6);
+        Assert.Equal(-50, rows.Single(r => r.CarIdx == 2).IRatingDelta, precision: 6);
+        Assert.Equal(0, rows.Single(r => r.CarIdx == 1).IRatingDelta);
+    }
+
+    [Fact]
     public void BuildStandings_ClassShortNameBlank_NeverFallsBackToTheCarName()
     {
         // Fixed/spec series leave CarClassShortName blank. The class header then reads "CLASS n"
