@@ -93,7 +93,7 @@
                     </Grid.ContextMenu>
 
                     <!-- The widget itself, at its size level, with its own opacity. -->
-                    <ContentPresenter Content="{Binding Panel}" Opacity="{Binding PanelOpacity}"
+                    <ContentPresenter Content="{Binding Panel}"
                                               ov:BackgroundOpacity.Value="{Binding BackgroundOpacity}">
                         <ContentPresenter.LayoutTransform>
                             <ScaleTransform ScaleX="{Binding Factor}" ScaleY="{Binding Factor}"/>

@@ -92,8 +92,4 @@ public static class WidgetCatalog
     /// <summary>Whether this version of the app has a widget of that type. Saved data can name one
     /// that was since removed, or that only a newer version has.</summary>
     public static bool Contains(string type) => All.Any(descriptor => descriptor.Key == type);
-
-    /// <summary>Whether the opacity setting fades the whole widget rather than just its background.
-    /// The cockpit themes draw their dashboard as one picture, with no background apart from it.</summary>
-    public static bool FadesWholeWidget(string type) => type == Cockpit;
 }

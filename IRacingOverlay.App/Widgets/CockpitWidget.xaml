@@ -5,8 +5,8 @@
         xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
         Title="Cockpit">
     <Grid>
-        <!-- No design size: every cockpit theme has its own fixed footprint and silhouette, and the
-             window takes the active theme's size at every scale level. -->
+        <!-- No design size: the dashboard is as wide as the modules it shows, and the window takes
+             that size at every scale level. -->
         <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Cockpit">
             <w:CockpitPanel/>
         </ov:ScalablePanel>

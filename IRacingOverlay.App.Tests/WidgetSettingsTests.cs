@@ -30,7 +30,7 @@ public sealed class WidgetSettingsTests
     [InlineData(WidgetCatalog.Relative, new[] { "COLUMNS", "TABLE" })]
     [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
     [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
-    [InlineData(WidgetCatalog.Cockpit, new[] { "THEME", "UPDATE RATE" })]
+    [InlineData(WidgetCatalog.Cockpit, new[] { "MODULES", "UPDATE RATE" })]
     [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS", "UPDATE RATE" })]
     [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
     [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]

@@ -25,6 +25,11 @@ internal static class CockpitBuilder
         var (left, right) = BuildProximity(telemetry, session);
         var speedKph = telemetry.HasVariable(TelemetryVarNames.Speed) ? telemetry.GetFloat(TelemetryVarNames.Speed) * 3.6 : 0;
         var rpm = telemetry.HasVariable(TelemetryVarNames.Rpm) ? telemetry.GetFloat(TelemetryVarNames.Rpm) : 0;
+        var brakeBias = Optional(telemetry, TelemetryVarNames.BrakeBias);
+        var tractionControl = Optional(telemetry, TelemetryVarNames.TractionControl) is { } tc ? (int)Math.Round(tc) : (int?)null;
+        // The same readings the Incidents and Delta widgets show.
+        var incidents = IncidentBuilder.Build(telemetry, session) is var built && !ReferenceEquals(built, IncidentState.Empty) ? built : null;
+        var delta = telemetry.HasVariable(TelemetryVarNames.DeltaToSessionBestLap) ? DeltaBuilder.Build(telemetry, DeltaReference.SessionBest) : null;
 
         return new CockpitState
         {
@@ -43,8 +48,48 @@ internal static class CockpitBuilder
             Brake = Optional(telemetry, TelemetryVarNames.Brake) ?? 0,
             WaterTempC = Optional(telemetry, TelemetryVarNames.WaterTemp),
             OilTempC = Optional(telemetry, TelemetryVarNames.OilTemp),
+            BrakeBias = brakeBias,
+            TractionControl = tractionControl,
+            Incidents = incidents,
+            Delta = delta,
+            Unsupported = Unsupported(brakeBias, tractionControl, incidents, delta),
             UnitSystem = Units.Read(telemetry),
         };
+    }
+
+    private static readonly IReadOnlySet<CockpitModule> AllSupported = new HashSet<CockpitModule>();
+
+    /// <summary>Each of these is null exactly when its variable is missing, which the sim decides
+    /// once, when the car loads.</summary>
+    private static IReadOnlySet<CockpitModule> Unsupported(double? brakeBias, int? tractionControl, IncidentState? incidents, DeltaState? delta)
+    {
+        if (brakeBias is not null && tractionControl is not null && incidents is not null && delta is not null)
+        {
+            return AllSupported;
+        }
+
+        var unsupported = new HashSet<CockpitModule>();
+        if (brakeBias is null)
+        {
+            unsupported.Add(CockpitModule.BrakeBias);
+        }
+
+        if (tractionControl is null)
+        {
+            unsupported.Add(CockpitModule.TractionControl);
+        }
+
+        if (incidents is null)
+        {
+            unsupported.Add(CockpitModule.Incidents);
+        }
+
+        if (delta is null)
+        {
+            unsupported.Add(CockpitModule.Delta);
+        }
+
+        return unsupported;
     }
 
     private static double? Optional(TelemetrySnapshot telemetry, string name) =>

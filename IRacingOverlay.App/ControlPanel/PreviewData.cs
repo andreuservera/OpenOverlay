@@ -248,6 +248,10 @@ public static class PreviewData
         Brake = 0,
         WaterTempC = 88,
         OilTempC = 104,
+        BrakeBias = 54.5,
+        TractionControl = 3,
+        Incidents = Incidents(),
+        Delta = Delta(),
     };
 
     public static DeltaState Delta() => new()

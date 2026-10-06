@@ -13,7 +13,6 @@ public sealed class WidgetConfigCodecTests
         ["displayMode"] = typeof(FlagDisplayMode),
         ["layout"] = typeof(FlagLayout),
         ["iconPlacement"] = typeof(FlagIconPlacement),
-        ["theme"] = typeof(CockpitTheme),
         ["iconSize"] = typeof(WeatherGraphicSize),
         ["arrowSize"] = typeof(WeatherGraphicSize),
         ["averageSource"] = typeof(FuelAverageSource),
