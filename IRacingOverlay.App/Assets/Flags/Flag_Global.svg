@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" height="500" width="750">
+<rect width="750" height="500" fill="#1f4e8c"/>
+<g fill="none" stroke="#fff" stroke-width="18">
+<circle cx="375" cy="250" r="190"/>
+<ellipse cx="375" cy="250" rx="85" ry="190"/>
+<line x1="375" y1="60" x2="375" y2="440"/>
+<line x1="185" y1="250" x2="565" y2="250"/>
+<path d="M210 155 Q375 205 540 155"/>
+<path d="M210 345 Q375 295 540 345"/>
+</g>
+</svg>
