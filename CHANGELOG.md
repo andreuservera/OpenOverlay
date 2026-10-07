@@ -2,6 +2,13 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.11.1] - 2026-10-07
+
+#### Fixed
+- Standings: in multiclass races, the estimated iRating change now counts only the cars in your class, as iRacing does.
+- Closing the Control Panel now always quits the app, instead of sometimes leaving it running in the background with no window or tray icon.
+
+
 ### [0.11.0] - 2026-10-06
 
 #### Added
