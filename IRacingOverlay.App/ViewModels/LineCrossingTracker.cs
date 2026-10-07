@@ -11,6 +11,10 @@ namespace IRacingOverlay.App.ViewModels;
 /// Telemetry arrives at 10 Hz, when a car can cover 8 m between ticks, so the crossing is placed
 /// between the two ticks around it by how far each was from the line. Must see every tick: a missed
 /// crossing is not made up later.
+///
+/// Once the chequered flag is out it also holds the classification (<see cref="HeldPosition"/>): cars
+/// head for the garage or disconnect, iRacing stops placing them, and a table built from what is
+/// still on track would move everyone behind them up.
 /// </summary>
 internal sealed class LineCrossingTracker
 {
@@ -18,8 +22,18 @@ internal sealed class LineCrossingTracker
     private readonly Dictionary<int, (int Lap, double Time)> _latest = new();
     private readonly Dictionary<int, (int Laps, double Pct, double Time)> _previous = new();
     private readonly Dictionary<int, int> _lapsWhenFirstSeen = new();
+    private readonly Dictionary<int, int> _lapsAtChequer = new();
+    private readonly Dictionary<int, double> _finishedAt = new();
+    private readonly Dictionary<int, int> _heldPositions = new();
+    private int? _winnerLaps;
     private int? _sessionNum;
     private double _lastSessionTime;
+
+    // irsdk_SessionState: 5 checkered, 6 cool down.
+    private const int StateCheckered = 5;
+
+    // CarIdxPosition may settle a tick or two after the car crosses the line to finish.
+    private const double FinishSettleSeconds = 2.0;
 
     /// <summary>Laps completed per car: CarIdxLapCompleted, or laps started where a build lacks it.
     /// Either steps up at the line, which is all the timing needs.</summary>
@@ -47,6 +61,10 @@ internal sealed class LineCrossingTracker
             _latest.Clear();
             _previous.Clear();
             _lapsWhenFirstSeen.Clear();
+            _lapsAtChequer.Clear();
+            _finishedAt.Clear();
+            _heldPositions.Clear();
+            _winnerLaps = null;
         }
 
         _lastSessionTime = now;
@@ -83,6 +101,51 @@ internal sealed class LineCrossingTracker
             }
 
             _previous[carIdx] = (completed, pct, now);
+        }
+
+        if (telemetry.HasVariable(TelemetryVarNames.SessionState) &&
+            telemetry.GetInt(TelemetryVarNames.SessionState) >= StateCheckered)
+        {
+            HoldClassification(telemetry, laps, now);
+        }
+    }
+
+    /// <summary>
+    /// After the chequered flag: the last official position each car had, held once it has
+    /// finished, kept while it is towed or disconnected. Null before the flag, or for a car iRacing
+    /// never placed after it.
+    /// </summary>
+    public int? HeldPosition(int carIdx) =>
+        _heldPositions.TryGetValue(carIdx, out var position) ? position : null;
+
+    private void HoldClassification(TelemetrySnapshot telemetry, int[] laps, double now)
+    {
+        // The winner's crossing is what shows the flag, so the most laps anyone has completed then
+        // is the race distance. Everyone else finishes at their next crossing, lapped or not.
+        _winnerLaps ??= laps.DefaultIfEmpty(0).Max();
+
+        var positions = telemetry.HasVariable(TelemetryVarNames.CarIdxPosition)
+            ? telemetry.GetIntArray(TelemetryVarNames.CarIdxPosition)
+            : [];
+        for (var carIdx = 0; carIdx < laps.Length; carIdx++)
+        {
+            var completed = laps[carIdx];
+            if (completed < 0)
+            {
+                continue;
+            }
+
+            var atChequer = _lapsAtChequer.TryAdd(carIdx, completed) ? completed : _lapsAtChequer[carIdx];
+            if (!_finishedAt.ContainsKey(carIdx) && (completed >= _winnerLaps || completed > atChequer))
+            {
+                _finishedAt[carIdx] = now;
+            }
+
+            var settling = !_finishedAt.TryGetValue(carIdx, out var finishedAt) || now - finishedAt < FinishSettleSeconds;
+            if (settling && carIdx < positions.Length && positions[carIdx] > 0)
+            {
+                _heldPositions[carIdx] = positions[carIdx];
+            }
         }
     }
 

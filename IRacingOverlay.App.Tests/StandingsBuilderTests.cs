@@ -284,6 +284,7 @@ public class StandingsBuilderTests
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("SessionNum", IrsdkVarType.Int);
         builder.AddVar("SessionTime", IrsdkVarType.Double);
+        builder.AddVar("SessionState", IrsdkVarType.Int);
         builder.AddVar("CarIdxPosition", IrsdkVarType.Int, count: cars);
         builder.AddVar("CarIdxLap", IrsdkVarType.Int, count: cars);
         builder.AddVar("CarIdxLapCompleted", IrsdkVarType.Int, count: cars);
@@ -313,6 +314,9 @@ public class StandingsBuilderTests
 
         public TelemetrySnapshot Latest { get; private set; } = null!;
 
+        /// <summary>irsdk_SessionState: 4 racing, 5 chequered.</summary>
+        public int State { get; set; } = 4;
+
         public Race Drive(double from, double to, Func<double, double[]> distanceAt, int[]? official = null, bool[]? onPitRoad = null)
         {
             for (var time = from; time <= to; time += 0.097)
@@ -329,10 +333,12 @@ public class StandingsBuilderTests
             {
                 w.SetInt("SessionNum", 0);
                 w.SetDouble("SessionTime", time);
+                w.SetInt("SessionState", State);
                 w.SetIntArray("CarIdxPosition", official ?? new int[cars]);
-                w.SetIntArray("CarIdxLapCompleted", distance.Select(d => (int)Math.Floor(d)).ToArray());
-                w.SetIntArray("CarIdxLap", distance.Select(d => (int)Math.Floor(d) + 1).ToArray());
-                w.SetFloatArray("CarIdxLapDistPct", distance.Select(d => (float)(d - Math.Floor(d))).ToArray());
+                // A negative distance is a car out of the world: towed, in the garage, disconnected.
+                w.SetIntArray("CarIdxLapCompleted", distance.Select(d => d < 0 ? -1 : (int)Math.Floor(d)).ToArray());
+                w.SetIntArray("CarIdxLap", distance.Select(d => d < 0 ? -1 : (int)Math.Floor(d) + 1).ToArray());
+                w.SetFloatArray("CarIdxLapDistPct", distance.Select(d => d < 0 ? -1f : (float)(d - Math.Floor(d))).ToArray());
                 w.SetBoolArray("CarIdxOnPitRoad", onPitRoad ?? new bool[cars]);
             });
             Crossings.Update(Latest, session);
@@ -585,6 +591,31 @@ public class StandingsBuilderTests
         Assert.Equal([1, 0], race.Order());
         Assert.Equal("Leader", race.Standings()[1].GapDisplay);
         Assert.Equal("+0.8", race.Standings()[0].GapDisplay);
+    }
+
+    [Fact]
+    public void BuildStandings_AfterTheChequeredFlag_FinishedCarsKeepTheirPlaceWhenTheyLeave()
+    {
+        // Three cars 1s apart on 100s laps; the leader takes the flag completing lap 2 at 200s.
+        var session = RaceSession(
+            new DriverEntry { CarIdx = 0, UserName = "Player", CarNumber = "1", CarClassID = 1, IRating = 2000 },
+            new DriverEntry { CarIdx = 1, UserName = "Second", CarNumber = "2", CarClassID = 1, IRating = 2000 },
+            new DriverEntry { CarIdx = 2, UserName = "Third", CarNumber = "3", CarClassID = 1, IRating = 2000 });
+        session.DriverInfo!.DriverCarIdx = 2;
+        var race = new Race(session, cars: 3)
+            .Drive(150.01, 199.9, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        race.State = 5;
+        race.Drive(200.01, 205, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        var atTheFlag = race.Standings();
+
+        // The winner and second head straight for the garage; iRacing stops placing them and moves
+        // the third car up.
+        race.Tick(210, [-1, -1, 2.08], official: [0, 0, 1]);
+
+        var rows = race.Standings();
+        Assert.Equal([0, 1, 2], race.Order());
+        Assert.Equal([1, 2, 3], rows.Values.OrderBy(r => r.CarIdx).Select(r => r.Position));
+        Assert.Equal(atTheFlag[2].IRatingDelta, rows[2].IRatingDelta);
     }
 
     [Fact]

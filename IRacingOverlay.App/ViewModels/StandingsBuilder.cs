@@ -409,8 +409,11 @@ internal static class StandingsBuilder
             : results.TryGetValue(carIdx, out var scored) ? scored.LapsComplete
             : -1;
 
+        // After the chequered flag a finished car keeps its place whatever it does next: drives
+        // to the garage, disconnects, or drops out of iRacing's live order.
         int OfficialPositionOf(int carIdx) =>
-            positions is not null && carIdx < positions.Length && positions[carIdx] > 0 ? positions[carIdx] : 0;
+            crossings?.HeldPosition(carIdx) is { } held ? held
+            : positions is not null && carIdx < positions.Length && positions[carIdx] > 0 ? positions[carIdx] : 0;
 
         var eligible = new List<DriverEntry>();
         foreach (var driver in racing)
