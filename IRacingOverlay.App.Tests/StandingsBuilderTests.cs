@@ -1178,6 +1178,27 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_CarDropsOutOfTelemetry_KeepsTheLapItWasOn()
+    {
+        // Seen live spectating: a car this client stops receiving reads CarIdxLap -1, and the count
+        // fell back to the scoring table's laps completed — one fewer than the lap it was on, so the
+        // leader read 2 while the cars behind it read 3.
+        var session = LeaderAndRival();
+        session.SessionInfo!.Sessions[0].ResultsPositions =
+        [
+            new SessionResultPosition { CarIdx = 0, Position = 1, LapsComplete = 2 },
+            new SessionResultPosition { CarIdx = 1, Position = 2, LapsComplete = 2 },
+        ];
+        var race = new Race(session, cars: 2)
+            .Tick(100.0, [2.5, 2.4], official: [1, 2])
+            .Tick(100.1, [-1, 2.41], official: [1, 2]);
+
+        var rows = StandingsBuilder.BuildStandings(race.Latest, session, crossings: race.Crossings);
+
+        Assert.Equal([3, 3], rows.Select(r => r.CurrentLap));
+    }
+
+    [Fact]
     public void BuildStandings_MultiClass_FasterClassLapTimeDoesNotOutrankACarALapAhead()
     {
         // Same root cause, permanent rather than transient: in multiclass the reference lap time can

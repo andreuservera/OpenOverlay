@@ -386,16 +386,23 @@ internal static class StandingsBuilder
         var laps = new LapTimeSource(bestLaps, lastLaps, results);
 
         // CarIdxLap is -1 whenever a car isn't on track — sitting in the garage, or back in the pit
-        // stall after a run — which says nothing about how many laps they actually ran. The scoring
-        // table keeps the real count, and since a parked car has no lap in progress its "completed"
-        // figure is exactly the right number to show. Still -1 with nothing scored either means the
-        // car genuinely has never been out.
+        // stall after a run — which says nothing about how many laps they actually ran. The last lap
+        // seen live comes first: it counts the same way, where the scoring table's "completed" is one
+        // fewer, and switching between the two made a car's count drop by one each time it went
+        // missing — seen live, spectating a race. The scoring table covers a car never seen live:
+        // a parked car has no lap in progress, so its completed figure is the right one to show.
+        // Still -1 with nothing scored either means the car genuinely has never been out.
         int LapCountOf(int carIdx)
         {
             var live = carIdx >= 0 && carIdx < currentLaps.Length ? currentLaps[carIdx] : -1;
             if (live >= 0)
             {
                 return live;
+            }
+
+            if (crossings?.LastLapStarted(carIdx) is { } lastSeen)
+            {
+                return lastSeen;
             }
 
             return results.TryGetValue(carIdx, out var scored) && scored.LapsComplete > 0 ? scored.LapsComplete : live;

@@ -25,6 +25,7 @@ internal sealed class LineCrossingTracker
     private readonly Dictionary<int, int> _lapsAtChequer = new();
     private readonly Dictionary<int, double> _finishedAt = new();
     private readonly Dictionary<int, int> _heldPositions = new();
+    private readonly Dictionary<int, int> _lapsStarted = new();
     private int? _winnerLaps;
     private int? _sessionNum;
     private double _lastSessionTime;
@@ -64,10 +65,23 @@ internal sealed class LineCrossingTracker
             _lapsAtChequer.Clear();
             _finishedAt.Clear();
             _heldPositions.Clear();
+            _lapsStarted.Clear();
             _winnerLaps = null;
         }
 
         _lastSessionTime = now;
+
+        if (telemetry.HasVariable(TelemetryVarNames.CarIdxLap))
+        {
+            var started = telemetry.GetIntArray(TelemetryVarNames.CarIdxLap);
+            for (var carIdx = 0; carIdx < started.Length; carIdx++)
+            {
+                if (started[carIdx] >= 0)
+                {
+                    _lapsStarted[carIdx] = started[carIdx];
+                }
+            }
+        }
 
         var lapDistPct = telemetry.GetFloatArray(TelemetryVarNames.CarIdxLapDistPct);
         var count = Math.Min(laps.Length, lapDistPct.Length);
@@ -148,6 +162,11 @@ internal sealed class LineCrossingTracker
             }
         }
     }
+
+    /// <summary>The last CarIdxLap seen for <paramref name="carIdx"/> this session, kept while it reads
+    /// -1: the lap it was on before dropping out of this client's telemetry. Null if never seen.</summary>
+    public int? LastLapStarted(int carIdx) =>
+        _lapsStarted.TryGetValue(carIdx, out var lap) ? lap : null;
 
     /// <summary>The most recent crossing seen for <paramref name="carIdx"/>: the lap it completed and when.</summary>
     public (int Lap, double Time)? LastCrossing(int carIdx) =>
