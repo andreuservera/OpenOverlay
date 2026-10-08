@@ -25,7 +25,7 @@ internal static class FlagBuilder
         Crossed = 0x00000080,
         YellowWaving = 0x00000100,
         OneLapToGreen = 0x00000200,
-        GreenHeld = 0x00000400,
+        GreenHeld = 0x00000400, // the field held for the green on the pace lap; not green yet
         TenToGo = 0x00000800,
         FiveToGo = 0x00001000,
         RandomWaving = 0x00002000,
@@ -118,7 +118,10 @@ internal static class FlagBuilder
         // rather than being folded into Green, which once showed the green flag before the start.
         AddIf(IrsdkFlags.OneLapToGreen, FlagKind.OneLapToGreen);
 
-        if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.GreenHeld) || bits.HasFlag(IrsdkFlags.StartGo))
+        // GreenHeld is not the green: on a rolling start it comes out with OneLapToGreen 9-18 s
+        // before it (seen in every recorded start). Read as green, the green's display timer ran
+        // out before the real one — no green flag at the start.
+        if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.StartGo))
         {
             flags.Add(new(FlagKind.Green));
         }

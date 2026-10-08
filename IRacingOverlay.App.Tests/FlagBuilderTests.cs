@@ -42,6 +42,21 @@ public class FlagBuilderTests
 
     private static IReadOnlyList<FlagState> Shown(uint flags) => FlagBuilder.Build(BuildWithFlags(flags));
 
+    [Fact]
+    public void RollingStart_GreenShowsWhenTheRaceGoesGreen_NotWhenTheFieldIsHeld()
+    {
+        // Micro sprint at Lanier: GreenHeld comes out with OneLapToGreen 8.4 s before the green.
+        var presenter = new FlagPresenter();
+        var options = new FlagOptions { InfoFlagSeconds = 5 };
+        var start = TimeSpan.FromSeconds(125.8);
+
+        var held = presenter.Present(FlagBuilder.Decode(StartReady | GreenHeld | OneLapToGreen), options, start);
+        var green = presenter.Present(FlagBuilder.Decode(StartGo | GreenHeld | OneLapToGreen | Green), options, start + TimeSpan.FromSeconds(8.4));
+
+        Assert.DoesNotContain(held, f => f.Kind == FlagKind.Green);
+        Assert.Contains(green, f => f.Kind == FlagKind.Green);
+    }
+
     [Theory]
     [InlineData("Race", 0, false)] // just after the start: nobody can be a lap up yet
     [InlineData("Race", 1, true)]
@@ -86,7 +101,6 @@ public class FlagBuilderTests
     [InlineData(Checkered, FlagKind.Checkered)]
     [InlineData(White, FlagKind.White)]
     [InlineData(Green, FlagKind.Green)]
-    [InlineData(GreenHeld, FlagKind.Green)]
     [InlineData(StartGo, FlagKind.Green)]
     [InlineData(Yellow, FlagKind.Yellow)]
     [InlineData(Red, FlagKind.Red)]
