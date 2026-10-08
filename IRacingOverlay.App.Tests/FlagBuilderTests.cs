@@ -42,6 +42,30 @@ public class FlagBuilderTests
 
     private static IReadOnlyList<FlagState> Shown(uint flags) => FlagBuilder.Build(BuildWithFlags(flags));
 
+    [Theory]
+    [InlineData("Race", 0, false)] // just after the start: nobody can be a lap up yet
+    [InlineData("Race", 1, true)]
+    [InlineData("Practice", 0, true)] // a faster car can come up behind on an out-lap
+    public void BlueFlag_IgnoredOnTheOpeningLapOfARace(string sessionType, int lapsCompleted, bool shown)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        builder.AddVar("SessionNum", IrsdkVarType.Int);
+        builder.AddVar("LapCompleted", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBitField("SessionFlags", Blue | Green);
+            w.SetInt("SessionNum", 0);
+            w.SetInt("LapCompleted", lapsCompleted);
+        });
+        var session = new IRacingOverlay.Sdk.IracingSessionInfo
+        {
+            SessionInfo = new IRacingOverlay.Sdk.SessionInfoSection { Sessions = [new IRacingOverlay.Sdk.SessionEntry { SessionNum = 0, SessionType = sessionType }] },
+        };
+
+        Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.Blue));
+    }
+
     [Fact]
     public void NoFlagsSet_ReturnsEmpty()
     {

@@ -742,7 +742,7 @@ public partial class MainWindow : Window
         Feed(
             WidgetCatalog.Flag,
             Flags,
-            () => _flagPresenter.Present(FlagBuilder.Decode(telemetry), _vm.FlagOptions, TimeSpan.FromMilliseconds(Environment.TickCount64)),
+            () => _flagPresenter.Present(FlagBuilder.Decode(telemetry, session), _vm.FlagOptions, TimeSpan.FromMilliseconds(Environment.TickCount64)),
             (widget, flags) => widget.UpdateState(flags),
             (dashboard, flags) => dashboard.UpdateFlag(flags));
 

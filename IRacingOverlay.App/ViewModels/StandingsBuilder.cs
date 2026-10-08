@@ -471,13 +471,24 @@ internal static class StandingsBuilder
 
         double LastCrossedAt(DriverEntry driver) => crossings?.LastCrossing(driver.CarIdx)?.Time ?? double.MaxValue;
 
+        int GridSlotOf(DriverEntry driver) => grid.TryGetValue(driver.CarIdx, out var slot) ? slot.Position : int.MaxValue;
+
+        // Before the green there is no official order yet (CarIdxPosition is 0 for everyone), and
+        // laps mean nothing: through the pace laps CarIdxLapCompleted flips between -1 and 0 each
+        // time a car crosses the line. Seen live: the polesitter shown P2 on the grid, and the order
+        // reshuffling through formation. The grid is the order until the race is on.
+        var preGreen = IsBeforeTheGreen(telemetry);
+
         // Official order first. Ties only arise without it, and are settled the way the official
-        // order is: laps completed, then who completed the latest of them first. Stable, so cars
-        // with nothing to tell them apart keep the roster order rather than shuffling.
+        // order is: laps completed, then who completed the latest of them first, then the grid.
+        // Stable, so cars with nothing to tell them apart keep the roster order rather than shuffling.
         var ordered = eligible
-            .OrderBy(d => OfficialPositionOf(d.CarIdx) is > 0 and var official ? official : int.MaxValue)
+            .OrderBy(d => OfficialPositionOf(d.CarIdx) is > 0 and var official ? official
+                : preGreen ? GridSlotOf(d)
+                : int.MaxValue)
             .ThenByDescending(d => LapsCompletedOf(d.CarIdx))
             .ThenBy(LastCrossedAt)
+            .ThenBy(GridSlotOf)
             .ToList();
 
         // Gaps are measured against each class's own leader, not the overall one: telling a GT3
@@ -629,6 +640,11 @@ internal static class StandingsBuilder
         telemetry.HasVariable(TelemetryVarNames.SessionState) &&
         telemetry.GetInt(TelemetryVarNames.SessionState) == SessionStateRacing;
 
+    /// <summary>Getting in the cars, warming up or on the pace laps: the race hasn't gone green.</summary>
+    private static bool IsBeforeTheGreen(TelemetrySnapshot telemetry) =>
+        telemetry.HasVariable(TelemetryVarNames.SessionState) &&
+        telemetry.GetInt(TelemetryVarNames.SessionState) is > 0 and < SessionStateRacing;
+
     /// <summary>irsdk_SessionState: 4 = racing.</summary>
     private const int SessionStateRacing = 4;
 
@@ -702,16 +718,17 @@ internal static class StandingsBuilder
     }
 
     /// <summary>
-    /// Best-effort approximation of iRacing's undisclosed live iRating-change formula. iRacing has
-    /// confirmed the shape of the real calculation (treat the race as a round-robin of 1-on-1
-    /// "duels" against every other rated driver — win the duel by finishing ahead, lose it by
-    /// finishing behind — score each duel Elo-style, and scale the total by field size so a bigger
-    /// field doesn't inflate the swing) but has never published the exact scoring constant. This
-    /// uses a commonly-cited community reconstruction (K=200, divided by field size) — it tracks
-    /// direction and rough magnitude reliably, but won't necessarily match the official post-race
-    /// number. Uses current running order as a live "if it ended right now" position, same as the
-    /// rest of Standings. In multiclass each class is rated as its own race, as iRacing does: a car
-    /// only duels the cars of its class, and the field size is its class's.
+    /// Approximation of iRacing's undisclosed live iRating-change formula, using the community
+    /// reconstruction the public iRating calculators share: every rated driver's chance of beating
+    /// each other one comes from the same BR1 = 1600/ln(2) exponential as the SOF formula; the
+    /// expected score is the sum of those chances (counting a 0.5 self-duel, then taking it off),
+    /// the actual score is the number of drivers beaten, and a small position "fudge factor" nudges
+    /// it before scaling by 200 / field size. Checked against a real race, it matched iRacing's
+    /// official changes within a point. Every rated driver counts as a starter: live, nobody can
+    /// tell yet who will end up a non-starter. Uses current running order as a live "if it ended
+    /// right now" position, same as the rest of Standings. In multiclass each class is rated as its
+    /// own race, as iRacing does: a car only duels the cars of its class, and the field size is its
+    /// class's.
     /// </summary>
     private static Dictionary<int, double> EstimateIRatingDeltas(List<DriverEntry> ordered)
     {
@@ -726,12 +743,12 @@ internal static class StandingsBuilder
 
     private static void EstimateClassIRatingDeltas(List<DriverEntry> ordered, Dictionary<int, double> result)
     {
-        var rated = new List<(int CarIdx, int IRating, int Position)>();
+        var rated = new List<(int CarIdx, int IRating)>();
         for (var i = 0; i < ordered.Count; i++)
         {
             if (ordered[i].IRating > 0)
             {
-                rated.Add((ordered[i].CarIdx, ordered[i].IRating, i));
+                rated.Add((ordered[i].CarIdx, ordered[i].IRating));
             }
         }
 
@@ -741,24 +758,24 @@ internal static class StandingsBuilder
             return;
         }
 
-        var k = 200.0 / n;
-        foreach (var driver in rated)
+        for (var i = 0; i < n; i++)
         {
-            var delta = 0.0;
-            foreach (var opponent in rated)
-            {
-                if (opponent.CarIdx == driver.CarIdx)
-                {
-                    continue;
-                }
-
-                var expected = 1.0 / (1.0 + Math.Pow(10, (opponent.IRating - driver.IRating) / 1600.0));
-                var actual = driver.Position < opponent.Position ? 1.0 : 0.0;
-                delta += k * (actual - expected);
-            }
-
-            result[driver.CarIdx] = delta;
+            var driver = rated[i];
+            var expected = rated.Sum(opponent => ChanceToBeat(driver.IRating, opponent.IRating)) - 0.5;
+            var position = i + 1;
+            var fudge = (n / 2.0 - position) / 100.0;
+            result[driver.CarIdx] = (n - position - expected - fudge) * 200.0 / n;
         }
+    }
+
+    /// <summary>The chance a driver rated <paramref name="rating"/> finishes ahead of one rated
+    /// <paramref name="opponentRating"/>; 0.5 between equals.</summary>
+    private static double ChanceToBeat(double rating, double opponentRating)
+    {
+        var br1 = 1600.0 / Math.Log(2);
+        var own = Math.Exp(-rating / br1);
+        var other = Math.Exp(-opponentRating / br1);
+        return (1 - own) * other / ((1 - other) * own + (1 - own) * other);
     }
 
     /// <summary>

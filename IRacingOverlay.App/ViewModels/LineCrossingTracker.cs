@@ -26,14 +26,16 @@ internal sealed class LineCrossingTracker
     private readonly Dictionary<int, double> _finishedAt = new();
     private readonly Dictionary<int, int> _heldPositions = new();
     private readonly Dictionary<int, int> _lapsStarted = new();
-    private int? _winnerLaps;
+    private double? _chequerAt;
+    private int? _leaderLaps;
     private int? _sessionNum;
     private double _lastSessionTime;
 
     // irsdk_SessionState: 5 checkered, 6 cool down.
     private const int StateCheckered = 5;
 
-    // CarIdxPosition may settle a tick or two after the car crosses the line to finish.
+    // CarIdxPosition settles a second or two after the car crosses the line to finish; the flag can
+    // also come out a tick or two after the winner's crossing that shows it.
     private const double FinishSettleSeconds = 2.0;
 
     /// <summary>Laps completed per car: CarIdxLapCompleted, or laps started where a build lacks it.
@@ -66,7 +68,8 @@ internal sealed class LineCrossingTracker
             _finishedAt.Clear();
             _heldPositions.Clear();
             _lapsStarted.Clear();
-            _winnerLaps = null;
+            _chequerAt = null;
+            _leaderLaps = null;
         }
 
         _lastSessionTime = now;
@@ -134,9 +137,8 @@ internal sealed class LineCrossingTracker
 
     private void HoldClassification(TelemetrySnapshot telemetry, int[] laps, double now)
     {
-        // The winner's crossing is what shows the flag, so the most laps anyone has completed then
-        // is the race distance. Everyone else finishes at their next crossing, lapped or not.
-        _winnerLaps ??= laps.DefaultIfEmpty(0).Max();
+        _chequerAt ??= now;
+        _leaderLaps ??= laps.DefaultIfEmpty(0).Max();
 
         var positions = telemetry.HasVariable(TelemetryVarNames.CarIdxPosition)
             ? telemetry.GetIntArray(TelemetryVarNames.CarIdxPosition)
@@ -149,8 +151,16 @@ internal sealed class LineCrossingTracker
                 continue;
             }
 
+            // A car finishes at its first crossing of the line from the flag on, the winner's own
+            // crossing that showed it included. Not by lap count: where the finish isn't at the
+            // start of the lap (rallycross, dirt ovals) the flag is shown with every car still on
+            // the lap it is finishing, and iRacing only re-places the cars at the line after it —
+            // seen live: overtaken on the last lap, the table held the place lost at the line.
             var atChequer = _lapsAtChequer.TryAdd(carIdx, completed) ? completed : _lapsAtChequer[carIdx];
-            if (!_finishedAt.ContainsKey(carIdx) && (completed >= _winnerLaps || completed > atChequer))
+            var crossedForTheFlag = completed >= _leaderLaps &&
+                _latest.TryGetValue(carIdx, out var latest) && latest.Lap == completed &&
+                latest.Time >= _chequerAt - FinishSettleSeconds;
+            if (!_finishedAt.ContainsKey(carIdx) && (completed > atChequer || crossedForTheFlag))
             {
                 _finishedAt[carIdx] = now;
             }
