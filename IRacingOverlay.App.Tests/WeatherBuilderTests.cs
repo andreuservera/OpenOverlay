@@ -133,6 +133,24 @@ public class WeatherBuilderTests
     }
 
     [Fact]
+    public void Build_DeclaredWetWithNoRainFalling_IsNotRain()
+    {
+        // As recorded at Spielberg: a soaked track drying out, declared wet, with no rain falling
+        // and the event's chance of rain at 0%.
+        var state = Build(w =>
+        {
+            w.SetFloat("Precipitation", 0f);
+            w.SetFloat("SolarAltitude", 0.5f);
+            w.SetBool("WeatherDeclaredWet", true);
+            w.SetInt("TrackWetness", 5);
+        }, rainChance: "0 %");
+
+        Assert.NotEqual(WeatherCondition.Rain, state.Condition);
+        Assert.Equal(0, state.RainChancePct);
+        Assert.Equal(5, state.TrackWetness);
+    }
+
+    [Fact]
     public void Build_RainChanceComesFromTheSession()
     {
         var state = Build(w => w.SetFloat("SolarAltitude", 0.5f), rainChance: "15 %");

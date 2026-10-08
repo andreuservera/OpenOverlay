@@ -178,6 +178,8 @@ internal static class TelemetryVarNames
     public const string Precipitation = "Precipitation";
     /// <summary>Sun angle above the horizon in radians; below zero is night.</summary>
     public const string SolarAltitude = "SolarAltitude";
+    /// <summary>bool — the session is declared wet (wet tyres allowed). Says nothing about rain
+    /// falling now: it stays on while a wet track dries.</summary>
     public const string WeatherDeclaredWet = "WeatherDeclaredWet";
     /// <summary>int — irsdk_TrackWetness: 0 unknown, 1 dry … 7 extremely wet.</summary>
     public const string TrackWetness = "TrackWetness";
