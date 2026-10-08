@@ -608,6 +608,62 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildRelative_CameraOnAnotherCar_CentresOnThatCar()
+    {
+        // Spectating car 2: the table reads as if sitting in it — it is the highlighted row, and the
+        // gaps are to it.
+        var builder = RelativeVars();
+        builder.AddVar("CamCarIdx", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("CamCarIdx", 2);
+            w.SetIntArray("CarIdxLap", [5, 5, 5, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.50f, 0.13f, 0.10f, 0]);
+            w.SetFloatArray("CarIdxEstTime", [37.7f, 10.0f, 8.0f, 0]);
+        });
+
+        var rows = RelativeRows(snapshot, Field(Car(1, "Ahead"), Car(2, "Watched")));
+
+        var watched = Assert.Single(rows, r => r.IsPlayer);
+        Assert.Equal(2, watched.CarIdx);
+        Assert.Equal(0, watched.GapSeconds);
+        Assert.Equal(-2.0, rows.Single(r => r.CarIdx == 1).GapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void BuildStandings_CameraOnAnotherCar_HighlightsThatCar_ButCameraOnThePaceCarDoesNot()
+    {
+        var builder = StandingsVars();
+        builder.AddVar("CamCarIdx", IrsdkVarType.Int);
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7" },
+                    new DriverEntry { CarIdx = 1, UserName = "Watched", CarNumber = "1" },
+                    new DriverEntry { CarIdx = 2, UserName = "Pace Car", CarIsPaceCar = 1 },
+                ],
+            },
+        };
+
+        List<StandingsRow> WithCameraOn(int carIdx) => StandingsBuilder.BuildStandings(
+            TestSnapshotFactory.Build(builder, w =>
+            {
+                w.SetInt("CamCarIdx", carIdx);
+                w.SetIntArray("CarIdxPosition", [2, 1, 0, 0]);
+                w.SetIntArray("CarIdxLap", [5, 5, 5, 0]);
+                w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.5f, 0.6f, 0]);
+            }),
+            session);
+
+        Assert.Equal(1, Assert.Single(WithCameraOn(1), r => r.IsPlayer).CarIdx);
+        Assert.Equal(0, Assert.Single(WithCameraOn(2), r => r.IsPlayer).CarIdx);
+    }
+
+    [Fact]
     public void ComputeStrengthOfField_LeavesOutAGhost()
     {
         var session = new IracingSessionInfo

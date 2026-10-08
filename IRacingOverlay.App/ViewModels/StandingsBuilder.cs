@@ -56,13 +56,15 @@ internal static class StandingsBuilder
         var bestLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxBestLapTime);
         var onPitRoad = TryGetBoolArray(telemetry, TelemetryVarNames.CarIdxOnPitRoad);
 
-        var playerCarIdx = driverInfo.DriverCarIdx;
+        // "The player" here is the car the table is centred on: the one the camera is on, so
+        // spectating a car reads as being in it.
+        var playerCarIdx = FocusCarIdx(telemetry, driverInfo);
         if (playerCarIdx < 0 || playerCarIdx >= carIdxLap.Length)
         {
             return [];
         }
 
-        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
+        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, driverInfo.DriverCarIdx);
         var compoundOf = TireCompoundsOf(telemetry, driverInfo);
 
         var racing = Racing(driverInfo);
@@ -370,8 +372,9 @@ internal static class StandingsBuilder
         var lastLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxLastLapTime);
         var bestLaps = TryGetFloatArray(telemetry, TelemetryVarNames.CarIdxBestLapTime);
         var onPitRoad = TryGetBoolArray(telemetry, TelemetryVarNames.CarIdxOnPitRoad);
-        var playerCarIdx = driverInfo.DriverCarIdx;
-        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, playerCarIdx);
+        // Highlighted and centred on: the car the camera is on (see FocusCarIdx).
+        var playerCarIdx = FocusCarIdx(telemetry, driverInfo);
+        var penaltiesOf = FlagBuilder.ReadCarPenalties(telemetry, driverInfo.DriverCarIdx);
         var compoundOf = TireCompoundsOf(telemetry, driverInfo);
 
         var distinctClasses = driverInfo.Drivers
@@ -633,6 +636,26 @@ internal static class StandingsBuilder
     /// invisible to the field and not scored, so they take no place and no part in the iRating.</summary>
     private static List<DriverEntry> Racing(DriverInfoSection driverInfo) =>
         driverInfo.Drivers.Where(d => !d.IsPaceCar && !d.IsGhost && d.CarIdx >= 0).ToList();
+
+    /// <summary>
+    /// The car the tables treat as the player's: highlighted, and the one Relative and Standings are
+    /// centred on. It is the car the camera is on (CamCarIdx), which is the player's own while they
+    /// drive; spectating, in the garage or in a replay it is whoever they are watching, as if they
+    /// were in that car. A camera on the pace car, or on nothing in the field, keeps the player's own.
+    /// </summary>
+    internal static int FocusCarIdx(TelemetrySnapshot telemetry, DriverInfoSection driverInfo)
+    {
+        if (telemetry.HasVariable(TelemetryVarNames.CamCarIdx))
+        {
+            var camera = telemetry.GetInt(TelemetryVarNames.CamCarIdx);
+            if (camera != driverInfo.DriverCarIdx && Racing(driverInfo).Any(d => d.CarIdx == camera))
+            {
+                return camera;
+            }
+        }
+
+        return driverInfo.DriverCarIdx;
+    }
 
     /// <summary>The player, when they are a spectator driving as a ghost; null otherwise. The tables
     /// still list them, unranked. Other ghosts aren't listed at all.</summary>

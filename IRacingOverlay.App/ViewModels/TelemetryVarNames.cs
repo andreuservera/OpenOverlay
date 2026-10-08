@@ -36,6 +36,10 @@ internal static class TelemetryVarNames
     public const string PlayerLastLapTime = "LapLastLapTime";
     public const string PlayerBestLapTime = "LapBestLapTime";
 
+    /// <summary>int — the car the camera is on. The player's own while driving; whoever they
+    /// point the camera at while spectating, in the garage or in a replay.</summary>
+    public const string CamCarIdx = "CamCarIdx";
+
     public const string CarIdxLap = "CarIdxLap";
     public const string CarIdxLapDistPct = "CarIdxLapDistPct";
     public const string CarIdxPosition = "CarIdxPosition";
