@@ -512,6 +512,122 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_GhostPlayer_ListedUnranked_AndOutOfTheIRatingDuels()
+    {
+        // Joined as a spectator and driving as a ghost, running ahead of the whole field: the real
+        // race still has its own P1 and P2, and their iRating swing is as if the ghost weren't there.
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxPosition", [0, 1, 2, 0]);
+            w.SetIntArray("CarIdxLap", [6, 5, 5, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.5f, 0.5f, 0.4f, 0]);
+        });
+
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", IRating = 4000, IsSpectator = 1 },
+                    new DriverEntry { CarIdx = 1, UserName = "Leader", CarNumber = "1", IRating = 2000 },
+                    new DriverEntry { CarIdx = 2, UserName = "Second", CarNumber = "2", IRating = 2000 },
+                ],
+            },
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session);
+
+        Assert.Equal([1, 2, 0], rows.Select(r => r.CarIdx));
+        Assert.Equal([1, 2], rows.Take(2).Select(r => r.Position));
+        var me = rows[2];
+        Assert.True(me.IsPlayer);
+        Assert.True(me.IsGhost);
+        Assert.Equal("—", me.PositionDisplay);
+        Assert.Equal("—", me.GapDisplay);
+        Assert.Equal(0, me.IRatingDelta);
+        Assert.Equal(50, rows[0].IRatingDelta, precision: 6);
+        Assert.Equal(-50, rows[1].IRatingDelta, precision: 6);
+    }
+
+    [Fact]
+    public void BuildStandings_GhostPlayerInPractice_ListedAfterTheField_Unranked()
+    {
+        var builder = StandingsVars();
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 3, 3, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.2f, 0.3f, 0.4f, 0]);
+            w.SetFloatArray("CarIdxBestLapTime", [88.0f, 90.0f, 91.0f, 0]);
+        });
+
+        var driverInfo = new DriverInfoSection
+        {
+            DriverCarIdx = 0,
+            Drivers =
+            [
+                new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", IsSpectator = 1 },
+                new DriverEntry { CarIdx = 1, UserName = "Fastest", CarNumber = "1" },
+                new DriverEntry { CarIdx = 2, UserName = "Slower", CarNumber = "2" },
+            ],
+        };
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, PracticeSession(driverInfo));
+
+        Assert.Equal([1, 2, 0], rows.Select(r => r.CarIdx));
+        Assert.Equal([1, 2, 0], rows.Select(r => r.Position));
+        Assert.True(rows[0].IsSessionFastestLap);
+        Assert.False(rows[2].IsSessionFastestLap);
+    }
+
+    [Fact]
+    public void BuildRelative_GhostPlayer_HasNoPosition_AndTakesNoneFromTheField()
+    {
+        var snapshot = TestSnapshotFactory.Build(RelativeVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [5, 5, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.13f, 0.10f, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [10.0f, 8.0f, 0, 0]);
+        });
+
+        var ghost = Me();
+        ghost.IsSpectator = 1;
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection { DriverCarIdx = 0, Drivers = [ghost, Car(1, "Rival")] },
+        };
+
+        var rows = RelativeRows(snapshot, session);
+
+        Assert.Equal([0, 1], rows.Select(r => r.CarIdx));
+        Assert.Equal("—", rows[0].PositionDisplay);
+        Assert.Equal(0, rows[0].IRatingDelta);
+        Assert.Equal(2.0, rows[1].GapSeconds, precision: 3);
+    }
+
+    [Fact]
+    public void ComputeStrengthOfField_LeavesOutAGhost()
+    {
+        var session = new IracingSessionInfo
+        {
+            DriverInfo = new DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers =
+                [
+                    new DriverEntry { CarIdx = 0, UserName = "Me", CarNumber = "7", IRating = 9000, IsSpectator = 1 },
+                    new DriverEntry { CarIdx = 1, UserName = "A", CarNumber = "1", IRating = 2500 },
+                    new DriverEntry { CarIdx = 2, UserName = "B", CarNumber = "2", IRating = 2500 },
+                ],
+            },
+        };
+
+        Assert.Equal(2500, StandingsBuilder.ComputeStrengthOfField(session), precision: 3);
+    }
+
+    [Fact]
     public void BuildStandings_ClassShortNameBlank_NeverFallsBackToTheCarName()
     {
         // Fixed/spec series leave CarClassShortName blank. The class header then reads "CLASS n"

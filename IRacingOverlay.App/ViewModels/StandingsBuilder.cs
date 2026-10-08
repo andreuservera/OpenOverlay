@@ -67,7 +67,11 @@ internal static class StandingsBuilder
 
         var racing = Racing(driverInfo);
         var isMultiClass = racing.Select(d => d.CarClassID).Distinct().Count() > 1;
-        var player = racing.FirstOrDefault(d => d.CarIdx == playerCarIdx);
+
+        // A ghost player still sees their own row and the cars around them; they just aren't ranked.
+        var ghost = GhostPlayer(driverInfo);
+        var listed = ghost is null ? racing : [.. racing, ghost];
+        var player = listed.FirstOrDefault(d => d.CarIdx == playerCarIdx);
         var playerLapTime = player?.CarClassEstLapTime ?? 0;
 
         // Reads the scoring table too: on a mid-session attach the telemetry lap arrays are still empty.
@@ -111,6 +115,11 @@ internal static class StandingsBuilder
 
         int PositionOf(int carIdx)
         {
+            if (carIdx == ghost?.CarIdx)
+            {
+                return 0;
+            }
+
             if (liveRanks is not null && liveRanks.TryGetValue(carIdx, out var live))
             {
                 return live.Position;
@@ -131,6 +140,11 @@ internal static class StandingsBuilder
 
         int ClassPositionOf(int carIdx)
         {
+            if (carIdx == ghost?.CarIdx)
+            {
+                return 0;
+            }
+
             if (liveRanks is not null && liveRanks.TryGetValue(carIdx, out var live))
             {
                 return live.ClassPosition;
@@ -208,7 +222,7 @@ internal static class StandingsBuilder
         }
 
         var placed = new List<(RelativeRow Row, double OrderKey, double LapsAhead)>();
-        foreach (var driver in racing)
+        foreach (var driver in listed)
         {
             if (driver.CarIdx >= carIdxLap.Length)
             {
@@ -261,6 +275,7 @@ internal static class StandingsBuilder
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
+                IsGhost = driver.IsGhost,
                 GapSeconds = gapSeconds,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
@@ -276,8 +291,8 @@ internal static class StandingsBuilder
                 IsMultiClass = isMultiClass,
                 IRating = driver.IRating,
                 LicString = driver.LicString,
-                IRatingDelta = IRatingDeltaOf(driver.CarIdx),
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
+                IRatingDelta = driver.IsGhost ? 0 : IRatingDeltaOf(driver.CarIdx),
+                IsSessionFastestLap = !driver.IsGhost && bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 CarClassName = driver.CarClassShortName,
@@ -311,7 +326,7 @@ internal static class StandingsBuilder
         // shrinks and grows with them resizes the widget mid-corner. Holding the configured number
         // of slots keeps the height fixed — but only up to what the session could ever fill, so a
         // solo practice stays a single row instead of a column of blanks.
-        var slots = Math.Min(maxEachSide * 2 + 1, racing.Count);
+        var slots = Math.Min(maxEachSide * 2 + 1, listed.Count);
         while (window.Count < slots)
         {
             window.Add(new RelativePlaceholderRow());
@@ -360,7 +375,7 @@ internal static class StandingsBuilder
         var compoundOf = TireCompoundsOf(telemetry, driverInfo);
 
         var distinctClasses = driverInfo.Drivers
-            .Where(d => !d.IsPaceCar)
+            .Where(d => !d.IsPaceCar && !d.IsGhost)
             .Select(d => d.CarClassID)
             .Distinct()
             .Count();
@@ -495,28 +510,39 @@ internal static class StandingsBuilder
         var fastestLapByClass = FastestLapByClass(ordered, laps.Best);
         var iRatingDeltaByCarIdx = EstimateIRatingDeltas(ordered);
 
+        // Ranked last of all and only now: a ghost player is listed, but takes no place, gap or
+        // iRating duel from anyone in the race.
+        if (GhostPlayer(driverInfo) is { } ghost)
+        {
+            ordered.Add(ghost);
+        }
+
         var classRank = new Dictionary<int, int>();
         var rows = new List<StandingsRow>();
         for (var i = 0; i < ordered.Count; i++)
         {
             var driver = ordered[i];
-            var rank = classRank.GetValueOrDefault(driver.CarClassID) + 1;
-            classRank[driver.CarClassID] = rank;
+            var rank = driver.IsGhost ? 0 : classRank.GetValueOrDefault(driver.CarClassID) + 1;
+            if (!driver.IsGhost)
+            {
+                classRank[driver.CarClassID] = rank;
+            }
 
             var bestLapTime = laps.Best(driver.CarIdx);
             var penalties = penaltiesOf(driver.CarIdx);
-            var gap = GapAtTheLine(driver);
+            var gap = driver.IsGhost ? (Seconds: double.NaN, LapsDown: 0) : GapAtTheLine(driver);
 
             rows.Add(new StandingsRow
             {
                 CarIdx = driver.CarIdx,
-                Position = i + 1,
+                Position = driver.IsGhost ? 0 : i + 1,
                 ClassPosition = rank,
                 StartPosition = grid.TryGetValue(driver.CarIdx, out var slot) ? slot.Position : 0,
                 StartClassPosition = slot.ClassPosition,
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
+                IsGhost = driver.IsGhost,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
                 HasFurledFlag = penalties.Furled,
@@ -534,7 +560,7 @@ internal static class StandingsBuilder
                 IRating = driver.IRating,
                 LicString = driver.LicString,
                 IRatingDelta = iRatingDeltaByCarIdx.GetValueOrDefault(driver.CarIdx, 0),
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
+                IsSessionFastestLap = !driver.IsGhost && bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 // The category, never the car: blank for a spec series, where the header falls back
@@ -596,8 +622,15 @@ internal static class StandingsBuilder
     /// <summary>irsdk_SessionState: 4 = racing.</summary>
     private const int SessionStateRacing = 4;
 
+    /// <summary>The cars in the race: no pace car, and no spectators driving as ghosts — they are
+    /// invisible to the field and not scored, so they take no place and no part in the iRating.</summary>
     private static List<DriverEntry> Racing(DriverInfoSection driverInfo) =>
-        driverInfo.Drivers.Where(d => !d.IsPaceCar && d.CarIdx >= 0).ToList();
+        driverInfo.Drivers.Where(d => !d.IsPaceCar && !d.IsGhost && d.CarIdx >= 0).ToList();
+
+    /// <summary>The player, when they are a spectator driving as a ghost; null otherwise. The tables
+    /// still list them, unranked. Other ghosts aren't listed at all.</summary>
+    private static DriverEntry? GhostPlayer(DriverInfoSection driverInfo) =>
+        driverInfo.Drivers.FirstOrDefault(d => d.CarIdx == driverInfo.DriverCarIdx && d.CarIdx >= 0 && d.IsGhost && !d.IsPaceCar);
 
     private static bool HasTrackPositions(TelemetrySnapshot telemetry) =>
         telemetry.HasVariable(TelemetryVarNames.CarIdxLap) && telemetry.HasVariable(TelemetryVarNames.CarIdxLapDistPct);
@@ -620,7 +653,7 @@ internal static class StandingsBuilder
             return 0;
         }
 
-        return StrengthOf(driverInfo.Drivers.Where(d => !d.IsPaceCar).Select(d => d.IRating));
+        return StrengthOf(driverInfo.Drivers.Where(d => !d.IsPaceCar && !d.IsGhost).Select(d => d.IRating));
     }
 
     /// <summary>iRacing's strength-of-field formula over a set of iRatings; unrated (0) drivers
@@ -745,8 +778,8 @@ internal static class StandingsBuilder
             {
                 ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
-                DriverCount = classRows.Count,
-                Sof = StrengthOf(classRows.Select(row => row.IRating)),
+                DriverCount = classRows.Count(row => !row.IsGhost),
+                Sof = StrengthOf(classRows.Where(row => !row.IsGhost).Select(row => row.IRating)),
             });
 
             display.AddRange(classId == playerClassId ? classRows : classRows.Take(otherClassLimit));
@@ -845,8 +878,8 @@ internal static class StandingsBuilder
             {
                 ClassName = ClassHeaderLabel(className, classId),
                 ClassColor = classRows[0].ClassColor,
-                DriverCount = classRows.Count,
-                Sof = StrengthOf(classRows.Select(row => row.IRating)),
+                DriverCount = classRows.Count(row => !row.IsGhost),
+                Sof = StrengthOf(classRows.Where(row => !row.IsGhost).Select(row => row.IRating)),
             });
 
             if (classId == playerClassId)
@@ -1002,13 +1035,20 @@ internal static class StandingsBuilder
         int sessionNum,
         IReadOnlyDictionary<int, PitStop>? lastPitStops)
     {
-        var drivers = driverInfo.Drivers.Where(d => !d.IsPaceCar && d.CarIdx >= 0).ToList();
-        var cachedBest = bestLapTracker.Update(sessionNum, drivers.Select(d => d.CarIdx), laps);
+        var drivers = Racing(driverInfo);
+        var ghost = GhostPlayer(driverInfo);
+        var cachedBest = bestLapTracker.Update(
+            sessionNum, drivers.Select(d => d.CarIdx).Concat(ghost is null ? [] : [ghost.CarIdx]), laps);
 
         double QualTime(DriverEntry d) => cachedBest.TryGetValue(d.CarIdx, out var t) && t > 0 ? t : double.MaxValue;
 
-        // Drivers with no time yet sort to the bottom (double.MaxValue), stable-tied by CarIdx.
+        // Drivers with no time yet sort to the bottom (double.MaxValue), stable-tied by CarIdx. A
+        // ghost player goes after everyone, unranked: their lap isn't in the session's order.
         var ordered = drivers.OrderBy(QualTime).ThenBy(d => d.CarIdx).ToList();
+        if (ghost is not null)
+        {
+            ordered.Add(ghost);
+        }
 
         var fastestLapByClass = FastestLapByClass(drivers, carIdx => cachedBest.GetValueOrDefault(carIdx, 0));
 
@@ -1016,7 +1056,7 @@ internal static class StandingsBuilder
         // fastest car in the session. `ordered` is sorted fastest-first, so the first car seen for a
         // class holds that class's best time.
         var classPoleTime = new Dictionary<int, double>();
-        foreach (var driver in ordered)
+        foreach (var driver in drivers.OrderBy(QualTime).ThenBy(d => d.CarIdx))
         {
             if (!classPoleTime.ContainsKey(driver.CarClassID))
             {
@@ -1029,23 +1069,27 @@ internal static class StandingsBuilder
         for (var i = 0; i < ordered.Count; i++)
         {
             var driver = ordered[i];
-            classRank.TryGetValue(driver.CarClassID, out var rank);
-            rank++;
-            classRank[driver.CarClassID] = rank;
+            var rank = 0;
+            if (!driver.IsGhost)
+            {
+                rank = classRank.GetValueOrDefault(driver.CarClassID) + 1;
+                classRank[driver.CarClassID] = rank;
+            }
 
             var bestLapTime = cachedBest.GetValueOrDefault(driver.CarIdx, 0);
             var thisTime = QualTime(driver);
-            var poleTime = classPoleTime[driver.CarClassID];
+            var poleTime = classPoleTime.GetValueOrDefault(driver.CarClassID, double.MaxValue);
             var penalties = penaltiesOf(driver.CarIdx);
 
             rows.Add(new StandingsRow
             {
                 CarIdx = driver.CarIdx,
-                Position = i + 1,
+                Position = driver.IsGhost ? 0 : i + 1,
                 ClassPosition = rank,
                 Name = driver.UserName,
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
+                IsGhost = driver.IsGhost,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 HasBlackFlag = penalties.Black,
                 HasFurledFlag = penalties.Furled,
@@ -1063,7 +1107,7 @@ internal static class StandingsBuilder
                 LicString = driver.LicString,
                 // A single pairwise-duel iRating estimate makes no sense against a fastest-lap order.
                 IRatingDelta = 0,
-                IsSessionFastestLap = bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
+                IsSessionFastestLap = !driver.IsGhost && bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
                 CarClassName = driver.CarClassShortName,
