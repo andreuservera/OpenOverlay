@@ -81,6 +81,35 @@ public class FlagBuilderTests
         Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.Blue));
     }
 
+    [Theory]
+    [InlineData("Offline Testing", false)] // test drive: the bit stays up all session, no green ever comes
+    [InlineData("Lone Qualify", true)] // the warm-up lap before the qualifying lap
+    [InlineData("Race", true)]
+    public void OneLapToGreen_IgnoredInATestDrive(string sessionType, bool shown)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        builder.AddVar("SessionNum", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBitField("SessionFlags", StartHidden | Servicible | OneLapToGreen);
+            w.SetInt("SessionNum", 0);
+        });
+        var session = new IRacingOverlay.Sdk.IracingSessionInfo
+        {
+            SessionInfo = new IRacingOverlay.Sdk.SessionInfoSection { Sessions = [new IRacingOverlay.Sdk.SessionEntry { SessionNum = 0, SessionType = sessionType }] },
+        };
+
+        Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.OneLapToGreen));
+    }
+
+    [Fact]
+    public void OneLapToGreen_IgnoredOnceTheCheckeredIsOut()
+    {
+        // End of a lone qualify and the cool down: 0x10040201, no green coming.
+        Assert.Equal(FlagKind.Checkered, Assert.Single(FlagBuilder.Decode(StartHidden | Servicible | OneLapToGreen | Checkered)).Kind);
+    }
+
     [Fact]
     public void NoFlagsSet_ReturnsEmpty()
     {
