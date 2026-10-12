@@ -57,7 +57,7 @@ public sealed class LayoutSessionTests : IDisposable
     public void Close_UndoesChangesMadeWhileOpen_TheyAreTemporary()
     {
         _session.Open(Layout(Side, Widget(WidgetCatalog.Relative, 100, 200)), new LayoutPlacement(Side, false, 1));
-        _host.State[WidgetCatalog.Relative] = _host.State[WidgetCatalog.Relative] with { Position = (1, 1), Scale = ScaleLevel.XXL };
+        _host.State[WidgetCatalog.Relative] = _host.State[WidgetCatalog.Relative] with { Position = (1, 1), Scale = WidgetScale.XXL };
 
         _session.Close();
 
@@ -191,14 +191,14 @@ public sealed class LayoutSessionTests : IDisposable
         Type = type,
         X = x,
         Y = y,
-        Scale = ScaleLevel.L,
+        Scale = WidgetScale.L,
         Opacity = 0.5,
         HideOutsideCar = true,
         Visible = visible,
         Config = new JsonObject { ["fromLayout"] = true },
     };
 
-    private sealed record WidgetState(bool Enabled, (double Left, double Top)? Position, ScaleLevel Scale, double Opacity, bool Hide, string Config);
+    private sealed record WidgetState(bool Enabled, (double Left, double Top)? Position, WidgetScale Scale, double Opacity, bool Hide, string Config);
 
     /// <summary>Widgets as plain records: every type starts switched off, never placed, at M, with
     /// its own config, so a test can compare against how it started.</summary>
@@ -216,7 +216,7 @@ public sealed class LayoutSessionTests : IDisposable
 
         public List<string> Calls { get; } = [];
 
-        public WidgetState Original(string type) => new(false, type == WidgetCatalog.Incident ? (7, 8) : null, ScaleLevel.M, 1, false, $"{{\"own\":\"{type}\"}}");
+        public WidgetState Original(string type) => new(false, type == WidgetCatalog.Incident ? (7, 8) : null, WidgetScale.M, 1, false, $"{{\"own\":\"{type}\"}}");
 
         public WidgetSnapshot Capture(string type)
         {

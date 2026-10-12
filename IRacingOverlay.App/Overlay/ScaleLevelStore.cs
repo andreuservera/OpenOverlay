@@ -2,31 +2,28 @@ using System.IO;
 
 namespace IRacingOverlay.App.Overlay;
 
-/// <summary>Persists each panel's <see cref="ScaleLevel"/> across app restarts, keyed by a
+/// <summary>Persists each panel's <see cref="WidgetScale"/> across app restarts, keyed by a
 /// caller-chosen name. Separate from <see cref="WidgetLayoutStore"/> since dashboard panels have a
 /// scale but no position to persist, and a floating widget's scale is independent of where it sits.
-/// Levels are stored by name ("M", "XL"), never as multipliers, so the ladder's factors can be
-/// retuned later without silently reinterpreting everyone's saved sizes.</summary>
+/// Stored as the percentage; an old size name ("XL") still reads as the percentage it was.</summary>
 internal static class ScaleLevelStore
 {
-    // Deliberately not the old "panel-scale.json": that file holds free-form multipliers from the
-    // drag-to-resize era, and a stale 2.5 there must not resurrect a size the ladder no longer has.
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "IRacingOverlay", "panel-scale-level.json");
 
     private static Dictionary<string, string>? _cache;
 
-    public static ScaleLevel Get(string panelName)
+    public static WidgetScale Get(string panelName)
     {
         Load();
-        return ScaleLevels.Parse(_cache!.GetValueOrDefault(panelName));
+        return WidgetScale.Parse(_cache!.GetValueOrDefault(panelName));
     }
 
-    public static void Save(string panelName, ScaleLevel level)
+    public static void Save(string panelName, WidgetScale scale)
     {
         Load();
-        _cache![panelName] = level.ToString();
+        _cache![panelName] = scale.ToString();
         SettingsFile.WriteJson(FilePath, _cache);
     }
 

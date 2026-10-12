@@ -221,12 +221,12 @@ public static class LayoutFile
 
     private static LayoutWidget ReadWidget(JsonObject entry, int index, string type, string what, IReadOnlySet<string> sensitive)
     {
-        var scaleText = RequiredString(entry, "scale", $"the size of {what}");
-        // By name only: Enum.TryParse would also take "3" or "M, L".
-        if (!Enum.GetNames<ScaleLevel>().Contains(scaleText))
-        {
-            throw Invalid($"The size of {what}, \"{scaleText}\", isn't one of {string.Join(", ", Enum.GetNames<ScaleLevel>())}.");
-        }
+        // A percentage, or the name of one of the old fixed sizes ("XL").
+        var scaleText = entry["scale"] is JsonValue scaleValue && scaleValue.TryGetValue<double>(out var scaleNumber)
+            ? scaleNumber.ToString(CultureInfo.InvariantCulture)
+            : RequiredString(entry, "scale", $"the size of {what}");
+        var scale = WidgetScale.TryParse(scaleText)
+            ?? throw Invalid($"The size of {what}, \"{scaleText}\", isn't a percentage between {WidgetScale.MinPercent} and {WidgetScale.MaxPercent}.");
 
         var opacity = OptionalNumber(entry, "opacity", $"the opacity of {what}") ?? WidgetOpacityStore.Default;
         if (opacity is < 0 or > 1)
@@ -246,7 +246,7 @@ public static class LayoutFile
             Type = type,
             X = Number(entry, "x", $"the position of {what}"),
             Y = Number(entry, "y", $"the position of {what}"),
-            Scale = Enum.Parse<ScaleLevel>(scaleText),
+            Scale = scale,
             Width = NonNegative(OptionalNumber(entry, "width", $"the width of {what}") ?? 0, $"the width of {what}"),
             Height = NonNegative(OptionalNumber(entry, "height", $"the height of {what}") ?? 0, $"the height of {what}"),
             ZIndex = entry.ContainsKey("zIndex") ? Integer(entry, "zIndex", $"the layer of {what}") : index,
@@ -343,7 +343,7 @@ public static class LayoutFile
         string Type,
         double X,
         double Y,
-        ScaleLevel Scale,
+        WidgetScale Scale,
         double Width,
         double Height,
         int ZIndex,

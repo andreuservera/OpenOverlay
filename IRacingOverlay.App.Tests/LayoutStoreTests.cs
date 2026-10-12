@@ -72,9 +72,9 @@ public sealed class LayoutStoreTests : IDisposable
     {
         var store = NewStore();
         var race = store.Create("Race", Ultrawide, 3440, 1440);
-        race.Add(Widget(WidgetCatalog.Standings, 40, 60, ScaleLevel.L, new JsonObject { ["focusSize"] = 9, ["showGap"] = false }));
-        race.Add(Widget(WidgetCatalog.Relative, 40, 700, ScaleLevel.M, new JsonObject { ["focusSize"] = 3 }));
-        race.Add(Widget(WidgetCatalog.Incident, 3000, 1200, ScaleLevel.XS, []));
+        race.Add(Widget(WidgetCatalog.Standings, 40, 60, WidgetScale.L, new JsonObject { ["focusSize"] = 9, ["showGap"] = false }));
+        race.Add(Widget(WidgetCatalog.Relative, 40, 700, WidgetScale.M, new JsonObject { ["focusSize"] = 3 }));
+        race.Add(Widget(WidgetCatalog.Incident, 3000, 1200, WidgetScale.XS, []));
         race.Widgets[2].Visible = false;
         race.Widgets[1].Locked = true;
         race.SnapEnabled = false;
@@ -82,15 +82,15 @@ public sealed class LayoutStoreTests : IDisposable
         store.Save(race);
 
         var oval = store.Create("Oval", Side, 1920, 1080);
-        oval.Add(Widget(WidgetCatalog.Flag, 800, 20, ScaleLevel.XL, new JsonObject { ["maxFlags"] = 2 }));
-        oval.Add(Widget(WidgetCatalog.Delta, 860, 900, ScaleLevel.S, []));
-        oval.Add(Widget(WidgetCatalog.Weather, 1600, 40, ScaleLevel.XXS, new JsonObject { ["compact"] = true }));
+        oval.Add(Widget(WidgetCatalog.Flag, 800, 20, WidgetScale.XL, new JsonObject { ["maxFlags"] = 2 }));
+        oval.Add(Widget(WidgetCatalog.Delta, 860, 900, WidgetScale.S, []));
+        oval.Add(Widget(WidgetCatalog.Weather, 1600, 40, WidgetScale.XXS, new JsonObject { ["compact"] = true }));
         store.Save(oval);
 
         store.SetOpen(new OpenLayoutState(race.Id,
         [
-            new WidgetSnapshot(WidgetCatalog.Standings, true, 120.5, 80, ScaleLevel.M, 0.8, true, new JsonObject { ["focusSize"] = 7 }),
-            new WidgetSnapshot(WidgetCatalog.Relative, false, null, null, ScaleLevel.M, 1, false, []),
+            new WidgetSnapshot(WidgetCatalog.Standings, true, 120.5, 80, WidgetScale.M, 0.8, true, new JsonObject { ["focusSize"] = 7 }),
+            new WidgetSnapshot(WidgetCatalog.Relative, false, null, null, WidgetScale.M, 1, false, []),
         ]));
 
         var reloaded = NewStore();
@@ -99,7 +99,7 @@ public sealed class LayoutStoreTests : IDisposable
         Assert.Equal(Serialize(store.Open), Serialize(reloaded.Open));
         Assert.Equal(["Race", "Oval"], reloaded.List().Select(layout => layout.Name));
         Assert.Equal(3, reloaded.Get(race.Id)!.Widgets.Count);
-        Assert.Equal(ScaleLevel.L, reloaded.Get(race.Id)!.WidgetOf(WidgetCatalog.Standings)!.Scale);
+        Assert.Equal(WidgetScale.L, reloaded.Get(race.Id)!.WidgetOf(WidgetCatalog.Standings)!.Scale);
         Assert.Equal(race.Id, reloaded.Open!.LayoutId);
         Assert.Null(reloaded.Open.Snapshot[1].Left);
     }
@@ -158,7 +158,7 @@ public sealed class LayoutStoreTests : IDisposable
     {
         var store = NewStore();
         var race = store.Create("Race", Ultrawide, 3440, 1440);
-        race.Add(Widget(WidgetCatalog.Standings, 40, 60, ScaleLevel.M, new JsonObject { ["focusSize"] = 7 }));
+        race.Add(Widget(WidgetCatalog.Standings, 40, 60, WidgetScale.M, new JsonObject { ["focusSize"] = 7 }));
         store.Save(race);
 
         var copy = store.Duplicate(race.Id)!;
@@ -180,7 +180,7 @@ public sealed class LayoutStoreTests : IDisposable
         var store = NewStore();
         var race = store.Create("Race", Ultrawide, 3440, 1440);
 
-        store.Get(race.Id)!.Add(Widget(WidgetCatalog.Incident, 0, 0, ScaleLevel.M, []));
+        store.Get(race.Id)!.Add(Widget(WidgetCatalog.Incident, 0, 0, WidgetScale.M, []));
 
         Assert.Empty(store.Get(race.Id)!.Widgets);
     }
@@ -201,7 +201,7 @@ public sealed class LayoutStoreTests : IDisposable
     {
         var store = NewStore();
         var race = store.Create("Race", Ultrawide, 3440, 1440);
-        race.Add(Widget(WidgetCatalog.Relative, 1, 1, ScaleLevel.M, []));
+        race.Add(Widget(WidgetCatalog.Relative, 1, 1, WidgetScale.M, []));
         store.Save(race);
 
         var root = JsonNode.Parse(File.ReadAllText(FilePath))!.AsObject();
@@ -218,10 +218,10 @@ public sealed class LayoutStoreTests : IDisposable
     {
         var store = NewStore();
         var race = store.Create("Race", Ultrawide, 3440, 1440);
-        race.Add(Widget(WidgetCatalog.Relative, 1, 1, ScaleLevel.M, []));
+        race.Add(Widget(WidgetCatalog.Relative, 1, 1, WidgetScale.M, []));
         store.Save(race);
         store.SetOpen(new OpenLayoutState(race.Id,
-            [new WidgetSnapshot(WidgetCatalog.Relative, true, 10, 20, ScaleLevel.M, 1, false, [])]));
+            [new WidgetSnapshot(WidgetCatalog.Relative, true, 10, 20, WidgetScale.M, 1, false, [])]));
 
         // As an older version left it: a layout and an open snapshot that still name the Fuel
         // widget, which the app no longer has.
@@ -256,7 +256,7 @@ public sealed class LayoutStoreTests : IDisposable
         Assert.False(File.Exists(FilePath));
     }
 
-    private static LayoutWidget Widget(string type, double x, double y, ScaleLevel scale, JsonObject config) => new()
+    private static LayoutWidget Widget(string type, double x, double y, WidgetScale scale, JsonObject config) => new()
     {
         Type = type,
         X = x,

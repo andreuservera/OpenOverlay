@@ -69,7 +69,7 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
 
     public int ZIndex => _widget.ZIndex;
 
-    public double Factor => ScaleLevels.FactorOf(_widget.Scale);
+    public double Factor => _widget.Scale.Factor;
 
     /// <summary>The widget's opacity as the real window applies it: to the background only.</summary>
     public double BackgroundOpacity => _widget.Opacity;

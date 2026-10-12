@@ -26,7 +26,7 @@ public sealed class LayoutWidget
     /// <summary>Top edge, in pixels of the layout's resolution.</summary>
     public double Y { get; set; }
 
-    public ScaleLevel Scale { get; set; } = ScaleLevels.Default;
+    public WidgetScale Scale { get; set; } = WidgetScale.Default;
 
     /// <summary>As measured in the editor's preview. Informational only: a widget's size follows
     /// its content and <see cref="Scale"/>, and a table's height changes with the data.</summary>

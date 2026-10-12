@@ -207,7 +207,7 @@ public partial class WidgetPreview : UserControl
 
     private void ApplyScale()
     {
-        var factor = ScaleLevels.FactorOf(_slot?.Scale ?? ScaleLevels.Default);
+        var factor = (_slot?.Scale ?? WidgetScale.Default).Factor;
         StageScale.ScaleX = factor;
         StageScale.ScaleY = factor;
     }

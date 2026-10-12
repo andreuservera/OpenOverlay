@@ -13,13 +13,13 @@ namespace IRacingOverlay.App.Overlay;
 ///
 /// Content is laid out once at its design size (<see cref="DesignWidth"/>/<see cref="DesignHeight"/>,
 /// or its natural measured size when those are left unset) and then scaled as a whole by one of the
-/// fixed <see cref="ScaleLevel"/>s. Because the scale is a LayoutTransform, this control always
+/// <see cref="WidgetScale"/>. Because the scale is a LayoutTransform, this control always
 /// reports the *scaled* size to its parent, so the container tracks the content rather than the
 /// other way round — a panel can never be given less room than it needs, which is exactly what
 /// free-form drag-resizing used to allow (clipped text, overlapping rows, broken layouts).
 ///
 /// Every proportion inside the content — padding, margins, gaps, type scale, stroke widths — is
-/// multiplied by the same factor, so a widget looks identical at XXS and 3XL apart from its size.
+/// multiplied by the same factor, so a widget looks identical at any size apart from how big it is.
 /// </summary>
 [ContentProperty(nameof(ScalableContent))]
 public partial class ScalablePanel : UserControl
@@ -44,8 +44,8 @@ public partial class ScalablePanel : UserControl
         DependencyProperty.Register(nameof(DesignWidth), typeof(double), typeof(ScalablePanel),
             new PropertyMetadata(0.0));
 
-    /// <summary>The content's design width at level M, in device-independent pixels; every other
-    /// level is this times the level's factor. Set it on panels whose layout stretches to fill (a
+    /// <summary>The content's design width at the standard size, in device-independent pixels; every
+    /// other size is this times its factor. Set it on panels whose layout stretches to fill (a
     /// track map, a trace plot) — those have no meaningful natural width, and without a design size
     /// they collapse to their longest label. It is applied as a floor, not a fixed width: content
     /// that measures wider still gets the room it asks for, so declaring a design size can never be
@@ -60,7 +60,7 @@ public partial class ScalablePanel : UserControl
         DependencyProperty.Register(nameof(DesignHeight), typeof(double), typeof(ScalablePanel),
             new PropertyMetadata(0.0));
 
-    /// <summary>The content's design height at level M. See <see cref="DesignWidth"/>.</summary>
+    /// <summary>The content's design height at the standard size. See <see cref="DesignWidth"/>.</summary>
     public double DesignHeight
     {
         get => (double)GetValue(DesignHeightProperty);
@@ -82,14 +82,14 @@ public partial class ScalablePanel : UserControl
     }
 
     public static readonly DependencyProperty LevelProperty =
-        DependencyProperty.Register(nameof(Level), typeof(ScaleLevel), typeof(ScalablePanel),
-            new PropertyMetadata(ScaleLevels.Default, OnLevelChanged));
+        DependencyProperty.Register(nameof(Level), typeof(WidgetScale), typeof(ScalablePanel),
+            new PropertyMetadata(WidgetScale.Default, OnLevelChanged));
 
-    /// <summary>The current step on the shared ladder. Setting it animates to the new size and, once
-    /// the panel is loaded, persists it under <see cref="PersistenceKey"/>.</summary>
-    public ScaleLevel Level
+    /// <summary>The current size. Setting it animates to the new size and, once the panel is loaded,
+    /// persists it under <see cref="PersistenceKey"/>.</summary>
+    public WidgetScale Level
     {
-        get => (ScaleLevel)GetValue(LevelProperty);
+        get => (WidgetScale)GetValue(LevelProperty);
         set => SetValue(LevelProperty, value);
     }
 
@@ -142,11 +142,11 @@ public partial class ScalablePanel : UserControl
         }
     }
 
-    private void MinusButton_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(ScaleLevels.Smaller(Level));
+    private void MinusButton_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(Level.Smaller());
 
-    private void PlusButton_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(ScaleLevels.Larger(Level));
+    private void PlusButton_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(Level.Larger());
 
-    private void LevelChip_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(ScaleLevels.Default);
+    private void LevelChip_Click(object sender, RoutedEventArgs e) => SetLevelFromWidget(WidgetScale.Default);
 
     // Ctrl+wheel is the same gesture as zooming anywhere else, and it only bites while the size
     // control is available — a bare wheel still belongs to whatever is underneath.
@@ -157,16 +157,16 @@ public partial class ScalablePanel : UserControl
             return;
         }
 
-        SetLevelFromWidget(e.Delta > 0 ? ScaleLevels.Larger(Level) : ScaleLevels.Smaller(Level));
+        SetLevelFromWidget(e.Delta > 0 ? Level.Larger() : Level.Smaller());
         e.Handled = true;
     }
 
     /// <summary>A size change made on the widget itself; the Control Panel's size selector records its own.</summary>
-    private void SetLevelFromWidget(ScaleLevel level)
+    private void SetLevelFromWidget(WidgetScale level)
     {
         if (level != Level && PersistenceKey is { } key)
         {
-            AppLog.Activity("Layout", $"{key} size: {level}");
+            AppLog.Activity("Layout", $"{key} size: {level.Label}");
         }
 
         Level = level;
@@ -191,7 +191,7 @@ public partial class ScalablePanel : UserControl
     /// </summary>
     private void ApplyLevel(bool animate)
     {
-        var factor = ScaleLevels.FactorOf(Level);
+        var factor = Level.Factor;
 
         if (!animate)
         {
@@ -215,9 +215,9 @@ public partial class ScalablePanel : UserControl
 
     private void UpdateChromeState()
     {
-        LevelChip.Content = ScaleLevels.LabelOf(Level);
-        MinusButton.IsEnabled = !ScaleLevels.IsSmallest(Level);
-        PlusButton.IsEnabled = !ScaleLevels.IsLargest(Level);
+        LevelChip.Content = Level.Label;
+        MinusButton.IsEnabled = !Level.IsSmallest;
+        PlusButton.IsEnabled = !Level.IsLargest;
     }
 
     private void UpdateChromeVisibility()

@@ -25,7 +25,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     private OverlayWindowBase? _window;
     private bool _isEnabled;
     private bool _hideOutsideCar;
-    private ScaleLevel _scale;
+    private WidgetScale _scale;
     private double _opacity;
     private bool _isEditMode;
     private bool _isDriving;
@@ -110,7 +110,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
-    public ScaleLevel Scale
+    public WidgetScale Scale
     {
         get => _scale;
         set
@@ -126,7 +126,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             ScaleLevelStore.Save(Descriptor.ScaleKey, value);
             if (_window is not null)
             {
-                _window.ScaleLevel = value;
+                _window.Scale = value;
             }
 
             OnPropertyChanged();
@@ -284,7 +284,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     /// Ctrl+wheel, so the control panel's selector never shows a stale level.</summary>
     public void RefreshScaleFromWidget()
     {
-        var current = _window?.ScaleLevel ?? ScaleLevelStore.Get(Descriptor.ScaleKey);
+        var current = _window?.Scale ?? ScaleLevelStore.Get(Descriptor.ScaleKey);
         if (current == _scale)
         {
             return;

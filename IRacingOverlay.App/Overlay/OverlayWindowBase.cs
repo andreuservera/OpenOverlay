@@ -13,7 +13,7 @@ namespace IRacingOverlay.App.Overlay;
 /// dragged and a derived XAML's edit-mode border (bound to <see cref="IsEditMode"/>) shows.
 ///
 /// The window is never resizable. Its size is entirely a function of its content: SizeToContent
-/// makes it wrap whatever <see cref="ScalablePanel"/> reports at the current <see cref="ScaleLevel"/>,
+/// makes it wrap whatever <see cref="ScalablePanel"/> reports at the current <see cref="WidgetScale"/>,
 /// so the only way to change a widget's size is the +/- control, and the frame can never end up
 /// smaller than what it has to display. Position is the one thing the user places by hand, and the
 /// only thing persisted per widget.
@@ -138,9 +138,9 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     /// restores its level from <see cref="ScaleLevelStore"/> on load, so callers persist there first
     /// and this only has to catch panels that are already on screen.
     /// </summary>
-    public ScaleLevel ScaleLevel
+    public WidgetScale Scale
     {
-        get => Scaler?.Level ?? ScaleLevels.Default;
+        get => Scaler?.Level ?? WidgetScale.Default;
         set
         {
             if (Scaler is { } scaler)

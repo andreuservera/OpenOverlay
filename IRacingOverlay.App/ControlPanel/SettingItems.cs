@@ -337,7 +337,17 @@ public sealed class SliderSetting : SettingItem
         Step = step;
         _value = Math.Clamp(value, minimum, maximum);
         _apply = apply;
+        StepDownCommand = new RelayCommand(() => Value -= Step);
+        StepUpCommand = new RelayCommand(() => Value += Step);
     }
+
+    /// <summary>A − and a + either side of the slider, and the wheel over it, each a step at a time:
+    /// for a value set to the unit (a widget's size) rather than judged by eye.</summary>
+    public bool HasSteppers { get; init; }
+
+    public ICommand StepDownCommand { get; }
+
+    public ICommand StepUpCommand { get; }
 
     public double Minimum { get; }
     public double Maximum { get; }

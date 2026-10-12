@@ -37,26 +37,26 @@ public sealed class LayoutEditorModelTests
         var model = NewModel(WidgetCatalog.Relative);
 
         model.Move(WidgetCatalog.Relative, 100, 50);
-        model.Resize(WidgetCatalog.Relative, ScaleLevel.XL, 90, 40);
+        model.Resize(WidgetCatalog.Relative, WidgetScale.XL, 90, 40);
         model.Add(new LayoutWidget { Type = WidgetCatalog.Incident });
         model.Remove(WidgetCatalog.Relative);
 
         Assert.False(model.Layout.Contains(WidgetCatalog.Relative));
 
         model.Undo(); // remove
-        Assert.Equal(ScaleLevel.XL, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Scale);
+        Assert.Equal(WidgetScale.XL, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Scale);
         model.Undo(); // add
         Assert.False(model.Layout.Contains(WidgetCatalog.Incident));
         model.Undo(); // resize
-        Assert.Equal((ScaleLevel.M, 100.0, 50.0), Placement(model, WidgetCatalog.Relative));
+        Assert.Equal((WidgetScale.M, 100.0, 50.0), Placement(model, WidgetCatalog.Relative));
         model.Undo(); // move
-        Assert.Equal((ScaleLevel.M, 0.0, 0.0), Placement(model, WidgetCatalog.Relative));
+        Assert.Equal((WidgetScale.M, 0.0, 0.0), Placement(model, WidgetCatalog.Relative));
         Assert.False(model.CanUndo);
         Assert.False(model.IsDirty);
 
         model.Redo();
         model.Redo();
-        Assert.Equal((ScaleLevel.XL, 90.0, 40.0), Placement(model, WidgetCatalog.Relative));
+        Assert.Equal((WidgetScale.XL, 90.0, 40.0), Placement(model, WidgetCatalog.Relative));
         Assert.True(model.IsDirty);
     }
 
@@ -159,14 +159,14 @@ public sealed class LayoutEditorModelTests
         model.SetLocked(WidgetCatalog.Relative, true);
 
         model.Move(WidgetCatalog.Relative, 300, 300);
-        model.Resize(WidgetCatalog.Relative, ScaleLevel.XXL, 0, 0);
+        model.Resize(WidgetCatalog.Relative, WidgetScale.XXL, 0, 0);
         model.BeginGesture();
         model.PreviewMove(WidgetCatalog.Relative, 500, 500);
         model.EndGesture();
         model.SetVisible(WidgetCatalog.Relative, false);
 
         var widget = model.Layout.WidgetOf(WidgetCatalog.Relative)!;
-        Assert.Equal((0.0, 0.0, ScaleLevel.M), (widget.X, widget.Y, widget.Scale));
+        Assert.Equal((0.0, 0.0, WidgetScale.M), (widget.X, widget.Y, widget.Scale));
         Assert.False(widget.Visible);
     }
 
@@ -180,7 +180,7 @@ public sealed class LayoutEditorModelTests
 
         Assert.Equal((1920.0, 1080.0), XY(model));
         Assert.Equal((3840, 2160), (model.Layout.Width, model.Layout.Height));
-        Assert.Equal(ScaleLevel.M, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Scale);
+        Assert.Equal(WidgetScale.M, model.Layout.WidgetOf(WidgetCatalog.Relative)!.Scale);
     }
 
     [Fact]
@@ -382,7 +382,7 @@ public sealed class LayoutEditorModelTests
         Assert.Equal((1720.0, 980.0), XY(model));
     }
 
-    private static (ScaleLevel, double, double) Placement(LayoutEditorModel model, string type)
+    private static (WidgetScale, double, double) Placement(LayoutEditorModel model, string type)
     {
         var widget = model.Layout.WidgetOf(type)!;
         return (widget.Scale, widget.X, widget.Y);

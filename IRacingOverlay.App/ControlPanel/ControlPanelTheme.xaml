@@ -1503,11 +1503,16 @@
     <DataTemplate DataType="{x:Type cp:SliderSetting}">
         <ContentControl Template="{StaticResource Cp.SettingRow}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="StepDown" Style="{StaticResource Cp.StepButton}" Content="−" Margin="0,0,4,0"
+                        Command="{Binding StepDownCommand}" ToolTip="One step down" Visibility="Collapsed"/>
                 <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center"
                         Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                         SmallChange="{Binding Step}" LargeChange="{Binding Step}"
                         TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
+                        cp:WheelSteps.IsEnabled="{Binding HasSteppers}"
                         Value="{Binding Value, Mode=TwoWay}"/>
+                <Button x:Name="StepUp" Style="{StaticResource Cp.StepButton}" Content="+" Margin="4,0,0,0"
+                        Command="{Binding StepUpCommand}" ToolTip="One step up" Visibility="Collapsed"/>
                 <!-- The value is also a field: type an exact one and press Enter. -->
                 <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
                         CornerRadius="6" Height="30" Width="64" Margin="10,0,0,0" Padding="8,0" SnapsToDevicePixels="True"
@@ -1517,6 +1522,12 @@
                 </Border>
             </StackPanel>
         </ContentControl>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding HasSteppers}" Value="True">
+                <Setter TargetName="StepDown" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="StepUp" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:ActionSetting}">

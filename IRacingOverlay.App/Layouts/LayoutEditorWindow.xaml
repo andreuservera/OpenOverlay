@@ -400,8 +400,23 @@
                                        Text="Pixels from the top-left of the screen. Applied when you click elsewhere."/>
 
                             <TextBlock Text="SIZE" Style="{StaticResource Cp.Eyebrow}" Margin="0,14,0,0"/>
-                            <ComboBox x:Name="SizeBox" Style="{StaticResource Cp.ComboBox}" Margin="0,5,0,0"
-                                      SelectionChanged="OnSizeChosen"/>
+                            <!-- Percent of the standard size: − and + a percent at a time, the slider
+                                 (or the wheel over it) for big moves, the field for an exact value. -->
+                            <DockPanel x:Name="SizePanel" Margin="0,5,0,0">
+                                <Border DockPanel.Dock="Right" Style="{StaticResource Ed.Field}" Width="64" Margin="6,0,0,0"
+                                        ToolTip="Type a size and press Enter">
+                                    <TextBox x:Name="SizeBox" Style="{StaticResource Cp.TextBox}" TextAlignment="Right"
+                                             MaxLength="5" LostFocus="OnSizeTyped" KeyDown="OnSizeKeyDown"/>
+                                </Border>
+                                <Button DockPanel.Dock="Left" Style="{StaticResource Cp.StepButton}" Content="−"
+                                        Click="OnSizeSmaller" ToolTip="1 % smaller"/>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="+"
+                                        Click="OnSizeLarger" ToolTip="1 % bigger"/>
+                                <Slider x:Name="SizeSlider" Style="{StaticResource Cp.Slider}" Margin="4,0"
+                                        SmallChange="1" LargeChange="1" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        ValueChanged="OnSizeSlid" PreviewMouseWheel="OnSizeWheel"
+                                        Thumb.DragStarted="OnSizeDragStarted" Thumb.DragCompleted="OnSizeDragCompleted"/>
+                            </DockPanel>
                             <TextBlock x:Name="MeasuredSize" Style="{StaticResource Cp.Hint}" Margin="0,4,0,0"/>
 
                             <TextBlock Text="ARRANGE" Style="{StaticResource Cp.Eyebrow}" Margin="0,16,0,0"/>

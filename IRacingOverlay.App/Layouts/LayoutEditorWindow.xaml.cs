@@ -61,7 +61,8 @@ public partial class LayoutEditorWindow : Window
         _store = store;
         _monitors = monitors;
         _newWidget = newWidget;
-        SizeBox.ItemsSource = ScaleLevels.Labels;
+        SizeSlider.Minimum = WidgetScale.MinPercent;
+        SizeSlider.Maximum = WidgetScale.MaxPercent;
         Items.ItemsSource = _items;
         AutoSaveToggle.IsChecked = LayoutEditorAutoSaveStore.Get();
         _autoSave.Tick += (_, _) => AutoSaveNow();
@@ -229,11 +230,16 @@ public partial class LayoutEditorWindow : Window
             YBox.Text = Math.Round(widget.Y).ToString(CultureInfo.InvariantCulture);
         }
 
-        SizeBox.SelectedIndex = Array.IndexOf(Enum.GetValues<ScaleLevel>(), widget.Scale);
+        SizeSlider.Value = widget.Scale.Percent;
+        if (!SizeBox.IsKeyboardFocusWithin)
+        {
+            SizeBox.Text = widget.Scale.Label;
+        }
+
         MeasuredSize.Text = widget.Width > 0
             ? string.Create(CultureInfo.InvariantCulture, $"About {Math.Round(widget.Width)} × {Math.Round(widget.Height)} px with sample data. Tables grow and shrink with the field.")
             : "";
-        XBox.IsEnabled = YBox.IsEnabled = SizeBox.IsEnabled = !widget.Locked;
+        XBox.IsEnabled = YBox.IsEnabled = SizePanel.IsEnabled = !widget.Locked;
         LockToggle.IsChecked = widget.Locked;
         HideToggle.IsChecked = !widget.Visible;
         SyncSettings(item);
@@ -787,14 +793,14 @@ public partial class LayoutEditorWindow : Window
             return;
         }
 
-        var factor = ScaleLevels.FactorOf(widget.Scale);
+        var factor = widget.Scale.Factor;
         _gesture = new Gesture(item.Type, e.GetPosition(Surface), BoxOf(widget), corner, widget.Width / factor, widget.Height / factor);
         _model.BeginGesture();
         handle.CaptureMouse();
     }
 
-    /// <summary>Resizing steps through the size levels: the pointer proposes a size, the nearest
-    /// level wins, and the corner opposite the handle stays where it was.</summary>
+    /// <summary>Resizing goes by whole percents: the pointer proposes a size, the nearest percent
+    /// within the range wins, and the corner opposite the handle stays where it was.</summary>
     private void OnHandleMouseMove(object sender, MouseEventArgs e)
     {
         if (_gesture is not { Corner: { } corner } gesture || !((UIElement)sender).IsMouseCaptured)
@@ -812,7 +818,7 @@ public partial class LayoutEditorWindow : Window
         var wantedHeight = Math.Max(1, top ? anchorY - pointer.Y : pointer.Y - anchorY);
 
         var level = LayoutGeometry.NearestLevel(Math.Max(wantedWidth / gesture.NaturalWidth, wantedHeight / gesture.NaturalHeight));
-        var factor = ScaleLevels.FactorOf(level);
+        var factor = level.Factor;
         var width = gesture.NaturalWidth * factor;
         var height = gesture.NaturalHeight * factor;
         _model.PreviewResize(
@@ -820,7 +826,7 @@ public partial class LayoutEditorWindow : Window
             level,
             Math.Round(left ? anchorX - width : anchorX),
             Math.Round(top ? anchorY - height : anchorY));
-        Status($"{NameOf(gesture.Type)}: size {ScaleLevels.LabelOf(level)}");
+        Status($"{NameOf(gesture.Type)}: size {level.Label}");
     }
 
     private void OnHandleMouseUp(object sender, MouseButtonEventArgs e)
@@ -949,19 +955,86 @@ public partial class LayoutEditorWindow : Window
         SyncProperties();
     }
 
-    private void OnSizeChosen(object sender, SelectionChangedEventArgs e)
+    private bool _sizeDragging;
+
+    /// <summary>A new size from the properties pane; the top-left corner stays put.</summary>
+    private void ResizeSelected(WidgetScale scale)
     {
-        if (_syncing || SelectedItem is not { } item || SizeBox.SelectedIndex < 0)
+        if (_syncing || SelectedItem is not { } item || scale == item.Widget.Scale)
         {
             return;
         }
 
-        var level = Enum.GetValues<ScaleLevel>()[SizeBox.SelectedIndex];
-        if (level != item.Widget.Scale)
+        if (_sizeDragging)
         {
-            // From the properties pane the top-left corner stays put.
-            _model.Resize(item.Type, level, item.Widget.X, item.Widget.Y);
+            _model.PreviewResize(item.Type, scale, item.Widget.X, item.Widget.Y);
         }
+        else
+        {
+            _model.Resize(item.Type, scale, item.Widget.X, item.Widget.Y);
+        }
+    }
+
+    private void OnSizeSlid(object sender, RoutedPropertyChangedEventArgs<double> e) =>
+        ResizeSelected(new WidgetScale((int)Math.Round(e.NewValue)));
+
+    // A drag of the slider is one step to undo, like a drag of a handle on the canvas.
+    private void OnSizeDragStarted(object sender, System.Windows.Controls.Primitives.DragStartedEventArgs e)
+    {
+        _sizeDragging = true;
+        _model.BeginGesture();
+    }
+
+    private void OnSizeDragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        _sizeDragging = false;
+        _model.EndGesture();
+    }
+
+    private void OnSizeSmaller(object sender, RoutedEventArgs e) => StepSize(-1);
+
+    private void OnSizeLarger(object sender, RoutedEventArgs e) => StepSize(+1);
+
+    private void OnSizeWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Delta != 0)
+        {
+            StepSize(Math.Sign(e.Delta));
+            e.Handled = true;
+        }
+    }
+
+    private void StepSize(int percent)
+    {
+        if (SelectedItem is { } item)
+        {
+            ResizeSelected(new WidgetScale(item.Widget.Scale.Percent + percent));
+        }
+    }
+
+    private void OnSizeKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            OnSizeTyped(sender, e);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>A size typed in the field ("120", "120 %"); anything else puts the current one back.</summary>
+    private void OnSizeTyped(object sender, RoutedEventArgs e)
+    {
+        if (SelectedItem is not { } item)
+        {
+            return;
+        }
+
+        if (int.TryParse(SizeBox.Text.Trim().TrimEnd('%').Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var percent))
+        {
+            ResizeSelected(new WidgetScale(percent));
+        }
+
+        SizeBox.Text = (SelectedItem?.Widget.Scale ?? item.Widget.Scale).Label;
     }
 
     // ===== Keyboard shortcuts =====

@@ -24,8 +24,6 @@ namespace IRacingOverlay.App.ControlPanel;
 /// </summary>
 public sealed partial class ControlPanelViewModel
 {
-    private static readonly string[] SizeLadder = ScaleLevels.Labels;
-
     /// <summary>The widget pages' settings act on the shared live options and save as they always
     /// have, header nudges included.</summary>
     private WidgetSettingsContext IndividualSettings => new(
@@ -160,7 +158,7 @@ public sealed partial class ControlPanelViewModel
     /// builds it.</summary>
     private static SettingsGroup PlacementDefaults() => new SettingsGroup(WidgetSettings.PositionAndVisibility)
         .With(
-            new SegmentedSetting("Size", null, SizeLadder, (int)ScaleLevels.Default, _ => { }),
+            SizeRow(WidgetScale.Default, _ => { }),
             new SliderSetting("Opacity", null, WidgetOpacityStore.Default, 0, 1, 0.01, _ => { }),
             new ToggleSetting("Hide when I'm not driving", null, false, _ => { }));
 
@@ -232,7 +230,7 @@ public sealed partial class ControlPanelViewModel
         var before = (Config: codec.Read(), slot.Scale, slot.Opacity, slot.HideOutsideCar);
         AppLog.Activity("Control Panel", $"{slot.Descriptor.Name} reset to defaults");
         codec.Apply(WidgetDefaults.ConfigOf(slot.Key));
-        slot.Scale = ScaleLevels.Default;
+        slot.Scale = WidgetScale.Default;
         slot.Opacity = WidgetOpacityStore.Default;
         slot.HideOutsideCar = false;
         RebuildPage();
@@ -326,26 +324,18 @@ public sealed partial class ControlPanelViewModel
     }
 
     /// <summary>The size ladder, with what the level means in numbers under it.</summary>
-    private static SegmentedSetting SizeRow(WidgetSlot slot)
-    {
-        SegmentedSetting? row = null;
-        row = new SegmentedSetting(
-            "Size",
-            SizeHint(slot.Scale),
-            SizeLadder,
-            (int)slot.Scale,
-            index =>
-            {
-                slot.Scale = (ScaleLevel)index;
-                row!.Hint = SizeHint(slot.Scale);
-            });
-        return row;
-    }
+    private static SliderSetting SizeRow(WidgetSlot slot) => SizeRow(slot.Scale, scale => slot.Scale = scale);
 
-    /// <summary>"XL · 139 % of the standard size": the letters say small or large, the number how much.</summary>
-    private static string SizeHint(ScaleLevel level) => string.Create(
-        CultureInfo.InvariantCulture,
-        $"{ScaleLevels.LabelOf(level)} · {ScaleLevels.FactorOf(level) / ScaleLevels.FactorOf(ScaleLevels.Default) * 100:0} % of the standard size (M).");
+    /// <summary>A widget's size as a percentage of the standard size, to the percent.</summary>
+    private static SliderSetting SizeRow(WidgetScale scale, Action<WidgetScale> apply) => new(
+        "Size",
+        "100 % is the standard size.",
+        scale.Percent,
+        WidgetScale.MinPercent,
+        WidgetScale.MaxPercent,
+        1,
+        percent => apply(new WidgetScale((int)Math.Round(percent))),
+        percent => new WidgetScale((int)Math.Round(percent)).Label) { HasSteppers = true };
 
     /// <summary>The fast displays' refresh rate is one setting for all of them, on the General
     /// page; the widgets that use it point there rather than offering a second copy of it.</summary>

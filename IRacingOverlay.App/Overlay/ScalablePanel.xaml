@@ -61,7 +61,7 @@
             <Setter Property="FontSize" Value="15"/>
         </Style>
 
-        <!-- The level readout doubles as the reset affordance: one click returns the panel to M. -->
+        <!-- The size readout doubles as the reset affordance: one click returns the panel to 100 %. -->
         <Style x:Key="ScaleLevelChip" TargetType="Button" BasedOn="{StaticResource ChromeButton}">
             <Setter Property="MinWidth" Value="26"/>
             <Setter Property="Height" Value="22"/>
@@ -100,11 +100,11 @@
                 Padding="3" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="MinusButton" Content="−" Style="{StaticResource ScaleStepButton}"
-                        Click="MinusButton_Click" ToolTip="Smaller (Ctrl + wheel down)"/>
+                        Click="MinusButton_Click" ToolTip="5 % smaller (Ctrl + wheel down)"/>
                 <Button x:Name="LevelChip" Style="{StaticResource ScaleLevelChip}"
-                        Click="LevelChip_Click" ToolTip="Reset to M"/>
+                        Click="LevelChip_Click" ToolTip="Reset to 100 %"/>
                 <Button x:Name="PlusButton" Content="+" Style="{StaticResource ScaleStepButton}"
-                        Click="PlusButton_Click" ToolTip="Bigger (Ctrl + wheel up)"/>
+                        Click="PlusButton_Click" ToolTip="5 % bigger (Ctrl + wheel up)"/>
             </StackPanel>
         </Border>
     </Grid>
