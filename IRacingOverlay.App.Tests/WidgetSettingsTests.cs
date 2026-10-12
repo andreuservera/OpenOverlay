@@ -106,11 +106,10 @@ public sealed class WidgetSettingsTests
     public void HeaderToggles_DoNotNudgeAnyLiveWidget_WhenThereIsNone()
     {
         var (context, _) = NewContext(WidgetCatalog.Relative);
-        var placement = WidgetSettings.For(WidgetCatalog.Relative, context)
-            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
-            .First(setting => setting.Label == "SOF");
+        var infoBar = WidgetSettings.For(WidgetCatalog.Relative, context)
+            .SelectMany(group => group.Items).OfType<InfoBarSetting>().Single();
 
-        placement.SelectedIndex = 0; // Hidden
+        infoBar.Move(infoBar.Chips.Single(chip => chip.Element == TableInfoElement.Sof), null);
 
         Assert.False(context.Relative.ShowSof);
         Assert.Equal(1, _changes);
@@ -122,11 +121,10 @@ public sealed class WidgetSettingsTests
         var nudged = new List<DriverTable>();
         var (context, _) = NewContext();
         context = context with { TableHeaderChanged = nudged.Add };
-        var placement = WidgetSettings.For(WidgetCatalog.Standings, context)
-            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
-            .First(setting => setting.Label == "Session type");
+        var infoBar = WidgetSettings.For(WidgetCatalog.Standings, context)
+            .SelectMany(group => group.Items).OfType<InfoBarSetting>().Single();
 
-        placement.SelectedIndex = 0; // Hidden
+        infoBar.Move(infoBar.Chips.Single(chip => chip.Element == TableInfoElement.SessionType), null);
 
         Assert.Equal([DriverTable.Standings], nudged);
     }
@@ -198,6 +196,20 @@ public sealed class WidgetSettingsTests
                     foreach (var chip in chips.Chips)
                     {
                         yield return new Row($"{chips.Label} › {chip.Label}", () => chip.Value = !chip.Value);
+                    }
+
+                    break;
+                case InfoBarSetting infoBar:
+                    // Each piece of info: on the table if it is off, off if it is on, and moved to
+                    // another slot.
+                    foreach (var chip in infoBar.Chips)
+                    {
+                        yield return new Row($"{infoBar.Label} › {chip.Label} shown", () =>
+                            infoBar.Move(chip, infoBar.Available.Contains(chip) ? TableSlot.BottomCenter : null));
+                        yield return new Row($"{infoBar.Label} › {chip.Label} slot", () =>
+                            infoBar.Move(chip, infoBar.Top.Concat(infoBar.Bottom).Any(slot => slot.Chips.Contains(chip) && slot.Slot == TableSlot.TopCenter)
+                                ? TableSlot.BottomRight
+                                : TableSlot.TopCenter));
                     }
 
                     break;

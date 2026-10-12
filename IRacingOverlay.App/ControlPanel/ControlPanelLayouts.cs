@@ -384,6 +384,14 @@ public sealed partial class ControlPanelViewModel
         AppLog.Activity("Layouts", $"Deleted layout \"{layout.Name}\"");
         _selectedLayoutId = null;
         RefreshLayoutsPage();
+        // The copy read before deleting has the shortcut too, so undo brings that back with it.
+        ShowToast($"\"{layout.Name}\" deleted.", () =>
+        {
+            var restored = LayoutStore.Save(layout);
+            AppLog.Activity("Layouts", $"Restored layout \"{restored.Name}\"");
+            _selectedLayoutId = restored.Id;
+            RefreshLayoutsPage();
+        });
     }
 
     // ===== Export and import =====
@@ -667,6 +675,7 @@ public sealed partial class ControlPanelViewModel
         OnPropertyChanged(nameof(HasOpenLayout));
         OnPropertyChanged(nameof(ToolbarLayout));
         OnPropertyChanged(nameof(LayoutToggleTip));
+        RefreshHome();
         // Both the Layouts page and a widget page may now read differently.
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {

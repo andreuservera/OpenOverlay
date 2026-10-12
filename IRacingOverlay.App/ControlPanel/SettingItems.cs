@@ -6,6 +6,7 @@ using System.Windows.Input;
 using IRacingOverlay.App.About;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
+using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -846,6 +847,30 @@ public sealed class SettingsGroup : INotifyPropertyChanged
     }
 }
 
+/// <summary>A command that takes its CommandParameter, for an action on one item of a list.</summary>
+public sealed class ParameterCommand(Action<object?> execute) : ICommand
+{
+    public event EventHandler? CanExecuteChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public bool CanExecute(object? parameter) => true;
+
+    public void Execute(object? parameter)
+    {
+        try
+        {
+            execute(parameter);
+        }
+        catch (Exception e) when (!ExceptionPolicy.IsFatal(e))
+        {
+            AppLog.Error("Control Panel", "Action failed", e);
+        }
+    }
+}
+
 /// <summary>Minimal parameterless command, so setting items can carry their own actions and every
 /// template in the theme stays binding-only — no code-behind reaching into a data template.</summary>
 public sealed class RelayCommand : ICommand
@@ -876,3 +901,105 @@ public sealed class RelayCommand : ICommand
         }
     }
 }
+
+/// <summary>
+/// Where the session info sits around a driver table, drawn as the table itself: three slots above
+/// the rows and three below, with chips ("SOF", "Air temp") dragged into them, and a tray of the
+/// ones not shown. It replaces a dropdown per piece of info, which made the user build the picture
+/// in their head from nine "Top left / Bottom center" choices.
+///
+/// A chip taken off the table keeps the slot it was in, so putting it back by any route other than
+/// a drop (a layout, an older version) restores it where it was.
+/// </summary>
+public sealed class InfoBarSetting : SettingItem
+{
+    private readonly Func<TableInfoElement, bool> _isShown;
+    private readonly Func<TableInfoElement, TableSlot> _slotOf;
+    private readonly Action<TableInfoElement, bool, TableSlot> _apply;
+
+    public InfoBarSetting(
+        string label,
+        string? hint,
+        IReadOnlyList<InfoChip> chips,
+        Func<TableInfoElement, bool> isShown,
+        Func<TableInfoElement, TableSlot> slotOf,
+        Action<TableInfoElement, bool, TableSlot> apply)
+        : base(label, hint)
+    {
+        _isShown = isShown;
+        _slotOf = slotOf;
+        _apply = apply;
+        Chips = chips;
+        Top = [.. new[] { TableSlot.TopLeft, TableSlot.TopCenter, TableSlot.TopRight }.Select(slot => new InfoBarSlot(slot))];
+        Bottom = [.. new[] { TableSlot.BottomLeft, TableSlot.BottomCenter, TableSlot.BottomRight }.Select(slot => new InfoBarSlot(slot))];
+        Arrange();
+    }
+
+    /// <summary>Every piece of info, shown or not.</summary>
+    public IReadOnlyList<InfoChip> Chips { get; }
+
+    public IReadOnlyList<InfoBarSlot> Top { get; }
+
+    public IReadOnlyList<InfoBarSlot> Bottom { get; }
+
+    /// <summary>The info not on the table.</summary>
+    public ObservableCollection<InfoChip> Available { get; } = [];
+
+    public InfoBarSlot SlotFor(TableSlot slot) => Top.Concat(Bottom).First(candidate => candidate.Slot == slot);
+
+    /// <summary>Puts a chip in a slot, or (null) takes it off the table.</summary>
+    public void Move(InfoChip chip, TableSlot? target)
+    {
+        var shown = target is not null;
+        if (shown == _isShown(chip.Element) && (!shown || target == _slotOf(chip.Element)))
+        {
+            return;
+        }
+
+        Trace(shown ? $"{chip.Label} → {SlotFor(target!.Value).Name}" : $"{chip.Label} hidden");
+        _apply(chip.Element, shown, target ?? _slotOf(chip.Element));
+        Arrange();
+    }
+
+    private void Arrange()
+    {
+        Available.Clear();
+        foreach (var slot in Top.Concat(Bottom))
+        {
+            slot.Chips.Clear();
+        }
+
+        foreach (var chip in Chips)
+        {
+            if (_isShown(chip.Element))
+            {
+                SlotFor(_slotOf(chip.Element)).Chips.Add(chip);
+            }
+            else
+            {
+                Available.Add(chip);
+            }
+        }
+    }
+}
+
+/// <summary>One of the six places around a driver table that info can sit in.</summary>
+public sealed class InfoBarSlot(TableSlot slot)
+{
+    public TableSlot Slot { get; } = slot;
+
+    public string Name { get; } = slot switch
+    {
+        TableSlot.TopLeft => "Top left",
+        TableSlot.TopCenter => "Top center",
+        TableSlot.TopRight => "Top right",
+        TableSlot.BottomLeft => "Bottom left",
+        TableSlot.BottomCenter => "Bottom center",
+        _ => "Bottom right",
+    };
+
+    public ObservableCollection<InfoChip> Chips { get; } = [];
+}
+
+/// <summary>A piece of session info as a chip: its short name, and what it is in full.</summary>
+public sealed record InfoChip(TableInfoElement Element, string Label, string Description);

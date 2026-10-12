@@ -36,17 +36,59 @@ public class TableInfoPlacementTests
     [Fact]
     public void Hidden_KeepsTheSlot_SoShowingItAgainPutsItBack()
     {
+        var (options, infoBar) = InfoBar();
+        var sof = infoBar.Chips.Single(chip => chip.Element == TableInfoElement.Sof);
+
+        infoBar.Move(sof, TableSlot.BottomCenter);
+        Assert.Equal(TableSlot.BottomCenter, options.SlotOf(TableInfoElement.Sof));
+
+        infoBar.Move(sof, null);
+        Assert.False(options.ShowSof);
+        Assert.Equal(TableSlot.BottomCenter, options.SlotOf(TableInfoElement.Sof));
+    }
+
+    [Fact]
+    public void Diagram_PutsEachChipInItsSlot_AndTheHiddenOnesInTheTray()
+    {
+        var (options, infoBar) = InfoBar();
+
+        foreach (var chip in infoBar.Chips)
+        {
+            var inSlots = infoBar.Top.Concat(infoBar.Bottom).Where(slot => slot.Chips.Contains(chip)).ToList();
+            if (options.IsShown(chip.Element))
+            {
+                Assert.Equal(options.SlotOf(chip.Element), Assert.Single(inSlots).Slot);
+                Assert.DoesNotContain(chip, infoBar.Available);
+            }
+            else
+            {
+                Assert.Empty(inSlots);
+                Assert.Contains(chip, infoBar.Available);
+            }
+        }
+    }
+
+    [Fact]
+    public void Dropping_MovesTheChip_AndTheDiagramFollows()
+    {
+        var (options, infoBar) = InfoBar();
+        var hidden = infoBar.Available.First();
+
+        infoBar.Move(hidden, TableSlot.TopCenter);
+
+        Assert.True(options.IsShown(hidden.Element));
+        Assert.Contains(hidden, infoBar.SlotFor(TableSlot.TopCenter).Chips);
+        Assert.DoesNotContain(hidden, infoBar.Available);
+        Assert.Equal(3, infoBar.Top.Count);
+        Assert.Equal(3, infoBar.Bottom.Count);
+    }
+
+    private static (DriverTableOptions Options, InfoBarSetting InfoBar) InfoBar()
+    {
         var options = new DriverTableOptions(DriverTable.Standings);
         var context = new WidgetSettingsContext(options, new DriverTableOptions(DriverTable.Relative), new FuelCalculatorOptions(),
             new FlagOptions(), new CockpitOptions(), new WeatherOptions(), new TrackInfoOptions(), new DeltaOptions(), new PedalTraceOptions(), SaveToStores: false);
-        var sof = WidgetSettings.For(WidgetCatalog.Standings, context)
-            .SelectMany(group => group.Items).OfType<ChoiceSetting>().First(setting => setting.Label == "SOF");
-
-        sof.SelectedIndex = 5; // Bottom center
-        Assert.Equal(TableSlot.BottomCenter, options.SlotOf(TableInfoElement.Sof));
-
-        sof.SelectedIndex = 0; // Hidden
-        Assert.False(options.ShowSof);
-        Assert.Equal(TableSlot.BottomCenter, options.SlotOf(TableInfoElement.Sof));
+        var infoBar = WidgetSettings.For(WidgetCatalog.Standings, context).SelectMany(group => group.Items).OfType<InfoBarSetting>().Single();
+        return (options, infoBar);
     }
 }

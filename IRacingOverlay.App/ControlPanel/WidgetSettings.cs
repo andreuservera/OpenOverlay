@@ -109,13 +109,12 @@ public static class WidgetSettings
                 {
                     context.Standings.ShowClassSof = value;
                     context.Persist(() => DriverTableOptionsStore.SaveClassSof(DriverTable.Standings, value));
-                }))
-        .With(InfoPlacements(context.Standings, context).ToArray());
+                }),
+            InfoBar(context.Standings, context));
 
     private static SettingsGroup RelativeContent(WidgetSettingsContext context) => new SettingsGroup(
         Content, "The columns, and the session info above and below the rows.")
-        .With(ColumnList(context.Relative, context))
-        .With(InfoPlacements(context.Relative, context).ToArray());
+        .With(ColumnList(context.Relative, context), InfoBar(context.Relative, context));
 
     private static ReorderListSetting ColumnList(DriverTableOptions options, WidgetSettingsContext context) => new(
         "Columns",
@@ -206,44 +205,35 @@ public static class WidgetSettings
             context.Persist(() => DriverTableOptionsStore.SaveColumnHeaders(options.Table, value));
         });
 
-    private static readonly string[] SlotChoices =
-        ["Hidden", "Top left", "Top center", "Top right", "Bottom left", "Bottom center", "Bottom right"];
-
-    /// <summary>One dropdown per piece of session information: hidden, or the slot it sits in.</summary>
-    private static IEnumerable<SettingItem> InfoPlacements(DriverTableOptions options, WidgetSettingsContext context) =>
-        Enum.GetValues<TableInfoElement>().Select(element => (SettingItem)InfoPlacement(element, options, context));
-
-    // "Hidden" keeps the slot, so showing it again puts it back where it was. The session type is
-    // still saved under the switch that once named the class, so settings and layouts carry over.
-    private static ChoiceSetting InfoPlacement(TableInfoElement element, DriverTableOptions options, WidgetSettingsContext context) => new(
-        element switch
+    /// <summary>The session info around the table, as a picture of the table with slots to drop it in.</summary>
+    private static InfoBarSetting InfoBar(DriverTableOptions options, WidgetSettingsContext context) => new(
+        "Info bar",
+        "Drag info into a slot above or below the rows; drag it back down here to hide it.",
+        Enum.GetValues<TableInfoElement>().Select(element => element switch
         {
-            TableInfoElement.SessionType => "Session type",
-            TableInfoElement.Sof => "SOF",
-            TableInfoElement.SessionLaps => "Session laps",
-            TableInfoElement.SessionTime => "Session time",
-            TableInfoElement.BrakeBias => "Brake bias",
-            TableInfoElement.AirTemp => "Air temp",
-            TableInfoElement.TrackTemp => "Track temp",
-            TableInfoElement.Incidents => "Incidents",
-            _ => "Humidity",
-        },
-        element == TableInfoElement.Sof ? "Strength of field: the average iRating of the cars in the race." : null,
-        SlotChoices,
-        options.IsShown(element) ? (int)options.SlotOf(element) + 1 : 0,
-        index =>
+            TableInfoElement.SessionType => new InfoChip(element, "Session", "Practice, qualifying or race."),
+            TableInfoElement.Sof => new InfoChip(element, "SOF", "Strength of field: the average iRating of the cars in the race."),
+            TableInfoElement.SessionLaps => new InfoChip(element, "Laps", "Laps done, and laps to go."),
+            TableInfoElement.SessionTime => new InfoChip(element, "Time", "Session time run, and time left."),
+            TableInfoElement.BrakeBias => new InfoChip(element, "Brake bias", "Your car's brake bias."),
+            TableInfoElement.AirTemp => new InfoChip(element, "Air temp", "Air temperature."),
+            TableInfoElement.TrackTemp => new InfoChip(element, "Track temp", "Track surface temperature."),
+            TableInfoElement.Incidents => new InfoChip(element, "Incidents", "Your incident count, and the limit."),
+            _ => new InfoChip(element, "Humidity", "Relative humidity."),
+        }).ToList(),
+        options.IsShown,
+        options.SlotOf,
+        // A chip taken off the table keeps its slot, so showing it again puts it back where it was.
+        // The session type is still saved under the switch that once named the class, so settings
+        // and layouts carry over.
+        (element, shown, slot) =>
         {
-            var shown = index > 0;
             options.SetShown(element, shown);
-            if (shown)
-            {
-                options.SetSlot(element, (TableSlot)(index - 1));
-            }
-
+            options.SetSlot(element, slot);
             context.Persist(() =>
             {
                 DriverTableOptionsStore.SaveInfoShown(options.Table, element, shown);
-                DriverTableOptionsStore.SaveInfoSlot(options.Table, element, options.SlotOf(element));
+                DriverTableOptionsStore.SaveInfoSlot(options.Table, element, slot);
             });
             context.TableHeaderChanged?.Invoke(options.Table);
         });

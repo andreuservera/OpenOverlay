@@ -1212,6 +1212,171 @@
         </ItemsControl>
     </DataTemplate>
 
+    <!-- ===== Info bar diagram =====
+         The driver table drawn small: three slots above a few ghost rows, three below, and a tray of
+         what is not shown. Chips are dragged between them (InfoBarDrag); a chip on the table also
+         has a ✕. Each chip's tooltip says what it is in full, so "SOF" never has to be guessed. -->
+    <DataTemplate x:Key="Cp.InfoChipOnTable" DataType="{x:Type cp:InfoChip}">
+        <Border Height="26" CornerRadius="13" Margin="0,0,4,4" Padding="10,0,4,0" Cursor="SizeAll"
+                Background="{StaticResource Cp.AccentWash}" BorderBrush="#66FFD24D" BorderThickness="1"
+                ToolTip="{Binding Description}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource Theme.FontFamily}"
+                           FontSize="{StaticResource Cp.Size.Small}" FontWeight="SemiBold"
+                           Foreground="{StaticResource Cp.Accent}" VerticalAlignment="Center"/>
+                <Button Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="10" Width="18" Height="18"
+                        Margin="4,0,0,0" ToolTip="Hide it" cp:InfoBarDrag.Removes="True"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="Cp.InfoChipInTray" DataType="{x:Type cp:InfoChip}">
+        <Border Height="26" CornerRadius="13" Margin="0,0,6,6" Padding="10,0" Cursor="SizeAll"
+                Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"
+                ToolTip="{Binding Description}">
+            <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource Theme.FontFamily}"
+                       FontSize="{StaticResource Cp.Size.Small}" FontWeight="SemiBold"
+                       Foreground="{StaticResource Cp.TextSoft}" VerticalAlignment="Center"/>
+        </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="Cp.InfoBarSlotTemplate" DataType="{x:Type cp:InfoBarSlot}">
+        <Border x:Name="Slot" MinHeight="44" Margin="3" Padding="6,6,2,2" CornerRadius="6"
+                Background="Transparent" BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"
+                cp:InfoBarDrag.Target="{Binding}" ToolTip="{Binding Name}">
+            <Grid>
+                <TextBlock x:Name="Placeholder" Text="{Binding Name}" Style="{StaticResource Cp.Hint}"
+                           Foreground="{StaticResource Cp.TextFaint}" Margin="2,0,0,4" Visibility="Collapsed"
+                           VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="NoWrap"/>
+                <ItemsControl ItemsSource="{Binding Chips}" Focusable="False"
+                              ItemTemplate="{StaticResource Cp.InfoChipOnTable}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Chips.Count}" Value="0">
+                <Setter TargetName="Placeholder" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <Trigger SourceName="Slot" Property="cp:InfoBarDrag.IsDragOver" Value="True">
+                <Setter TargetName="Slot" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                <Setter TargetName="Slot" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+            </Trigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <ItemsPanelTemplate x:Key="Cp.ThreeAcross">
+        <UniformGrid Columns="3"/>
+    </ItemsPanelTemplate>
+
+    <DataTemplate DataType="{x:Type cp:InfoBarSetting}">
+        <ContentControl Template="{StaticResource Cp.SettingStack}">
+            <Border cp:InfoBarDrag.IsEnabled="True" Background="Transparent">
+                <StackPanel>
+                    <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                            CornerRadius="8" Padding="5">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding Top}" Focusable="False"
+                                          ItemsPanel="{StaticResource Cp.ThreeAcross}"
+                                          ItemTemplate="{StaticResource Cp.InfoBarSlotTemplate}"/>
+                            <!-- The rows, as ghosts: only there so the slots read as above and below them. -->
+                            <StackPanel Margin="3,4">
+                                <Border Height="9" CornerRadius="3" Background="{StaticResource Cp.Hover}" Margin="0,0,0,4"/>
+                                <Border Height="9" CornerRadius="3" Background="{StaticResource Cp.Selected}" Margin="0,0,0,4"/>
+                                <Border Height="9" CornerRadius="3" Background="{StaticResource Cp.Hover}"/>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Bottom}" Focusable="False"
+                                          ItemsPanel="{StaticResource Cp.ThreeAcross}"
+                                          ItemTemplate="{StaticResource Cp.InfoBarSlotTemplate}"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="NOT SHOWN" Style="{StaticResource Cp.Eyebrow}" Margin="0,12,0,6"/>
+                    <Border x:Name="Tray" MinHeight="40" CornerRadius="6" Padding="6,6,0,0"
+                            Background="Transparent" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                            cp:InfoBarDrag.Target="{x:Static cp:InfoBarDrag.Tray}">
+                        <Grid>
+                            <TextBlock x:Name="TrayEmpty" Text="Everything is on the table." Style="{StaticResource Cp.Hint}"
+                                       Foreground="{StaticResource Cp.TextFaint}" Margin="4,0,0,6" Visibility="Collapsed"
+                                       VerticalAlignment="Center"/>
+                            <ItemsControl ItemsSource="{Binding Available}" Focusable="False"
+                                          ItemTemplate="{StaticResource Cp.InfoChipInTray}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </ContentControl>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Available.Count}" Value="0">
+                <Setter TargetName="TrayEmpty" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+            <Trigger SourceName="Tray" Property="cp:InfoBarDrag.IsDragOver" Value="True">
+                <Setter TargetName="Tray" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                <Setter TargetName="Tray" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+            </Trigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- ===== Setup assistant choice =====
+         A monitor or a preset as a selectable card: the radio dot and the accent edge both say which
+         is picked. -->
+    <DataTemplate x:Key="Cp.SetupChoiceTemplate" DataType="{x:Type cp:SetupChoice}">
+        <Button Cursor="Hand" Focusable="False" Margin="0,0,0,8" HorizontalContentAlignment="Stretch"
+                Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                CommandParameter="{Binding}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}"
+                            BorderThickness="1" CornerRadius="8" Padding="14,12" SnapsToDevicePixels="True">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                        </Trigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid Width="18" Height="18" VerticalAlignment="Top" Margin="0,1,14,0">
+                    <Ellipse Stroke="{StaticResource Cp.BorderStrong}" StrokeThickness="1.5"/>
+                    <Ellipse x:Name="Dot" Width="9" Height="9" Fill="{StaticResource Cp.Accent}" Visibility="Collapsed"/>
+                </Grid>
+                <StackPanel Grid.Column="1">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Style="{StaticResource Cp.Mono}"
+                                   Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
+                        <TextBlock Text="{Binding Name}" Style="{StaticResource Cp.Body}" FontWeight="SemiBold"
+                                   Foreground="{StaticResource Cp.Text}"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Description}" Style="{StaticResource Cp.Hint}"/>
+                </StackPanel>
+            </Grid>
+        </Button>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                <Setter TargetName="Dot" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
     <!-- ===== Search results =====
          What was found, where it lives, and what it does: the whole row opens it. -->
     <DataTemplate x:Key="Cp.SearchResultTemplate" DataType="{x:Type cp:SearchResult}">

@@ -41,8 +41,11 @@ public sealed partial class ControlPanelViewModel
     /// <summary>The Help entry at the foot of the rail.</summary>
     public ICommand ShowHelpCommand => _showHelp ??= new RelayCommand(() => Navigate(HelpPageKey, _selected?.Key == HelpPageKey ? _selectedTab : WhatsNewTab));
 
-    /// <summary>The Help page: nothing to preview, so the side panel shows the product instead.</summary>
-    public bool IsInfoPage => _selected?.Key == HelpPageKey;
+    /// <summary>Help and Home: nothing to preview, so the side panel shows the product instead.</summary>
+    public bool IsInfoPage => _selected?.Key is HelpPageKey or HomePageKey;
+
+    /// <summary>The Help page itself, for the rail's foot to light up.</summary>
+    public bool IsHelpPage => _selected?.Key == HelpPageKey;
 
     public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage && !HasLayoutPreview;
 

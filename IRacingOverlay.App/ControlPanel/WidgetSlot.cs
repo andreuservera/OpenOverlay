@@ -322,6 +322,13 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Where the widget is, or will open: the window's position if it has one, its saved
+    /// position if not, null if it has never been placed (it opens at its default).</summary>
+    internal (double Left, double Top)? SavedPosition =>
+        _window is not null ? (_window.Left, _window.Top)
+        : WidgetLayoutStore.Get(Key) is { } saved ? (saved.Left, saved.Top)
+        : null;
+
     /// <summary>Puts the widget at a desktop position (WPF units) and remembers it there — now if
     /// the window exists, on first show if not.</summary>
     public void MoveTo(double left, double top)

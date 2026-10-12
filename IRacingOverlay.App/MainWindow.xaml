@@ -207,9 +207,9 @@
                 <!-- Capped so settings never stretch past ~760 px of content: a switch a thousand
                      pixels from its label is no longer read as belonging to it. A wide window gives
                      the room to the preview instead. -->
-                <ColumnDefinition Width="1.05*" MinWidth="360" MaxWidth="800"/>
+                <ColumnDefinition x:Name="ConfigColumn" Width="1.05*" MinWidth="360" MaxWidth="800"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="1.35*" MinWidth="340"/>
+                <ColumnDefinition x:Name="PreviewColumn" Width="1.35*" MinWidth="340"/>
             </Grid.ColumnDefinitions>
 
             <!-- ===== Rail ===== -->
@@ -271,7 +271,7 @@
                                         <Trigger Property="IsMouseOver" Value="True">
                                             <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
                                         </Trigger>
-                                        <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
+                                        <DataTrigger Binding="{Binding IsHelpPage}" Value="True">
                                             <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Selected}"/>
                                             <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
@@ -288,7 +288,7 @@
                                         <Style TargetType="Path">
                                             <Setter Property="Stroke" Value="{StaticResource Cp.TextMuted}"/>
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
+                                                <DataTrigger Binding="{Binding IsHelpPage}" Value="True">
                                                     <Setter Property="Stroke" Value="{StaticResource Cp.Accent}"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -317,7 +317,7 @@
             </Border>
 
             <!-- ===== Configuration ===== -->
-            <DockPanel Grid.Column="1">
+            <DockPanel x:Name="ConfigPane" Grid.Column="1">
                 <!-- While searching, the pane shows what matched instead of a page. -->
                 <Border DockPanel.Dock="Top" Padding="24,18,22,17" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
                         Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}">
@@ -373,8 +373,23 @@
                                        PlacementTarget="{Binding ElementName=WidgetMenuButton}" Placement="Bottom"
                                        AllowsTransparency="True" PopupAnimation="Fade">
                                     <Border Style="{StaticResource Cp.MenuPopup}">
-                                        <Button Style="{StaticResource Cp.DangerMenuItem}" Content="Reset to defaults…"
-                                                Command="{Binding ResetWidgetCommand}"/>
+                                        <StackPanel>
+                                            <!-- This widget's options into the same widget in a saved layout. -->
+                                            <StackPanel Visibility="{Binding HasWidgetCopyTargets, Converter={StaticResource Cp.BoolToVis}}">
+                                                <TextBlock Text="COPY SETTINGS TO LAYOUT" Style="{StaticResource Cp.Eyebrow}" Margin="10,6,10,4"/>
+                                                <ItemsControl ItemsSource="{Binding WidgetCopyTargets}" Focusable="False">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Style="{StaticResource Cp.MenuItem}" Content="{Binding Label}"
+                                                                    Command="{Binding Command}"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Border Height="1" Margin="6,4" Background="{StaticResource Cp.Border}"/>
+                                            </StackPanel>
+                                            <Button Style="{StaticResource Cp.DangerMenuItem}" Content="Reset to defaults"
+                                                    Command="{Binding ResetWidgetCommand}"/>
+                                        </StackPanel>
                                     </Border>
                                 </Popup>
                             </Grid>
@@ -412,15 +427,34 @@
                                   Visibility="{Binding IsSearching, Converter={StaticResource Cp.NotBoolToVis}}">
                         <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
                     </ScrollViewer>
+
+                    <!-- What a big change just did, with Undo while it lasts. -->
+                    <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,18" MaxWidth="560"
+                            Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"
+                            CornerRadius="8" Padding="16,8,8,8"
+                            Visibility="{Binding HasToast, Converter={StaticResource Cp.BoolToVis}}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.6" Color="#000000"/>
+                        </Border.Effect>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="11"
+                                    Margin="4,0,0,0" ToolTip="Dismiss" Command="{Binding DismissToastCommand}"/>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Cp.Button}" Content="Undo" Height="28" Margin="12,0,0,0"
+                                    Command="{Binding Toast.UndoCommand}"
+                                    Visibility="{Binding Toast.CanUndo, Converter={StaticResource Cp.BoolToVis}}"/>
+                            <TextBlock Text="{Binding Toast.Message}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"
+                                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
                 </Grid>
             </DockPanel>
 
-            <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
+            <GridSplitter x:Name="PaneSplitter" Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
                           BorderBrush="{StaticResource Cp.Border}" BorderThickness="1,0,0,0"
                           ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
 
             <!-- ===== Preview ===== -->
-            <DockPanel Grid.Column="3" Background="#090C0F">
+            <DockPanel x:Name="PreviewPane" Grid.Column="3" Background="#090C0F">
                 <Border DockPanel.Dock="Top" Height="42" Padding="18,0"
                         BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
                     <Grid>
@@ -450,6 +484,26 @@
                             <Run Text="SIZE "/><Run Text="{Binding SelectedWidget.Scale, Mode=OneWay}"/>
                         </TextBlock>
                     </Grid>
+                </Border>
+
+                <!-- How the preview is staged: the session it shows the widget in (or, for Flags, the
+                     flag it simulates) and what it is shown over. Sample data only; nothing here
+                     reaches the live widget. -->
+                <Border DockPanel.Dock="Top" Padding="18,8" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
+                    <DockPanel>
+                        <ListBox DockPanel.Dock="Right" Style="{StaticResource Cp.Segmented}" VerticalAlignment="Center"
+                                 ItemsSource="{Binding BackdropChoices}" SelectedIndex="{Binding BackdropIndex, Mode=TwoWay}"
+                                 ToolTip="What the widget is shown over: check it stays readable at the opacity you chose."/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding HasPreviewChoices, Converter={StaticResource Cp.BoolToVis}}">
+                            <TextBlock Text="{Binding PreviewChoiceCaption}" Style="{StaticResource Cp.Eyebrow}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox Style="{StaticResource Cp.ComboBox}" MinWidth="170" MaxWidth="260" Margin="0,0,12,0"
+                                      ItemsSource="{Binding PreviewChoices}" SelectedIndex="{Binding PreviewChoiceIndex, Mode=TwoWay}"
+                                      ToolTip="See the widget in another session without iRacing."/>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
 
                 <Grid>
@@ -533,5 +587,12 @@
                         Margin="18,0,0,0" VerticalAlignment="Center"/>
             </Grid>
         </Border>
+
+        <!-- ===== Setup assistant =====
+             Over the whole window: on a fresh install it is the first thing to do, and it is short. -->
+        <Grid Grid.RowSpan="3" Background="#CC07090C" DataContext="{Binding Setup}"
+              Visibility="{Binding DataContext.IsSetupOpen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Cp.BoolToVis}}">
+            <cp:SetupAssistantView VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24"/>
+        </Grid>
     </Grid>
 </Window>

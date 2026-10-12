@@ -33,6 +33,7 @@ public partial class WidgetPreview : UserControl
     private WeatherOptions? _weatherOptions;
     private TrackInfoOptions? _trackInfoOptions;
     private PedalTraceOptions? _pedalTraceOptions;
+    private PreviewSettings? _settings;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -66,8 +67,21 @@ public partial class WidgetPreview : UserControl
         CockpitOptions cockpitOptions,
         WeatherOptions weatherOptions,
         TrackInfoOptions trackInfoOptions,
-        PedalTraceOptions pedalTraceOptions)
+        PedalTraceOptions pedalTraceOptions,
+        PreviewSettings settings)
     {
+        _settings = settings;
+        settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PreviewSettings.Backdrop))
+            {
+                Backdrop.Mode = settings.Backdrop;
+            }
+            else
+            {
+                Refresh();
+            }
+        };
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
         _fuelCalculatorOptions = fuelCalculatorOptions;
@@ -237,5 +251,6 @@ public partial class WidgetPreview : UserControl
         _cockpitOptions,
         _weatherOptions,
         _trackInfoOptions,
-        _pedalTraceOptions);
+        _pedalTraceOptions,
+        _settings?.Scenario ?? PreviewScenario.Race);
 }

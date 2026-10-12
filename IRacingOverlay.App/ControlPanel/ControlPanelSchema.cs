@@ -82,6 +82,7 @@ public sealed partial class ControlPanelViewModel
         {
             return item.Key switch
             {
+                HomePageKey => HomePage(),
                 LayoutsPageKey => LayoutsPage(),
                 GeneralPageKey => GeneralPage(),
                 PerformancePageKey => PerformancePage(),
@@ -120,11 +121,6 @@ public sealed partial class ControlPanelViewModel
             groups.Add(notice);
         }
 
-        if (slot.Key == WidgetCatalog.Flag)
-        {
-            groups.Add(FlagPreviewGroup());
-        }
-
         groups.AddRange(own.Where(group => group.Title != WidgetSettings.Advanced));
         groups.Add(Placement(slot));
         if (advanced.Items.Count > 0)
@@ -161,7 +157,12 @@ public sealed partial class ControlPanelViewModel
                 "Hide when I'm not driving",
                 "Hidden in menus, the garage, replays and while spectating.",
                 slot.HideOutsideCar,
-                value => slot.HideOutsideCar = value));
+                value => slot.HideOutsideCar = value),
+            new ActionSetting(
+                "Use on every widget",
+                "Gives all twelve this size, opacity and \"Hide when I'm not driving\".",
+                "Apply to all",
+                () => ApplyPlacementToAll(slot)));
 
     private RelayCommand? _resetWidget;
     private bool _isWidgetMenuOpen;
@@ -179,11 +180,18 @@ public sealed partial class ControlPanelViewModel
 
             _isWidgetMenuOpen = value;
             OnPropertyChanged();
+            if (value)
+            {
+                // Read as the menu opens, so it lists the layouts as they are now.
+                OnPropertyChanged(nameof(WidgetCopyTargets));
+                OnPropertyChanged(nameof(HasWidgetCopyTargets));
+            }
         }
     }
 
     /// <summary>Puts the open widget back as it came: its options, size, opacity and auto-hide. Where
-    /// it sits on screen stays — that has its own reset, for every widget at once, on General.</summary>
+    /// it sits on screen stays — that has its own reset, for every widget at once, on General. Undo
+    /// puts back what it had.</summary>
     public ICommand ResetWidgetCommand => _resetWidget ??= new RelayCommand(() =>
     {
         IsWidgetMenuOpen = false;
@@ -192,27 +200,98 @@ public sealed partial class ControlPanelViewModel
             return;
         }
 
-        var answer = LayoutDialog.Ask(
-            DialogOwner,
-            $"Reset {slot.Descriptor.Name} to defaults?",
-            "Its options, size, opacity and \"Hide when I'm not driving\" go back to how they came. Where it sits on screen doesn't change.",
-            ["Reset", "Cancel"],
-            primary: 1);
-        if (answer != 0)
+        var codec = CreateConfigCodecs()[slot.Key];
+        var before = (Config: codec.Read(), slot.Scale, slot.Opacity, slot.HideOutsideCar);
+        AppLog.Activity("Control Panel", $"{slot.Descriptor.Name} reset to defaults");
+        codec.Apply(WidgetDefaults.ConfigOf(slot.Key));
+        slot.Scale = ScaleLevels.Default;
+        slot.Opacity = WidgetOpacityStore.Default;
+        slot.HideOutsideCar = false;
+        RebuildPage();
+
+        ShowToast($"{slot.Descriptor.Name} is back to its defaults.", () =>
+        {
+            CreateConfigCodecs()[slot.Key].Apply(before.Config);
+            slot.Scale = before.Scale;
+            slot.Opacity = before.Opacity;
+            slot.HideOutsideCar = before.HideOutsideCar;
+            RebuildPage();
+        });
+    });
+
+    /// <summary>The ⋯ menu's "copy to a layout": every saved layout that has this widget in it.</summary>
+    public IReadOnlyList<MenuEntry> WidgetCopyTargets => SelectedWidget is not { } slot
+        ? []
+        : LayoutStore.List()
+            .Where(layout => layout.Contains(slot.Key))
+            .Select(layout => new MenuEntry(layout.Name, new RelayCommand(() => CopyWidgetToLayout(slot, layout.Id))))
+            .ToList();
+
+    public bool HasWidgetCopyTargets => WidgetCopyTargets.Count > 0;
+
+    /// <summary>Gives the layout's copy of this widget the options this widget has now. Size,
+    /// opacity and place in the layout are the layout's own, and stay.</summary>
+    private void CopyWidgetToLayout(WidgetSlot slot, Guid layoutId)
+    {
+        IsWidgetMenuOpen = false;
+        if (LayoutStore.Get(layoutId) is not { } layout || layout.Widgets.FirstOrDefault(widget => widget.Type == slot.Key) is not { } entry)
         {
             return;
         }
 
-        AppLog.Activity("Control Panel", $"{slot.Descriptor.Name} reset to defaults");
-        CreateConfigCodecs()[slot.Key].Apply(WidgetDefaults.ConfigOf(slot.Key));
-        slot.Scale = ScaleLevels.Default;
-        slot.Opacity = WidgetOpacityStore.Default;
-        slot.HideOutsideCar = false;
+        var before = (System.Text.Json.Nodes.JsonObject)entry.Config.DeepClone();
+        entry.Config = CreateConfigCodecs()[slot.Key].Read();
+        LayoutStore.Save(layout);
+        AppLog.Activity("Layouts", $"{slot.Descriptor.Name} settings copied to \"{layout.Name}\"");
+        ReapplyIfOpen(layoutId);
+        RefreshLayoutsPage();
+
+        ShowToast($"{slot.Descriptor.Name} settings copied to \"{layout.Name}\".", () =>
+        {
+            if (LayoutStore.Get(layoutId) is { } current && current.Widgets.FirstOrDefault(widget => widget.Type == slot.Key) is { } restored)
+            {
+                restored.Config = before;
+                LayoutStore.Save(current);
+                ReapplyIfOpen(layoutId);
+                RefreshLayoutsPage();
+            }
+        });
+    }
+
+    /// <summary>This widget's size, opacity and auto-hide, given to every widget. Undo puts each
+    /// one's own back.</summary>
+    private void ApplyPlacementToAll(WidgetSlot source)
+    {
+        var before = _slots.Values.Select(slot => (Slot: slot, slot.Scale, slot.Opacity, slot.HideOutsideCar)).ToList();
+        foreach (var slot in _slots.Values)
+        {
+            slot.Scale = source.Scale;
+            slot.Opacity = source.Opacity;
+            slot.HideOutsideCar = source.HideOutsideCar;
+        }
+
+        AppLog.Activity("Control Panel", $"{source.Descriptor.Name}'s size, opacity and auto-hide applied to every widget");
+        ShowToast($"Every widget now has {source.Descriptor.Name}'s size, opacity and auto-hide.", () =>
+        {
+            foreach (var (slot, scale, opacity, hide) in before)
+            {
+                slot.Scale = scale;
+                slot.Opacity = opacity;
+                slot.HideOutsideCar = hide;
+            }
+
+            RebuildPage();
+        });
+    }
+
+    /// <summary>Builds the open page again from current state.</summary>
+    private void RebuildPage()
+    {
         if (_selected is { } page)
         {
             BuildSettings(page);
         }
-    });
+    }
 
     /// <summary>The fast displays' refresh rate is one setting for all of them, on the Performance
     /// page; the widgets that use it point there rather than offering a second copy of it.</summary>
@@ -221,16 +300,6 @@ public sealed partial class ControlPanelViewModel
         "Shared by the proximity bars, ABS light and pedal trace. Set in Settings › Performance.",
         "Open Performance",
         () => Navigate(PerformancePageKey));
-
-    // ===== Flags =====
-
-    private SettingsGroup FlagPreviewGroup() => new SettingsGroup("PREVIEW")
-        .With(new ChoiceSetting(
-            "Simulate",
-            "Preview any flag without iRacing.",
-            PreviewData.FlagScenarios.Select(s => s.Label).ToList(),
-            FlagPreview.Index,
-            index => FlagPreview.Index = index));
 
     // ===== Application pages =====
 
@@ -259,8 +328,8 @@ public sealed partial class ControlPanelViewModel
                 new ActionSetting(
                     "Reset positions",
                     "Moves every widget back to its default spot. Sizes and options stay.",
-                    "Reset positions…",
-                    ConfirmResetPositions) { IsDestructive = true },
+                    "Reset positions",
+                    ResetPositionsWithUndo) { IsDestructive = true },
                 new ActionSetting(
                     "Restart overlays",
                     "Closes and reopens every widget window, which clears a rendering glitch.",
@@ -268,18 +337,25 @@ public sealed partial class ControlPanelViewModel
                     RestartOverlays)),
     ];
 
-    private void ConfirmResetPositions()
+    /// <summary>Every widget back to its default spot; undo puts each back where it was.</summary>
+    private void ResetPositionsWithUndo()
     {
-        var answer = LayoutDialog.Ask(
-            DialogOwner,
-            "Reset every widget's position?",
-            "Every widget goes back to its default spot on screen, including ones that are off. Sizes and options don't change.",
-            ["Reset positions", "Cancel"],
-            primary: 1);
-        if (answer == 0)
+        var before = _slots.Values.Select(slot => (Slot: slot, Position: slot.SavedPosition)).ToList();
+        ResetLayout();
+        ShowToast("Every widget is back in its default spot.", () =>
         {
-            ResetLayout();
-        }
+            foreach (var (slot, position) in before)
+            {
+                if (position is { } at)
+                {
+                    slot.MoveTo(at.Left, at.Top);
+                }
+                else
+                {
+                    slot.ForgetPosition();
+                }
+            }
+        });
     }
 
     /// <summary>Everything a bug report needs, one click away. The report masks the Windows user
@@ -368,3 +444,6 @@ public sealed partial class ControlPanelViewModel
                 })),
     ];
 }
+
+/// <summary>An entry in a ⋯ menu.</summary>
+public sealed record MenuEntry(string Label, ICommand Command);

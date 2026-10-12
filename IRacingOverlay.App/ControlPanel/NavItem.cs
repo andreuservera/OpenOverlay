@@ -5,8 +5,9 @@ using IRacingOverlay.App.Overlay;
 namespace IRacingOverlay.App.ControlPanel;
 
 /// <summary>A heading in the rail (RACE, SETTINGS…) that can be folded to hide its pages. One
-/// instance per title, so the rail can group on it; folded or not is remembered. An empty title is a
-/// section without a heading — a page that stands on its own, like Layouts.</summary>
+/// instance per title, so the rail can group on it; folded or not is remembered. A title starting
+/// with "#" (or empty) is a section without a heading — a page that stands on its own, like Home or
+/// Layouts — and the rest of the title only tells such sections apart.</summary>
 public sealed class NavSection : INotifyPropertyChanged
 {
     private static readonly Dictionary<string, NavSection> ByTitle = [];
@@ -20,7 +21,7 @@ public sealed class NavSection : INotifyPropertyChanged
 
     public string Title { get; }
 
-    public bool HasHeading => Title.Length > 0;
+    public bool HasHeading => Title.Length > 0 && Title[0] != '#';
 
     public bool IsCollapsed
     {

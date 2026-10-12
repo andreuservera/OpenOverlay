@@ -66,6 +66,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
         };
 
+        AddHomePage();
+
         foreach (var descriptor in WidgetCatalog.All)
         {
             var slot = new WidgetSlot(descriptor, () => CreateWidget(descriptor.Key));
@@ -76,6 +78,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
                 {
                     UpdateWidgetCount();
                 }
+                else if (e.PropertyName == nameof(WidgetSlot.State))
+                {
+                    RefreshHome();
+                }
             };
             _slots[descriptor.Key] = slot;
             NavItems.Add(NavItem.ForWidget(slot));
@@ -84,7 +90,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         // Layouts stands alone, without a heading: one page, and the one most people open next.
         NavItems.Add(NavItem.ForPage(
             LayoutsPageKey, "Layouts", "Saved arrangements of your widgets, and the second-monitor dashboard.",
-            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", ""));
+            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", "#layouts"));
 
         NavItems.Add(NavItem.ForPage(
             GeneralPageKey, "General", "The window, units, and the overlays as a whole.",
@@ -190,6 +196,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(EditModeLabel));
+            RefreshHome();
         }
     }
 
@@ -258,6 +265,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ConnectionLabel));
         OnPropertyChanged(nameof(ConnectionHint));
         OnPropertyChanged(nameof(ConnectionTone));
+        RefreshHome();
     }
 
     /// <summary>Puts "2/5" beside each widget heading: how many of its widgets are switched on, at a
@@ -343,6 +351,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         {
             _diagnosticsLine = value;
             OnPropertyChanged();
+            // Once a second: catches a widget dragged off every monitor.
+            RefreshHome();
         }
     }
 
@@ -421,10 +431,12 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SelectedWidget));
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsInfoPage));
+        OnPropertyChanged(nameof(IsHelpPage));
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
         OnPropertyChanged(nameof(SelectedTab));
+        OnPreviewTargetChanged();
     }
 
     private int _selectedTab;

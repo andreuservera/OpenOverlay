@@ -49,6 +49,7 @@ public sealed partial class ControlPanelViewModel
             }
 
             OnPropertyChanged();
+            RefreshHome();
         }
     }
 
@@ -230,8 +231,8 @@ public sealed partial class ControlPanelViewModel
                     new ActionSetting(
                         "Restore default shortcuts",
                         DefaultsHint(),
-                        "Restore defaults…",
-                        ConfirmRestoreDefaultHotkeys) { IsDestructive = true }),
+                        "Restore defaults",
+                        RestoreDefaultHotkeysWithUndo) { IsDestructive = true }),
         ];
     }
 
@@ -248,30 +249,27 @@ public sealed partial class ControlPanelViewModel
         var count => $"{count} shortcuts differ from how they came.",
     };
 
-    private void ConfirmRestoreDefaultHotkeys()
+    /// <summary>Every shortcut back as it came; undo puts back the ones you had.</summary>
+    private void RestoreDefaultHotkeysWithUndo()
     {
-        var changed = ChangedFromDefaults();
-        if (changed.Count == 0)
+        var changed = ChangedFromDefaults().Count;
+        if (changed == 0)
         {
+            ShowToast("Your shortcuts are already the defaults.", null);
             return;
         }
 
-        var answer = IRacingOverlay.App.Layouts.LayoutDialog.Ask(
-            Application.Current?.MainWindow,
-            "Restore default shortcuts?",
-            "These go back to how they came:" + Environment.NewLine + Environment.NewLine +
-                string.Join(Environment.NewLine, changed.Select(binding => $"• {Describe(binding.Action)}: {Display(HotkeyDefaults.For(binding.Action))}")) +
-                Environment.NewLine + Environment.NewLine + "Each layout's own shortcut stays.",
-            ["Restore defaults", "Cancel"],
-            primary: 1);
-        if (answer == 0)
+        var before = _hotkeys.ToList();
+        RestoreDefaultHotkeys();
+        ShowToast(changed == 1 ? "1 shortcut is back to its default." : $"{changed} shortcuts are back to their defaults.", () =>
         {
-            RestoreDefaultHotkeys();
-        }
+            _hotkeys = before;
+            HotkeyStore.Save(_hotkeys);
+            HotkeysChanged?.Invoke();
+            RebuildPage();
+        });
     }
 
-    private static string Display((Hotkey? Hotkey, bool Enabled) value) =>
-        value.Hotkey is null ? "none" : value.Enabled ? value.Hotkey.Display : $"{value.Hotkey.Display} (off)";
 
     /// <summary>Refuses a combination another action already has; null means it was taken.</summary>
     private string? AssignHotkey(string action, Hotkey? hotkey)

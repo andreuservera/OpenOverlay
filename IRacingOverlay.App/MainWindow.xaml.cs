@@ -283,7 +283,7 @@ public partial class MainWindow : Window
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions, _vm.PedalTraceOptions);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions, _vm.PedalTraceOptions, _vm.PreviewSettings);
         DataContext = _vm;
 
         foreach (var descriptor in WidgetCatalog.All)
@@ -366,6 +366,13 @@ public partial class MainWindow : Window
         };
         _vm.ControlPanelToggleRequested += ToggleControlPanel;
         _vm.RevealRequested += RevealSetting;
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ControlPanelViewModel.ShowsPreviewPlaceholder))
+            {
+                FitPanesToPage();
+            }
+        };
         // A layout switched to by shortcut is announced from the tray: the sim has the screen.
         _vm.LayoutSwitchedNotice += (title, text) => _tray?.ShowNotice(title, text);
 
@@ -392,6 +399,8 @@ public partial class MainWindow : Window
         };
         Closing += OnClosing;
         ContentRendered += (_, _) => ShowUpdateNoticeIfPending();
+        // A fresh install is offered the setup assistant once, over the panel, as it first appears.
+        ContentRendered += (_, _) => _vm.OfferSetupOnFirstRun();
         // Signing out or shutting down must never be held up by the close-to-tray behavior.
         System.Windows.Application.Current.SessionEnding += (_, _) => _exiting = true;
 
@@ -1248,6 +1257,46 @@ public partial class MainWindow : Window
     private static string DescribeSlot(WidgetSlot slot) => string.Create(
         CultureInfo.InvariantCulture,
         $"{slot.Descriptor.Name}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
+
+    // ===== Panes =====
+
+    private (GridLength Config, GridLength Preview)? _paneWidths;
+
+    /// <summary>
+    /// A page with nothing to preview (the settings pages) gives the preview pane's room back: the
+    /// pane and its splitter go, and the settings take the width, centred at the same reading width.
+    /// The split as the user left it comes back with the next page that has a preview.
+    /// </summary>
+    private void FitPanesToPage()
+    {
+        if (_vm.ShowsPreviewPlaceholder)
+        {
+            if (_paneWidths is not null)
+            {
+                return;
+            }
+
+            _paneWidths = (ConfigColumn.Width, PreviewColumn.Width);
+            PreviewPane.Visibility = Visibility.Collapsed;
+            PaneSplitter.Visibility = Visibility.Collapsed;
+            PreviewColumn.MinWidth = 0;
+            PreviewColumn.Width = new GridLength(0);
+            ConfigColumn.MaxWidth = double.PositiveInfinity;
+            ConfigColumn.Width = new GridLength(1, GridUnitType.Star);
+            ConfigPane.MaxWidth = 840;
+        }
+        else if (_paneWidths is { } widths)
+        {
+            _paneWidths = null;
+            ConfigPane.ClearValue(MaxWidthProperty);
+            ConfigColumn.MaxWidth = 800;
+            ConfigColumn.Width = widths.Config;
+            PreviewColumn.MinWidth = 340;
+            PreviewColumn.Width = widths.Preview;
+            PaneSplitter.Visibility = Visibility.Visible;
+            PreviewPane.Visibility = Visibility.Visible;
+        }
+    }
 
     // ===== Search =====
 
