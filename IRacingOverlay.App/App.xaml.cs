@@ -98,6 +98,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        ShutdownGuard.Step("writing the exit log");
         var problems = AppLog.Problems();
         AppLog.Info("Shutdown", "OpenOverlay exiting", new Dictionary<string, string>
         {

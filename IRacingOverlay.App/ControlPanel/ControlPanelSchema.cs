@@ -85,7 +85,6 @@ public sealed partial class ControlPanelViewModel
                 HomePageKey => HomePage(),
                 LayoutsPageKey => LayoutsPage(),
                 GeneralPageKey => GeneralPage(),
-                PerformancePageKey => PerformancePage(),
                 HotkeysPageKey => HotkeyGroups(),
                 DiagnosticsPageKey => [DiagnosticsGroup()],
                 HelpPageKey => HelpPage(),
@@ -348,18 +347,22 @@ public sealed partial class ControlPanelViewModel
         CultureInfo.InvariantCulture,
         $"{ScaleLevels.LabelOf(level)} · {ScaleLevels.FactorOf(level) / ScaleLevels.FactorOf(ScaleLevels.Default) * 100:0} % of the standard size (M).");
 
-    /// <summary>The fast displays' refresh rate is one setting for all of them, on the Performance
+    /// <summary>The fast displays' refresh rate is one setting for all of them, on the General
     /// page; the widgets that use it point there rather than offering a second copy of it.</summary>
     private ActionSetting RefreshRateLink() => new(
         "Refresh rate",
-        "Shared by the proximity bars, ABS light and pedal trace. Set in Settings › Performance.",
-        "Open Performance",
-        () => Navigate(PerformancePageKey));
+        "Shared by the proximity bars, ABS light and pedal trace. Set in Settings › General › Performance.",
+        "Open setting",
+        () =>
+        {
+            Navigate(GeneralPageKey);
+            RevealSetting(PerformanceGroupTitle, RefreshRateLabel);
+        });
 
     // ===== Application pages =====
 
-    /// <summary>The application as a whole: its window, its units, and the overlays all at once.
-    /// Performance, hotkeys and diagnostics have their own pages beside it.</summary>
+    /// <summary>The application as a whole: its window, its units, how hard it works, and the
+    /// overlays all at once. Hotkeys and diagnostics have their own pages beside it.</summary>
     private IEnumerable<SettingsGroup> GeneralPage() =>
     [
         new SettingsGroup(
@@ -384,6 +387,7 @@ public sealed partial class ControlPanelViewModel
                     "Open folder",
                     OpenConfigFolder)),
         .. UnitsGroups(),
+        PerformanceGroup(),
         new SettingsGroup("OVERLAYS", "Every widget at once.")
             .With(
                 new ActionSetting(
@@ -487,13 +491,15 @@ public sealed partial class ControlPanelViewModel
                 })),
     ];
 
-    private IEnumerable<SettingsGroup> PerformancePage() =>
-    [
+    private const string PerformanceGroupTitle = "PERFORMANCE";
+    private const string RefreshRateLabel = "Refresh rate";
+
+    private SettingsGroup PerformanceGroup() =>
         new SettingsGroup(
-            "PERFORMANCE",
+            PerformanceGroupTitle,
             "How often the fast displays redraw: proximity bars, ABS light and pedal trace.")
             .With(new ChoiceSetting(
-                "Refresh rate",
+                RefreshRateLabel,
                 "Faster is a smoother pedal trace and radar, for slightly more CPU.",
                 ["Smoothest (~60 Hz)", "Smooth (30 Hz)", "Normal (15 Hz)", "Light (10 Hz)", "Lightest (5 Hz)"],
                 _criticalRefreshIndex,
@@ -502,8 +508,7 @@ public sealed partial class ControlPanelViewModel
                     _criticalRefreshIndex = index;
                     CriticalRefreshStore.Save(index);
                     CriticalRefreshChanged?.Invoke(CriticalRefreshIntervalMs);
-                })),
-    ];
+                }));
 }
 
 /// <summary>An entry in a ⋯ menu.</summary>

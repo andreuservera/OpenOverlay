@@ -191,6 +191,8 @@ public partial class MainWindow : Window
             }
 
             _exiting = true;
+            ShutdownGuard.Step("closing the control panel");
+            ShutdownGuard.Arm(TimeSpan.FromSeconds(10));
             return;
         }
 
@@ -409,15 +411,23 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             // The watchdog first: once the loop stops beating, a live watchdog would call it a hang.
+            // Each step is named for the shutdown guard, so a stuck exit says where it stuck.
+            ShutdownGuard.Step("UI watchdog");
             _watchdog.Dispose();
             _uiTimer.Stop();
             GlobalExceptionHandler.StormRecovery = null;
+            ShutdownGuard.Step("update service");
             _updates.Dispose();
+            ShutdownGuard.Step("hotkeys");
             _hotkeys?.Dispose();
+            ShutdownGuard.Step("tray icon");
             _tray?.Dispose();
             _tray = null;
+            ShutdownGuard.Step("iRacing connection");
             _connection.Stop();
+            ShutdownGuard.Step("widgets");
             _vm.CloseAllWidgets();
+            ShutdownGuard.Step("dashboard");
             _dashboard?.Close();
 
             // The app ends with this window (ShutdownMode=OnMainWindowClose). Anything still open
@@ -431,6 +441,8 @@ public partial class MainWindow : Window
             {
                 AppLog.Warn("Shutdown", $"Windows still open after the control panel closed: {string.Join(", ", leftovers)}");
             }
+
+            ShutdownGuard.Step("application shutdown (after the control panel closed)");
         };
 
         // Re-opens whichever widgets were on screen last run, in the layout mode currently selected.

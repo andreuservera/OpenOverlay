@@ -161,13 +161,23 @@ public sealed partial class ControlPanelViewModel
     private void OpenResult(SearchEntry entry)
     {
         Navigate(entry.Page.Key, entry.Tab);
-        if (entry.GroupTitle is null || _selected is not { } page)
+        if (entry.GroupTitle is not null)
+        {
+            RevealSetting(entry.GroupTitle, entry.SettingLabel);
+        }
+    }
+
+    /// <summary>Opens the group holding a setting on the page now open, lights the setting and
+    /// scrolls it into view.</summary>
+    private void RevealSetting(string groupTitle, string? settingLabel)
+    {
+        if (_selected is not { } page)
         {
             return;
         }
 
-        var group = page.Settings.FirstOrDefault(candidate => candidate.Title == entry.GroupTitle);
-        var item = group?.Items.FirstOrDefault(candidate => candidate.Label == entry.SettingLabel);
+        var group = page.Settings.FirstOrDefault(candidate => candidate.Title == groupTitle);
+        var item = group?.Items.FirstOrDefault(candidate => candidate.Label == settingLabel);
         if (group is null || item is null)
         {
             return;

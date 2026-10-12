@@ -93,13 +93,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", "#layouts", isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
-            GeneralPageKey, "General", "The window, units, and the overlays as a whole.",
+            GeneralPageKey, "General", "The window, units, performance, and the overlays as a whole.",
             "M9.65,4.77 L10.26,2.15 L13.74,2.15 L14.35,4.77 L15.45,5.23 L17.74,3.81 L20.19,6.26 L18.77,8.55 L19.23,9.65 L21.85,10.26 L21.85,13.74 L19.23,14.35 L18.77,15.45 L20.19,17.74 L17.74,20.19 L15.45,18.77 L14.35,19.23 L13.74,21.85 L10.26,21.85 L9.65,19.23 L8.55,18.77 L6.26,20.19 L3.81,17.74 L5.23,15.45 L4.77,14.35 L2.15,13.74 L2.15,10.26 L4.77,9.65 L5.23,8.55 L3.81,6.26 L6.26,3.81 L8.55,5.23 Z M12,8.5 A3.5,3.5 0 1 0 12.01,8.5 Z",
-            SettingsGroupTitle, isPinned: true));
-
-        NavItems.Add(NavItem.ForPage(
-            PerformancePageKey, "Performance", "How often the fast displays redraw, and what it costs.",
-            "M12,20 A8,8 0 1 1 12.01,20 M12,12 L16,8 M12,4 V5.5 M4,12 H5.5 M18.5,12 H20",
             SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
@@ -134,7 +129,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     }
 
     private const string GeneralPageKey = "app.general";
-    private const string PerformancePageKey = "app.performance";
     private const string HotkeysPageKey = "app.hotkeys";
     private const string DiagnosticsPageKey = "app.diagnostics";
     private const string SettingsGroupTitle = "SETTINGS";
@@ -404,7 +398,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public DeltaReference DeltaReference => DeltaOptions.Reference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
-    /// bars and the pedal trace. Index order matches the labels Settings › Performance offers.</summary>
+    /// bars and the pedal trace. Index order matches the labels Settings › General › Performance offers.</summary>
     public int CriticalRefreshIntervalMs => _criticalRefreshIndex switch
     {
         0 => 16,
