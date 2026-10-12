@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using IRacingOverlay.App.Layouts;
@@ -20,12 +19,24 @@ public partial class LayoutPreview : UserControl
         nameof(IsCompact), typeof(bool), typeof(LayoutPreview),
         new PropertyMetadata(false, (d, _) => ((LayoutPreview)d).ApplyCompact()));
 
+    public static readonly DependencyProperty EmptyMessageProperty = DependencyProperty.Register(
+        nameof(EmptyMessage), typeof(string), typeof(LayoutPreview),
+        new PropertyMetadata("No widgets yet — add them in the editor.", (d, e) => ((LayoutPreview)d).EmptyText.Text = (string)e.NewValue));
+
+    /// <summary>What the picture says when there is nothing in it.</summary>
+    public string EmptyMessage
+    {
+        get => (string)GetValue(EmptyMessageProperty);
+        set => SetValue(EmptyMessageProperty, value);
+    }
+
     /// <summary>Margin around the frame, in screen pixels.</summary>
     private double Inset => IsCompact ? 8 : 24;
 
     public LayoutPreview()
     {
         InitializeComponent();
+        EmptyText.Text = EmptyMessage;
         IsVisibleChanged += (_, _) => FitWhenLaidOut();
     }
 
@@ -35,19 +46,15 @@ public partial class LayoutPreview : UserControl
         set => SetValue(LayoutProperty, value);
     }
 
-    /// <summary>A thumbnail (a Layouts card): a thinner margin, and no resolution badge or empty-layout
-    /// note, which the card says in words beside it.</summary>
+    /// <summary>A thumbnail (a Layouts card): a thinner margin, and no empty-layout note, which the
+    /// card says in words beside it.</summary>
     public bool IsCompact
     {
         get => (bool)GetValue(IsCompactProperty);
         set => SetValue(IsCompactProperty, value);
     }
 
-    private void ApplyCompact()
-    {
-        ResolutionBadge.Visibility = IsCompact ? Visibility.Collapsed : Visibility.Visible;
-        Rebuild();
-    }
+    private void ApplyCompact() => Rebuild();
 
     private void Rebuild()
     {
@@ -60,7 +67,6 @@ public partial class LayoutPreview : UserControl
 
         Surface.Width = layout.Width;
         Surface.Height = layout.Height;
-        ResolutionText.Text = string.Create(CultureInfo.InvariantCulture, $"{layout.Width}×{layout.Height}");
         var items = layout.ControlledBottomToTop().Select(widget => new EditorWidgetItem(widget)).ToList();
         Items.ItemsSource = items;
         EmptyText.Visibility = items.Count == 0 && !IsCompact ? Visibility.Visible : Visibility.Collapsed;

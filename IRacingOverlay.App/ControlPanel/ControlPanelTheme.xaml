@@ -56,6 +56,8 @@
     <SolidColorBrush x:Key="Cp.Warning" Color="#F5A524"/>
     <SolidColorBrush x:Key="Cp.WarningWash" Color="#1AF5A524"/>
     <SolidColorBrush x:Key="Cp.Idle" Color="#5C6672"/>
+    <!-- A setting changed from its default: blue, which says nothing about on, off or danger. -->
+    <SolidColorBrush x:Key="Cp.Info" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Cp.Danger" Color="#F26D6D"/>
     <SolidColorBrush x:Key="Cp.DangerWash" Color="#1AF26D6D"/>
 
@@ -1186,7 +1188,7 @@
                                         </Popup>
                                     </Grid>
                                     <StackPanel Orientation="Horizontal">
-                                        <Button x:Name="Toggle" Style="{StaticResource Cp.PrimaryButton}" Content="{Binding ToggleText}"
+                                        <Button x:Name="Toggle" Style="{StaticResource Cp.Button}" Content="{Binding ToggleText}"
                                                 Command="{Binding ToggleCommand}" ToolTip="{Binding ToggleTip}" MinWidth="64"/>
                                         <Button Style="{StaticResource Cp.Button}" Content="Edit" Margin="6,0,0,0"
                                                 Command="{Binding EditCommand}" ToolTip="Open it in the layout editor."/>
@@ -1199,12 +1201,15 @@
                         <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
                             <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
                         </Trigger>
+                        <!-- The card shown in the preview: a lighter card and a stronger edge, not amber,
+                             which would read as "this one is on". On screen says so in green, in words. -->
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                            <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                            <Setter TargetName="Card" Property="BorderBrush" Value="#5C6672"/>
+                            <Setter TargetName="Card" Property="Background" Value="{StaticResource Cp.Hover}"/>
                         </DataTrigger>
                         <DataTrigger Binding="{Binding IsOpen}" Value="True">
                             <Setter TargetName="OpenBadge" Property="Visibility" Value="Visible"/>
-                            <Setter TargetName="Toggle" Property="Style" Value="{StaticResource Cp.Button}"/>
+                            <Setter TargetName="Card" Property="BorderBrush" Value="#993DD68C"/>
                         </DataTrigger>
                     </DataTemplate.Triggers>
                 </DataTemplate>
@@ -1470,9 +1475,13 @@
                         SmallChange="{Binding Step}" LargeChange="{Binding Step}"
                         TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
                         Value="{Binding Value, Mode=TwoWay}"/>
-                <TextBlock Text="{Binding Display}" Style="{StaticResource Cp.Mono}" Width="42"
-                           TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"
-                           Foreground="{StaticResource Cp.Text}"/>
+                <!-- The value is also a field: type an exact one and press Enter. -->
+                <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                        CornerRadius="6" Height="30" Width="64" Margin="10,0,0,0" Padding="8,0" SnapsToDevicePixels="True"
+                        ToolTip="Type a value and press Enter">
+                    <TextBox Style="{StaticResource Cp.TextBox}" TextAlignment="Right" cp:CommitOnEnter.IsEnabled="True"
+                             Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                </Border>
             </StackPanel>
         </ContentControl>
     </DataTemplate>
@@ -1706,62 +1715,96 @@
     <!-- Driver-table columns: one row per column, in display order. The grip on the left drags the
          row (see ReorderListDrag); the switch on the right shows or hides the column, and iRating
          carries a small chip for its delta, which travels with it. -->
+    <!-- One entry of a reorderable list: grip, name, companion chip, switch. -->
+    <DataTemplate x:Key="Cp.ReorderRow" DataType="{x:Type cp:ReorderListItem}">
+        <Border x:Name="Row" Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
+                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Border x:Name="Handle" cp:ReorderListDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
+                        ToolTip="Drag to reorder">
+                    <!-- Six dots, the usual "this can be dragged" grip. -->
+                    <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path.Data>
+                            <GeometryGroup>
+                                <EllipseGeometry Center="1.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
+                                <EllipseGeometry Center="6.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
+                                <EllipseGeometry Center="1.5,7" RadiusX="1.5" RadiusY="1.5"/>
+                                <EllipseGeometry Center="6.5,7" RadiusX="1.5" RadiusY="1.5"/>
+                                <EllipseGeometry Center="1.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
+                                <EllipseGeometry Center="6.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
+                            </GeometryGroup>
+                        </Path.Data>
+                    </Path>
+                </Border>
+                <TextBlock x:Name="Caption" Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Cp.Body}"
+                           Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
+                <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.CompanionChip}" Margin="0,0,10,0"
+                              Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
+                              ToolTip="The estimated iRating gain or loss for this race, beside the rating"/>
+                <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
+                          IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <!-- A hidden entry keeps its place in the order but isn't dragged: the grip goes, and
+                 its name recedes. -->
+            <DataTrigger Binding="{Binding Visible.Value}" Value="False">
+                <Setter TargetName="Handle" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="Handle" Property="IsHitTestVisible" Value="False"/>
+                <Setter TargetName="Caption" Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Companion}" Value="{x:Null}">
+                <Setter TargetName="CompanionChip" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.TextMuted}"/>
+            </Trigger>
+            <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.Accent}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <Style x:Key="Cp.ListLink" TargetType="Button" BasedOn="{StaticResource Cp.TextButton}">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
+        <Setter Property="Padding" Value="0,2"/>
+        <Setter Property="Margin" Value="0,0,14,0"/>
+    </Style>
+
+    <!-- A list whose entries are shown, hidden and ordered (table columns, cockpit modules): the shown
+         ones on top, in the widget's order, dragged by the grip; the hidden ones apart below, so the
+         order above reads as exactly what the widget shows. All / None / Reset order above both. -->
     <DataTemplate DataType="{x:Type cp:ReorderListSetting}">
         <ContentControl Template="{StaticResource Cp.SettingStack}">
-            <ItemsControl ItemsSource="{Binding Items}" cp:ReorderListDrag.IsEnabled="True">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border x:Name="Row" Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
-                                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border cp:ReorderListDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
-                                        ToolTip="Drag to reorder">
-                                    <!-- Six dots, the usual "this can be dragged" grip. -->
-                                    <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path.Data>
-                                            <GeometryGroup>
-                                                <EllipseGeometry Center="1.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
-                                                <EllipseGeometry Center="6.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
-                                                <EllipseGeometry Center="1.5,7" RadiusX="1.5" RadiusY="1.5"/>
-                                                <EllipseGeometry Center="6.5,7" RadiusX="1.5" RadiusY="1.5"/>
-                                                <EllipseGeometry Center="1.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
-                                                <EllipseGeometry Center="6.5,12.5" RadiusX="1.5" RadiusY="1.5"/>
-                                            </GeometryGroup>
-                                        </Path.Data>
-                                    </Path>
-                                </Border>
-                                <TextBlock Grid.Column="1" Text="{Binding Label}" Style="{StaticResource Cp.Body}"
-                                           Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
-                                <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.CompanionChip}" Margin="0,0,10,0"
-                                              Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
-                                              ToolTip="The estimated iRating gain or loss for this race, beside the rating"/>
-                                <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
-                                          IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
-                            </Grid>
-                        </Border>
-                        <DataTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Companion}" Value="{x:Null}">
-                                <Setter TargetName="CompanionChip" Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.TextMuted}"/>
-                            </Trigger>
-                            <DataTrigger Binding="{Binding IsDragging}" Value="True">
-                                <Setter TargetName="Row" Property="Background" Value="{StaticResource Cp.Hover}"/>
-                                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
-                                <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.Accent}"/>
-                            </DataTrigger>
-                        </DataTemplate.Triggers>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Style="{StaticResource Cp.ListLink}" Content="Show all" Command="{Binding ShowAllCommand}"/>
+                    <Button Style="{StaticResource Cp.ListLink}" Content="Hide all" Command="{Binding HideAllCommand}"/>
+                    <Button Style="{StaticResource Cp.ListLink}" Content="Reset order" Command="{Binding ResetOrderCommand}"
+                            Visibility="{Binding CanResetOrder, Converter={StaticResource Cp.BoolToVis}}"
+                            ToolTip="Back to the order it came in. What is shown doesn't change."/>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding VisibleItems}" cp:ReorderListDrag.IsEnabled="True" Focusable="False"
+                              ItemTemplate="{StaticResource Cp.ReorderRow}"/>
+                <TextBlock x:Name="HiddenTitle" Text="HIDDEN" Style="{StaticResource Cp.Eyebrow}" Margin="0,10,0,6"/>
+                <ItemsControl ItemsSource="{Binding HiddenItems}" Focusable="False" ItemTemplate="{StaticResource Cp.ReorderRow}"/>
+            </StackPanel>
         </ContentControl>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding HiddenItems.Count}" Value="0">
+                <Setter TargetName="HiddenTitle" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. The caption
@@ -1773,6 +1816,11 @@
                               IsChecked="{Binding IsCollapsed, Mode=TwoWay}">
                     <DockPanel>
                         <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
+                        <!-- Only while something in the section differs from how it came. -->
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="Reset" Margin="0,0,6,0"
+                                VerticalAlignment="Center" Command="{Binding ResetCommand}"
+                                ToolTip="Put this section back as it came"
+                                Visibility="{Binding HasModified, Converter={StaticResource Cp.BoolToVis}}"/>
                         <StackPanel>
                             <!-- Secondary text, not amber: amber is kept for what is on or selected. -->
                             <TextBlock x:Name="GroupTitle" Text="{Binding Title}" Style="{StaticResource Cp.Eyebrow}"
@@ -1789,9 +1837,18 @@
                         <DataTemplate>
                             <Border x:Name="Band" Margin="-10,0" Padding="10,0" CornerRadius="6"
                                     Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
-                                <ContentPresenter Content="{Binding}"/>
+                                <Grid>
+                                    <ContentPresenter Content="{Binding}"/>
+                                    <!-- Changed from how it came: a dot in the margin, level with the label. -->
+                                    <Ellipse x:Name="ModifiedDot" Width="6" Height="6" Fill="{StaticResource Cp.Info}"
+                                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-8,17,0,0"
+                                             ToolTip="Changed from the default" Visibility="Collapsed"/>
+                                </Grid>
                             </Border>
                             <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsModified}" Value="True">
+                                    <Setter TargetName="ModifiedDot" Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
                                     <Setter TargetName="Band" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
                                     <Setter TargetName="Band" Property="BorderBrush" Value="#99FFD24D"/>

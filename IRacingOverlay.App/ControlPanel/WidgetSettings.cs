@@ -86,6 +86,13 @@ public static class WidgetSettings
         _ => [],
     };
 
+    /// <summary>Options as they come, for the lists' "Reset order".</summary>
+    private static class Defaults
+    {
+        public static FuelCalculatorOptions FuelCalculator { get; } = new();
+        public static PedalTraceOptions PedalTrace { get; } = new();
+    }
+
     // ===== Driver tables =====
 
     private static SettingsGroup StandingsContent(WidgetSettingsContext context) => new SettingsGroup(
@@ -129,7 +136,8 @@ public static class WidgetSettings
         {
             options.ColumnOrder = order.Cast<DriverTableColumn>().ToList();
             context.Persist(() => DriverTableOptionsStore.SaveColumnOrder(options.Table, options.ColumnOrder));
-        });
+        },
+        DriverTableColumnLayout.DefaultOrder.Cast<Enum>());
 
     private static string ColumnLabel(DriverTableColumn column) => column switch
     {
@@ -258,12 +266,12 @@ public static class WidgetSettings
                         FuelBlock("Laps left", options.ShowLapsRemaining, v => options.ShowLapsRemaining = v, context),
                         FuelBlock("Fuel bar", options.ShowFuelBar, v => options.ShowFuelBar = v, context),
                     ]),
-                FuelCells("Usage", options.UsageOrder, order => options.UsageOrder = order, context),
-                FuelCells("Strategy", options.StrategyOrder, order => options.StrategyOrder = order, context));
+                FuelCells("Usage", options.UsageOrder, Defaults.FuelCalculator.UsageOrder, order => options.UsageOrder = order, context),
+                FuelCells("Strategy", options.StrategyOrder, Defaults.FuelCalculator.StrategyOrder, order => options.StrategyOrder = order, context));
     }
 
     /// <summary>One group of cells as a drag list, each with its switch.</summary>
-    private static ReorderListSetting FuelCells(string label, IReadOnlyList<FuelCell> order, Action<IReadOnlyList<FuelCell>> reorder, WidgetSettingsContext context)
+    private static ReorderListSetting FuelCells(string label, IReadOnlyList<FuelCell> order, IReadOnlyList<FuelCell> defaultOrder, Action<IReadOnlyList<FuelCell>> reorder, WidgetSettingsContext context)
     {
         var options = context.FuelCalculator;
         return new ReorderListSetting(
@@ -274,7 +282,8 @@ public static class WidgetSettings
             {
                 reorder(newOrder.Cast<FuelCell>().ToList());
                 context.Persist(() => FuelCalculatorOptionsStore.Save(options));
-            });
+            },
+            defaultOrder.Cast<Enum>());
     }
 
     private static string FuelCellLabel(FuelCell cell) => cell switch
@@ -372,7 +381,7 @@ public static class WidgetSettings
         var options = context.Weather;
         return new SettingsGroup(Content)
             .With(new ChipGroupSetting(
-                "Readouts",
+                "Items",
                 null,
                 [
                     WeatherChip("Air temp", options.ShowAirTemp, v => options.ShowAirTemp = v, context),
@@ -448,14 +457,15 @@ public static class WidgetSettings
         var options = context.TrackInfo;
         return new SettingsGroup(Content)
             .With(new ReorderListSetting(
-                "Readouts",
+                "Items",
                 "Drag a row by its handle to change the order.",
                 options.FieldOrder.Select(field => new ReorderListItem(field, TrackInfoChip(field, options, context))),
                 order =>
                 {
                     options.FieldOrder = order.Cast<TrackInfoField>().ToList();
                     context.Persist(() => TrackInfoOptionsStore.Save(options));
-                }));
+                },
+                TrackInfoOptions.DefaultOrder.Cast<Enum>()));
     }
 
     private static string TrackInfoLabel(TrackInfoField field) => field switch
@@ -485,14 +495,15 @@ public static class WidgetSettings
         var options = context.PedalTrace;
         return new SettingsGroup(Content)
             .With(new ReorderListSetting(
-                "Parts",
+                "Items",
                 "Drag a row by its handle to change the order.",
                 options.ElementOrder.Select(element => new ReorderListItem(element, PedalTraceChip(element, options, context))),
                 order =>
                 {
                     options.ElementOrder = order.Cast<PedalTraceElement>().ToList();
                     context.Persist(() => PedalTraceOptionsStore.Save(options));
-                }));
+                },
+                Defaults.PedalTrace.ElementOrder.Cast<Enum>()));
     }
 
     private static string PedalTraceLabel(PedalTraceElement element) => element switch
@@ -519,14 +530,15 @@ public static class WidgetSettings
         return new SettingsGroup(Content)
             .With(
                 new ReorderListSetting(
-                    "Modules",
-                    "Drag a row by its handle to change the order. Two small modules in a row share a column.",
+                    "Items",
+                    "Drag a row by its handle to change the order. Two small items in a row share a column.",
                     options.ModuleOrder.Select(module => new ReorderListItem(module, CockpitModuleChip(module, options, context))),
                     order =>
                     {
                         options.ModuleOrder = order.Cast<CockpitModule>().ToList();
                         context.Persist(() => CockpitOptionsStore.Save(options));
-                    }),
+                    },
+                    CockpitOptions.DefaultOrder.Cast<Enum>()),
                 new ToggleSetting("Shift lights", null, options.ShowShiftLights, value =>
                 {
                     options.ShowShiftLights = value;

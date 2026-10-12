@@ -1258,6 +1258,29 @@ public partial class MainWindow : Window
         CultureInfo.InvariantCulture,
         $"{slot.Descriptor.Name}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
 
+    // ===== Setup assistant =====
+
+    /// <summary>A click beside the assistant's card closes it, like Escape and its ✕.</summary>
+    private void SetupBackdrop_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, sender))
+        {
+            _vm.CancelSetup();
+        }
+    }
+
+    protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Escape && _vm.IsSetupOpen)
+        {
+            _vm.CancelSetup();
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPreviewKeyDown(e);
+    }
+
     // ===== Panes =====
 
     private (GridLength Config, GridLength Preview)? _paneWidths;

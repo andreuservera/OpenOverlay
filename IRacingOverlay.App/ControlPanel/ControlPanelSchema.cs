@@ -128,8 +128,42 @@ public sealed partial class ControlPanelViewModel
             groups.Add(advanced);
         }
 
+        // The same page built from untouched options: each row learns how it came, so a changed one
+        // shows it and its section can be reset.
+        var defaults = WidgetSettings.For(slot.Key, DefaultSettings)
+            .Append(PlacementDefaults())
+            .ToDictionary(group => group.Title);
+        foreach (var group in groups)
+        {
+            if (defaults.TryGetValue(group.Title, out var original))
+            {
+                group.AttachDefaults(original);
+            }
+        }
+
         return groups;
     }
+
+    /// <summary>Settings over fresh options, saved nowhere: what every widget page compares with.</summary>
+    private static WidgetSettingsContext DefaultSettings => new(
+        new DriverTableOptions(DriverTable.Standings),
+        new DriverTableOptions(DriverTable.Relative),
+        new FuelCalculatorOptions(),
+        new FlagOptions(),
+        new CockpitOptions(),
+        new WeatherOptions(),
+        new TrackInfoOptions(),
+        new DeltaOptions(),
+        new PedalTraceOptions(),
+        SaveToStores: false);
+
+    /// <summary>POSITION &amp; VISIBILITY as every widget starts, row for row as <see cref="Placement"/>
+    /// builds it.</summary>
+    private static SettingsGroup PlacementDefaults() => new SettingsGroup(WidgetSettings.PositionAndVisibility)
+        .With(
+            new SegmentedSetting("Size", null, SizeLadder, (int)ScaleLevels.Default, _ => { }),
+            new SliderSetting("Opacity", null, WidgetOpacityStore.Default, 0, 1, 0.01, _ => { }),
+            new ToggleSetting("Hide when I'm not driving", null, false, _ => { }));
 
     // ===== Shared =====
 
@@ -139,12 +173,7 @@ public sealed partial class ControlPanelViewModel
         WidgetSettings.PositionAndVisibility,
         "Size, transparency and when it shows. To move it, use Move widgets in the toolbar.")
         .With(
-            new SegmentedSetting(
-                "Size",
-                null,
-                SizeLadder,
-                (int)slot.Scale,
-                index => slot.Scale = (ScaleLevel)index),
+            SizeRow(slot),
             new SliderSetting(
                 "Opacity",
                 null,
@@ -219,12 +248,16 @@ public sealed partial class ControlPanelViewModel
         });
     });
 
-    /// <summary>The ⋯ menu's "copy to a layout": every saved layout that has this widget in it.</summary>
+    /// <summary>The ⋯ menu's "copy to a layout": every saved layout that has this widget in it. The
+    /// open one is said to be open — while it is, this widget is showing that layout's settings, so
+    /// copying into it keeps the changes made since it opened, which closing it would otherwise undo.</summary>
     public IReadOnlyList<MenuEntry> WidgetCopyTargets => SelectedWidget is not { } slot
         ? []
         : LayoutStore.List()
             .Where(layout => layout.Contains(slot.Key))
-            .Select(layout => new MenuEntry(layout.Name, new RelayCommand(() => CopyWidgetToLayout(slot, layout.Id))))
+            .Select(layout => new MenuEntry(
+                layout.Id == LayoutStore.Open?.LayoutId ? $"{layout.Name} · open now, keep these changes" : layout.Name,
+                new RelayCommand(() => CopyWidgetToLayout(slot, layout.Id))))
             .ToList();
 
     public bool HasWidgetCopyTargets => WidgetCopyTargets.Count > 0;
@@ -293,6 +326,28 @@ public sealed partial class ControlPanelViewModel
         }
     }
 
+    /// <summary>The size ladder, with what the level means in numbers under it.</summary>
+    private static SegmentedSetting SizeRow(WidgetSlot slot)
+    {
+        SegmentedSetting? row = null;
+        row = new SegmentedSetting(
+            "Size",
+            SizeHint(slot.Scale),
+            SizeLadder,
+            (int)slot.Scale,
+            index =>
+            {
+                slot.Scale = (ScaleLevel)index;
+                row!.Hint = SizeHint(slot.Scale);
+            });
+        return row;
+    }
+
+    /// <summary>"XL · 139 % of the standard size": the letters say small or large, the number how much.</summary>
+    private static string SizeHint(ScaleLevel level) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"{ScaleLevels.LabelOf(level)} · {ScaleLevels.FactorOf(level) / ScaleLevels.FactorOf(ScaleLevels.Default) * 100:0} % of the standard size (M).");
+
     /// <summary>The fast displays' refresh rate is one setting for all of them, on the Performance
     /// page; the widgets that use it point there rather than offering a second copy of it.</summary>
     private ActionSetting RefreshRateLink() => new(
@@ -317,6 +372,12 @@ public sealed partial class ControlPanelViewModel
                     ["Keep overlays running in tray", "Quit OpenOverlay"],
                     (int)TrayPreferencesStore.CloseBehavior,
                     index => TrayPreferencesStore.SaveCloseBehavior((CloseBehavior)index)),
+                new SegmentedSetting(
+                    "Interface size",
+                    "How big this window draws its text and controls. The widgets have their own sizes.",
+                    InterfaceScaleStore.Steps.Select(step => string.Create(CultureInfo.InvariantCulture, $"{step * 100:0} %")).ToList(),
+                    Array.IndexOf(InterfaceScaleStore.Steps, InterfaceScale),
+                    index => InterfaceScale = InterfaceScaleStore.Steps[index]),
                 new ActionSetting(
                     "Configuration folder",
                     "Layouts, options and hotkeys.",

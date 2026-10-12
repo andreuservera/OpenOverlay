@@ -33,6 +33,10 @@
     </Window.Resources>
 
     <Grid>
+        <!-- General › Window › Interface size: the whole window, scaled as one. -->
+        <Grid.LayoutTransform>
+            <ScaleTransform ScaleX="{Binding InterfaceScale}" ScaleY="{Binding InterfaceScale}"/>
+        </Grid.LayoutTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -305,7 +309,7 @@
                     <!-- Grouped on NavItem.Group, so a new section in the rail is a new string in the
                          view model and never a change here. -->
                     <ListBox x:Name="Rail" Style="{StaticResource Cp.NavList}" ItemsSource="{Binding NavView}"
-                             SelectedItem="{Binding Selected, Mode=TwoWay}"
+                             SelectedItem="{Binding RailSelected, Mode=TwoWay}"
                              PreviewMouseLeftButtonUp="Rail_PreviewMouseLeftButtonUp"
                              SelectionChanged="Rail_SelectionChanged"
                              ItemTemplate="{StaticResource Cp.NavItemTemplate}">
@@ -461,14 +465,14 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="7" Height="7" Fill="{StaticResource Cp.Live}" Margin="0,0,8,0"
                                      VerticalAlignment="Center"
-                                     Visibility="{Binding IsInfoPage, Converter={StaticResource Cp.NotBoolToVis}}"/>
+                                     Visibility="{Binding IsHomePage, Converter={StaticResource Cp.NotBoolToVis}}"/>
                             <TextBlock VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
                                         <Setter Property="Text" Value="LIVE PREVIEW"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
-                                                <Setter Property="Text" Value="OPENOVERLAY"/>
+                                            <DataTrigger Binding="{Binding IsHomePage}" Value="True">
+                                                <Setter Property="Text" Value="ON SCREEN NOW"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding HasLayoutPreview}" Value="True">
                                                 <Setter Property="Text" Value="LAYOUT PREVIEW"/>
@@ -483,6 +487,9 @@
                                    Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
                             <Run Text="SIZE "/><Run Text="{Binding SelectedWidget.Scale, Mode=OneWay}"/>
                         </TextBlock>
+                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Text="{Binding PreviewLayoutResolution}"
+                                   Style="{StaticResource Cp.Mono}" FontSize="{StaticResource Cp.Size.Micro}"
+                                   Visibility="{Binding HasLayoutPreview, Converter={StaticResource Cp.BoolToVis}}"/>
                     </Grid>
                 </Border>
 
@@ -497,11 +504,16 @@
                                  ToolTip="What the widget is shown over: check it stays readable at the opacity you chose."/>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                     Visibility="{Binding HasPreviewChoices, Converter={StaticResource Cp.BoolToVis}}">
-                            <TextBlock Text="{Binding PreviewChoiceCaption}" Style="{StaticResource Cp.Eyebrow}"
+                            <TextBlock Text="SCENARIO" Style="{StaticResource Cp.Eyebrow}"
                                        VerticalAlignment="Center" Margin="0,0,10,0"/>
                             <ComboBox Style="{StaticResource Cp.ComboBox}" MinWidth="170" MaxWidth="260" Margin="0,0,12,0"
-                                      ItemsSource="{Binding PreviewChoices}" SelectedIndex="{Binding PreviewChoiceIndex, Mode=TwoWay}"
+                                      ItemsSource="{Binding ScenarioChoices}" SelectedIndex="{Binding ScenarioIndex, Mode=TwoWay}"
+                                      Visibility="{Binding ShowsScenarioPicker, Converter={StaticResource Cp.BoolToVis}}"
                                       ToolTip="See the widget in another session without iRacing."/>
+                            <ComboBox Style="{StaticResource Cp.ComboBox}" MinWidth="170" MaxWidth="260" Margin="0,0,12,0"
+                                      ItemsSource="{Binding FlagChoices}" SelectedIndex="{Binding FlagChoiceIndex, Mode=TwoWay}"
+                                      Visibility="{Binding ShowsFlagPicker, Converter={StaticResource Cp.BoolToVis}}"
+                                      ToolTip="See any flag without iRacing."/>
                         </StackPanel>
                     </DockPanel>
                 </Border>
@@ -519,22 +531,13 @@
                                    Style="{StaticResource Cp.Hint}" TextAlignment="Center" Margin="0,6,0,0"/>
                     </StackPanel>
 
-                    <!-- The ABOUT pages describe the product, so the side panel shows it. -->
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300"
-                                Visibility="{Binding IsInfoPage, Converter={StaticResource Cp.BoolToVis}}">
-                        <Border Width="72" Height="72" CornerRadius="20" Background="{StaticResource Cp.Accent}"
-                                HorizontalAlignment="Center">
-                            <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="18"
-                                  Stroke="#101316" StrokeThickness="6"
-                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                        </Border>
-                        <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Display}" HorizontalAlignment="Center"
-                                   Margin="0,18,0,0"/>
-                        <TextBlock Text="{Binding VersionHeadline}" Style="{StaticResource Cp.Mono}"
-                                   HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                        <TextBlock Text="A free, open-source telemetry overlay for iRacing." Style="{StaticResource Cp.Hint}"
-                                   TextAlignment="Center" Margin="0,12,0,0"/>
-                    </StackPanel>
+                    <!-- Home: the screen as it is now, the widgets that are on it drawn where they are. -->
+                    <DockPanel Visibility="{Binding IsHomePage, Converter={StaticResource Cp.BoolToVis}}">
+                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding HomeScreenCaption}" Style="{StaticResource Cp.Hint}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,18"/>
+                        <cp:LayoutPreview Layout="{Binding HomeScreen}"
+                                          EmptyMessage="Nothing on screen. Switch a widget on from the rail, or set up from a preset."/>
+                    </DockPanel>
                 </Grid>
             </DockPanel>
         </Grid>
@@ -591,6 +594,7 @@
         <!-- ===== Setup assistant =====
              Over the whole window: on a fresh install it is the first thing to do, and it is short. -->
         <Grid Grid.RowSpan="3" Background="#CC07090C" DataContext="{Binding Setup}"
+              MouseLeftButtonDown="SetupBackdrop_MouseLeftButtonDown"
               Visibility="{Binding DataContext.IsSetupOpen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Cp.BoolToVis}}">
             <cp:SetupAssistantView VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24"/>
         </Grid>

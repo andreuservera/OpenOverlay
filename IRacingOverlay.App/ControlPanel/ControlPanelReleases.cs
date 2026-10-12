@@ -27,8 +27,6 @@ public sealed partial class ControlPanelViewModel
 
     public string VersionToolTip => $"{BuildInfo.Summary}\nClick for version details, what's new and the changelog.";
 
-    /// <summary>Under the logo in the side panel of the Help page.</summary>
-    public string VersionHeadline => $"Version {BuildInfo.Version} · {BuildInfo.Channel}";
 
     public ICommand ShowAboutCommand => _showAbout ??= new RelayCommand(() =>
     {
@@ -41,13 +39,15 @@ public sealed partial class ControlPanelViewModel
     /// <summary>The Help entry at the foot of the rail.</summary>
     public ICommand ShowHelpCommand => _showHelp ??= new RelayCommand(() => Navigate(HelpPageKey, _selected?.Key == HelpPageKey ? _selectedTab : WhatsNewTab));
 
-    /// <summary>Help and Home: nothing to preview, so the side panel shows the product instead.</summary>
-    public bool IsInfoPage => _selected?.Key is HelpPageKey or HomePageKey;
+    /// <summary>Home: the side panel shows what is on screen right now.</summary>
+    public bool IsHomePage => _selected?.Key == HomePageKey;
 
     /// <summary>The Help page itself, for the rail's foot to light up.</summary>
     public bool IsHelpPage => _selected?.Key == HelpPageKey;
 
-    public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage && !HasLayoutPreview;
+    /// <summary>A page with nothing for the side panel (the settings pages, Help): the panel goes
+    /// and the page takes the width.</summary>
+    public bool ShowsPreviewPlaceholder => !HasPreview && !HasLayoutPreview && !IsHomePage;
 
     /// <summary>The update check's latest state, pushed by MainWindow once a second.</summary>
     public string UpdateStatus

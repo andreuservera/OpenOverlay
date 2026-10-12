@@ -22,32 +22,42 @@ public sealed partial class ControlPanelViewModel
 
     private bool PreviewsFlags => SelectedWidget?.Key == WidgetCatalog.Flag;
 
-    /// <summary>Whether the open widget has situations worth previewing it in.</summary>
-    public bool HasPreviewChoices => SelectedWidget is { } slot && (PreviewsFlags || ScenarioWidgets.Contains(slot.Key));
+    /// <summary>The session picker, for the widgets whose look depends on the session.</summary>
+    public bool ShowsScenarioPicker => SelectedWidget is { } slot && ScenarioWidgets.Contains(slot.Key);
 
-    public string PreviewChoiceCaption => PreviewsFlags ? "SIMULATE" : "SCENARIO";
+    /// <summary>The flag picker, for Flags, where the flag is the situation.</summary>
+    public bool ShowsFlagPicker => PreviewsFlags;
 
-    public IReadOnlyList<string> PreviewChoices => PreviewsFlags
-        ? PreviewData.FlagScenarios.Select(scenario => scenario.Label).ToList()
-        : PreviewData.ScenarioLabels;
+    public bool HasPreviewChoices => ShowsScenarioPicker || ShowsFlagPicker;
 
-    public int PreviewChoiceIndex
+    // Each picker keeps its own list for good. Swapping one dropdown's list between widgets is
+    // what left it blank: the old selection is dropped with the old list.
+    public IReadOnlyList<string> ScenarioChoices => PreviewData.ScenarioLabels;
+
+    public IReadOnlyList<string> FlagChoices { get; } = PreviewData.FlagScenarios.Select(scenario => scenario.Label).ToList();
+
+    public int ScenarioIndex
     {
-        get => PreviewsFlags ? FlagPreview.Index : (int)PreviewSettings.Scenario;
+        get => (int)PreviewSettings.Scenario;
         set
         {
-            if (value < 0)
-            {
-                return;
-            }
-
-            if (PreviewsFlags)
-            {
-                FlagPreview.Index = value;
-            }
-            else
+            if (value >= 0)
             {
                 PreviewSettings.Scenario = (PreviewScenario)value;
+            }
+
+            OnPropertyChanged();
+        }
+    }
+
+    public int FlagChoiceIndex
+    {
+        get => FlagPreview.Index;
+        set
+        {
+            if (value >= 0)
+            {
+                FlagPreview.Index = value;
             }
 
             OnPropertyChanged();
@@ -74,8 +84,9 @@ public sealed partial class ControlPanelViewModel
     private void OnPreviewTargetChanged()
     {
         OnPropertyChanged(nameof(HasPreviewChoices));
-        OnPropertyChanged(nameof(PreviewChoiceCaption));
-        OnPropertyChanged(nameof(PreviewChoices));
-        OnPropertyChanged(nameof(PreviewChoiceIndex));
+        OnPropertyChanged(nameof(ShowsScenarioPicker));
+        OnPropertyChanged(nameof(ShowsFlagPicker));
+        OnPropertyChanged(nameof(ScenarioIndex));
+        OnPropertyChanged(nameof(FlagChoiceIndex));
     }
 }

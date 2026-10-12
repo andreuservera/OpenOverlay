@@ -20,8 +20,8 @@
       them. Read-only; editing happens in the editor.
 
       The frame is scaled through a LayoutTransform rather than a Viewbox so the grid around it takes
-      the frame's on-screen size, which is what lets the resolution badge sit in the frame's corner
-      at a readable size instead of shrinking with the canvas.
+      the frame's on-screen size. The resolution is said by the pane's header, never on the canvas,
+      where it would sit over whatever widget is in that corner.
     -->
     <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
         <Border x:Name="Frame" BorderThickness="1" BorderBrush="{StaticResource Cp.BorderStrong}">
@@ -60,11 +60,5 @@
         <TextBlock x:Name="EmptyText" Text="No widgets yet — add them in the editor."
                    Style="{StaticResource Cp.Hint}" HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextAlignment="Center" Margin="12" Visibility="Collapsed"/>
-
-        <Border x:Name="ResolutionBadge" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
-                Background="#99000000" CornerRadius="5" Padding="8,4">
-            <TextBlock x:Name="ResolutionText" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="12"
-                       FontWeight="SemiBold" Foreground="#B4BCC8"/>
-        </Border>
     </Grid>
 </UserControl>

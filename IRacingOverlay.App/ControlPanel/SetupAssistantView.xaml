@@ -22,7 +22,11 @@
             <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.6" Color="#000000"/>
         </Border.Effect>
         <StackPanel>
-            <TextBlock Text="{Binding StepLabel}" Style="{StaticResource Cp.Eyebrow}"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="13"
+                        Margin="0,-6,-10,0" ToolTip="Close (Esc)" Command="{Binding CancelCommand}"/>
+                <TextBlock Text="{Binding StepLabel}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
+            </DockPanel>
 
             <!-- 1: the monitor -->
             <StackPanel Margin="0,8,0,0">
@@ -82,7 +86,7 @@
             </StackPanel>
 
             <DockPanel Margin="0,24,0,0">
-                <Button DockPanel.Dock="Left" Style="{StaticResource Cp.TextButton}" Content="Skip for now"
+                <Button DockPanel.Dock="Left" Style="{StaticResource Cp.TextButton}" Content="{Binding CancelText}"
                         FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Control}"
                         VerticalAlignment="Center" Command="{Binding CancelCommand}"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

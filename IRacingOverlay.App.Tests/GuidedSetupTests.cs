@@ -56,6 +56,25 @@ public class GuidedSetupTests
         Assert.True(closedMovingNow);
     }
 
+    /// <summary>Offered on a fresh install it can be skipped; opened by hand it is cancelled — and
+    /// either way leaving it never applies anything.</summary>
+    [Theory]
+    [InlineData(true, "Skip for now")]
+    [InlineData(false, "Cancel")]
+    public void Assistant_LeavingIt_AppliesNothing(bool isFirstRun, string cancelText)
+    {
+        var applied = false;
+        bool? closedMovingNow = null;
+        var setup = new SetupAssistant([new SetupChoice("Main", "", "", 0)], (_, _) => applied = true, moveNow => closedMovingNow = moveNow, isFirstRun);
+
+        setup.NextCommand.Execute(null);
+        setup.CancelCommand.Execute(null);
+
+        Assert.Equal(cancelText, setup.CancelText);
+        Assert.False(applied);
+        Assert.False(closedMovingNow);
+    }
+
     [Fact]
     public void Scenarios_ChangeWhatThePreviewShows()
     {

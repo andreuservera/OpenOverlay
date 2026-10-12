@@ -25,14 +25,30 @@ public abstract class SettingItem : INotifyPropertyChanged
     protected SettingItem(string label, string? hint)
     {
         Label = label;
-        Hint = hint;
+        _hint = hint;
     }
 
     public string Label { get; }
 
+    private string? _hint;
+
     /// <summary>One sentence explaining what the option changes, shown under the label. Optional:
-    /// self-evident settings are better off without a line of text repeating their own name.</summary>
-    public string? Hint { get; }
+    /// self-evident settings are better off without a line of text repeating their own name. Settable
+    /// for a hint that states the current value ("M · 100 % of the standard size").</summary>
+    public string? Hint
+    {
+        get => _hint;
+        internal set
+        {
+            if (_hint == value)
+            {
+                return;
+            }
+
+            _hint = value;
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>Where the setting lives ("Standings › Columns › "), stamped when its page is built.</summary>
     internal string TracePath { get; set; } = "";
@@ -58,8 +74,22 @@ public abstract class SettingItem : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
+    /// <summary>The same setting as it comes, built from untouched options, when the page knows it:
+    /// what <see cref="IsModified"/> compares with and a section's Reset puts back.</summary>
+    internal SettingItem? Default { get; set; }
+
+    /// <summary>Differs from how it came: the row wears a dot, and its section offers Reset.</summary>
+    public bool IsModified => Default is not null && SettingDefaults.KeyOf(this) != SettingDefaults.KeyOf(Default);
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        // Any change to what the setting holds may make it differ from its default, or stop differing.
+        if (propertyName is not (nameof(IsModified) or nameof(IsHighlighted) or nameof(Hint)) && Default is not null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsModified)));
+        }
+    }
 
     /// <summary>Records a change in the activity trail, before it is applied, so a change that fails is still on record.</summary>
     protected void Trace(string value) => AppLog.Activity("Settings", $"{TracePath}{Label}: {value}");
@@ -327,12 +357,33 @@ public sealed class SliderSetting : SettingItem
             _value = clamped;
             OnPropertyChanged();
             OnPropertyChanged(nameof(Display));
+            OnPropertyChanged(nameof(Text));
             _apply(clamped);
         }
     }
 
     /// <summary>The value beside the slider; a percentage unless the setting formats it itself.</summary>
     public string Display => _format?.Invoke(Value) ?? (Value * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
+
+    /// <summary>The value as a field to type in, for when the slider is too coarse to hit "73 %". Takes
+    /// the number in whatever is typed ("73", "73%", "0,5"), as a percentage where the slider shows
+    /// one; anything without a number, or out of range, comes back as the current value.</summary>
+    public string Text
+    {
+        get => Display;
+        set
+        {
+            var digits = new string(value.Where(c => char.IsDigit(c) || c is '.' or ',' or '-').ToArray()).Replace(',', '.');
+            if (double.TryParse(digits, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            {
+                var typed = _format is null ? number / 100 : number;
+                Value = Math.Round(typed / Step, MidpointRounding.AwayFromZero) * Step;
+            }
+
+            // Always shown back as the slider has it, so the field never holds what wasn't applied.
+            OnPropertyChanged();
+        }
+    }
 }
 
 /// <summary>One toggle inside a <see cref="ChipGroupSetting"/>.</summary>
@@ -387,6 +438,10 @@ public sealed class ChipGroupSetting : SettingItem
         : base(label, hint)
     {
         Chips = chips;
+        foreach (var chip in chips)
+        {
+            chip.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Chips));
+        }
     }
 
     public IReadOnlyList<ChipSetting> Chips { get; }
@@ -440,17 +495,57 @@ public sealed class ReorderListItem : INotifyPropertyChanged
 public sealed class ReorderListSetting : SettingItem
 {
     private readonly Action<IReadOnlyList<Enum>> _apply;
+    private readonly IReadOnlyList<Enum>? _defaultOrder;
     private IReadOnlyList<Enum> _applied;
 
-    public ReorderListSetting(string label, string? hint, IEnumerable<ReorderListItem> items, Action<IReadOnlyList<Enum>> apply)
+    /// <param name="defaultOrder">The order the list comes in, for "Reset order"; null hides it.</param>
+    public ReorderListSetting(
+        string label,
+        string? hint,
+        IEnumerable<ReorderListItem> items,
+        Action<IReadOnlyList<Enum>> apply,
+        IEnumerable<Enum>? defaultOrder = null)
         : base(label, hint)
     {
         Items = new ObservableCollection<ReorderListItem>(items);
         _applied = Order;
         _apply = apply;
+        _defaultOrder = defaultOrder?.ToList();
+        foreach (var item in Items)
+        {
+            item.Visible.PropertyChanged += (_, _) =>
+            {
+                Split();
+                OnPropertyChanged(nameof(Items));
+            };
+            if (item.Companion is { } companion)
+            {
+                companion.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Items));
+            }
+        }
+
+        Split();
+        ShowAllCommand = new RelayCommand(() => SetAll(true));
+        HideAllCommand = new RelayCommand(() => SetAll(false));
+        ResetOrderCommand = new RelayCommand(ResetOrder);
     }
 
+    /// <summary>Every entry, shown or not, in the order the widget uses.</summary>
     public ObservableCollection<ReorderListItem> Items { get; }
+
+    /// <summary>The entries shown, in order: the list that is dragged.</summary>
+    public ObservableCollection<ReorderListItem> VisibleItems { get; } = [];
+
+    /// <summary>The entries switched off, apart, so the order above reads as the widget's.</summary>
+    public ObservableCollection<ReorderListItem> HiddenItems { get; } = [];
+
+    public ICommand ShowAllCommand { get; }
+
+    public ICommand HideAllCommand { get; }
+
+    public ICommand ResetOrderCommand { get; }
+
+    public bool CanResetOrder => _defaultOrder is not null;
 
     private IReadOnlyList<Enum> Order => Items.Select(item => item.Key).ToList();
 
@@ -463,6 +558,19 @@ public sealed class ReorderListSetting : SettingItem
         }
 
         Items.Move(from, to);
+        Split();
+    }
+
+    /// <summary>As <see cref="MoveLive"/>, counting only the rows shown: the dragged row takes the
+    /// place of the shown row it is over, wherever hidden ones sit between them.</summary>
+    public void MoveVisibleLive(int from, int to)
+    {
+        if (from == to || from < 0 || to < 0 || from >= VisibleItems.Count || to >= VisibleItems.Count)
+        {
+            return;
+        }
+
+        MoveLive(Items.IndexOf(VisibleItems[from]), Items.IndexOf(VisibleItems[to]));
     }
 
     /// <summary>Applies the list's order if it differs from the last one applied.</summary>
@@ -477,6 +585,7 @@ public sealed class ReorderListSetting : SettingItem
         _applied = order;
         Trace(string.Join(", ", Items.Select(item => item.Label)));
         _apply(order);
+        OnPropertyChanged(nameof(Items));
     }
 
     /// <summary>A move and its commit in one step.</summary>
@@ -484,6 +593,71 @@ public sealed class ReorderListSetting : SettingItem
     {
         MoveLive(from, to);
         CommitOrder();
+    }
+
+    /// <summary>Puts the entries in <paramref name="order"/>; any it doesn't name keep their place at the end.</summary>
+    public void SetOrder(IEnumerable<Enum> order)
+    {
+        var wanted = order.ToList();
+        var sorted = Items.OrderBy(item => wanted.IndexOf(item.Key) is var index and >= 0 ? index : int.MaxValue).ToList();
+        for (var i = 0; i < sorted.Count; i++)
+        {
+            var at = Items.IndexOf(sorted[i]);
+            if (at != i)
+            {
+                Items.Move(at, i);
+            }
+        }
+
+        Split();
+        CommitOrder();
+    }
+
+    private void ResetOrder()
+    {
+        if (_defaultOrder is not null)
+        {
+            SetOrder(_defaultOrder);
+        }
+    }
+
+    private void SetAll(bool visible)
+    {
+        foreach (var item in Items)
+        {
+            item.Visible.Value = visible;
+        }
+    }
+
+    /// <summary>Sorts the rows into shown and hidden, keeping the order, and touching only what moved.</summary>
+    private void Split()
+    {
+        Sync(VisibleItems, Items.Where(item => item.Visible.Value).ToList());
+        Sync(HiddenItems, Items.Where(item => !item.Visible.Value).ToList());
+    }
+
+    private static void Sync(ObservableCollection<ReorderListItem> target, IReadOnlyList<ReorderListItem> wanted)
+    {
+        for (var i = target.Count - 1; i >= 0; i--)
+        {
+            if (!wanted.Contains(target[i]))
+            {
+                target.RemoveAt(i);
+            }
+        }
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var at = target.IndexOf(wanted[i]);
+            if (at < 0)
+            {
+                target.Insert(i, wanted[i]);
+            }
+            else if (at != i)
+            {
+                target.Move(at, i);
+            }
+        }
     }
 }
 
@@ -836,6 +1010,45 @@ public sealed class SettingsGroup : INotifyPropertyChanged
 
     public ObservableCollection<SettingItem> Items { get; } = [];
 
+    /// <summary>Something in the section differs from how it came.</summary>
+    public bool HasModified => Items.Any(item => item.IsModified);
+
+    private RelayCommand? _reset;
+
+    /// <summary>Puts every row of the section back as it came.</summary>
+    public ICommand ResetCommand => _reset ??= new RelayCommand(() =>
+    {
+        foreach (var item in Items.Where(item => item.Default is not null))
+        {
+            SettingDefaults.Reset(item, item.Default!);
+        }
+    });
+
+    /// <summary>Gives each row its default, matched by position in the same section built from
+    /// untouched options, and starts following whether any row differs from it.</summary>
+    internal void AttachDefaults(SettingsGroup defaults)
+    {
+        for (var i = 0; i < Items.Count && i < defaults.Items.Count; i++)
+        {
+            var (item, @default) = (Items[i], defaults.Items[i]);
+            if (item.GetType() != @default.GetType() || item.Label != @default.Label || SettingDefaults.KeyOf(item) is null)
+            {
+                continue;
+            }
+
+            item.Default = @default;
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SettingItem.IsModified))
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasModified)));
+                }
+            };
+        }
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasModified)));
+    }
+
     public SettingsGroup With(params SettingItem[] items)
     {
         foreach (var item in items)
@@ -942,6 +1155,9 @@ public sealed class InfoBarSetting : SettingItem
 
     public IReadOnlyList<InfoBarSlot> Bottom { get; }
 
+    /// <summary>Whether a piece of info is on the table, and in which slot.</summary>
+    internal (bool Shown, TableSlot Slot) PlacementOf(TableInfoElement element) => (_isShown(element), _slotOf(element));
+
     /// <summary>The info not on the table.</summary>
     public ObservableCollection<InfoChip> Available { get; } = [];
 
@@ -959,6 +1175,7 @@ public sealed class InfoBarSetting : SettingItem
         Trace(shown ? $"{chip.Label} → {SlotFor(target!.Value).Name}" : $"{chip.Label} hidden");
         _apply(chip.Element, shown, target ?? _slotOf(chip.Element));
         Arrange();
+        OnPropertyChanged(nameof(Chips));
     }
 
     private void Arrange()

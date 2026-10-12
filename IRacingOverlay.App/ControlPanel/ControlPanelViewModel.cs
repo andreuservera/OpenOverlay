@@ -173,6 +173,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         set => Select(value);
     }
 
+    /// <summary>The rail's selection: the open page, or nothing when the page isn't listed in the
+    /// rail (Help, at its foot). Kept apart from <see cref="Selected"/> so the rail never goes on
+    /// lighting the page that was open before Help, and so clicking that page opens it again.</summary>
+    public NavItem? RailSelected
+    {
+        get => _selected is { IsFooter: false } page ? page : null;
+        set => Select(value);
+    }
+
     /// <summary>Widgets unlocked: they can be dragged and resized on screen. A single switch for the
     /// whole application rather than per widget: "let me move things" is a mode you are in, not a
     /// property of one panel. Widgets an open layout controls move too; that is saved as their own
@@ -358,6 +367,25 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public int SelectedMonitorIndex => _selectedMonitorIndex;
 
+    private double _interfaceScale = InterfaceScaleStore.Scale;
+
+    /// <summary>How big the control panel draws itself (General › Window › Interface size).</summary>
+    public double InterfaceScale
+    {
+        get => _interfaceScale;
+        set
+        {
+            if (_interfaceScale.Equals(value))
+            {
+                return;
+            }
+
+            _interfaceScale = value;
+            InterfaceScaleStore.Save(value);
+            OnPropertyChanged();
+        }
+    }
+
     public DeltaReference DeltaReference => DeltaOptions.Reference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
@@ -428,12 +456,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         BuildSettings(item);
 
         OnPropertyChanged(nameof(Selected));
+        OnPropertyChanged(nameof(RailSelected));
         OnPropertyChanged(nameof(SelectedWidget));
         OnPropertyChanged(nameof(HasPreview));
-        OnPropertyChanged(nameof(IsInfoPage));
+        OnPropertyChanged(nameof(IsHomePage));
         OnPropertyChanged(nameof(IsHelpPage));
+        OnPropertyChanged(nameof(HomeScreen));
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
+        OnPropertyChanged(nameof(PreviewLayoutResolution));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
         OnPropertyChanged(nameof(SelectedTab));
         OnPreviewTargetChanged();

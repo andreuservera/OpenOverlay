@@ -22,8 +22,11 @@ public sealed class SetupAssistant : INotifyPropertyChanged
     /// <param name="monitors">The connected monitors, the primary first.</param>
     /// <param name="apply">Switches the preset on, on the monitor (step 2 → 3).</param>
     /// <param name="close">Closes the assistant; true asks for the widgets to be made movable.</param>
-    public SetupAssistant(IReadOnlyList<SetupChoice> monitors, Action<SetupChoice, SetupChoice> apply, Action<bool> close)
+    /// <param name="isFirstRun">Offered on its own on a fresh install, rather than opened by hand:
+    /// leaving it is then "Skip for now", not "Cancel".</param>
+    public SetupAssistant(IReadOnlyList<SetupChoice> monitors, Action<SetupChoice, SetupChoice> apply, Action<bool> close, bool isFirstRun = false)
     {
+        CancelText = isFirstRun ? "Skip for now" : "Cancel";
         _apply = apply;
         _close = close;
         Monitors = monitors;
@@ -81,6 +84,9 @@ public sealed class SetupAssistant : INotifyPropertyChanged
     public string Summary => Preset is { } preset && Monitor is { } monitor
         ? $"{preset.Name} is on: {preset.Detail}, on {monitor.Name}. The rest are off; switch any on from the rail."
         : "";
+
+    /// <summary>What leaving without finishing is called.</summary>
+    public string CancelText { get; }
 
     public ICommand NextCommand { get; }
     public ICommand BackCommand { get; }

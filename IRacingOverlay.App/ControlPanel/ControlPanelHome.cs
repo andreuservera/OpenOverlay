@@ -30,8 +30,66 @@ public sealed partial class ControlPanelViewModel
         HomePageKey, "Home", "What's on screen, what needs attention, and the things you do most.",
         "M4,11 L12,4 L20,11 V20 H14 V14 H10 V20 H4 Z", "#home"));
 
+    private Layout? _homeScreen;
+
+    /// <summary>What is on screen now, drawn like a layout on the monitor most of it is on, for Home's
+    /// side panel; null on any other page.</summary>
+    public Layout? HomeScreen => IsHomePage ? _homeScreen : null;
+
+    /// <summary>Redraws Home's picture of the screen from the widgets on it now: where each is, how
+    /// big, how see-through, set up as it is.</summary>
+    private void RefreshHomeScreen()
+    {
+        var monitors = Monitors.Monitors();
+        if (monitors.Count == 0)
+        {
+            return;
+        }
+
+        var scale = PixelsPerDip();
+        var placed = _slots.Values
+            .Where(slot => slot.State == WidgetState.OnScreen && slot.SavedPosition is not null)
+            .Select(slot => (Slot: slot, X: slot.SavedPosition!.Value.Left * scale, Y: slot.SavedPosition!.Value.Top * scale))
+            .ToList();
+        bool On(DisplayMonitor monitor, double x, double y) =>
+            x >= monitor.Left && x < monitor.Left + monitor.Width && y >= monitor.Top && y < monitor.Top + monitor.Height;
+        var monitor = monitors
+            .OrderByDescending(candidate => placed.Count(widget => On(candidate, widget.X, widget.Y)))
+            .ThenByDescending(candidate => candidate.IsPrimary)
+            .First();
+
+        var screen = new Layout("On screen now", monitor.ToRef(), monitor.Width, monitor.Height);
+        var codecs = CreateConfigCodecs();
+        foreach (var (slot, x, y) in placed.Where(widget => On(monitor, widget.X, widget.Y)))
+        {
+            screen.Add(new LayoutWidget
+            {
+                Type = slot.Key,
+                X = x - monitor.Left,
+                Y = y - monitor.Top,
+                Scale = slot.Scale,
+                Opacity = slot.Opacity,
+                Config = codecs[slot.Key].Read(),
+            });
+        }
+
+        _homeScreen = screen;
+        OnPropertyChanged(nameof(HomeScreen));
+        OnPropertyChanged(nameof(HomeScreenCaption));
+    }
+
+    /// <summary>Under Home's picture: which monitor it is, and how many widgets are on it.</summary>
+    public string HomeScreenCaption => _homeScreen is { } screen
+        ? string.Create(CultureInfo.InvariantCulture, $"{screen.Monitor.FriendlyName} · {screen.Width}×{screen.Height} · {screen.Widgets.Count} on screen")
+        : "";
+
     private IEnumerable<SettingsGroup> HomePage()
     {
+        if (!_buildingIndex)
+        {
+            RefreshHomeScreen();
+        }
+
         var onScreen = _slots.Values.Where(slot => slot.State == WidgetState.OnScreen).ToList();
         var switchedOn = _slots.Values.Count(slot => slot.IsEnabled);
         List<SettingsGroup> groups =
@@ -39,10 +97,7 @@ public sealed partial class ControlPanelViewModel
             new SettingsGroup("RIGHT NOW")
                 .With(
                     new InfoSetting("iRacing", ConnectionHint.Length > 0 ? ConnectionHint : null, ConnectionLabel),
-                    new InfoSetting(
-                        "Layout",
-                        OpenLayoutName is null ? "Widgets use their own settings." : null,
-                        OpenLayoutName ?? "None open"),
+                    LayoutRow(),
                     new InfoSetting(
                         "On screen",
                         onScreen.Count > 0 ? string.Join(", ", onScreen.Select(slot => slot.Descriptor.Name)) : null,
@@ -86,6 +141,14 @@ public sealed partial class ControlPanelViewModel
 
         return groups;
     }
+
+    /// <summary>The layout the toolbar shows, and whether it is on screen: the toolbar names a layout
+    /// even while none is open, so "none open" alone left people wondering which one was meant.</summary>
+    private InfoSetting LayoutRow() => OpenLayoutName is { } open
+        ? new InfoSetting("Layout", "Its widgets follow it until you close it.", $"{open} · on screen")
+        : ToolbarLayout is { } chosen
+            ? new InfoSetting("Layout", "Chosen in the toolbar, not open: widgets use their own settings.", $"{chosen.Name} · not open")
+            : new InfoSetting("Layout", "Widgets use their own settings.", "No layouts yet");
 
     /// <summary>What would make the overlay look broken while racing, each with its fix.</summary>
     private IEnumerable<SettingItem> Attention()
@@ -168,6 +231,7 @@ public sealed partial class ControlPanelViewModel
         var signature = string.Join("|",
             ConnectionLabel,
             OpenLayoutName,
+            ToolbarLayout?.Name,
             _isEditMode,
             _overlaysHidden,
             _health,
@@ -215,10 +279,15 @@ public sealed partial class ControlPanelViewModel
             return;
         }
 
-        OpenSetupAssistant();
+        OpenSetupAssistant(isFirstRun: true);
     }
 
-    private void OpenSetupAssistant()
+    /// <summary>Leaves the assistant without finishing it (Escape, a click beside it).</summary>
+    public void CancelSetup() => _setup?.CancelCommand.Execute(null);
+
+    private void OpenSetupAssistant() => OpenSetupAssistant(isFirstRun: false);
+
+    private void OpenSetupAssistant(bool isFirstRun)
     {
         var monitors = Monitors.Monitors().OrderByDescending(monitor => monitor.IsPrimary).ToList();
         var choices = monitors
@@ -240,7 +309,8 @@ public sealed partial class ControlPanelViewModel
                 {
                     IsEditMode = true;
                 }
-            });
+            },
+            isFirstRun);
     }
 
     /// <summary>Switches the preset's widgets on, places them on the monitor, and the rest off.

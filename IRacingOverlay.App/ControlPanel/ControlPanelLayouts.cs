@@ -136,6 +136,11 @@ public sealed partial class ControlPanelViewModel
 
     public bool HasLayoutPreview => PreviewLayout is not null;
 
+    /// <summary>The previewed layout's resolution, for the preview pane's header.</summary>
+    public string PreviewLayoutResolution => PreviewLayout is { } layout
+        ? string.Create(CultureInfo.InvariantCulture, $"{layout.Width}×{layout.Height} · {layout.Monitor.FriendlyName}")
+        : "";
+
     /// <summary>Points the preview at the page's selected layout. A rebuild of the page that finds
     /// the same layout unchanged keeps the preview as is, rather than rebuilding every panel.</summary>
     private void SetPreviewLayout(Layout? layout)
@@ -148,6 +153,7 @@ public sealed partial class ControlPanelViewModel
         _previewLayout = layout;
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
+        OnPropertyChanged(nameof(PreviewLayoutResolution));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
     }
 
