@@ -103,16 +103,16 @@ public sealed class FuelCalculatorState
     // "TO FULL" rather than a bare number when there's no finish to aim at, so the figure can't be
     // mistaken for a computed strategy call.
     public string RefuelValueDisplay => CanProjectToFinish
-        ? (NeedsRefuel ? RefuelAmount : "NOT NEEDED")
+        ? (NeedsRefuel ? RefuelAmount : Loc.T("fuel.notNeeded"))
         : HasTankCapacity
-            ? (NeedsRefuel ? RefuelAmount : "FULL")
+            ? (NeedsRefuel ? RefuelAmount : Loc.T("fuel.full"))
             : "—";
 
     /// <summary>Unit (and "TO FULL" qualifier) after <see cref="RefuelValueDisplay"/>; empty when
     /// the value is text rather than an amount.</summary>
     public string RefuelUnitDisplay => !NeedsRefuel || !(CanProjectToFinish || HasTankCapacity)
         ? ""
-        : CanProjectToFinish ? VolumeUnit : $"{VolumeUnit} TO FULL";
+        : CanProjectToFinish ? VolumeUnit : Loc.F("fuel.toFull", VolumeUnit);
 
     // Whole litres, or tenths of a gallon: the steps each unit's pit fuel control moves in.
     private string RefuelAmount => UnitSystem == UnitSystem.Imperial

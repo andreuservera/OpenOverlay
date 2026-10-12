@@ -74,14 +74,14 @@ public sealed class LayoutGeometryTests
     }
 
     [Theory]
-    [InlineData(0.1, ScaleLevel.XXS)]
-    [InlineData(1.0, ScaleLevel.S)]
-    [InlineData(1.15, ScaleLevel.M)]
-    [InlineData(1.4, ScaleLevel.L)]
-    [InlineData(9.0, ScaleLevel.XXXL)]
-    public void NearestLevel_PicksTheClosestStep_WithinTheLadder(double factor, ScaleLevel expected)
+    [InlineData(0.1, 65)]
+    [InlineData(1.0, 87)]
+    [InlineData(1.15, 100)]
+    [InlineData(1.4, 122)]
+    [InlineData(9.0, 200)]
+    public void NearestLevel_PicksTheClosestPercent_WithinTheRange(double factor, int expectedPercent)
     {
-        Assert.Equal(expected, LayoutGeometry.NearestLevel(factor));
+        Assert.Equal(expectedPercent, LayoutGeometry.NearestLevel(factor).Percent);
     }
 
     [Theory]

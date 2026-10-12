@@ -70,13 +70,7 @@ public sealed class WeatherState
 
     public string TrackWetnessDisplay => TrackWetness switch
     {
-        1 => "DRY",
-        2 => "MOSTLY DRY",
-        3 => "DAMP",
-        4 => "LIGHTLY WET",
-        5 => "WET",
-        6 => "VERY WET",
-        7 => "SOAKED",
+        >= 1 and <= 7 => Loc.T($"weather.wetness.{TrackWetness}"),
         _ => "—",
     };
 
@@ -91,15 +85,15 @@ public sealed class WeatherState
 
     public string WindDirectionDescription => WindFromRelativeDeg switch
     {
-        null => "Wind direction unavailable",
-        < 22.5 or >= 337.5 => $"Headwind{CompassSuffix}",
-        < 67.5 => $"Wind from front right{CompassSuffix}",
-        < 112.5 => $"Wind from the right{CompassSuffix}",
-        < 157.5 => $"Wind from rear right{CompassSuffix}",
-        < 202.5 => $"Tailwind{CompassSuffix}",
-        < 247.5 => $"Wind from rear left{CompassSuffix}",
-        < 292.5 => $"Wind from the left{CompassSuffix}",
-        _ => $"Wind from front left{CompassSuffix}",
+        null => Loc.T("weather.wind.unavailable"),
+        < 22.5 or >= 337.5 => Loc.F("weather.wind.head", CompassSuffix),
+        < 67.5 => Loc.F("weather.wind.frontRight", CompassSuffix),
+        < 112.5 => Loc.F("weather.wind.right", CompassSuffix),
+        < 157.5 => Loc.F("weather.wind.rearRight", CompassSuffix),
+        < 202.5 => Loc.F("weather.wind.tail", CompassSuffix),
+        < 247.5 => Loc.F("weather.wind.rearLeft", CompassSuffix),
+        < 292.5 => Loc.F("weather.wind.left", CompassSuffix),
+        _ => Loc.F("weather.wind.frontLeft", CompassSuffix),
     };
 
     /// <summary>Compass point the wind blows from, e.g. "NW". Empty without a heading.</summary>
@@ -112,7 +106,7 @@ public sealed class WeatherState
         ? Cardinal(relative + heading + 180)
         : "";
 
-    private string CompassSuffix => WindFromCardinal.Length > 0 ? $" — from {WindFromCardinal}, blowing to {WindToCardinal}" : "";
+    private string CompassSuffix => WindFromCardinal.Length > 0 ? Loc.F("weather.wind.compass", WindFromCardinal, WindToCardinal) : "";
 
     private static readonly string[] CompassPoints = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 
@@ -124,14 +118,14 @@ public sealed class WeatherState
 
     public string ConditionDescription => Condition switch
     {
-        WeatherCondition.Sunny => "Sunny",
-        WeatherCondition.PartlyCloudy => "Partly cloudy",
-        WeatherCondition.Cloudy => "Cloudy",
-        WeatherCondition.Rain => "Rain",
-        WeatherCondition.NightClear => "Clear night",
-        WeatherCondition.NightCloudy => "Cloudy night",
-        WeatherCondition.NightRain => "Rain at night",
-        _ => "Sky conditions unavailable",
+        WeatherCondition.Sunny => Loc.T("weather.sky.sunny"),
+        WeatherCondition.PartlyCloudy => Loc.T("weather.sky.partlyCloudy"),
+        WeatherCondition.Cloudy => Loc.T("weather.sky.cloudy"),
+        WeatherCondition.Rain => Loc.T("weather.sky.rain"),
+        WeatherCondition.NightClear => Loc.T("weather.sky.nightClear"),
+        WeatherCondition.NightCloudy => Loc.T("weather.sky.nightCloudy"),
+        WeatherCondition.NightRain => Loc.T("weather.sky.nightRain"),
+        _ => Loc.T("weather.sky.unavailable"),
     };
 
     private string FormatTemperature(double? celsius) => celsius is { } c

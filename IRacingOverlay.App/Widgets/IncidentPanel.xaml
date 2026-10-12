@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.IncidentPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              x:Name="Root">
     <!-- Your count, the team's beside it in a team race, and the session's limit when it has one.
          Captions only appear when there are two numbers to tell apart. A new incident briefly swaps
@@ -14,13 +15,13 @@
                 <!-- Title and alert share one slot. The hidden sizer holds the longest alert, so the
                      panel is always that wide and never resizes when one appears. -->
                 <Grid Margin="0,0,0,2">
-                    <TextBlock Text="2x LOSS OF CONTROL" Style="{StaticResource PanelTitle}" FontWeight="Bold" Visibility="Hidden"/>
-                    <TextBlock x:Name="TitleText" Text="INCIDENTS" Style="{StaticResource PanelTitle}"/>
+                    <TextBlock Text="{loc:T incident.2xLossOfControl}" Style="{StaticResource PanelTitle}" FontWeight="Bold" Visibility="Hidden"/>
+                    <TextBlock x:Name="TitleText" Text="{loc:T incident.incidents}" Style="{StaticResource PanelTitle}"/>
                     <TextBlock x:Name="AlertText" Text="" Style="{StaticResource PanelTitle}" FontWeight="Bold" Opacity="0"/>
                 </Grid>
                 <StackPanel Orientation="Horizontal">
                     <StackPanel>
-                        <TextBlock x:Name="MyCaption" Text="YOU" Style="{StaticResource ColumnHeader}" Visibility="Collapsed"/>
+                        <TextBlock x:Name="MyCaption" Text="{loc:T incident.you}" Style="{StaticResource ColumnHeader}" Visibility="Collapsed"/>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="MyCountText" Text="0" Style="{StaticResource DisplayValueSmall}"
                                        RenderTransformOrigin="0.5,0.6">
@@ -32,7 +33,7 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel x:Name="TeamBlock" Margin="18,0,0,0" Visibility="Collapsed">
-                        <TextBlock Text="TEAM" Style="{StaticResource ColumnHeader}"/>
+                        <TextBlock Text="{loc:T incident.team}" Style="{StaticResource ColumnHeader}"/>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="TeamCountText" Text="0" Style="{StaticResource DisplayValueSmall}"/>
                             <TextBlock Text="x" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="1,0,0,4"/>

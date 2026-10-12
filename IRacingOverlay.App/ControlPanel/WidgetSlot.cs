@@ -25,7 +25,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     private OverlayWindowBase? _window;
     private bool _isEnabled;
     private bool _hideOutsideCar;
-    private ScaleLevel _scale;
+    private WidgetScale _scale;
     private double _opacity;
     private bool _isEditMode;
     private bool _isDriving;
@@ -110,7 +110,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
-    public ScaleLevel Scale
+    public WidgetScale Scale
     {
         get => _scale;
         set
@@ -126,7 +126,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             ScaleLevelStore.Save(Descriptor.ScaleKey, value);
             if (_window is not null)
             {
-                _window.ScaleLevel = value;
+                _window.Scale = value;
             }
 
             OnPropertyChanged();
@@ -187,17 +187,28 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
-    /// <summary>What the rail says under the widget's name. Three states rather than two, because
-    /// "on, but currently hidden because you aren't driving" is the one a user would otherwise
-    /// report as a bug.</summary>
-    public string StateLabel => !_isEnabled
-        ? "HIDDEN"
-        : _openFailed ? "COULD NOT OPEN"
-        : _isSuppressed && !_isEditMode ? "HIDDEN BY HOTKEY"
-        : ShouldBeOnScreen ? "VISIBLE" : "WAITING FOR CAR";
+    /// <summary>Where the widget stands, as the rail's dot shows it. Four states rather than two,
+    /// because "on, but not showing right now because you aren't driving" is the one a user would
+    /// otherwise report as a bug.</summary>
+    public WidgetState State => !_isEnabled
+        ? WidgetState.Off
+        : _openFailed ? WidgetState.Failed
+        : ShouldBeOnScreen ? WidgetState.OnScreen : WidgetState.Waiting;
+
+    /// <summary>The state in words, for the dot's tooltip.</summary>
+    public string StateLabel => Loc.T(StateKey);
+
+    /// <summary>The state in English, for the diagnostics report.</summary>
+    public string StateLogLabel => Loc.English(StateKey);
+
+    private string StateKey => !_isEnabled
+        ? "widgetState.hidden"
+        : _openFailed ? "widgetState.failed"
+        : _isSuppressed && !_isEditMode ? "widgetState.suppressed"
+        : ShouldBeOnScreen ? "widgetState.onScreen" : "widgetState.waiting";
 
     /// <summary>True when the widget is actually on screen right now, as opposed to merely switched
-    /// on. Drives the rail's live dot.</summary>
+    /// on.</summary>
     public bool IsOnScreen => ShouldBeOnScreen;
 
     /// <summary>The global "hide all overlays" switch. Edit mode still shows the widget — you
@@ -260,6 +271,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             Discard();
         }
 
+        OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(StateLabel));
         OnPropertyChanged(nameof(IsOnScreen));
         if (cameOnScreen && _window is { IsVisible: true })
@@ -277,7 +289,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     /// Ctrl+wheel, so the control panel's selector never shows a stale level.</summary>
     public void RefreshScaleFromWidget()
     {
-        var current = _window?.ScaleLevel ?? ScaleLevelStore.Get(Descriptor.ScaleKey);
+        var current = _window?.Scale ?? ScaleLevelStore.Get(Descriptor.ScaleKey);
         if (current == _scale)
         {
             return;
@@ -315,6 +327,13 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Where the widget is, or will open: the window's position if it has one, its saved
+    /// position if not, null if it has never been placed (it opens at its default).</summary>
+    internal (double Left, double Top)? SavedPosition =>
+        _window is not null ? (_window.Left, _window.Top)
+        : WidgetLayoutStore.Get(Key) is { } saved ? (saved.Left, saved.Top)
+        : null;
+
     /// <summary>Puts the widget at a desktop position (WPF units) and remembers it there — now if
     /// the window exists, on first show if not.</summary>
     public void MoveTo(double left, double top)
@@ -339,7 +358,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private string LogSource => $"Widget: {Descriptor.Name}";
+    private string LogSource => $"Widget: {Descriptor.LogName}";
 
     /// <summary>Forgets the window before closing it, so its Closed event reads as ours.</summary>
     private void Discard()
@@ -389,4 +408,20 @@ public sealed class WidgetSlot : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>What the rail's dot says about a widget. See <see cref="WidgetSlot.State"/>.</summary>
+public enum WidgetState
+{
+    /// <summary>Switched off.</summary>
+    Off,
+
+    /// <summary>Switched on and showing.</summary>
+    OnScreen,
+
+    /// <summary>Switched on, but held back for now: not driving, or hidden by the hotkey.</summary>
+    Waiting,
+
+    /// <summary>Switched on, but its window could not open.</summary>
+    Failed,
 }

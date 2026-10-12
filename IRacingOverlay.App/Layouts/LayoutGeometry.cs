@@ -63,10 +63,9 @@ public static class LayoutGeometry
         return new SnapResult(x, y, guides);
     }
 
-    /// <summary>The size level whose factor is closest to <paramref name="factor"/>. The ends of the
-    /// ladder are the minimum and maximum size every widget has.</summary>
-    public static ScaleLevel NearestLevel(double factor) =>
-        Enum.GetValues<ScaleLevel>().MinBy(level => Math.Abs(ScaleLevels.FactorOf(level) - factor));
+    /// <summary>The size whose factor is closest to <paramref name="factor"/>, to the percent. The
+    /// ends of the range are the minimum and maximum size every widget has.</summary>
+    public static WidgetScale NearestLevel(double factor) => WidgetScale.FromFactor(factor);
 
     /// <summary>True when any part of the widget lies outside the canvas.</summary>
     public static bool IsOffCanvas(Box widget, double canvasWidth, double canvasHeight) =>

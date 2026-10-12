@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 
 namespace IRacingOverlay.App.ControlPanel;
 
@@ -26,4 +28,69 @@ public sealed class BoolToVisibilityConverter : IValueConverter
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
+}
+
+/// <summary>A text field whose value is applied on Enter as well as when it loses focus: typing a
+/// number and pressing Enter is how anyone expects a field like "73 %" to take effect.</summary>
+/// <summary>The wheel over a slider moves it a small step per notch, rather than scrolling the
+/// page. Only where a slider asks for it: elsewhere the page scrolls under the pointer as usual.</summary>
+public static class WheelSteps
+{
+    public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
+        "IsEnabled", typeof(bool), typeof(WheelSteps), new PropertyMetadata(false, OnChanged));
+
+    public static bool GetIsEnabled(DependencyObject element) => (bool)element.GetValue(IsEnabledProperty);
+
+    public static void SetIsEnabled(DependencyObject element, bool value) => element.SetValue(IsEnabledProperty, value);
+
+    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not System.Windows.Controls.Slider slider)
+        {
+            return;
+        }
+
+        slider.PreviewMouseWheel -= OnWheel;
+        if (e.NewValue is true)
+        {
+            slider.PreviewMouseWheel += OnWheel;
+        }
+    }
+
+    private static void OnWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Slider slider && e.Delta != 0)
+        {
+            slider.Value += Math.Sign(e.Delta) * slider.SmallChange;
+            e.Handled = true;
+        }
+    }
+}
+
+public static class CommitOnEnter
+{
+    public static readonly DependencyProperty IsEnabledProperty = DependencyProperty.RegisterAttached(
+        "IsEnabled", typeof(bool), typeof(CommitOnEnter), new PropertyMetadata(false, OnChanged));
+
+    public static bool GetIsEnabled(DependencyObject element) => (bool)element.GetValue(IsEnabledProperty);
+
+    public static void SetIsEnabled(DependencyObject element, bool value) => element.SetValue(IsEnabledProperty, value);
+
+    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TextBox box && e.NewValue is true)
+        {
+            box.KeyDown += (_, args) =>
+            {
+                if (args.Key == Key.Enter)
+                {
+                    box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                    box.SelectAll();
+                    args.Handled = true;
+                }
+            };
+            // Clicking in selects the value, so a new one replaces it rather than joining it.
+            box.GotKeyboardFocus += (_, _) => box.SelectAll();
+        }
+    }
 }

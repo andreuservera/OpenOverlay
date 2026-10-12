@@ -31,15 +31,14 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private bool _isEditMode;
     private bool _isConnected;
     private ConnectionState _connectionState;
+    private string? _sessionLabel;
     private HealthStatus _health;
     private string _healthLine = "Starting";
-    private string _telemetryLine = "Speed —   Lap —   Gear —";
+    private string _telemetryLine = Loc.T("status.telemetry.none");
     private string _diagnosticsLine = "";
-    private string _searchText = "";
     private int _selectedMonitorIndex;
     private DashboardTheme _dashboardTheme;
     private int _criticalRefreshIndex;
-    private Dictionary<NavItem, string>? _searchIndex;
 
     public ControlPanelViewModel()
     {
@@ -67,41 +66,90 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
         };
 
+        // A new language rewrites everything the window says: the bound texts refresh by
+        // themselves, the page in view is rebuilt and search starts over in the new words.
+        Loc.Changed += () =>
+        {
+            _searchIndex = null;
+            if (Selected is { } selected)
+            {
+                BuildSettings(selected);
+            }
+
+            UpdateWidgetCount();
+            OnPropertyChanged(string.Empty);
+            // A dropdown handed its list in the new language drops its selection; once every list
+            // has been swapped, say the selections again so each picks its entry back up.
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                () => OnPropertyChanged(string.Empty), System.Windows.Threading.DispatcherPriority.Background);
+        };
+
+        AddHomePage();
+
         foreach (var descriptor in WidgetCatalog.All)
         {
             var slot = new WidgetSlot(descriptor, () => CreateWidget(descriptor.Key));
             slot.CameOnScreen += OnWidgetCameOnScreen;
+            slot.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(WidgetSlot.IsEnabled))
+                {
+                    UpdateWidgetCount();
+                }
+                else if (e.PropertyName == nameof(WidgetSlot.State))
+                {
+                    RefreshHome();
+                }
+            };
             _slots[descriptor.Key] = slot;
             NavItems.Add(NavItem.ForWidget(slot));
         }
 
+        // Layouts stands alone, without a heading: one page, and the one most people open next.
         NavItems.Add(NavItem.ForPage(
-            LayoutsPageKey, "Layouts", "Saved arrangements of your widgets for one monitor.",
-            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20"));
+            LayoutsPageKey, "nav.layouts.title", "nav.layouts.blurb",
+            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", "#layouts", isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
-            GeneralPageKey, "General", "Units, performance, hotkeys, the tray and diagnostics.",
-            "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9"));
+            GeneralPageKey, "nav.general.title", "nav.general.blurb",
+            "M9.65,4.77 L10.26,2.15 L13.74,2.15 L14.35,4.77 L15.45,5.23 L17.74,3.81 L20.19,6.26 L18.77,8.55 L19.23,9.65 L21.85,10.26 L21.85,13.74 L19.23,14.35 L18.77,15.45 L20.19,17.74 L17.74,20.19 L15.45,18.77 L14.35,19.23 L13.74,21.85 L10.26,21.85 L9.65,19.23 L8.55,18.77 L6.26,20.19 L3.81,17.74 L5.23,15.45 L4.77,14.35 L2.15,13.74 L2.15,10.26 L4.77,9.65 L5.23,8.55 L3.81,6.26 L6.26,3.81 L8.55,5.23 Z M12,8.5 A3.5,3.5 0 1 0 12.01,8.5 Z",
+            SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
-            DashboardPageKey, "Dashboard", "The fullscreen layout for a second monitor.",
-            "M3,4 H21 V16 H3 Z M9,20 H15 M12,16 V20"));
+            HotkeysPageKey, "nav.hotkeys.title", "nav.hotkeys.blurb",
+            "M3,6 H21 V18 H3 Z M7,10 H7.01 M11,10 H11.01 M15,10 H15.01 M7,14 H17",
+            SettingsGroupTitle, isPinned: true));
 
-        AddAboutPages();
+        NavItems.Add(NavItem.ForPage(
+            DiagnosticsPageKey, "nav.diagnostics.title", "nav.diagnostics.blurb",
+            "M3,12 H7 L9.5,6 L14.5,18 L17,12 H21",
+            SettingsGroupTitle, isPinned: true));
+
+        AddHelpPage();
 
         MonitorNames = Screen.AllScreens.Select(DescribeScreen).ToList();
         // Second monitor by default: a dashboard on the same screen as the sim is in the way, which
         // is the one thing it must never be.
         _selectedMonitorIndex = MonitorNames.Count > 1 ? 1 : 0;
 
-        NavView = CollectionViewSource.GetDefaultView(NavItems);
+        UpdateWidgetCount();
+
+        // Two lists over the same pages, each with its own view: the widgets scroll at the top, the
+        // pinned pages (Layouts, settings) stay at the foot. Help sits below both, in neither.
+        NavView = new ListCollectionView(NavItems);
         NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
+        NavView.Filter = item => item is NavItem { IsFooter: false, IsPinned: false };
+        PinnedNavView = new ListCollectionView(NavItems);
+        PinnedNavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
+        PinnedNavView.Filter = item => item is NavItem { IsPinned: true };
 
         Select(NavItems[0]);
     }
 
-    private const string DashboardPageKey = "app.dashboard";
     private const string GeneralPageKey = "app.general";
+    private const string HotkeysPageKey = "app.hotkeys";
+    private const string DiagnosticsPageKey = "app.diagnostics";
+    private const string SettingsGroupTitle = "SETTINGS";
 
     // ===== Shared option objects =====
     // These are the same instances handed to the widgets and to the preview, which is what makes a
@@ -125,6 +173,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public ICollectionView NavView { get; }
 
+    public ICollectionView PinnedNavView { get; }
+
     public IReadOnlyCollection<WidgetSlot> Slots => _slots.Values;
 
     public IReadOnlyList<string> MonitorNames { get; }
@@ -141,42 +191,44 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         set => Select(value);
     }
 
-    /// <summary>Filters the rail. Matching on the blurb as well as the name is deliberate: it lets
-    /// someone find the widget by what it does ("fuel", "gap", "weather") when they don't yet know
-    /// what this application decided to call it. Every option on every page counts too — its
-    /// label, hint and choices, hotkeys included — and the open page narrows to the groups that
-    /// matched, so "imperial" lands on the units setting rather than somewhere on General.</summary>
-    public string SearchText
+    /// <summary>The rail's selection: the open page, or nothing when the page isn't listed in the
+    /// rail (Help, at its foot). Kept apart from <see cref="Selected"/> so the rail never goes on
+    /// lighting the page that was open before Help, and so clicking that page opens it again.</summary>
+    public NavItem? RailSelected
     {
-        get => _searchText;
+        get => _selected is { IsFooter: false, IsPinned: false } page ? page : null;
+        set => Select(value);
+    }
+
+    /// <summary>The selection of the rail's pinned list at its foot, on the same terms as
+    /// <see cref="RailSelected"/>: only one of the two lists ever lights a page.</summary>
+    public NavItem? PinnedRailSelected
+    {
+        get => _selected is { IsPinned: true } page ? page : null;
+        set => Select(value);
+    }
+
+    private const string RailCollapseKey = "Rail/IconsOnly";
+    private ICommand? _toggleRail;
+
+    /// <summary>The rail folded to its icons, for more room to the settings and the preview. The
+    /// names are one hover away; remembered for next time.</summary>
+    public bool IsRailCollapsed
+    {
+        get => CollapseStore.IsCollapsed(RailCollapseKey);
         set
         {
-            if (_searchText == value)
+            if (value == IsRailCollapsed)
             {
                 return;
             }
 
-            _searchText = value;
-            var term = value.Trim();
-            if (term.Length == 0)
-            {
-                _searchIndex = null;
-                NavView.Filter = null;
-            }
-            else
-            {
-                // Built once per search, not per keystroke: every page's options, as plain text.
-                _searchIndex ??= BuildSearchIndex();
-                NavView.Filter = item => item is NavItem nav && Matches(nav, term);
-            }
-
+            CollapseStore.SetCollapsed(RailCollapseKey, value);
             OnPropertyChanged();
-            if (_selected is { } page)
-            {
-                BuildSettings(page);
-            }
         }
     }
+
+    public ICommand ToggleRailCommand => _toggleRail ??= new RelayCommand(() => IsRailCollapsed = !IsRailCollapsed);
 
     /// <summary>Widgets unlocked: they can be dragged and resized on screen. A single switch for the
     /// whole application rather than per widget: "let me move things" is a mode you are in, not a
@@ -201,11 +253,12 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             OnPropertyChanged();
             OnPropertyChanged(nameof(EditModeLabel));
+            RefreshHome();
         }
     }
 
     /// <summary>What the toolbar button does when clicked.</summary>
-    public string EditModeLabel => _isEditMode ? "Lock widgets" : "Unlock widgets";
+    public string EditModeLabel => Loc.T(_isEditMode ? "toolbar.editMode.done" : "toolbar.editMode.move");
 
     public bool IsConnected
     {
@@ -219,16 +272,73 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _isConnected = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(ConnectionLabel));
+            OnConnectionChanged();
         }
     }
 
-    public string ConnectionLabel => _connectionState switch
+    /// <summary>The toolbar's status pill, in words. An application problem outranks the link,
+    /// since it says the rest can't be trusted; then a link that is up but stalled; then the session
+    /// itself.</summary>
+    public string ConnectionLabel => ConnectionTone switch
     {
-        ConnectionState.Stale => "TELEMETRY STALLED",
-        ConnectionState.Recovering => "RECONNECTING",
-        _ => _isConnected ? "CONNECTED" : "WAITING FOR IRACING",
+        ConnectionTone.Error => Loc.T("connection.problem"),
+        ConnectionTone.Degraded => Loc.T(_connectionState == ConnectionState.Stale ? "connection.stalled" : "connection.reconnecting"),
+        ConnectionTone.Live => string.IsNullOrEmpty(_sessionLabel) ? Loc.T("connection.connected") : Loc.F("connection.connectedSession", _sessionLabel),
+        _ => Loc.T("connection.waiting"),
     };
+
+    /// <summary>What to do about the state the pill shows, when there is something to do.</summary>
+    public string ConnectionHint => ConnectionTone == ConnectionTone.Waiting
+        ? Loc.T("connection.waitingHint")
+        : "";
+
+    /// <summary>The pill's colour: green connected, amber waiting or degraded, red a problem.</summary>
+    public ConnectionTone ConnectionTone =>
+        _health == HealthStatus.Failed ? ConnectionTone.Error
+        : ConnectionDegraded ? ConnectionTone.Degraded
+        : _isConnected ? ConnectionTone.Live
+        : ConnectionTone.Waiting;
+
+    /// <summary>Track and session for the pill ("Spa · Race"), pushed in by the window while
+    /// connected; null when there is none to show.</summary>
+    public string? SessionLabel
+    {
+        get => _sessionLabel;
+        set
+        {
+            if (_sessionLabel == value)
+            {
+                return;
+            }
+
+            _sessionLabel = value;
+            OnPropertyChanged();
+            OnConnectionChanged();
+        }
+    }
+
+    private void OnConnectionChanged()
+    {
+        OnPropertyChanged(nameof(ConnectionLabel));
+        OnPropertyChanged(nameof(ConnectionHint));
+        OnPropertyChanged(nameof(ConnectionTone));
+        RefreshHome();
+    }
+
+    /// <summary>Puts "2/5" beside each widget heading: how many of its widgets are switched on, at a
+    /// glance, so what is on screen never has to be read off twelve rows.</summary>
+    private void UpdateWidgetCount()
+    {
+        foreach (var category in _slots.Values.GroupBy(slot => slot.Descriptor.Category))
+        {
+            var on = category.Count(slot => slot.IsEnabled);
+            var total = category.Count();
+            var section = NavSection.For(WidgetCatalog.HeadingOf(category.Key));
+            section.Badge = $"{on}/{total}";
+            section.BadgeTip = Loc.F("nav.section.badgeTip", on, total);
+            section.HasActive = on > 0;
+        }
+    }
 
     /// <summary>The reader's own view of the link, polled once a second: it knows about stalls and
     /// retries that the connected/disconnected events never report.</summary>
@@ -244,8 +354,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _connectionState = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(ConnectionLabel));
             OnPropertyChanged(nameof(ConnectionDegraded));
+            OnConnectionChanged();
         }
     }
 
@@ -263,6 +373,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _health = value;
             OnPropertyChanged();
+            OnConnectionChanged();
         }
     }
 
@@ -298,15 +409,36 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         {
             _diagnosticsLine = value;
             OnPropertyChanged();
+            // Once a second: catches a widget dragged off every monitor.
+            RefreshHome();
         }
     }
 
     public int SelectedMonitorIndex => _selectedMonitorIndex;
 
+    private double _interfaceScale = InterfaceScaleStore.Scale;
+
+    /// <summary>How big the control panel draws itself (General › Window › Interface size).</summary>
+    public double InterfaceScale
+    {
+        get => _interfaceScale;
+        set
+        {
+            if (_interfaceScale.Equals(value))
+            {
+                return;
+            }
+
+            _interfaceScale = value;
+            InterfaceScaleStore.Save(value);
+            OnPropertyChanged();
+        }
+    }
+
     public DeltaReference DeltaReference => DeltaOptions.Reference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
-    /// bars and the pedal trace. Index order matches the labels General › Performance offers.</summary>
+    /// bars and the pedal trace. Index order matches the labels Settings › General › Performance offers.</summary>
     public int CriticalRefreshIntervalMs => _criticalRefreshIndex switch
     {
         0 => 16,
@@ -356,14 +488,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     private void Select(NavItem? item)
     {
-        // A null arrives when the search filters the selected entry out from under the list. Keeping
-        // the current page is the useful behaviour: the pane the user was working in stays put while
-        // they look for the next one, instead of blanking on every keystroke.
+        // A null arrives when the page is one the rail doesn't list (Help, at its foot): the list
+        // loses its selection, and the page stays.
         if (item is null || ReferenceEquals(_selected, item))
         {
             return;
         }
 
+        // Picking a page is the end of a search: the results give way to the page.
+        ClearSearch();
         _selected = item;
 
         // The widget's own +/- control writes the same setting, so the page is rebuilt from current
@@ -372,12 +505,39 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         BuildSettings(item);
 
         OnPropertyChanged(nameof(Selected));
+        OnPropertyChanged(nameof(RailSelected));
+        OnPropertyChanged(nameof(PinnedRailSelected));
         OnPropertyChanged(nameof(SelectedWidget));
         OnPropertyChanged(nameof(HasPreview));
-        OnPropertyChanged(nameof(IsInfoPage));
+        OnPropertyChanged(nameof(IsHomePage));
+        OnPropertyChanged(nameof(IsHelpPage));
+        OnPropertyChanged(nameof(HomeScreen));
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
+        OnPropertyChanged(nameof(PreviewLayoutResolution));
+        OnPropertyChanged(nameof(LayoutPreviewHeading));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
+        OnPropertyChanged(nameof(SelectedTab));
+        OnPreviewTargetChanged();
+    }
+
+    private int _selectedTab;
+
+    /// <summary>The open tab on a page that has tabs (Help); 0 elsewhere.</summary>
+    public int SelectedTab
+    {
+        get => _selected?.HasTabs == true ? _selectedTab : 0;
+        set
+        {
+            if (value < 0 || _selected is not { HasTabs: true } page || value == _selectedTab)
+            {
+                return;
+            }
+
+            _selectedTab = value;
+            BuildSettings(page);
+            OnPropertyChanged();
+        }
     }
 
     public WidgetSlot? SelectedWidget => _selected?.Widget;
@@ -426,7 +586,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private static string DescribeScreen(Screen screen, int index)
     {
         var bounds = screen.Bounds;
-        var role = screen.Primary ? "primary" : $"display {index + 1}";
+        var role = screen.Primary ? Loc.T("monitor.primary") : Loc.F("monitor.display", index + 1);
         return $"{bounds.Width}×{bounds.Height} ({role})";
     }
 
@@ -434,4 +594,13 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>The colour of the toolbar's connection pill.</summary>
+public enum ConnectionTone
+{
+    Waiting,
+    Live,
+    Degraded,
+    Error,
 }

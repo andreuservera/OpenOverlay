@@ -39,7 +39,7 @@ public sealed class CollapsibleSectionTests : IDisposable
 
         Assert.True(Group("Standings").IsCollapsed);
         Assert.False(Group("Relative").IsCollapsed);            // same title, other widget
-        Assert.False(Group("Standings", "TABLE").IsCollapsed);  // other group, same widget
+        Assert.False(Group("Standings", "APPEARANCE").IsCollapsed);  // other group, same widget
     }
 
     [Fact]
@@ -76,6 +76,31 @@ public sealed class CollapsibleSectionTests : IDisposable
 
         Assert.False(notice.IsCollapsible);
         Assert.False(notice.IsCollapsed);
+    }
+
+    [Fact]
+    public void GroupFoldedByDefault_StartsFolded_AndRemembersBeingOpened()
+    {
+        SettingsGroup Advanced() =>
+            new SettingsGroup("ADVANCED") { Scope = "Weather", CollapsedByDefault = true }.With(new InfoSetting("Row", null, "x"));
+
+        Assert.True(Advanced().IsCollapsed);
+
+        Advanced().IsCollapsed = false;
+        CollapseStore.Reset();
+
+        Assert.False(Advanced().IsCollapsed);
+        Assert.False(Group("Weather", "ADVANCED").IsCollapsed); // the ordinary default reads its own key
+    }
+
+    [Fact]
+    public void SectionWithoutHeading_NeverFolds()
+    {
+        var section = NavSection.For("");
+        section.IsCollapsed = true;
+
+        Assert.False(section.HasHeading);
+        Assert.False(section.IsCollapsed);
     }
 
     [Fact]

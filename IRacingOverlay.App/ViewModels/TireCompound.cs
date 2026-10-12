@@ -24,7 +24,7 @@ public sealed record TireCompound(string Letter, string Color, string Name)
 
         var entry = table.FirstOrDefault(t => t.TireIndex == index);
         return entry is null || string.IsNullOrWhiteSpace(entry.TireCompoundType)
-            ? new TireCompound((index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), Neutral, $"Compound {index + 1}")
+            ? new TireCompound((index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), Neutral, Loc.F("tire.compound", index + 1))
             : FromName(entry.TireCompoundType);
     }
 

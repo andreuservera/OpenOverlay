@@ -1,0 +1,123 @@
+<UserControl x:Class="IRacingOverlay.App.ControlPanel.SetupAssistantView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
+             xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel">
+    <!-- Merged here too: StaticResource lookups run while this control is built, before it has a
+         parent window to find the theme in. -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ControlPanelTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <!--
+      The setup assistant's card (a SetupAssistant as DataContext): three steps, one shown at a time,
+      the monitor, the preset, then how to place the widgets.
+    -->
+    <Border Width="640"
+            Background="{StaticResource Cp.Surface}" BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"
+            CornerRadius="12" Padding="28,24">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.6" Color="#000000"/>
+        </Border.Effect>
+        <StackPanel>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="13"
+                        Margin="0,-6,-10,0" ToolTip="{loc:T setup.closeEsc}" Command="{Binding CancelCommand}"/>
+                <TextBlock Text="{Binding StepLabel}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
+            </DockPanel>
+
+            <!-- 1: the monitor -->
+            <StackPanel Margin="0,8,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Step}" Value="0">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock Text="{loc:T setup.whereDoYouRace}" Style="{StaticResource Cp.Display}"/>
+                <TextBlock Text="{loc:T setup.pickTheMonitorIracing}"
+                           Style="{StaticResource Cp.Hint}" FontSize="{StaticResource Cp.Size.Body}" Margin="0,4,0,16"/>
+                <ItemsControl ItemsSource="{Binding Monitors}" ItemTemplate="{StaticResource Cp.SetupChoiceTemplate}" Focusable="False"/>
+            </StackPanel>
+
+            <!-- 2: the preset -->
+            <StackPanel Margin="0,8,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Step}" Value="1">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock Text="{loc:T setup.whichWidgets}" Style="{StaticResource Cp.Display}"/>
+                <TextBlock Text="{loc:T setup.startFromASet}"
+                           Style="{StaticResource Cp.Hint}" FontSize="{StaticResource Cp.Size.Body}" Margin="0,4,0,16"/>
+                <ItemsControl ItemsSource="{Binding Presets}" ItemTemplate="{StaticResource Cp.SetupChoiceTemplate}" Focusable="False"/>
+            </StackPanel>
+
+            <!-- 3: placing them -->
+            <StackPanel Margin="0,8,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Step}" Value="2">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock Text="{loc:T setup.putThemWhereYou}" Style="{StaticResource Cp.Display}"/>
+                <TextBlock Text="{Binding Summary}" Style="{StaticResource Cp.Hint}" FontSize="{StaticResource Cp.Size.Body}"
+                           Margin="0,4,0,12"/>
+                <TextBlock Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}" TextWrapping="Wrap"
+                           Text="{loc:T setup.finalBody}"/>
+            </StackPanel>
+
+            <DockPanel Margin="0,24,0,0">
+                <Button DockPanel.Dock="Left" Style="{StaticResource Cp.TextButton}" Content="{Binding CancelText}"
+                        FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Control}"
+                        VerticalAlignment="Center" Command="{Binding CancelCommand}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource Cp.Button}" Content="{loc:T setup.back}" Margin="0,0,8,0" Command="{Binding BackCommand}"
+                            Visibility="{Binding CanGoBack, Converter={StaticResource Cp.BoolToVis}}"/>
+                    <Button Content="{loc:T setup.next}" MinWidth="96" Command="{Binding NextCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Cp.PrimaryButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Step}" Value="2">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Step}" Value="2">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Button Style="{StaticResource Cp.Button}" Content="{loc:T setup.later}" Margin="0,0,8,0" Command="{Binding FinishCommand}"/>
+                        <Button Style="{StaticResource Cp.PrimaryButton}" Content="{loc:T setup.moveWidgetsNow}" Command="{Binding MoveNowCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

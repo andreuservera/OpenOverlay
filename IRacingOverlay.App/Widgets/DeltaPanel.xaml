@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.DeltaPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              x:Name="Root">
     <!-- Horizontal padding rebalanced against the larger delta numeral, so the panel keeps its
          original footprint. -->
@@ -9,7 +10,7 @@
             <!-- Gain/loss wash rising from the bottom edge: readable in peripheral vision. -->
             <Border x:Name="StateWash" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"/>
             <StackPanel HorizontalAlignment="Center" Margin="11.5,10">
-                <TextBlock x:Name="LabelText" Text="VS SESSION BEST" Style="{StaticResource PanelTitle}"
+                <TextBlock x:Name="LabelText" Text="{loc:T delta.vsSessionBest}" Style="{StaticResource PanelTitle}"
                            HorizontalAlignment="Center" Margin="0,0,0,4"/>
                 <TextBlock x:Name="DeltaText" Text="—" Style="{StaticResource DisplayValue}"
                            HorizontalAlignment="Center"/>

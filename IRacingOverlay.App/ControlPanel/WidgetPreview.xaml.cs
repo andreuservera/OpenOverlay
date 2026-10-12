@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
@@ -31,6 +33,7 @@ public partial class WidgetPreview : UserControl
     private WeatherOptions? _weatherOptions;
     private TrackInfoOptions? _trackInfoOptions;
     private PedalTraceOptions? _pedalTraceOptions;
+    private PreviewSettings? _settings;
 
     private WidgetSlot? _slot;
     private UIElement? _panel;
@@ -64,8 +67,21 @@ public partial class WidgetPreview : UserControl
         CockpitOptions cockpitOptions,
         WeatherOptions weatherOptions,
         TrackInfoOptions trackInfoOptions,
-        PedalTraceOptions pedalTraceOptions)
+        PedalTraceOptions pedalTraceOptions,
+        PreviewSettings settings)
     {
+        _settings = settings;
+        settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PreviewSettings.Backdrop))
+            {
+                Backdrop.Mode = settings.Backdrop;
+            }
+            else
+            {
+                Refresh();
+            }
+        };
         _standingsOptions = standingsOptions;
         _relativeOptions = relativeOptions;
         _fuelCalculatorOptions = fuelCalculatorOptions;
@@ -120,10 +136,54 @@ public partial class WidgetPreview : UserControl
 
     private void OnOptionsChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
+    public static readonly DependencyProperty FitCaptionProperty = DependencyProperty.Register(
+        nameof(FitCaption), typeof(string), typeof(WidgetPreview), new PropertyMetadata(Loc.F("preview.fitScaled", 100)));
+
+    /// <summary>The fit toggle's caption: "FIT", "FIT · 74 %" when the widget is shown smaller
+    /// than it will be, or "ACTUAL SIZE".</summary>
+    public string FitCaption
+    {
+        get => (string)GetValue(FitCaptionProperty);
+        private set => SetValue(FitCaptionProperty, value);
+    }
+
+    private bool ShowsActualSize => ActualSizeToggle.IsChecked == true;
+
+    private void ActualSizeToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        var actual = ShowsActualSize;
+        Fitter.Stretch = actual ? Stretch.None : Stretch.Uniform;
+        Viewport.HorizontalScrollBarVisibility = actual ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        Viewport.VerticalScrollBarVisibility = actual ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        UpdateFitCaption();
+    }
+
+    private void Fitter_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateFitCaption();
+
+    private void UpdateFitCaption()
+    {
+        if (ShowsActualSize)
+        {
+            FitCaption = Loc.T("preview.actualSize");
+            return;
+        }
+
+        // The Viewbox's size against the stage's own (ladder-scaled) footprint is how far it shrank it.
+        var natural = Stage.DesiredSize.Width;
+        var shown = Fitter.ActualWidth;
+        var factor = natural > 0 && shown > 0 ? shown / natural : 1;
+        // Always with the figure, 100 % included, so the caption reads the same whether it shrank or not.
+        FitCaption = Loc.F("preview.fitScaled", Math.Min(100, Math.Round(factor * 100)));
+    }
+
     /// <summary>Panels that draw into a canvas (the trace, the map, the wear bars) read their own
     /// ActualWidth when updating, so their first paint has to wait until they have been measured.
     /// Re-pushing on size change covers that without a polling timer.</summary>
-    private void Stage_SizeChanged(object sender, SizeChangedEventArgs e) => Refresh();
+    private void Stage_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        Refresh();
+        UpdateFitCaption();
+    }
 
     private void Rebuild()
     {
@@ -146,7 +206,7 @@ public partial class WidgetPreview : UserControl
 
     private void ApplyScale()
     {
-        var factor = ScaleLevels.FactorOf(_slot?.Scale ?? ScaleLevels.Default);
+        var factor = (_slot?.Scale ?? WidgetScale.Default).Factor;
         StageScale.ScaleX = factor;
         StageScale.ScaleY = factor;
     }
@@ -190,5 +250,6 @@ public partial class WidgetPreview : UserControl
         _cockpitOptions,
         _weatherOptions,
         _trackInfoOptions,
-        _pedalTraceOptions);
+        _pedalTraceOptions,
+        _settings?.Scenario ?? PreviewScenario.Race);
 }

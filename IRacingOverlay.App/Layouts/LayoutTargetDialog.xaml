@@ -1,7 +1,8 @@
 <Window x:Class="IRacingOverlay.App.Layouts.LayoutTargetDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Layout"
+        xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
+        Title="{loc:T target.layout}"
         Width="460" SizeToContent="Height" ResizeMode="NoResize"
         WindowStyle="None" ShowInTaskbar="False" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource Cp.Surface}" BorderBrush="{DynamicResource Cp.BorderStrong}" BorderThickness="1"
@@ -22,12 +23,12 @@
         <StackPanel Margin="22,20,22,10">
             <TextBlock x:Name="Heading" Style="{StaticResource Cp.Title}"/>
             <TextBlock Style="{StaticResource Cp.Hint}" TextWrapping="Wrap" Margin="0,4,0,0"
-                       Text="A layout is designed for one monitor, at that monitor's resolution unless you choose another."/>
+                       Text="{loc:T target.aLayoutIsDesigned}"/>
         </StackPanel>
 
         <StackPanel Margin="22,0,22,12">
             <StackPanel x:Name="NameRow" Margin="0,6,0,6">
-                <TextBlock Text="Name" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <TextBlock Text="{loc:T target.name}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
                 <Border Height="32" Padding="10,0" Margin="0,6,0,0" Background="{StaticResource Cp.Field}"
                         BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6">
                     <TextBox x:Name="NameBox" Style="{StaticResource Cp.TextBox}"
@@ -39,13 +40,13 @@
             </StackPanel>
 
             <StackPanel Margin="0,6,0,6">
-                <TextBlock Text="Monitor" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <TextBlock Text="{loc:T target.monitor}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
                 <ComboBox x:Name="MonitorBox" Style="{StaticResource Cp.ComboBox}" Margin="0,6,0,0"
                           SelectionChanged="OnMonitorChanged"/>
             </StackPanel>
 
             <StackPanel Margin="0,6,0,6">
-                <TextBlock Text="Resolution" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
+                <TextBlock Text="{loc:T target.resolution}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"/>
                 <ComboBox x:Name="ResolutionBox" Style="{StaticResource Cp.ComboBox}" Margin="0,6,0,0"
                           SelectionChanged="OnResolutionChanged"/>
                 <StackPanel x:Name="CustomRow" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed">
@@ -58,7 +59,7 @@
                             BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" CornerRadius="6">
                         <TextBox x:Name="HeightBox" Style="{StaticResource Cp.TextBox}" MaxLength="4"/>
                     </Border>
-                    <TextBlock Text="px, 640 to 7680" Style="{StaticResource Cp.Hint}" VerticalAlignment="Center"
+                    <TextBlock Text="{loc:T target.px640To7680}" Style="{StaticResource Cp.Hint}" VerticalAlignment="Center"
                                Margin="10,0,0,0"/>
                 </StackPanel>
             </StackPanel>
@@ -71,7 +72,7 @@
                 Padding="22,14">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="ConfirmButton" Style="{StaticResource Cp.PrimaryButton}" MinWidth="84" Click="OnConfirm"/>
-                <Button Style="{StaticResource Cp.Button}" Content="Cancel" MinWidth="84" Margin="8,0,0,0" Click="OnCancel"/>
+                <Button Style="{StaticResource Cp.Button}" Content="{loc:T target.cancel}" MinWidth="84" Margin="8,0,0,0" Click="OnCancel"/>
             </StackPanel>
         </Border>
     </StackPanel>

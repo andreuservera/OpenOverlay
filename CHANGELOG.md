@@ -4,11 +4,19 @@ All notable changes to OpenOverlay, newest first.
 
 ### [0.12.0] - 2026-10-12
 
+#### Added
+- Control Panel in your language: pick one in Settings › General › Language, or leave it on Automatic to follow Windows. More languages can be added with a single file.   ← sustituye la línea con la errata
+- Redesigned Control Panel: a Home page with your session and what's on screen, search for any setting, a sidebar that folds to icons, adjustable interface size and a reset to defaults for each widget.
+- Setup assistant: pick your monitor and a preset (Essential, Complete or Streamer) and your widgets are placed for you. It opens on first run and from Home.
+
 #### Changed
 - Relative and Standings: while spectating or watching a replay, the tables centre on and highlight the car the camera is on.
+- Widget size is now a percentage, from 65 % to 200 %, instead of fixed sizes. Saved widgets and layouts keep the size they had.
+- Standings: the drivers shown around you no longer include yourself, so you see one more nearby car.
 
 #### Improved
 - OpenOverlay now runs on .NET 10, which keeps receiving security updates, and starts faster because the installer ships it precompiled.
+- Track & session keeps a steady width instead of resizing as its readings change.
 
 #### Fixed
 - Standings: the estimated iRating change is more accurate, now within about a point of iRacing's, and in multiclass races it counts only the cars in your class.
@@ -18,6 +26,8 @@ All notable changes to OpenOverlay, newest first.
 - Weather: no longer shows rain when the track is declared wet but it isn't actually raining.
 - Closing the Control Panel now always quits the app, instead of sometimes leaving it running in the background with no window or tray icon.
 
+#### Removed
+- The second-monitor dashboard is unavailable while it is redesigned; it will return in a later version.
 
 ### [0.11.0] - 2026-10-06
 

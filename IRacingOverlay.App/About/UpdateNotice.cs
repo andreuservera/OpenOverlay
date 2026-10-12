@@ -19,23 +19,23 @@ public sealed record UpdateNotice(
 
     public static UpdateNotice For(string version, ChangelogEntry? entry)
     {
-        var title = $"OpenOverlay has been updated to v{version}";
-        var released = entry?.Date is { } date ? $"Released {date.ToString("d MMM yyyy", CultureInfo.InvariantCulture)}. " : "";
+        var title = Loc.F("updated.title", version);
+        var released = entry?.Date is { } date ? Loc.F("updated.released", date.ToString("d MMM yyyy", CultureInfo.InvariantCulture)) : "";
         var sections = entry?.Sections ?? [];
         var teaser = sections.FirstOrDefault(section => !section.IsWarning) ?? sections.FirstOrDefault();
         if (teaser is null)
         {
-            return new UpdateNotice(title, released + "The details are in What's New.", null, [], null, false);
+            return new UpdateNotice(title, released + Loc.T("updated.detailsInWhatsNew"), null, [], null, false);
         }
 
         var items = teaser.Items.Take(MaxItems).Select(item => item.Text).ToList();
         var remaining = entry!.ItemCount - items.Count;
         return new UpdateNotice(
             title,
-            released + "Here's what's new.",
-            teaser.Title.Length > 0 ? teaser.Title.ToUpperInvariant() : "CHANGES",
+            released + Loc.T("updated.heresWhatsNew"),
+            teaser.Title.Length > 0 ? teaser.DisplayTitle.ToUpperInvariant() : Loc.T("updated.changes"),
             items,
-            remaining > 0 ? $"…and {remaining} more {(remaining == 1 ? "change" : "changes")}." : null,
+            remaining > 0 ? Loc.Plural("updated.more", remaining) : null,
             sections.Any(section => section.IsWarning));
     }
 }

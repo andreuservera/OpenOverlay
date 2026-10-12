@@ -10,7 +10,7 @@ public sealed record WidgetSnapshot(
     bool Enabled,
     double? Left,
     double? Top,
-    ScaleLevel Scale,
+    WidgetScale Scale,
     double Opacity,
     bool HideOutsideCar,
     JsonObject Config);

@@ -15,7 +15,8 @@ public sealed record PreviewOptions(
     CockpitOptions? Cockpit = null,
     WeatherOptions? Weather = null,
     TrackInfoOptions? TrackInfo = null,
-    PedalTraceOptions? PedalTrace = null);
+    PedalTraceOptions? PedalTrace = null,
+    PreviewScenario Scenario = PreviewScenario.Race);
 
 /// <summary>
 /// Builds a widget's production panel and feeds it sample data through the same UpdateState/SetRows
@@ -50,26 +51,27 @@ public static class PanelFactory
             case StandingsPanel standings:
                 {
                     var tableOptions = options.Standings;
-                    var field = PreviewData.StandingsField(tableOptions?.ShowMulticlass == true);
+                    var split = tableOptions?.ShowMulticlass == true && PreviewData.IsMulticlass(options.Scenario);
+                    var field = PreviewData.StandingsField(split, options.Scenario);
                     var focusSize = tableOptions?.FocusSize ?? DriverTableOptions.DefaultStandingsFocusSize;
-                    standings.SetRows(tableOptions?.ShowMulticlass == true
+                    standings.SetRows(split
                         ? StandingsBuilder.BuildMulticlassView(field, focusSize)
                         : StandingsBuilder.BuildFocusedView(field, focusSize));
                     standings.SetSof(PreviewData.StrengthOfField());
-                    standings.SetSessionType("RACE");
+                    standings.SetSessionType(PreviewData.SessionType(options.Scenario));
                     standings.SetProgress(PreviewData.Progress());
-                    standings.SetConditions(PreviewData.TableConditions());
+                    standings.SetConditions(PreviewData.TableConditions(options.Scenario));
                     break;
                 }
 
             case RelativePanel relative:
                 {
                     var focusSize = options.Relative?.FocusSize ?? DriverTableOptions.DefaultRelativeFocusSize;
-                    relative.SetRows(PreviewData.RelativeRows(focusSize));
-                    relative.SetSessionType("RACE");
+                    relative.SetRows(PreviewData.RelativeRows(focusSize, options.Scenario));
+                    relative.SetSessionType(PreviewData.SessionType(options.Scenario));
                     relative.SetSof(PreviewData.StrengthOfField());
                     relative.SetProgress(PreviewData.Progress());
-                    relative.SetConditions(PreviewData.TableConditions());
+                    relative.SetConditions(PreviewData.TableConditions(options.Scenario));
                     break;
                 }
 
@@ -99,13 +101,13 @@ public static class PanelFactory
                 incidents.UpdateState(PreviewData.Incidents());
                 break;
             case TrackInfoPanel trackInfo:
-                trackInfo.UpdateState(PreviewData.TrackInfo());
+                trackInfo.UpdateState(PreviewData.TrackInfo(options.Scenario));
                 break;
             case WeatherPanel weather:
-                weather.UpdateState(PreviewData.Weather());
+                weather.UpdateState(PreviewData.Weather(options.Scenario));
                 break;
             case TrackMapPanel trackMap:
-                trackMap.UpdateState(PreviewData.TrackMap());
+                trackMap.UpdateState(PreviewData.TrackMap(options.Scenario));
                 break;
             case FuelCalculatorPanel fuelCalculator:
                 fuelCalculator.UpdateState(PreviewData.FuelCalculator());

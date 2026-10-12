@@ -17,6 +17,25 @@ namespace IRacingOverlay.App.ControlPanel;
 /// </summary>
 public static class PreviewData
 {
+    /// <summary>What each scenario is called in the preview's picker, in <see cref="PreviewScenario"/> order.</summary>
+    public static IReadOnlyList<string> ScenarioLabels => Loc.List(
+        "preview.scenario.multiclass", "preview.scenario.oneClass", "preview.scenario.practice",
+        "preview.scenario.qualifying", "preview.scenario.rain", "preview.scenario.spectating");
+
+    /// <summary>The session as the driver tables' header names it.</summary>
+    public static string SessionType(PreviewScenario scenario) => scenario switch
+    {
+        PreviewScenario.Practice => Loc.T("session.practice"),
+        PreviewScenario.Qualifying => Loc.T("session.qualifying"),
+        _ => Loc.T("session.race"),
+    };
+
+    /// <summary>Whether the scenario's field mixes classes.</summary>
+    public static bool IsMulticlass(PreviewScenario scenario) => scenario != PreviewScenario.RaceOneClass;
+
+    // Who the camera is on while spectating: the player's car, driven by someone else.
+    private const string SpectatedDriver = "Mateo Ferreira";
+
     // Position 9 of 24: below the podium, deep enough that a focus block of any size still has cars
     // on both sides of the player.
     private const int PlayerPosition = 9;
@@ -100,8 +119,9 @@ public static class PreviewData
     /// display list is what makes the preview trustworthy: class headers, the podium split and the
     /// "+N cars" separator are produced by the production code path, so they can never disagree with
     /// what a race actually shows.</summary>
-    public static List<StandingsRow> StandingsField(bool multiClass)
+    public static List<StandingsRow> StandingsField(bool multiClass, PreviewScenario scenario = PreviewScenario.Race)
     {
+        var rain = scenario == PreviewScenario.Rain;
         var rows = new List<StandingsRow>(Field.Length);
         var classPositions = new int[Classes.Length];
 
@@ -131,7 +151,9 @@ public static class PreviewData
                 ClassPosition = classPositions[classIndex],
                 StartPosition = startPositions[i],
                 StartClassPosition = startClassPositions[i],
-                Name = entry.Name,
+                Name = i == PlayerPosition - 1
+                    ? scenario == PreviewScenario.Spectating ? SpectatedDriver : Loc.T("preview.you")
+                    : entry.Name,
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
@@ -142,7 +164,10 @@ public static class PreviewData
                 // Every third car has stopped, plus the one in the lane now, so both pit states show.
                 LastPitStop = i % 3 == 1 || i == 12 ? new PitStop(9 + (i % 5), 64 + (i * 1.7)) : null,
                 // Mostly slicks, a few gambling on wets, one on softs: every ring colour shows.
-                TireCompound = i % 7 == 4 ? PreviewWet : i % 11 == 2 ? PreviewSoft : PreviewHard,
+                // In the rain it is the other way round: nearly everyone on wets, one or two gambling.
+                TireCompound = rain
+                    ? i % 6 == 5 ? PreviewHard : PreviewWet
+                    : i % 7 == 4 ? PreviewWet : i % 11 == 2 ? PreviewSoft : PreviewHard,
                 FlairName = Flairs[i % Flairs.Length],
                 CarBrand = CarBrand.ForCar(Models[classIndex][(classPositions[classIndex] - 1) % Models[classIndex].Length]),
                 CurrentLap = i < 3 ? 18 : 17,
@@ -171,9 +196,10 @@ public static class PreviewData
     /// <summary>The Relative table's own rows: the player in the middle, the requested number of
     /// cars each side, gaps measured to the player and signed accordingly. Always mixed-class
     /// traffic, since that is where Relative earns its keep — and it shows the class bars.</summary>
-    public static List<object> RelativeRows(int eachSide)
+    public static List<object> RelativeRows(int eachSide, PreviewScenario scenario = PreviewScenario.Race)
     {
-        var field = StandingsField(multiClass: true);
+        var multiClass = IsMulticlass(scenario);
+        var field = StandingsField(multiClass, scenario);
         var playerIndex = PlayerPosition - 1;
         var first = Math.Max(0, playerIndex - eachSide);
         var last = Math.Min(field.Count - 1, playerIndex + eachSide);
@@ -204,7 +230,7 @@ public static class PreviewData
                 CurrentLap = source.CurrentLap,
                 LastLapTime = source.LastLapTime,
                 BestLapTime = source.BestLapTime,
-                IsMultiClass = true,
+                IsMultiClass = multiClass,
                 IRating = source.IRating,
                 LicString = source.LicString,
                 IRatingDelta = source.IRatingDelta,
@@ -259,10 +285,14 @@ public static class PreviewData
         DeltaSeconds = -0.184,
         RateOfChange = -0.06,
         IsValid = true,
-        ReferenceLabel = "SESSION BEST",
+        ReferenceLabel = Loc.T("delta.vsSessionBest"),
     };
 
-    public sealed record FlagScenario(string Label, IReadOnlyList<ActiveFlag> Flags);
+    public sealed record FlagScenario(Func<string> LabelOf, IReadOnlyList<ActiveFlag> Flags)
+    {
+        /// <summary>What the preview's picker calls it, in the current language.</summary>
+        public string Label => LabelOf();
+    }
 
     /// <summary>What the flag preview can simulate: a busy moment first (a primary flag with two
     /// advisories, so the stacking shows), then every flag and variant in
@@ -273,16 +303,16 @@ public static class PreviewData
     {
         var scenarios = new List<FlagScenario>
         {
-            new("Race moment — waving yellow, debris, blue",
+            new(() => Loc.T("preview.flagScenario.raceMoment"),
                 [new(FlagKind.Yellow, FlagVariant.Waving), new(FlagKind.Debris), new(FlagKind.Blue)]),
         };
 
         foreach (var definition in FlagCatalog.All)
         {
-            scenarios.Add(new(definition.Label, [new(definition.Kind)]));
+            scenarios.Add(new(() => definition.Label, [new(definition.Kind)]));
             foreach (var variant in definition.Variants)
             {
-                scenarios.Add(new($"{definition.Label} — {variant.Label}", [new(definition.Kind, variant.Variant)]));
+                scenarios.Add(new(() => $"{definition.Label} — {variant.Label}", [new(definition.Kind, variant.Variant)]));
             }
         }
 
@@ -397,43 +427,67 @@ public static class PreviewData
 
     /// <summary>A warm, breezy afternoon with rain threatening: a crosswind from front-left and a
     /// medium rain chance, so the arrow and the yellow rain colour both show.</summary>
-    public static WeatherState Weather() => new()
-    {
-        UnitSystem = Units.Current,
-        AirTempC = 21.4,
-        TrackTempC = 33.8,
-        HumidityPct = 54,
-        WindSpeedMs = 3.6,
-        WindFromRelativeDeg = 315,
-        HeadingDeg = 60,
-        Condition = WeatherCondition.PartlyCloudy,
-        RainChancePct = 40,
-        TrackWetness = 2,
-    };
+    public static WeatherState Weather(PreviewScenario scenario = PreviewScenario.Race) => scenario == PreviewScenario.Rain
+        ? new()
+        {
+            UnitSystem = Units.Current,
+            AirTempC = RainAir,
+            TrackTempC = RainTrack,
+            HumidityPct = RainHumidity,
+            WindSpeedMs = 6.2,
+            WindFromRelativeDeg = 200,
+            HeadingDeg = 60,
+            Condition = WeatherCondition.Rain,
+            RainChancePct = 90,
+            TrackWetness = 5,
+        }
+        : new()
+        {
+            UnitSystem = Units.Current,
+            AirTempC = 21.4,
+            TrackTempC = 33.8,
+            HumidityPct = 54,
+            WindSpeedMs = 3.6,
+            WindFromRelativeDeg = 315,
+            HeadingDeg = 60,
+            Condition = WeatherCondition.PartlyCloudy,
+            RainChancePct = 40,
+            TrackWetness = 2,
+        };
 
-    public static TableConditions TableConditions() => new()
+    // A wet afternoon: cool, saturated air, and a track barely warmer than the air above it.
+    private const double RainAir = 14.2;
+    private const double RainTrack = 17.8;
+    private const double RainHumidity = 91;
+
+    public static TableConditions TableConditions(PreviewScenario scenario = PreviewScenario.Race) => new()
     {
         BrakeBias = 54.5,
-        AirTempC = 21.4,
-        TrackTempC = 33.8,
-        HumidityPct = 54,
-        Condition = WeatherCondition.PartlyCloudy,
+        AirTempC = scenario == PreviewScenario.Rain ? RainAir : 21.4,
+        TrackTempC = scenario == PreviewScenario.Rain ? RainTrack : 33.8,
+        HumidityPct = scenario == PreviewScenario.Rain ? RainHumidity : 54,
+        Condition = scenario == PreviewScenario.Rain ? WeatherCondition.Rain : WeatherCondition.PartlyCloudy,
         UnitSystem = Units.Current,
         Incidents = new IncidentState { MyIncidentCount = 7, TeamIncidentCount = null, Limit = 17 },
     };
 
-    public static TrackInfoState TrackInfo() => new()
+    public static TrackInfoState TrackInfo(PreviewScenario scenario = PreviewScenario.Race) => new()
     {
         UnitSystem = Units.Current,
-        Condition = WeatherCondition.PartlyCloudy,
+        Condition = scenario == PreviewScenario.Rain ? WeatherCondition.Rain : WeatherCondition.PartlyCloudy,
         TrackName = "Spa-Francorchamps",
-        SessionLabel = "Race",
-        TrackUsage = "moderately high usage",
-        AirTempC = 21.4,
-        TrackTempC = 33.8,
-        WindSpeedMs = 3.6,
+        SessionLabel = scenario switch
+        {
+            PreviewScenario.Practice => "Practice",
+            PreviewScenario.Qualifying => "Qualifying",
+            _ => "Race",
+        },
+        TrackUsage = scenario == PreviewScenario.Rain ? "wet" : "moderately high usage",
+        AirTempC = scenario == PreviewScenario.Rain ? RainAir : 21.4,
+        TrackTempC = scenario == PreviewScenario.Rain ? RainTrack : 33.8,
+        WindSpeedMs = scenario == PreviewScenario.Rain ? 6.2 : 3.6,
         WindDirRad = 2.1,
-        HumidityPct = 54,
+        HumidityPct = scenario == PreviewScenario.Rain ? RainHumidity : 54,
         // The same timed race the driver tables preview: 23:15 run of an hour, laps estimated.
         TimeRemainingSeconds = 3600 - 1395,
         Progress = Progress(),
@@ -441,9 +495,9 @@ public static class PreviewData
 
     /// <summary>Cars spread around the lap with the pack bunched where it usually is — behind the
     /// leader — in a multiclass field, so the map shows its class colours.</summary>
-    public static IReadOnlyList<TrackMapMarker> TrackMap()
+    public static IReadOnlyList<TrackMapMarker> TrackMap(PreviewScenario scenario = PreviewScenario.Race)
     {
-        var field = StandingsField(multiClass: true);
+        var field = StandingsField(IsMulticlass(scenario), scenario);
         var markers = new List<TrackMapMarker>(field.Count);
         for (var i = 0; i < field.Count; i++)
         {
@@ -465,4 +519,25 @@ public static class PreviewData
     /// <summary>Strength of field for the header chip — the average of the mock field's iRatings,
     /// so the number the preview shows is consistent with the rows underneath it.</summary>
     public static double StrengthOfField() => Field.Average(e => e.IRating);
+}
+
+/// <summary>The situation the preview shows a widget in, so a column or a readout can be judged in the
+/// sessions it will actually be seen in without iRacing running.</summary>
+public enum PreviewScenario
+{
+    /// <summary>A race with three classes: the default, and the busiest picture.</summary>
+    Race,
+
+    /// <summary>A race with one class: no class bars or class headers.</summary>
+    RaceOneClass,
+
+    Practice,
+
+    Qualifying,
+
+    /// <summary>A wet race: rain, a wet track, most cars on wets.</summary>
+    Rain,
+
+    /// <summary>Watching someone else's car: the tables follow the camera car.</summary>
+    Spectating,
 }

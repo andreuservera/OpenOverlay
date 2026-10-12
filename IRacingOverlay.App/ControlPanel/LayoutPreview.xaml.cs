@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using IRacingOverlay.App.Layouts;
@@ -16,12 +15,25 @@ public partial class LayoutPreview : UserControl
         nameof(Layout), typeof(Layout), typeof(LayoutPreview),
         new PropertyMetadata(null, (d, _) => ((LayoutPreview)d).Rebuild()));
 
+    public static readonly DependencyProperty EmptyMessageProperty = DependencyProperty.Register(
+        nameof(EmptyMessage), typeof(string), typeof(LayoutPreview),
+        new PropertyMetadata(null, (d, e) => ((LayoutPreview)d).EmptyText.Text = (string)e.NewValue));
+
+    /// <summary>What the picture says when there is nothing in it.</summary>
+    public string EmptyMessage
+    {
+        get => (string)GetValue(EmptyMessageProperty);
+        set => SetValue(EmptyMessageProperty, value);
+    }
+
     /// <summary>Margin around the frame, in screen pixels.</summary>
     private const double Inset = 24;
 
     public LayoutPreview()
     {
         InitializeComponent();
+        EmptyText.Text = EmptyMessage;
+        IsVisibleChanged += (_, _) => FitWhenLaidOut();
     }
 
     public Layout? Layout
@@ -41,14 +53,18 @@ public partial class LayoutPreview : UserControl
 
         Surface.Width = layout.Width;
         Surface.Height = layout.Height;
-        ResolutionText.Text = string.Create(CultureInfo.InvariantCulture, $"{layout.Width}×{layout.Height}");
         var items = layout.ControlledBottomToTop().Select(widget => new EditorWidgetItem(widget)).ToList();
         Items.ItemsSource = items;
         EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Fit();
+        FitWhenLaidOut();
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e) => Fit();
+
+    /// <summary>Fits again once laid out. A preview shown again at the size it had before it was hidden
+    /// raises no SizeChanged, so a layout handed to it while hidden would otherwise stay unscaled.</summary>
+    private void FitWhenLaidOut() => Dispatcher.BeginInvoke(Fit, System.Windows.Threading.DispatcherPriority.Loaded);
 
     /// <summary>Scales the monitor to fit the pane, never above its real size.</summary>
     private void Fit()

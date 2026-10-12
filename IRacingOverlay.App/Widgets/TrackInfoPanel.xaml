@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.TrackInfoPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <!-- The fields are laid out by the code-behind, in the order and with the visibility the
@@ -55,7 +56,7 @@
 
             <!-- Weather is context, read on purpose rather than at a glance: secondary ink
                  throughout, with colour left to the one field here that carries a state (usage). -->
-            <StackPanel x:Name="FieldAirTemp" Style="{StaticResource BarField}" ToolTip="Air temperature">
+            <StackPanel x:Name="FieldAirTemp" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.airTemperature}">
                 <w:WeatherIcon x:Name="SkyIcon" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,5,0"
                                SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
                                CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
@@ -63,24 +64,24 @@
                 <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
-            <StackPanel x:Name="FieldTrackTemp" Style="{StaticResource BarField}" ToolTip="Track temperature">
+            <StackPanel x:Name="FieldTrackTemp" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.trackTemperature}">
                 <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Road}"/>
                 <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
-            <StackPanel x:Name="FieldWind" Style="{StaticResource BarField}" ToolTip="Wind">
+            <StackPanel x:Name="FieldWind" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.wind}">
                 <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Wind}" Height="13" Fill="{x:Null}"
                       Stroke="{StaticResource Text.Secondary}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                 <TextBlock x:Name="WindText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
-            <StackPanel x:Name="FieldHumidity" Style="{StaticResource BarField}" ToolTip="Relative humidity">
+            <StackPanel x:Name="FieldHumidity" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.relativeHumidity}">
                 <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Drop}" Height="13"/>
                 <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel x:Name="FieldTrackUsage" Style="{StaticResource BarField}">
-                <TextBlock Text="USAGE" Style="{StaticResource BarCaption}"/>
+                <TextBlock Text="{loc:T trackInfo.usage}" Style="{StaticResource BarCaption}"/>
                 <StackPanel x:Name="TrackUsageBar" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,7,0">
                     <Rectangle Style="{StaticResource UsageSegment}"/>
                     <Rectangle Style="{StaticResource UsageSegment}"/>
@@ -98,12 +99,12 @@
                  they end the bar by default, in primary ink rather than the secondary the weather
                  fields use. -->
             <StackPanel x:Name="FieldTimeLeft" Style="{StaticResource BarField}">
-                <TextBlock Text="TIME LEFT" Style="{StaticResource BarCaption}"/>
+                <TextBlock Text="{loc:T trackInfo.timeLeft}" Style="{StaticResource BarCaption}"/>
                 <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
             </StackPanel>
 
             <StackPanel x:Name="FieldLap" Style="{StaticResource BarField}">
-                <TextBlock Text="LAP" Style="{StaticResource BarCaption}"/>
+                <TextBlock Text="{loc:T trackInfo.lap}" Style="{StaticResource BarCaption}"/>
                 <TextBlock x:Name="LapText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
             </StackPanel>
         </StackPanel>

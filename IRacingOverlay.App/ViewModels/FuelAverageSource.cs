@@ -27,9 +27,9 @@ public static class FuelAverageSourceExtensions
 
     public static string Label(this FuelAverageSource source) => source switch
     {
-        FuelAverageSource.Last3Laps => "AVG 3",
-        FuelAverageSource.Last5Laps => "AVG 5",
-        FuelAverageSource.Last10Laps => "AVG 10",
-        _ => "AVG",
+        FuelAverageSource.Last3Laps => Loc.F("fuel.avgLaps", 3),
+        FuelAverageSource.Last5Laps => Loc.F("fuel.avgLaps", 5),
+        FuelAverageSource.Last10Laps => Loc.F("fuel.avgLaps", 10),
+        _ => Loc.T("fuel.avg"),
     };
 }

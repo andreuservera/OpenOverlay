@@ -250,7 +250,7 @@ public sealed class CountryFlagIcon : FrameworkElement
     // doesn't include. Each flag is therefore drawn for the largest size and scaled down, smoothly,
     // to whatever size the widget is at: sharp at every size, and through a size change, without
     // redrawing it.
-    private static readonly double Oversample = ScaleLevels.FactorOf(ScaleLevel.XXXL);
+    private static readonly double Oversample = new WidgetScale(WidgetScale.MaxPercent).Factor;
 
     public CountryFlagIcon()
     {

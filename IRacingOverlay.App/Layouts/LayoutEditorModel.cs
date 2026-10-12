@@ -100,7 +100,7 @@ public sealed class LayoutEditorModel
 
     /// <summary>Sets the size level, and the position along with it so a resize can keep its
     /// opposite corner where it was.</summary>
-    public void Resize(string type, ScaleLevel scale, double x, double y) => ChangeUnlocked(type, widget =>
+    public void Resize(string type, WidgetScale scale, double x, double y) => ChangeUnlocked(type, widget =>
     {
         widget.Scale = scale;
         widget.X = x;
@@ -169,7 +169,7 @@ public sealed class LayoutEditorModel
     }
 
     /// <summary>Resizes a widget mid-gesture, without recording a step.</summary>
-    public void PreviewResize(string type, ScaleLevel scale, double x, double y)
+    public void PreviewResize(string type, WidgetScale scale, double x, double y)
     {
         if (Layout.WidgetOf(type) is { Locked: false } widget)
         {

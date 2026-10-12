@@ -42,7 +42,7 @@ public sealed class TrackInfoState
 
     public string TrackNameDisplay => string.IsNullOrWhiteSpace(TrackName) ? "—" : TrackName;
 
-    public string SessionLabelDisplay => string.IsNullOrWhiteSpace(SessionLabel) ? "—" : SessionLabel.ToUpperInvariant();
+    public string SessionLabelDisplay => string.IsNullOrWhiteSpace(SessionLabel) ? "—" : StandingsBuilder.SessionTypeLabel(SessionLabel);
 
     private const string UsageSuffix = " usage";
 
@@ -82,11 +82,14 @@ public sealed class TrackInfoState
     }
 
     // iRacing phrases these as "moderately low usage"; the panel's own label already says USAGE.
+    // A state on the scale reads in the current language; anything else as iRacing wrote it.
     public string TrackUsageDisplay => string.IsNullOrWhiteSpace(TrackUsage)
         ? "—"
-        : (TrackUsage.EndsWith(UsageSuffix, StringComparison.OrdinalIgnoreCase)
-            ? TrackUsage[..^UsageSuffix.Length]
-            : TrackUsage).ToUpperInvariant();
+        : Array.FindIndex(UsageScale, entry => entry.State.Equals(TrackUsage, StringComparison.OrdinalIgnoreCase)) is >= 0 and var index
+            ? Loc.T($"trackInfo.usage.{index}")
+            : (TrackUsage.EndsWith(UsageSuffix, StringComparison.OrdinalIgnoreCase)
+                ? TrackUsage[..^UsageSuffix.Length]
+                : TrackUsage).ToUpperInvariant();
 
     public string AirTempDisplay => FormatTemperature(AirTempC);
 

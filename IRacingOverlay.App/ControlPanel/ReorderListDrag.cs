@@ -67,11 +67,12 @@ public static class ReorderListDrag
             return;
         }
 
-        var from = setting.Items.IndexOf(item);
+        // The list dragged in shows only the rows switched on.
+        var from = setting.VisibleItems.IndexOf(item);
         var to = IndexUnder(list, e.GetPosition(list).Y);
         if (to >= 0 && to != from)
         {
-            setting.MoveLive(from, to);
+            setting.MoveVisibleLive(from, to);
         }
     }
 

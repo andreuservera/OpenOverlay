@@ -87,7 +87,7 @@ public sealed record Hotkey(ModifierKeys Modifiers, Key Key)
         {
             if (Key == Key.None || IsModifier(Key))
             {
-                return "Add a key to go with the modifiers.";
+                return Loc.T("hotkeys.problem.noKey");
             }
 
             // A global hotkey swallows the combination everywhere, so a bare letter or Shift+letter
@@ -95,10 +95,10 @@ public sealed record Hotkey(ModifierKeys Modifiers, Key Key)
             var hasStrongModifier = (Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Windows)) != 0;
             if (!hasStrongModifier && !IsFunctionKey(Key))
             {
-                return "Use Ctrl, Alt or Win with this key, or pick a function key (F1–F24).";
+                return Loc.T("hotkeys.problem.weak");
             }
 
-            return ReservedBySystem.Contains((Modifiers, Key)) ? "Windows reserves this combination." : null;
+            return ReservedBySystem.Contains((Modifiers, Key)) ? Loc.T("hotkeys.problem.reserved") : null;
         }
     }
 

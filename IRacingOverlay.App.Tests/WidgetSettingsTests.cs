@@ -26,21 +26,57 @@ public sealed class WidgetSettingsTests
     }
 
     [Theory]
-    [InlineData(WidgetCatalog.Standings, new[] { "COLUMNS", "TABLE" })]
-    [InlineData(WidgetCatalog.Relative, new[] { "COLUMNS", "TABLE" })]
-    [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
-    [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
-    [InlineData(WidgetCatalog.Cockpit, new[] { "MODULES", "UPDATE RATE" })]
-    [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS", "UPDATE RATE" })]
-    [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
-    [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]
-    [InlineData(WidgetCatalog.Delta, new[] { "REFERENCE" })]
+    [InlineData(WidgetCatalog.Standings, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.Relative, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.FuelCalculator, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.Flag, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.Cockpit, new[] { "CONTENT" })]
+    [InlineData(WidgetCatalog.PedalTrace, new[] { "CONTENT" })]
+    [InlineData(WidgetCatalog.Weather, new[] { "CONTENT", "APPEARANCE", "ADVANCED" })]
+    [InlineData(WidgetCatalog.TrackInfo, new[] { "CONTENT" })]
+    [InlineData(WidgetCatalog.Delta, new[] { "BEHAVIOR" })]
     [InlineData(WidgetCatalog.TireInfo, new string[0])]
     public void For_ReturnsTheWidgetPagesOwnGroups_InPageOrder(string type, string[] titles)
     {
         var (context, _) = NewContext();
 
         Assert.Equal(titles, WidgetSettings.For(type, context).Select(group => group.Title));
+    }
+
+    /// <summary>Every widget sorts its options into the same sections in the same order, so a page
+    /// learnt on one widget reads the same on all of them; ADVANCED starts folded.</summary>
+    [Theory]
+    [MemberData(nameof(CatalogTypes))]
+    public void Sections_AreTheFixedOnes_InTheFixedOrder(string type)
+    {
+        string[] order = [WidgetSettings.Content, WidgetSettings.Appearance, WidgetSettings.Behavior, WidgetSettings.Advanced];
+        var (context, _) = NewContext();
+
+        var groups = WidgetSettings.For(type, context);
+
+        var positions = groups.Select(group => Array.IndexOf(order, group.Title)).ToList();
+        Assert.DoesNotContain(-1, positions);
+        Assert.Equal(positions.Order(), positions);
+        Assert.Equal(positions.Distinct(), positions);
+        Assert.All(groups.Where(group => group.Title == WidgetSettings.Advanced), group => Assert.True(group.CollapsedByDefault));
+    }
+
+    /// <summary>"Reset to defaults" applies what fresh options read as: applied to options that were
+    /// changed, it puts back every value.</summary>
+    [Theory]
+    [MemberData(nameof(CatalogTypes))]
+    public void Defaults_PutEveryRowBack(string type)
+    {
+        var (context, codec) = NewContext(type);
+        var defaults = WidgetDefaults.ConfigOf(type);
+        foreach (var row in Rows(WidgetSettings.For(type, context)))
+        {
+            row.Change();
+        }
+
+        codec!.Apply(defaults);
+
+        Assert.Equal(defaults.ToJsonString(), codec.Read().ToJsonString());
     }
 
     /// <summary>
@@ -70,11 +106,10 @@ public sealed class WidgetSettingsTests
     public void HeaderToggles_DoNotNudgeAnyLiveWidget_WhenThereIsNone()
     {
         var (context, _) = NewContext(WidgetCatalog.Relative);
-        var placement = WidgetSettings.For(WidgetCatalog.Relative, context)
-            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
-            .First(setting => setting.Label == "SOF");
+        var infoBar = WidgetSettings.For(WidgetCatalog.Relative, context)
+            .SelectMany(group => group.Items).OfType<InfoBarSetting>().Single();
 
-        placement.SelectedIndex = 0; // Hidden
+        infoBar.Move(infoBar.Chips.Single(chip => chip.Element == TableInfoElement.Sof), null);
 
         Assert.False(context.Relative.ShowSof);
         Assert.Equal(1, _changes);
@@ -86,11 +121,10 @@ public sealed class WidgetSettingsTests
         var nudged = new List<DriverTable>();
         var (context, _) = NewContext();
         context = context with { TableHeaderChanged = nudged.Add };
-        var placement = WidgetSettings.For(WidgetCatalog.Standings, context)
-            .SelectMany(group => group.Items).OfType<ChoiceSetting>()
-            .First(setting => setting.Label == "Session type");
+        var infoBar = WidgetSettings.For(WidgetCatalog.Standings, context)
+            .SelectMany(group => group.Items).OfType<InfoBarSetting>().Single();
 
-        placement.SelectedIndex = 0; // Hidden
+        infoBar.Move(infoBar.Chips.Single(chip => chip.Element == TableInfoElement.SessionType), null);
 
         Assert.Equal([DriverTable.Standings], nudged);
     }
@@ -162,6 +196,20 @@ public sealed class WidgetSettingsTests
                     foreach (var chip in chips.Chips)
                     {
                         yield return new Row($"{chips.Label} › {chip.Label}", () => chip.Value = !chip.Value);
+                    }
+
+                    break;
+                case InfoBarSetting infoBar:
+                    // Each piece of info: on the table if it is off, off if it is on, and moved to
+                    // another slot.
+                    foreach (var chip in infoBar.Chips)
+                    {
+                        yield return new Row($"{infoBar.Label} › {chip.Label} shown", () =>
+                            infoBar.Move(chip, infoBar.Available.Contains(chip) ? TableSlot.BottomCenter : null));
+                        yield return new Row($"{infoBar.Label} › {chip.Label} slot", () =>
+                            infoBar.Move(chip, infoBar.Top.Concat(infoBar.Bottom).Any(slot => slot.Chips.Contains(chip) && slot.Slot == TableSlot.TopCenter)
+                                ? TableSlot.BottomRight
+                                : TableSlot.TopCenter));
                     }
 
                     break;

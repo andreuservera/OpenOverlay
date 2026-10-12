@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib"
                     xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
                     xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
@@ -34,7 +35,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource Badge.SpecialEdge}"/>
         <Setter Property="Background" Value="{StaticResource Badge.SpecialFill}"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
-        <Setter Property="ToolTip" Value="Fastest lap in its class"/>
+        <Setter Property="ToolTip" Value="{loc:T table.fastestLapInIts}"/>
     </Style>
 
     <!-- The delta's segment inside the iRating badge: its column (44) minus the badge's inset.
@@ -217,7 +218,7 @@
                                Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
                                 Visibility="{Binding OnPitRoad, Mode=OneTime, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="PIT" Style="{StaticResource StatusBadgeText}"/>
+                            <TextBlock Text="{loc:T table.pit}" Style="{StaticResource StatusBadgeText}"/>
                         </Border>
                         <!-- One penalty flag slot, same footprint in every state: black, furled black or
                              meatball, or the two most serious side by side. -->

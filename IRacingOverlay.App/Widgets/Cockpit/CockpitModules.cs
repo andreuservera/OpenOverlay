@@ -36,13 +36,16 @@ internal sealed record CockpitReading(
 /// <param name="Centered">Value centred in the card rather than right-aligned.</param>
 internal sealed record CockpitModuleSpec(
     CockpitModule Module,
-    string Name,
     Func<UnitSystem, string> Label,
     bool IsLarge,
     double Width,
     double FullSize,
     Func<CockpitState, CockpitReading> Read,
-    bool Centered = false);
+    bool Centered = false)
+{
+    /// <summary>The module in the settings ("Water temp"), in the current language.</summary>
+    public string Name => Loc.T($"cockpit.{Module}.name");
+}
 
 /// <summary>
 /// The catalog. Adding a module is adding a <see cref="CockpitModule"/> value and an entry here:
@@ -60,34 +63,34 @@ internal static class CockpitModules
 
     private static readonly Dictionary<CockpitModule, CockpitModuleSpec> Specs = new CockpitModuleSpec[]
     {
-        new(CockpitModule.Gear, "Gear", _ => "GEAR", IsLarge: true, Width: 58, FullSize: 54,
+        new(CockpitModule.Gear, _ => Loc.T("cockpit.label.gear"), IsLarge: true, Width: 58, FullSize: 54,
             state => new CockpitReading(state.Gear, state.ShiftBlink ? CockpitTone.Critical : CockpitTone.Normal), Centered: true),
-        new(CockpitModule.Speed, "Speed", units => Units.SpeedUnit(units).ToUpperInvariant(), IsLarge: true, Width: 86, FullSize: 38,
+        new(CockpitModule.Speed, units => Units.SpeedUnit(units).ToUpperInvariant(), IsLarge: true, Width: 86, FullSize: 38,
             state => new CockpitReading(state.SpeedKph > 0 ? Whole(Units.Speed(state.SpeedKph, state.UnitSystem)) : "—")),
-        new(CockpitModule.Rpm, "RPM", _ => "RPM", IsLarge: false, Width: 74, FullSize: SmallFullSize,
+        new(CockpitModule.Rpm, _ => "RPM", IsLarge: false, Width: 74, FullSize: SmallFullSize,
             state => new CockpitReading(state.Rpm > 0 ? Whole(state.Rpm) : "—")),
         // The configured level; intervention is shown by the tone, never by changing the text.
-        new(CockpitModule.Abs, "ABS", _ => "ABS", IsLarge: false, Width: 70, FullSize: SmallFullSize,
+        new(CockpitModule.Abs, _ => "ABS", IsLarge: false, Width: 70, FullSize: SmallFullSize,
             state => new CockpitReading(
                 state.AbsLevel?.ToString(CultureInfo.InvariantCulture) ?? "—",
                 state.AbsActive ? CockpitTone.Warning : CockpitTone.Normal)),
-        new(CockpitModule.Fuel, "Fuel", units => $"FUEL {Units.VolumeUnit(units).ToUpperInvariant()}", IsLarge: false, Width: 74, FullSize: SmallFullSize,
+        new(CockpitModule.Fuel, units => Loc.F("cockpit.label.fuel", Units.VolumeUnit(units).ToUpperInvariant()), IsLarge: false, Width: 74, FullSize: SmallFullSize,
             state => new CockpitReading(
                 state.FuelLiters is { } liters ? Units.Volume(liters, state.UnitSystem).ToString("0.0", CultureInfo.InvariantCulture) : "—",
                 state.FuelPct is < LowFuelFraction ? CockpitTone.Warning : CockpitTone.Normal,
                 Gauge: state.FuelPct)),
-        new(CockpitModule.Inputs, "Inputs", _ => "INPUTS", IsLarge: false, Width: 66, FullSize: SmallFullSize,
+        new(CockpitModule.Inputs, _ => Loc.T("cockpit.label.inputs"), IsLarge: false, Width: 66, FullSize: SmallFullSize,
             state => new CockpitReading("", Bars: [new(state.Throttle, CockpitTone.Positive), new(state.Brake, CockpitTone.Negative)])),
-        new(CockpitModule.WaterTemp, "Water temp", units => $"WATER {Units.TemperatureUnit(units)}", IsLarge: false, Width: 70, FullSize: SmallFullSize,
+        new(CockpitModule.WaterTemp, units => Loc.F("cockpit.label.water", Units.TemperatureUnit(units)), IsLarge: false, Width: 70, FullSize: SmallFullSize,
             state => Temperature(state, state.WaterTempC, WaterWarnCelsius)),
-        new(CockpitModule.OilTemp, "Oil temp", units => $"OIL {Units.TemperatureUnit(units)}", IsLarge: false, Width: 70, FullSize: SmallFullSize,
+        new(CockpitModule.OilTemp, units => Loc.F("cockpit.label.oil", Units.TemperatureUnit(units)), IsLarge: false, Width: 70, FullSize: SmallFullSize,
             state => Temperature(state, state.OilTempC, OilWarnCelsius)),
-        new(CockpitModule.BrakeBias, "Brake bias", _ => "BB %", IsLarge: false, Width: 70, FullSize: SmallFullSize,
+        new(CockpitModule.BrakeBias, _ => "BB %", IsLarge: false, Width: 70, FullSize: SmallFullSize,
             state => new CockpitReading(state.BrakeBias is { } bias ? bias.ToString("0.0", CultureInfo.InvariantCulture) : "—")),
-        new(CockpitModule.TractionControl, "Traction control", _ => "TC", IsLarge: false, Width: 70, FullSize: SmallFullSize,
+        new(CockpitModule.TractionControl, _ => "TC", IsLarge: false, Width: 70, FullSize: SmallFullSize,
             state => new CockpitReading(state.TractionControl?.ToString(CultureInfo.InvariantCulture) ?? "—")),
         // Against the limit when the session has one, coloured as the Incidents widget colours it.
-        new(CockpitModule.Incidents, "Incidents", _ => "INC", IsLarge: false, Width: 70, FullSize: SmallFullSize,
+        new(CockpitModule.Incidents, _ => "INC", IsLarge: false, Width: 70, FullSize: SmallFullSize,
             state => state.Incidents is not { } incidents
                 ? new CockpitReading("—")
                 : new CockpitReading(
@@ -101,7 +104,7 @@ internal static class CockpitModules
                         _ => CockpitTone.Normal,
                     })),
         // Green while ahead of the session's best lap, red while behind it.
-        new(CockpitModule.Delta, "Delta (session best)", _ => "DELTA", IsLarge: false, Width: 80, FullSize: SmallFullSize,
+        new(CockpitModule.Delta, _ => "DELTA", IsLarge: false, Width: 80, FullSize: SmallFullSize,
             state => state.Delta is not { IsValid: true } delta
                 ? new CockpitReading("—")
                 : new CockpitReading(

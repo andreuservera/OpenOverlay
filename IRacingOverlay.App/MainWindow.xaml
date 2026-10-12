@@ -1,8 +1,9 @@
 <Window x:Class="IRacingOverlay.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
         xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
-        Title="OpenOverlay — Control Panel"
+        Title="{loc:T main.openoverlayControlPanel}"
         Height="880" Width="1400" MinHeight="620" MinWidth="1080"
         Icon="Assets/icon.ico"
         Background="{DynamicResource Cp.Window}"
@@ -33,6 +34,10 @@
     </Window.Resources>
 
     <Grid>
+        <!-- General › Window › Interface size: the whole window, scaled as one. -->
+        <Grid.LayoutTransform>
+            <ScaleTransform ScaleX="{Binding InterfaceScale}" ScaleY="{Binding InterfaceScale}"/>
+        </Grid.LayoutTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -43,56 +48,81 @@
         <Border Grid.Row="0" Height="58" Background="{StaticResource Cp.Rail}"
                 BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
             <Grid Margin="18,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="28" Height="28" CornerRadius="8" Background="{StaticResource Cp.Accent}">
-                        <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="7"
-                              Stroke="#101316" StrokeThickness="2.4"
-                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                    </Border>
+                    <Image Source="/Assets/logo.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Title}" Margin="11,0,0,0"
                                VerticalAlignment="Center"/>
-                    <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="13,0"/>
-                    <TextBlock Text="CONTROL PANEL" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
-                    <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="13,0"/>
-                    <!-- Connection to the sim: app status, so it sits with the app's name, apart from the
-                         widget controls on the right. The lamp and the label share the state colour, so it
-                         reads as a live status and not as one more caption. -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent"
-                                ToolTip="Connection to the iRacing simulator.">
-                        <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="{StaticResource Cp.Idle}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                            <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionDegraded}" Value="True">
-                                            <Setter Property="Fill" Value="{StaticResource Cp.Accent}"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock Text="{Binding ConnectionLabel}" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
-                                    <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource Cp.Live}"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionDegraded}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Connection to the sim, as a pill whose colour is the state: green connected (with
+                     the track and session), amber waiting or degraded, red when something is wrong.
+                     The colour never stands alone: the pill says it in words, and while waiting the
+                     line beside it says what to do. -->
+                <DockPanel Grid.Column="1" Margin="18,0,12,0" VerticalAlignment="Center" LastChildFill="True">
+                    <Border DockPanel.Dock="Left" CornerRadius="13" Height="26" Padding="10,0,12,0" BorderThickness="1"
+                            ToolTip="{loc:T main.connectionToTheIracing}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource Cp.WarningWash}"/>
+                                <Setter Property="BorderBrush" Value="#66F5A524"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ConnectionTone}" Value="Live">
+                                        <Setter Property="Background" Value="{StaticResource Cp.LiveWash}"/>
+                                        <Setter Property="BorderBrush" Value="#663DD68C"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ConnectionTone}" Value="Error">
+                                        <Setter Property="Background" Value="{StaticResource Cp.DangerWash}"/>
+                                        <Setter Property="BorderBrush" Value="#66F26D6D"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Warning}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Live">
+                                                <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Error">
+                                                <Setter Property="Fill" Value="{StaticResource Cp.Danger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding ConnectionLabel}" VerticalAlignment="Center"
+                                       FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Small}"
+                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="420">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource Cp.Warning}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Live">
+                                                <Setter Property="Foreground" Value="{StaticResource Cp.Live}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Error">
+                                                <Setter Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding ConnectionHint}" Style="{StaticResource Cp.Hint}" Margin="12,0,0,0"
+                               VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding ConnectionHint}"/>
+                </DockPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <!-- Layouts at hand: pick one and switch it on; while one is open, picking another
                          switches to it. Lit in the accent colour while a layout is open. -->
                     <Border CornerRadius="6" Height="32" Padding="12,0,3,0" BorderThickness="1"
@@ -110,7 +140,7 @@
                             </Style>
                         </Border.Style>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="LAYOUT" VerticalAlignment="Center" Margin="0,0,8,0">
+                            <TextBlock Text="{loc:T main.layout}" VerticalAlignment="Center" Margin="0,0,8,0">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
                                         <Style.Triggers>
@@ -124,7 +154,7 @@
                             <ComboBox Style="{StaticResource Cp.ComboBox}" Height="24" MinWidth="160" MaxWidth="240"
                                       ItemsSource="{Binding LayoutChoices}" DisplayMemberPath="Name"
                                       SelectedItem="{Binding ToolbarLayout, Mode=TwoWay}"
-                                      ToolTip="Pick a layout. While one is open, picking another switches to it."/>
+                                      ToolTip="{loc:T main.pickALayoutWhile}"/>
                             <Button Width="24" Height="24" Margin="6,0,0,0" Cursor="Hand" Focusable="False"
                                     Command="{Binding ToggleLayoutCommand}" ToolTip="{Binding LayoutToggleTip}">
                                 <Button.Template>
@@ -158,15 +188,15 @@
                             </Button>
                         </StackPanel>
                     </Border>
-                    <Button Style="{StaticResource Cp.Button}" Content="No layouts yet"
+                    <Button Style="{StaticResource Cp.Button}" Content="{loc:T main.noLayoutsYet}"
                             Command="{Binding GoToLayoutsCommand}"
                             Visibility="{Binding HasLayouts, Converter={StaticResource Cp.NotBoolToVis}}"
-                            ToolTip="Create a layout on the Layouts page."/>
+                            ToolTip="{loc:T main.createALayoutOn}"/>
 
                     <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="12,0"/>
-                    <ToggleButton Style="{StaticResource Cp.LockToggle}" Content="{Binding EditModeLabel}"
+                    <ToggleButton Style="{StaticResource Cp.MoveToggle}" Content="{Binding EditModeLabel}"
                                   IsChecked="{Binding IsEditMode, Mode=TwoWay}"
-                                  ToolTip="Unlocked, widgets can be dragged into place; hover one for the − M + size control, or hold Ctrl and scroll. With a layout open, the changes are temporary: the layout itself doesn't change."/>
+                                  ToolTip="{loc:T main.dragWidgetsIntoPlace}"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -174,28 +204,69 @@
         <!-- ===== Body ===== -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="278"/>
-                <ColumnDefinition Width="1.05*" MinWidth="360"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="1.35*" MinWidth="340"/>
+                <!-- Settings and preview split 40/60 by default; where the splitter is left is
+                     remembered (PaneSplitStore), as a share so it holds on any window width. -->
+                <ColumnDefinition x:Name="ConfigColumn" Width="0.4*" MinWidth="360"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition x:Name="PreviewColumn" Width="0.6*" MinWidth="340"/>
             </Grid.ColumnDefinitions>
 
             <!-- ===== Rail ===== -->
+            <!-- Folds to its icons (IsRailCollapsed): names, switches and headings go, the icons
+                 stay in place and say their name on hover. -->
             <Border Grid.Column="0" Background="{StaticResource Cp.Rail}"
                     BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,1,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Width" Value="278"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRailCollapsed}" Value="True">
+                                <Setter Property="Width" Value="62"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Margin="14,14,14,2" Height="32" CornerRadius="7"
+                    <!-- Folded: the button that unfolds it, and search, which unfolds it to type. -->
+                    <StackPanel DockPanel.Dock="Top" Margin="0,14,0,2"
+                                Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.BoolToVis}}">
+                        <Button Style="{StaticResource Cp.StepButton}" Width="32" Height="32" HorizontalAlignment="Center"
+                                Command="{Binding ToggleRailCommand}" ToolTip="{loc:T main.showTheSidebarS}">
+                            <Path Data="{StaticResource Cp.Icon.Sidebar}" Style="{StaticResource Cp.RailToggleIcon}"/>
+                        </Button>
+                        <Button Style="{StaticResource Cp.StepButton}" Width="32" Height="32" HorizontalAlignment="Center"
+                                Margin="0,4,0,0" Click="RailSearch_Click" ToolTip="{loc:T main.searchSettings}">
+                            <Path Data="{StaticResource Cp.Icon.Search}" Style="{StaticResource Cp.RailToggleIcon}"/>
+                        </Button>
+                    </StackPanel>
+
+                    <DockPanel DockPanel.Dock="Top" Margin="14,14,10,2"
+                               Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Width="30" Height="32" Margin="6,0,0,0"
+                            Command="{Binding ToggleRailCommand}" ToolTip="{loc:T main.foldTheSidebarTo}">
+                        <Path Data="{StaticResource Cp.Icon.Sidebar}" Style="{StaticResource Cp.RailToggleIcon}"/>
+                    </Button>
+                    <Border Height="32" CornerRadius="7"
                             Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}"
                             BorderThickness="1">
                         <Grid>
-                            <Path Data="M10,10 A5,5 0 1 0 10.01,10 M14,14 L18,18" Width="14" Height="14"
+                            <Path Data="{StaticResource Cp.Icon.Search}" Width="14" Height="14"
                                   Stretch="Uniform" HorizontalAlignment="Left" Margin="10,0,0,0"
                                   Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.8"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                            <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,10,0"
+                            <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,30,0"
                                      FontFamily="{DynamicResource Theme.FontFamily}"
-                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Search options" IsHitTestVisible="False" Margin="33,0,0,0"
+                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="11" Width="22" Height="22"
+                                    HorizontalAlignment="Right" Margin="0,0,5,0" ToolTip="{loc:T main.clearTheSearchEsc}"
+                                    Command="{Binding ClearSearchCommand}"
+                                    Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}"/>
+                            <TextBlock Text="{loc:T main.searchSettings}" IsHitTestVisible="False" Margin="33,0,0,0"
                                        VerticalAlignment="Center" Foreground="{StaticResource Cp.TextFaint}"
                                        FontSize="{StaticResource Cp.Size.Body}">
                                 <TextBlock.Style>
@@ -211,11 +282,83 @@
                             </TextBlock>
                         </Grid>
                     </Border>
+                    </DockPanel>
+
+                    <!-- Help at the foot of the rail, apart from the pages you configure: one place for
+                         what's new, the changelog and the version. Lit like a rail entry while open. -->
+                    <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0"
+                            Padding="8,6">
+                        <Button Command="{Binding ShowHelpCommand}" Cursor="Hand" Focusable="False"
+                                HorizontalContentAlignment="Stretch" ToolTip="{loc:T main.whatSNewThe}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="7" Height="36" Padding="10,0,8,0">
+                                        <Grid>
+                                            <Border x:Name="Marker" Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left"
+                                                    Margin="-18,0,0,0" Background="{StaticResource Cp.Accent}" Visibility="Collapsed"/>
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsHelpPage}" Value="True">
+                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Selected}"/>
+                                            <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsRailCollapsed}" Value="True">
+                                            <Setter TargetName="Chrome" Property="Padding" Value="14,0,0,0"/>
+                                            <Setter TargetName="Chrome" Property="ToolTip" Value="{loc:T main.help}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding VersionLabel}" Style="{StaticResource Cp.Mono}"
+                                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"
+                                           Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}"/>
+                                <Path Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"
+                                      Data="M12,3 A9,9 0 1 0 12.01,3 Z M12,11 V16.5 M12,7.5 V7.51" StrokeThickness="1.7"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Stroke" Value="{StaticResource Cp.TextMuted}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsHelpPage}" Value="True">
+                                                    <Setter Property="Stroke" Value="{StaticResource Cp.Accent}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <TextBlock Text="{loc:T main.help}" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Body}"
+                                           FontWeight="Medium" Foreground="{StaticResource Cp.TextSoft}" Margin="11,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}"/>
+                            </DockPanel>
+                        </Button>
+                    </Border>
+
+                    <!-- Layouts and the settings pages, pinned above Help so they are always in
+                         reach while the widgets above them scroll. -->
+                    <ListBox x:Name="PinnedRail" DockPanel.Dock="Bottom" Style="{StaticResource Cp.NavList}"
+                             Padding="0,0,0,6" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                             ItemsSource="{Binding PinnedNavView}"
+                             SelectedItem="{Binding PinnedRailSelected, Mode=TwoWay}"
+                             PreviewMouseLeftButtonUp="Rail_PreviewMouseLeftButtonUp"
+                             ItemTemplate="{StaticResource Cp.NavItemTemplate}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle ContainerStyle="{StaticResource Cp.NavGroupStyle}"/>
+                        </ListBox.GroupStyle>
+                    </ListBox>
 
                     <!-- Grouped on NavItem.Group, so a new section in the rail is a new string in the
                          view model and never a change here. -->
-                    <ListBox Style="{StaticResource Cp.NavList}" ItemsSource="{Binding NavView}"
-                             SelectedItem="{Binding Selected, Mode=TwoWay}"
+                    <ListBox x:Name="Rail" Style="{StaticResource Cp.NavList}" ItemsSource="{Binding NavView}"
+                             SelectedItem="{Binding RailSelected, Mode=TwoWay}"
+                             PreviewMouseLeftButtonUp="Rail_PreviewMouseLeftButtonUp"
+                             SelectionChanged="Rail_SelectionChanged"
                              ItemTemplate="{StaticResource Cp.NavItemTemplate}">
                         <ListBox.GroupStyle>
                             <GroupStyle ContainerStyle="{StaticResource Cp.NavGroupStyle}"/>
@@ -225,17 +368,34 @@
             </Border>
 
             <!-- ===== Configuration ===== -->
-            <DockPanel Grid.Column="1">
+            <DockPanel x:Name="ConfigPane" Grid.Column="1">
+                <!-- While searching, the pane shows what matched instead of a page. -->
+                <Border DockPanel.Dock="Top" Padding="24,18,22,17" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="{loc:T main.search}" Style="{StaticResource Cp.Display}"/>
+                        <TextBlock Text="{Binding SearchSummary}" Style="{StaticResource Cp.Hint}"
+                                   FontSize="{StaticResource Cp.Size.Body}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
                 <Border DockPanel.Dock="Top" Padding="24,18,22,17"
-                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
+                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsSearching, Converter={StaticResource Cp.NotBoolToVis}}">
+                    <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
+                        <!-- Title and the widget's switch on the first row; the description under
+                             both, at full width, so it doesn't wrap beside the switch. -->
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <Border Grid.Column="0" Width="38" Height="38" CornerRadius="10"
+                        <Border Grid.Column="0" Grid.RowSpan="2" Width="38" Height="38" CornerRadius="10"
                                 Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.Border}"
                                 BorderThickness="1" VerticalAlignment="Top">
                             <Path Width="19" Height="19" Stretch="Uniform" Data="{Binding Selected.IconData}"
@@ -243,54 +403,132 @@
                                   StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                         </Border>
 
-                        <StackPanel Grid.Column="1" Margin="14,0,16,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Selected.Title}" Style="{StaticResource Cp.Display}"/>
-                            <TextBlock Text="{Binding Selected.Blurb}" Style="{StaticResource Cp.Hint}"
-                                       FontSize="{StaticResource Cp.Size.Body}" Margin="0,2,0,0"/>
-                        </StackPanel>
+                        <TextBlock Grid.Column="1" Margin="14,0,16,0" VerticalAlignment="Center"
+                                   Text="{Binding Selected.Title}" Style="{StaticResource Cp.Display}"/>
+                        <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="1" Margin="14,2,0,0"
+                                   Text="{Binding Selected.Blurb}" Style="{StaticResource Cp.Hint}"
+                                   FontSize="{StaticResource Cp.Size.Body}"/>
 
                         <!-- The master switch sits with the widget's own title and binds straight to
                              the same slot the rail's switch drives: one piece of state, two places
                              to reach it, no synchronisation code between them. -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                     Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
-                            <TextBlock Text="{Binding SelectedWidget.StateLabel}" Style="{StaticResource Cp.Eyebrow}"
-                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Ellipse Style="{StaticResource Cp.StateDot}" DataContext="{Binding SelectedWidget}"
+                                     Margin="0,0,10,0"/>
+                            <TextBlock Text="{loc:T main.showOnScreen}" Style="{StaticResource Cp.Body}"
+                                       Foreground="{StaticResource Cp.Text}" Margin="0,0,10,0"
+                                       ToolTip="{Binding SelectedWidget.StateLabel}"/>
                             <CheckBox Style="{StaticResource Cp.Switch}"
                                       IsChecked="{Binding SelectedWidget.IsEnabled, Mode=TwoWay}"
-                                      ToolTip="Show this widget on screen"/>
+                                      ToolTip="{Binding SelectedWidget.StateLabel}"/>
+                            <!-- Less common actions on the widget as a whole. -->
+                            <Grid Margin="14,0,0,0">
+                                <ToggleButton x:Name="WidgetMenuButton" Style="{StaticResource Cp.MenuButton}"
+                                              IsChecked="{Binding IsWidgetMenuOpen, Mode=TwoWay}"/>
+                                <Popup IsOpen="{Binding IsWidgetMenuOpen, Mode=TwoWay}" StaysOpen="False"
+                                       PlacementTarget="{Binding ElementName=WidgetMenuButton}" Placement="Bottom"
+                                       AllowsTransparency="True" PopupAnimation="Fade">
+                                    <Border Style="{StaticResource Cp.MenuPopup}">
+                                        <StackPanel>
+                                            <!-- This widget's options into the same widget in a saved layout. -->
+                                            <StackPanel Visibility="{Binding HasWidgetCopyTargets, Converter={StaticResource Cp.BoolToVis}}">
+                                                <TextBlock Text="{loc:T main.copySettingsToLayout}" Style="{StaticResource Cp.Eyebrow}" Margin="10,6,10,4"/>
+                                                <ItemsControl ItemsSource="{Binding WidgetCopyTargets}" Focusable="False">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Style="{StaticResource Cp.MenuItem}" Content="{Binding Label}"
+                                                                    Command="{Binding Command}"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Border Height="1" Margin="6,4" Background="{StaticResource Cp.Border}"/>
+                                            </StackPanel>
+                                            <Button Style="{StaticResource Cp.DangerMenuItem}" Content="{loc:T main.resetToDefaults}"
+                                                    Command="{Binding ResetWidgetCommand}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Popup>
+                            </Grid>
                         </StackPanel>
                     </Grid>
+                    <!-- Tabs, on a page that has them (Help). -->
+                    <ListBox Style="{StaticResource Cp.Segmented}" Margin="52,14,0,0"
+                             ItemsSource="{Binding Selected.Tabs}" SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
+                             Visibility="{Binding Selected.HasTabs, Converter={StaticResource Cp.BoolToVis}}"/>
+                    </StackPanel>
                 </Border>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False">
-                    <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
-                </ScrollViewer>
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False"
+                                  Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding SearchResults}" Focusable="False"
+                                          ItemTemplate="{StaticResource Cp.SearchResultTemplate}"/>
+                            <TextBlock Text="{loc:T main.tryAWidgetS}"
+                                       Margin="0,4,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Hint}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchResults.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ScrollViewer x:Name="SettingsScroller" VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False"
+                                  Visibility="{Binding IsSearching, Converter={StaticResource Cp.NotBoolToVis}}">
+                        <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
+                    </ScrollViewer>
+
+                    <!-- What a big change just did, with Undo while it lasts. -->
+                    <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="16,0,16,18" MaxWidth="560"
+                            Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"
+                            CornerRadius="8" Padding="16,8,8,8"
+                            Visibility="{Binding HasToast, Converter={StaticResource Cp.BoolToVis}}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.6" Color="#000000"/>
+                        </Border.Effect>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="11"
+                                    Margin="4,0,0,0" ToolTip="{loc:T main.dismiss}" Command="{Binding DismissToastCommand}"/>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Cp.Button}" Content="{loc:T main.undo}" Height="28" Margin="12,0,0,0"
+                                    Command="{Binding Toast.UndoCommand}"
+                                    Visibility="{Binding Toast.CanUndo, Converter={StaticResource Cp.BoolToVis}}"/>
+                            <TextBlock Text="{Binding Toast.Message}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"
+                                       TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                </Grid>
             </DockPanel>
 
-            <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
+            <GridSplitter x:Name="PaneSplitter" Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
                           BorderBrush="{StaticResource Cp.Border}" BorderThickness="1,0,0,0"
                           ResizeBehavior="PreviousAndNext" ShowsPreview="False"/>
 
             <!-- ===== Preview ===== -->
-            <DockPanel Grid.Column="3" Background="#090C0F">
+            <DockPanel x:Name="PreviewPane" Grid.Column="3" Background="#090C0F">
                 <Border DockPanel.Dock="Top" Height="42" Padding="18,0"
                         BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
                     <Grid>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="7" Height="7" Fill="{StaticResource Cp.Live}" Margin="0,0,8,0"
                                      VerticalAlignment="Center"
-                                     Visibility="{Binding IsInfoPage, Converter={StaticResource Cp.NotBoolToVis}}"/>
+                                     Visibility="{Binding IsHomePage, Converter={StaticResource Cp.NotBoolToVis}}"/>
                             <TextBlock VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
-                                        <Setter Property="Text" Value="LIVE PREVIEW"/>
+                                        <Setter Property="Text" Value="{loc:T main.livePreview}"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
-                                                <Setter Property="Text" Value="OPENOVERLAY"/>
+                                            <DataTrigger Binding="{Binding IsHomePage}" Value="True">
+                                                <Setter Property="Text" Value="{loc:T main.onScreenNow}"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding HasLayoutPreview}" Value="True">
-                                                <Setter Property="Text" Value="LAYOUT PREVIEW"/>
+                                                <Setter Property="Text" Value="{Binding LayoutPreviewHeading}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -300,9 +538,37 @@
                         <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Style="{StaticResource Cp.Eyebrow}"
                                    Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
-                            <Run Text="SIZE "/><Run Text="{Binding SelectedWidget.Scale, Mode=OneWay}"/>
+                            <Run Text="{loc:T main.size}"/><Run Text="{Binding SelectedWidget.Scale.Label, Mode=OneWay}"/>
                         </TextBlock>
+                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Text="{Binding PreviewLayoutResolution}"
+                                   Style="{StaticResource Cp.Mono}" FontSize="{StaticResource Cp.Size.Micro}"
+                                   Visibility="{Binding HasLayoutPreview, Converter={StaticResource Cp.BoolToVis}}"/>
                     </Grid>
+                </Border>
+
+                <!-- How the preview is staged: the session it shows the widget in (or, for Flags, the
+                     flag it simulates) and what it is shown over. Sample data only; nothing here
+                     reaches the live widget. -->
+                <Border DockPanel.Dock="Top" Padding="18,8" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
+                    <DockPanel>
+                        <ListBox DockPanel.Dock="Right" Style="{StaticResource Cp.Segmented}" VerticalAlignment="Center"
+                                 ItemsSource="{Binding BackdropChoices}" SelectedIndex="{Binding BackdropIndex, Mode=TwoWay}"
+                                 ToolTip="{loc:T main.whatTheWidgetIs}"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                    Visibility="{Binding HasPreviewChoices, Converter={StaticResource Cp.BoolToVis}}">
+                            <TextBlock Text="{loc:T main.scenario}" Style="{StaticResource Cp.Eyebrow}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox Style="{StaticResource Cp.ComboBox}" MinWidth="170" MaxWidth="260" Margin="0,0,12,0"
+                                      ItemsSource="{Binding ScenarioChoices}" SelectedIndex="{Binding ScenarioIndex, Mode=TwoWay}"
+                                      Visibility="{Binding ShowsScenarioPicker, Converter={StaticResource Cp.BoolToVis}}"
+                                      ToolTip="{loc:T main.seeTheWidgetIn}"/>
+                            <ComboBox Style="{StaticResource Cp.ComboBox}" MinWidth="170" MaxWidth="260" Margin="0,0,12,0"
+                                      ItemsSource="{Binding FlagChoices}" SelectedIndex="{Binding FlagChoiceIndex, Mode=TwoWay}"
+                                      Visibility="{Binding ShowsFlagPicker, Converter={StaticResource Cp.BoolToVis}}"
+                                      ToolTip="{loc:T main.seeAnyFlagWithout}"/>
+                        </StackPanel>
+                    </DockPanel>
                 </Border>
 
                 <Grid>
@@ -312,28 +578,19 @@
                                       Visibility="{Binding HasLayoutPreview, Converter={StaticResource Cp.BoolToVis}}"/>
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="280"
                                 Visibility="{Binding ShowsPreviewPlaceholder, Converter={StaticResource Cp.BoolToVis}}">
-                        <TextBlock Text="Nothing to preview" Style="{StaticResource Cp.Title}"
+                        <TextBlock Text="{loc:T main.nothingToPreview}" Style="{StaticResource Cp.Title}"
                                    Foreground="{StaticResource Cp.TextMuted}" HorizontalAlignment="Center"/>
-                        <TextBlock Text="This page configures the application rather than a single widget."
+                        <TextBlock Text="{loc:T main.thisPageConfiguresThe}"
                                    Style="{StaticResource Cp.Hint}" TextAlignment="Center" Margin="0,6,0,0"/>
                     </StackPanel>
 
-                    <!-- The ABOUT pages describe the product, so the side panel shows it. -->
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="300"
-                                Visibility="{Binding IsInfoPage, Converter={StaticResource Cp.BoolToVis}}">
-                        <Border Width="72" Height="72" CornerRadius="20" Background="{StaticResource Cp.Accent}"
-                                HorizontalAlignment="Center">
-                            <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="18"
-                                  Stroke="#101316" StrokeThickness="6"
-                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                        </Border>
-                        <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Display}" HorizontalAlignment="Center"
-                                   Margin="0,18,0,0"/>
-                        <TextBlock Text="{Binding VersionHeadline}" Style="{StaticResource Cp.Mono}"
-                                   HorizontalAlignment="Center" Margin="0,6,0,0"/>
-                        <TextBlock Text="A free, open-source telemetry overlay for iRacing." Style="{StaticResource Cp.Hint}"
-                                   TextAlignment="Center" Margin="0,12,0,0"/>
-                    </StackPanel>
+                    <!-- Home: the screen as it is now, the widgets that are on it drawn where they are. -->
+                    <DockPanel Visibility="{Binding IsHomePage, Converter={StaticResource Cp.BoolToVis}}">
+                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding HomeScreenCaption}" Style="{StaticResource Cp.Hint}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,18"/>
+                        <cp:LayoutPreview Layout="{Binding HomeScreen}"
+                                          EmptyMessage="{loc:T home.preview.empty}"/>
+                    </DockPanel>
                 </Grid>
             </DockPanel>
         </Grid>
@@ -350,8 +607,10 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
+                <!-- Only with the sim connected: without it the line is a row of dashes. -->
                 <TextBlock Text="{Binding TelemetryLine}" Style="{StaticResource Cp.Mono}"
-                           VerticalAlignment="Center"/>
+                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"
+                           Visibility="{Binding IsConnected, Converter={StaticResource Cp.BoolToVis}}"/>
                 <!-- Health first: it is the line that says whether the rest can be trusted. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                             VerticalAlignment="Center" Margin="24,0,0,0">
@@ -361,7 +620,7 @@
                                 <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Health}" Value="Degraded">
-                                        <Setter Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Warning}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Health}" Value="Failed">
                                         <Setter Property="Fill" Value="{StaticResource Cp.Danger}"/>
@@ -371,17 +630,28 @@
                         </Ellipse.Style>
                     </Ellipse>
                     <TextBlock Text="{Binding HealthLine}" Style="{StaticResource Cp.Mono}" Foreground="{StaticResource Cp.TextSoft}"
+                               FontSize="{StaticResource Cp.Size.Micro}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                               ToolTip="General › Diagnostics has the full report."/>
+                               ToolTip="{loc:T main.settingsDiagnosticsHasThe}"/>
                 </StackPanel>
                 <TextBlock Grid.Column="2" Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
+                           FontSize="{StaticResource Cp.Size.Micro}"
                            Foreground="{StaticResource Cp.TextFaint}" Margin="18,0,0,0"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 <!-- The running version, always in the same corner: the first thing a bug report needs. -->
                 <Button Grid.Column="3" Style="{StaticResource Cp.TextButton}" Content="{Binding VersionLabel}"
+                        FontSize="{StaticResource Cp.Size.Micro}"
                         ToolTip="{Binding VersionToolTip}" Command="{Binding ShowAboutCommand}"
                         Margin="18,0,0,0" VerticalAlignment="Center"/>
             </Grid>
         </Border>
+
+        <!-- ===== Setup assistant =====
+             Over the whole window: on a fresh install it is the first thing to do, and it is short. -->
+        <Grid Grid.RowSpan="3" Background="#CC07090C" DataContext="{Binding Setup}"
+              MouseLeftButtonDown="SetupBackdrop_MouseLeftButtonDown"
+              Visibility="{Binding DataContext.IsSetupOpen, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource Cp.BoolToVis}}">
+            <cp:SetupAssistantView VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24"/>
+        </Grid>
     </Grid>
 </Window>

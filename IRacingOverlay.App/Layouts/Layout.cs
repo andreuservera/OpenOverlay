@@ -26,7 +26,7 @@ public sealed class LayoutWidget
     /// <summary>Top edge, in pixels of the layout's resolution.</summary>
     public double Y { get; set; }
 
-    public ScaleLevel Scale { get; set; } = ScaleLevels.Default;
+    public WidgetScale Scale { get; set; } = WidgetScale.Default;
 
     /// <summary>As measured in the editor's preview. Informational only: a widget's size follows
     /// its content and <see cref="Scale"/>, and a table's height changes with the data.</summary>
@@ -186,17 +186,17 @@ public sealed class Layout
     {
         if (!WidgetCatalog.Contains(widget.Type))
         {
-            throw new LayoutRuleException($"\"{widget.Type}\" is not a widget this version of the app knows.");
+            throw new LayoutRuleException(Loc.F("layout.rule.unknown", widget.Type));
         }
 
         if (Contains(widget.Type))
         {
-            throw new LayoutRuleException($"The layout already has the {NameOf(widget.Type)} widget. Each widget can be added once.");
+            throw new LayoutRuleException(Loc.F("layout.rule.repeated", NameOf(widget.Type)));
         }
 
         if (_widgets.Count >= MaxWidgets)
         {
-            throw new LayoutRuleException($"A layout can hold at most {MaxWidgets} widgets, one of each.");
+            throw new LayoutRuleException(Loc.F("layout.rule.max", MaxWidgets));
         }
 
         _widgets.Add(widget);
@@ -280,7 +280,7 @@ public sealed class Layout
         if (!IsValidResolution(width, height))
         {
             throw new LayoutRuleException(
-                $"The resolution must be between {MinResolution} and {MaxResolution} pixels on each side; {width}×{height} is not.");
+                Loc.F("layout.rule.resolution", MinResolution, MaxResolution, width, height));
         }
     }
 

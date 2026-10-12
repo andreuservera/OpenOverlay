@@ -12,6 +12,17 @@ public sealed record ChangelogSection(string Title, IReadOnlyList<ChangelogItem>
 {
     /// <summary>A section a driver must not miss, such as "Breaking Changes".</summary>
     public bool IsWarning => Title.Contains("breaking", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The heading in the current language when it is one of the usual ones (Added,
+    /// Fixed…); the notes themselves are written once, in English.</summary>
+    public string DisplayTitle
+    {
+        get
+        {
+            var key = $"changelog.section.{Title.Replace(" ", "", StringComparison.Ordinal).ToLowerInvariant()}";
+            return Loc.English(key) == key ? Title : Loc.T(key);
+        }
+    }
 }
 
 public sealed record ChangelogEntry(ReleaseVersion Version, DateOnly? Date, string? Summary, IReadOnlyList<ChangelogSection> Sections)

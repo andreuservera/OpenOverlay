@@ -31,6 +31,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\icon.ico" />
+    <!-- The logo, drawn in the control panel's toolbar and the update notice. -->
+    <Resource Include="Assets\logo.png" />
     <!-- Backdrop the control panel previews widgets against. Embedded rather than shipped loose so
          it can't go missing from an install and leave the preview pane empty. -->
     <Resource Include="Assets\spa2.jpg" />
@@ -40,6 +42,8 @@
     <EmbeddedResource Include="Assets\CarBrands\*.svg" LogicalName="OpenOverlay.CarBrands.%(Filename).svg" />
     <!-- Country flags for the driver tables, matched to iRacing's FlairName (see Widgets/CountryFlags.cs). -->
     <EmbeddedResource Include="Assets\Flags\*.svg" LogicalName="OpenOverlay.Flags.%(Filename).svg" />
+    <!-- One file per language of the control panel, found by name (see Localization/Loc.cs). -->
+    <EmbeddedResource Include="Assets\Locales\*.json" LogicalName="OpenOverlay.Locales.%(Filename).json" />
     <!-- Must not be an ApplicationDefinition (which auto-generates its own Main) now that
          App.xaml.cs provides one explicitly for Velopack's sake. -->
     <ApplicationDefinition Remove="App.xaml" />
@@ -55,6 +59,8 @@
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
+    <!-- Loc.T("key") is how every user-facing text is written, so it is in scope everywhere. -->
+    <Using Include="IRacingOverlay.App.Localization" />
   </ItemGroup>
 
   <ItemGroup>

@@ -43,7 +43,7 @@ public sealed class LayoutFileTests : IDisposable
             relative.Select(pair => pair.Key));
         Assert.Equal("Relative", (string)relative["type"]!);
         Assert.Equal(40, (double)relative["x"]!);
-        Assert.Equal("L", (string)relative["scale"]!);
+        Assert.Equal(117, (int)relative["scale"]!);
         Assert.Equal(0.9, (double)relative["opacity"]!);
         Assert.True((bool)relative["hideOutsideCar"]!);
         Assert.Equal(4, (int)relative["config"]!["focusSize"]!);
@@ -120,7 +120,7 @@ public sealed class LayoutFileTests : IDisposable
                 Type = descriptor.Key,
                 X = -20 + z * 100.5,
                 Y = z * 50,
-                Scale = (ScaleLevel)(z % 8),
+                Scale = new WidgetScale(WidgetScale.MinPercent + z * 7),
                 Width = 300,
                 Height = 120.25,
                 ZIndex = z++,
@@ -215,7 +215,7 @@ public sealed class LayoutFileTests : IDisposable
         Assert.Equal("My file", layout.Name);
         Assert.Equal("", layout.Monitor.DevicePath);
         var delta = layout.WidgetOf(WidgetCatalog.Delta)!;
-        Assert.Equal((ScaleLevel.XXXL, 1, true, false, false, 1.0), (delta.Scale, delta.ZIndex, delta.Visible, delta.Locked, delta.HideOutsideCar, delta.Opacity));
+        Assert.Equal((WidgetScale.XXXL, 1, true, false, false, 1.0), (delta.Scale, delta.ZIndex, delta.Visible, delta.Locked, delta.HideOutsideCar, delta.Opacity));
         Assert.Empty(delta.Config);
     }
 
@@ -260,8 +260,8 @@ public sealed class LayoutFileTests : IDisposable
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "x": 1 } ] }""", "type of widget 1" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": "1", "y": 2, "scale": "M" } ] }""", "position of the Incidents widget" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "y": 2, "scale": "M" } ] }""", "position of the Incidents widget" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "HUGE" } ] }""", "isn't one of" },
-        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "3" } ] }""", "isn't one of" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "HUGE" } ] }""", "isn't a percentage" },
+        { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M, L" } ] }""", "isn't a percentage" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "opacity": 2 } ] }""", "between 0 and 1" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "width": -5 } ] }""", "negative" },
         { """{ "formatVersion": 1, "resolution": { "width": 1920, "height": 1080 }, "widgets": [ { "type": "Incident", "x": 1, "y": 2, "scale": "M", "visible": "yes" } ] }""", "true or false" },
@@ -344,13 +344,13 @@ public sealed class LayoutFileTests : IDisposable
         relative["focusSize"] = 4;
         layout.Add(new LayoutWidget
         {
-            Type = WidgetCatalog.Relative, X = 40, Y = 600, Scale = ScaleLevel.L, Width = 345.5, Height = 410,
+            Type = WidgetCatalog.Relative, X = 40, Y = 600, Scale = WidgetScale.L, Width = 345.5, Height = 410,
             ZIndex = 1, Opacity = 0.9, HideOutsideCar = true, Config = relative,
         });
 
         layout.Add(new LayoutWidget
         {
-            Type = WidgetCatalog.Standings, X = 3000, Y = -10, Scale = ScaleLevel.XS, ZIndex = 0,
+            Type = WidgetCatalog.Standings, X = 3000, Y = -10, Scale = WidgetScale.XS, ZIndex = 0,
             Visible = false, Locked = true, Config = codecs[WidgetCatalog.Standings].Read(),
         });
 

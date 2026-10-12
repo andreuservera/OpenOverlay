@@ -60,6 +60,8 @@ public partial class MainWindow : Window
     private IracingSessionInfo? _observedSession;
     private string? _sessionKey;
     private string? _sessionDescription;
+    // Track and session type alone, for the control panel's status pill.
+    private string? _sessionLabel;
     private bool _awaitingReconnect;
     private volatile string? _telemetryErrorRef;
     // Cockpit (proximity/ABS bars) and the pedal trace are the two displays where update rate is
@@ -189,6 +191,8 @@ public partial class MainWindow : Window
             }
 
             _exiting = true;
+            ShutdownGuard.Step("closing the control panel");
+            ShutdownGuard.Arm(TimeSpan.FromSeconds(10));
             return;
         }
 
@@ -197,8 +201,8 @@ public partial class MainWindow : Window
         if (!TrayPreferencesStore.TrayNoticeShown)
         {
             _tray?.ShowNotice(
-                "OpenOverlay is still running",
-                "OpenOverlay will continue running in the background. You can access it from the system tray icon.");
+                Loc.T("tray.stillRunning"),
+                Loc.T("tray.stillRunning.body"));
             TrayPreferencesStore.MarkTrayNoticeShown();
         }
     }
@@ -211,14 +215,14 @@ public partial class MainWindow : Window
         }
 
         var (status, text) = _vm.Health == HealthStatus.Failed
-            ? (TrayStatus.Error, $"Problem: {_vm.HealthLine}")
+            ? (TrayStatus.Error, Loc.F("tray.status.problem", _vm.HealthLine))
             : _connection.LastError is { } error
-            ? (TrayStatus.Error, $"Telemetry error: {error}")
+            ? (TrayStatus.Error, Loc.F("tray.status.telemetryError", error))
             : !_connection.IsConnected
-                ? (TrayStatus.NoSession, "Waiting for iRacing")
+                ? (TrayStatus.NoSession, Loc.T("connection.waiting"))
                 : _vm.OverlaysHidden
-                    ? (TrayStatus.OverlaysHidden, "Connected · overlays hidden")
-                    : (TrayStatus.Running, "Connected · overlays on");
+                    ? (TrayStatus.OverlaysHidden, Loc.T("tray.status.hidden"))
+                    : (TrayStatus.Running, Loc.T("tray.status.on"));
         _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
     }
     private PedalTraceBuilder _pedalTraceBuilder = new();
@@ -278,16 +282,18 @@ public partial class MainWindow : Window
         _vm = new ControlPanelViewModel();
 
         InitializeComponent();
+        ApplyPaneSplit(PaneSplitStore.ConfigShare);
+        PaneSplitter.DragCompleted += (_, _) => SavePaneSplit();
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
-        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions, _vm.PedalTraceOptions);
+        Preview.Bind(_vm.StandingsOptions, _vm.RelativeOptions, _vm.FuelCalculatorOptions, _vm.FlagOptions, _vm.FlagPreview, _vm.CockpitOptions, _vm.WeatherOptions, _vm.TrackInfoOptions, _vm.PedalTraceOptions, _vm.PreviewSettings);
         DataContext = _vm;
 
         foreach (var descriptor in WidgetCatalog.All)
         {
             var key = descriptor.Key;
-            _widgetGuards[key] = _health.CreateGuard($"Widget: {descriptor.Name}", stage => RecoverWidget(key, stage));
+            _widgetGuards[key] = _health.CreateGuard($"Widget: {descriptor.LogName}", stage => RecoverWidget(key, stage));
         }
 
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
@@ -363,6 +369,20 @@ public partial class MainWindow : Window
             }
         };
         _vm.ControlPanelToggleRequested += ToggleControlPanel;
+        _vm.RevealRequested += RevealSetting;
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ControlPanelViewModel.ShowsPreviewPlaceholder))
+            {
+                FitPanesToPage();
+            }
+            else if (e.PropertyName is nameof(ControlPanelViewModel.Selected) or nameof(ControlPanelViewModel.SelectedTab))
+            {
+                // A new page starts at its top. A search result scrolls to its setting afterwards,
+                // once the page has been laid out.
+                SettingsScroller.ScrollToTop();
+            }
+        };
         // A layout switched to by shortcut is announced from the tray: the sim has the screen.
         _vm.LayoutSwitchedNotice += (title, text) => _tray?.ShowNotice(title, text);
 
@@ -376,8 +396,8 @@ public partial class MainWindow : Window
         if (AppInfo.IsRecoveredLaunch)
         {
             _tray.ShowNotice(
-                "OpenOverlay restarted itself",
-                "It recovered from a problem on its own. A report was saved — Control Panel › General › Diagnostics.");
+                Loc.T("tray.restarted"),
+                Loc.T("tray.restarted.body"));
         }
 
         StateChanged += (_, _) =>
@@ -389,21 +409,31 @@ public partial class MainWindow : Window
         };
         Closing += OnClosing;
         ContentRendered += (_, _) => ShowUpdateNoticeIfPending();
+        // A fresh install is offered the setup assistant once, over the panel, as it first appears.
+        ContentRendered += (_, _) => _vm.OfferSetupOnFirstRun();
         // Signing out or shutting down must never be held up by the close-to-tray behavior.
         System.Windows.Application.Current.SessionEnding += (_, _) => _exiting = true;
 
         Closed += (_, _) =>
         {
             // The watchdog first: once the loop stops beating, a live watchdog would call it a hang.
+            // Each step is named for the shutdown guard, so a stuck exit says where it stuck.
+            ShutdownGuard.Step("UI watchdog");
             _watchdog.Dispose();
             _uiTimer.Stop();
             GlobalExceptionHandler.StormRecovery = null;
+            ShutdownGuard.Step("update service");
             _updates.Dispose();
+            ShutdownGuard.Step("hotkeys");
             _hotkeys?.Dispose();
+            ShutdownGuard.Step("tray icon");
             _tray?.Dispose();
             _tray = null;
+            ShutdownGuard.Step("iRacing connection");
             _connection.Stop();
+            ShutdownGuard.Step("widgets");
             _vm.CloseAllWidgets();
+            ShutdownGuard.Step("dashboard");
             _dashboard?.Close();
 
             // The app ends with this window (ShutdownMode=OnMainWindowClose). Anything still open
@@ -417,6 +447,8 @@ public partial class MainWindow : Window
             {
                 AppLog.Warn("Shutdown", $"Windows still open after the control panel closed: {string.Join(", ", leftovers)}");
             }
+
+            ShutdownGuard.Step("application shutdown (after the control panel closed)");
         };
 
         // Re-opens whichever widgets were on screen last run, in the layout mode currently selected.
@@ -452,7 +484,7 @@ public partial class MainWindow : Window
     {
         _latestStandings = [];
         _lastCockpitFeed = null;
-        _vm.TelemetryLine = "Waiting for iRacing";
+        _vm.TelemetryLine = Loc.T("connection.waiting");
 
         _sessionType = "";
         _strengthOfField = 0;
@@ -906,7 +938,7 @@ public partial class MainWindow : Window
         var speed = telemetry.HasVariable("Speed") ? Units.SpeedFromMs(telemetry.GetFloat("Speed"), units) : 0;
         var lap = telemetry.HasVariable("Lap") ? telemetry.GetInt("Lap") : 0;
         var gear = telemetry.HasVariable("Gear") ? telemetry.GetInt("Gear") : 0;
-        _vm.TelemetryLine = $"Speed {speed:0} {Units.SpeedUnit(units)}    Lap {lap}    Gear {gear}";
+        _vm.TelemetryLine = Loc.F("status.telemetry", Math.Round(speed), Units.SpeedUnit(units), lap, gear);
     }
 
     private void UpdateDiagnostics()
@@ -969,11 +1001,16 @@ public partial class MainWindow : Window
 
     private void ToggleDashboard()
     {
+        if (!ControlPanelViewModel.DashboardAvailable && _dashboard is not { IsVisible: true })
+        {
+            return;
+        }
+
         if (_dashboard is { IsVisible: true })
         {
             AppLog.Activity("Dashboard", "Hidden");
             _dashboard.Hide();
-            SetDashboardButtonCaption("Show dashboard");
+            SetDashboardButtonCaption(Loc.T("layouts.showDashboard"));
             return;
         }
 
@@ -988,7 +1025,7 @@ public partial class MainWindow : Window
         AppLog.Activity("Dashboard", $"Shown on display {display + 1}");
         _dashboard ??= CreateDashboard();
         _dashboard.MoveToScreen(screens[display]);
-        SetDashboardButtonCaption("Hide dashboard");
+        SetDashboardButtonCaption(Loc.T("layouts.hideDashboard"));
     }
 
     private DashboardWindow CreateDashboard()
@@ -1006,7 +1043,7 @@ public partial class MainWindow : Window
                 _dashboard = null;
             }
 
-            SetDashboardButtonCaption("Show dashboard");
+            SetDashboardButtonCaption(Loc.T("layouts.showDashboard"));
         };
         return dashboard;
     }
@@ -1106,6 +1143,11 @@ public partial class MainWindow : Window
             playerCar?.CarScreenNameShort,
         }.Where(part => !string.IsNullOrEmpty(part)));
         AppLog.Session = _sessionDescription;
+        _sessionLabel = string.Join(" · ", new[]
+        {
+            weekend.TrackDisplayShortName ?? weekend.TrackDisplayName ?? weekend.TrackName,
+            string.IsNullOrEmpty(sessionType) ? null : sessionType,
+        }.Where(part => !string.IsNullOrEmpty(part)));
 
         var key = string.Create(CultureInfo.InvariantCulture, $"{weekend.SubSessionID}|{weekend.TrackName}|{playerCar?.CarID}");
         if (key == _sessionKey)
@@ -1213,7 +1255,7 @@ public partial class MainWindow : Window
             _updates.Detail,
             failures: _updates.Failures,
             lastErrorRef: _updates.LastErrorRef);
-        _vm.UpdateStatus = _updates.Detail;
+        _vm.UpdateStatus = _updates.DisplayDetail;
 
         var uiProblem = GlobalExceptionHandler.LastHandledUtc is { } uiFailure && now - uiFailure < RecentProblemWindow;
         _health.Report(
@@ -1226,8 +1268,11 @@ public partial class MainWindow : Window
 
         var report = _health.Snapshot();
         _vm.Health = report.Overall;
-        _vm.HealthLine = report.Summary;
+        // The healthy line is the one people see every day; a problem keeps its English detail,
+        // which is what a bug report needs.
+        _vm.HealthLine = report.Overall == HealthStatus.Healthy ? Loc.T("health.allHealthy") : report.Summary;
         _vm.ConnectionState = telemetry.State;
+        _vm.SessionLabel = _connection.IsConnected ? _sessionLabel : null;
 
         DiagnosticsReport.LatestContext = new DiagnosticsContext(
             _connection.IsConnected ? _sessionDescription : null,
@@ -1238,5 +1283,145 @@ public partial class MainWindow : Window
 
     private static string DescribeSlot(WidgetSlot slot) => string.Create(
         CultureInfo.InvariantCulture,
-        $"{slot.Descriptor.Name}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
+        $"{slot.Descriptor.LogName}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLogLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
+
+    // ===== Setup assistant =====
+
+    /// <summary>A click beside the assistant's card closes it, like Escape and its ✕.</summary>
+    private void SetupBackdrop_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, sender))
+        {
+            _vm.CancelSetup();
+        }
+    }
+
+    protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Escape && _vm.IsSetupOpen)
+        {
+            _vm.CancelSetup();
+            e.Handled = true;
+            return;
+        }
+
+        base.OnPreviewKeyDown(e);
+    }
+
+    // ===== Panes =====
+
+    private (GridLength Config, GridLength Preview)? _paneWidths;
+
+    /// <summary>Splits the room right of the rail between the settings and the preview as shares
+    /// rather than pixels, so the split holds as the window is resized.</summary>
+    private void ApplyPaneSplit(double configShare)
+    {
+        ConfigColumn.Width = new GridLength(configShare, GridUnitType.Star);
+        PreviewColumn.Width = new GridLength(1 - configShare, GridUnitType.Star);
+    }
+
+    /// <summary>Remembers where the splitter was left, for this page and the next run.</summary>
+    private void SavePaneSplit()
+    {
+        var total = ConfigColumn.ActualWidth + PreviewColumn.ActualWidth;
+        if (total <= 0)
+        {
+            return;
+        }
+
+        var share = ConfigColumn.ActualWidth / total;
+        PaneSplitStore.Save(share);
+        ApplyPaneSplit(PaneSplitStore.ConfigShare);
+    }
+
+    /// <summary>
+    /// A page with nothing to preview (the settings pages) gives the preview pane's room back: the
+    /// pane and its splitter go, and the settings take the width, centred at a reading width.
+    /// The split as the user left it comes back with the next page that has a preview.
+    /// </summary>
+    private void FitPanesToPage()
+    {
+        if (_vm.ShowsPreviewPlaceholder)
+        {
+            if (_paneWidths is not null)
+            {
+                return;
+            }
+
+            _paneWidths = (ConfigColumn.Width, PreviewColumn.Width);
+            PreviewPane.Visibility = Visibility.Collapsed;
+            PaneSplitter.Visibility = Visibility.Collapsed;
+            PreviewColumn.MinWidth = 0;
+            PreviewColumn.Width = new GridLength(0);
+            ConfigColumn.Width = new GridLength(1, GridUnitType.Star);
+            ConfigPane.MaxWidth = 840;
+        }
+        else if (_paneWidths is { } widths)
+        {
+            _paneWidths = null;
+            ConfigPane.ClearValue(MaxWidthProperty);
+            ConfigColumn.Width = widths.Config;
+            PreviewColumn.MinWidth = 340;
+            PreviewColumn.Width = widths.Preview;
+            PaneSplitter.Visibility = Visibility.Visible;
+            PreviewPane.Visibility = Visibility.Visible;
+        }
+    }
+
+    // ===== Search =====
+
+    /// <summary>A click in the rail ends a search, even on the page already open (which raises no
+    /// selection change of its own).</summary>
+    private void Rail_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_vm.IsSearching)
+        {
+            Dispatcher.BeginInvoke(_vm.ClearSearch);
+        }
+    }
+
+    /// <summary>Search from the folded rail: unfolds it, so there is a box to type in.</summary>
+    private void RailSearch_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.IsRailCollapsed = false;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => SearchBox.Focus());
+    }
+
+    /// <summary>A page opened from elsewhere (a link, a search result) may be below the rail's fold.</summary>
+    private void Rail_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ListBox { SelectedItem: { } item } list)
+        {
+            list.ScrollIntoView(item);
+        }
+    }
+
+    /// <summary>Scrolls the setting a search result led to into view, with room above it so its
+    /// section's heading still shows.</summary>
+    private void RevealSetting(SettingItem item)
+    {
+        if (FindByDataContext(SettingsScroller, item) is { } row)
+        {
+            row.BringIntoView(new Rect(0, -60, row.ActualWidth, row.ActualHeight + 120));
+        }
+    }
+
+    private static FrameworkElement? FindByDataContext(DependencyObject parent, object context)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is FrameworkElement { } element && ReferenceEquals(element.DataContext, context))
+            {
+                return element;
+            }
+
+            if (FindByDataContext(child, context) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
 }
