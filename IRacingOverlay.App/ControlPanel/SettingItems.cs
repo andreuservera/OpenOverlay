@@ -788,10 +788,11 @@ public sealed class HotkeySetting : SettingItem
 
     public bool HasHotkey => _hotkey is not null;
 
-    /// <summary>What the field shows: the live combination while recording, the saved one otherwise.</summary>
+    /// <summary>What the field shows: the live combination while recording, the saved one otherwise,
+    /// and an invitation to add one when there is none.</summary>
     public string Display => _isRecording
         ? _heldModifiers == ModifierKeys.None ? "Press a shortcut…" : Hotkey.Describe(_heldModifiers, "…")
-        : _hotkey?.Display ?? "Not set";
+        : _hotkey?.Display ?? "Add shortcut";
 
     /// <summary>Why the last recorded combination was refused, or why Windows wouldn't register it.</summary>
     public string? Message => _error ?? _status;
@@ -826,6 +827,8 @@ public sealed class HotkeySetting : SettingItem
 
         Trace(candidate.Display);
         SetHotkey(candidate);
+        // A shortcut just recorded is one the user wants working; its switch only appears now.
+        Enabled = true;
     }
 
     /// <summary>Set by the owner after registering with Windows: null when it went through.</summary>
