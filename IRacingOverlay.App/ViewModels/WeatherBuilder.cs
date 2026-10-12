@@ -44,9 +44,11 @@ internal static class WeatherBuilder
     /// Track &amp; session bar, so the two widgets always show the same picture.</summary>
     internal static WeatherCondition Condition(TelemetrySnapshot telemetry) => ConditionOf(telemetry, IsRaining(telemetry));
 
+    /// <summary>Rain falling now. Not WeatherDeclaredWet: that is race control's wet-tyre call and
+    /// stays on while a soaked track dries out — seen live at Spielberg with no rain falling and
+    /// iRacing's own weather reading 0%, where it put the chance at 100% and drew a rain icon.</summary>
     private static bool IsRaining(TelemetrySnapshot telemetry) =>
-        Read(telemetry, TelemetryVarNames.Precipitation, 0, 1) > RainingThreshold ||
-        (telemetry.HasVariable(TelemetryVarNames.WeatherDeclaredWet) && telemetry.GetBool(TelemetryVarNames.WeatherDeclaredWet));
+        Read(telemetry, TelemetryVarNames.Precipitation, 0, 1) > RainingThreshold;
 
     /// <summary>WindDir is where the wind blows from, clockwise from north; subtracting the car's own
     /// heading turns it into "from the nose".</summary>

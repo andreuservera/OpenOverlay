@@ -36,6 +36,10 @@ internal static class TelemetryVarNames
     public const string PlayerLastLapTime = "LapLastLapTime";
     public const string PlayerBestLapTime = "LapBestLapTime";
 
+    /// <summary>int — the car the camera is on. The player's own while driving; whoever they
+    /// point the camera at while spectating, in the garage or in a replay.</summary>
+    public const string CamCarIdx = "CamCarIdx";
+
     public const string CarIdxLap = "CarIdxLap";
     public const string CarIdxLapDistPct = "CarIdxLapDistPct";
     public const string CarIdxPosition = "CarIdxPosition";
@@ -174,6 +178,8 @@ internal static class TelemetryVarNames
     public const string Precipitation = "Precipitation";
     /// <summary>Sun angle above the horizon in radians; below zero is night.</summary>
     public const string SolarAltitude = "SolarAltitude";
+    /// <summary>bool — the session is declared wet (wet tyres allowed). Says nothing about rain
+    /// falling now: it stays on while a wet track dries.</summary>
     public const string WeatherDeclaredWet = "WeatherDeclaredWet";
     /// <summary>int — irsdk_TrackWetness: 0 unknown, 1 dry … 7 extremely wet.</summary>
     public const string TrackWetness = "TrackWetness";

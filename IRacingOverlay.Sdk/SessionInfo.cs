@@ -97,8 +97,14 @@ public sealed class DriverEntry
     public string FlairName { get; set; } = "";
     public int FlairID { get; set; }
 
+    /// <summary>1 for a spectator driving as a ghost: on track among the field but invisible to it,
+    /// unscored and outside the race's iRating. Confirmed live: joining a race as a spectator and
+    /// driving lists the player with IsSpectator 1 and their own CarIdx.</summary>
+    public int IsSpectator { get; set; }
+
     public bool IsPaceCar => CarIsPaceCar != 0;
     public bool IsAi => CarIsAI != 0;
+    public bool IsGhost => IsSpectator != 0;
 }
 
 public sealed class SessionInfoSection

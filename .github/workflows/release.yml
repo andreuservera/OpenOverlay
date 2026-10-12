@@ -19,10 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       # The build stamps the version of the newest CHANGELOG.md entry and that entry is the release
       # notes; the tag only starts the release, so it has to name the same version.
@@ -45,10 +45,10 @@ jobs:
         run: dotnet test --configuration Release
 
       - name: Publish self-contained build
-        run: dotnet publish IRacingOverlay.App/IRacingOverlay.App.csproj -c Release -r win-x64 --self-contained true -o publish-selfcontained
+        run: dotnet publish IRacingOverlay.App/IRacingOverlay.App.csproj -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o publish-selfcontained
 
       - name: Install vpk
-        run: dotnet tool install -g vpk
+        run: dotnet tool install -g vpk --version 1.2.0 # keep in step with the Velopack package in IRacingOverlay.App.csproj
 
       - name: Download previous release (for delta patches)
         run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}

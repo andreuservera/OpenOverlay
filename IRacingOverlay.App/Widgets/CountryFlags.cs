@@ -63,8 +63,8 @@ internal static class CountryFlags
     private static readonly Dictionary<(string Key, int Width, int Height), List<WeakReference<UIElement>>> Waiters = [];
     private static readonly Lazy<BlockingCollection<(string Key, int Width, int Height)>> Worker = new(StartWorker);
 
-    /// <summary>The flag for a flair name, as its resource name; null for no flair ("-none-"),
-    /// "Global", or a country there's no flag for.</summary>
+    /// <summary>The flag for a flair name, as its resource name; null for no flair ("-none-") or a
+    /// country there's no flag for. "Global" has a flag of its own, a globe.</summary>
     internal static string? KeyOf(string? flairName) =>
         string.IsNullOrWhiteSpace(flairName) ? null : KeyCache.GetOrAdd(flairName, static name =>
         {

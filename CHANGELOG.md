@@ -2,6 +2,23 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.12.0] - 2026-10-12
+
+#### Changed
+- Relative and Standings: while spectating or watching a replay, the tables centre on and highlight the car the camera is on.
+
+#### Improved
+- OpenOverlay now runs on .NET 10, which keeps receiving security updates, and starts faster because the installer ships it precompiled.
+
+#### Fixed
+- Standings: the estimated iRating change is more accurate, now within about a point of iRacing's, and in multiclass races it counts only the cars in your class.
+- Standings: the running order is right on the grid and pace laps and at the finish, including rallycross and dirt ovals, and lap counts no longer drop by one while spectating.
+- Driving as a spectator: you appear in Relative and Standings without a position, and no longer count towards anyone's place, the SOF or the iRating estimate.
+- Flags: the green flag now shows on rolling starts, and the stray blue flag on the opening lap and the "one lap to green" in test drives or after the chequered flag no longer appear.
+- Weather: no longer shows rain when the track is declared wet but it isn't actually raining.
+- Closing the Control Panel now always quits the app, instead of sometimes leaving it running in the background with no window or tray icon.
+
+
 ### [0.11.0] - 2026-10-06
 
 #### Added

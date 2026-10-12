@@ -44,7 +44,7 @@ $repoUrl = "https://github.com/andreuservera/OpenOverlay"
 
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
     Write-Host "Installing vpk CLI tool..." -ForegroundColor Cyan
-    dotnet tool install -g vpk
+    dotnet tool install -g vpk --version 1.2.0
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
@@ -52,7 +52,7 @@ $Version = "$(& dotnet msbuild $project -getProperty:Version)".Trim()
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Publishing self-contained build (v$Version)..." -ForegroundColor Cyan
-& dotnet publish $project -c Release -r win-x64 --self-contained true -o $publishDir
+& dotnet publish $project -c Release -r win-x64 --self-contained true -p:PublishReadyToRun=true -o $publishDir
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # The newest entry's lines, without its heading or the rule that closes it.

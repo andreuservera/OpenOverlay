@@ -45,6 +45,10 @@ public abstract class DriverRow
     public required string Name { get; init; }
     public required string CarNumber { get; init; }
     public required bool IsPlayer { get; init; }
+
+    /// <summary>A spectator driving as a ghost: listed, but out of the classification — no position,
+    /// no iRating swing, and not counted in its class's size or strength.</summary>
+    public bool IsGhost { get; init; }
     public required bool OnPitRoad { get; init; }
     public bool HasBlackFlag { get; init; }
     /// <summary>The furled black flag: a warning, or a slow-down penalty to serve on track.</summary>
@@ -112,7 +116,7 @@ public abstract class DriverRow
     /// standing within their own class — overall position mixes categories that never race each
     /// other, so a GT3 leader reading "20" tells them nothing. Single-class sessions have only one
     /// position, and the two are the same number.</summary>
-    public string PositionDisplay => RankInOwnRace.ToString(CultureInfo.InvariantCulture);
+    public string PositionDisplay => RankInOwnRace > 0 ? RankInOwnRace.ToString(CultureInfo.InvariantCulture) : "—";
 
     protected int RankInOwnRace => IsMultiClass ? ClassPosition : Position;
 

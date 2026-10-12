@@ -25,7 +25,7 @@ internal static class FlagBuilder
         Crossed = 0x00000080,
         YellowWaving = 0x00000100,
         OneLapToGreen = 0x00000200,
-        GreenHeld = 0x00000400,
+        GreenHeld = 0x00000400, // the field held for the green on the pace lap; not green yet
         TenToGo = 0x00000800,
         FiveToGo = 0x00001000,
         RandomWaving = 0x00002000,
@@ -45,8 +45,44 @@ internal static class FlagBuilder
         StartGo = 0x80000000,
     }
 
-    public static List<ActiveFlag> Decode(TelemetrySnapshot telemetry) =>
-        telemetry.HasVariable(TelemetryVarNames.SessionFlags) ? Decode(ReadFlagsBits(telemetry)) : [];
+    public static List<ActiveFlag> Decode(TelemetrySnapshot telemetry, IracingSessionInfo? session = null)
+    {
+        if (!telemetry.HasVariable(TelemetryVarNames.SessionFlags))
+        {
+            return [];
+        }
+
+        var raw = ReadFlagsBits(telemetry);
+        if (OnTheOpeningLapOfARace(telemetry, session))
+        {
+            raw &= ~(uint)IrsdkFlags.Blue;
+        }
+
+        if (InATestDrive(telemetry, session))
+        {
+            raw &= ~(uint)IrsdkFlags.OneLapToGreen;
+        }
+
+        return Decode(raw);
+    }
+
+    /// <summary>
+    /// A test drive never goes green, yet iRacing keeps OneLapToGreen raised for the whole session
+    /// (SessionFlags 0x10040200 throughout, seen in every recorded "Offline Testing" session).
+    /// </summary>
+    private static bool InATestDrive(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+        (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Testing", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Nobody can be a lap up on the player before they have completed one, yet iRacing raises the
+    /// blue flag for a second or two just after the start: seen in two rallycross races, right after
+    /// crossing the line on lap 1. Only in a race; in practice a faster car can come up behind at any
+    /// time.
+    /// </summary>
+    private static bool OnTheOpeningLapOfARace(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+        telemetry.HasVariable(TelemetryVarNames.LapCompleted) &&
+        telemetry.GetInt(TelemetryVarNames.LapCompleted) < 1 &&
+        (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
 
     public static List<ActiveFlag> Decode(uint raw)
     {
@@ -92,9 +128,17 @@ internal static class FlagBuilder
 
         // OneLapToGreen means "still on the pace lap", never "green is out" — it gets its own board
         // rather than being folded into Green, which once showed the green flag before the start.
-        AddIf(IrsdkFlags.OneLapToGreen, FlagKind.OneLapToGreen);
+        // iRacing raises it again with the checkered (end of a lone qualify, cool down), when no
+        // green is coming.
+        if (bits.HasFlag(IrsdkFlags.OneLapToGreen) && !bits.HasFlag(IrsdkFlags.Checkered))
+        {
+            flags.Add(new(FlagKind.OneLapToGreen));
+        }
 
-        if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.GreenHeld) || bits.HasFlag(IrsdkFlags.StartGo))
+        // GreenHeld is not the green: on a rolling start it comes out with OneLapToGreen 9-18 s
+        // before it (seen in every recorded start). Read as green, the green's display timer ran
+        // out before the real one — no green flag at the start.
+        if (bits.HasFlag(IrsdkFlags.Green) || bits.HasFlag(IrsdkFlags.StartGo))
         {
             flags.Add(new(FlagKind.Green));
         }

@@ -43,6 +43,74 @@ public class FlagBuilderTests
     private static IReadOnlyList<FlagState> Shown(uint flags) => FlagBuilder.Build(BuildWithFlags(flags));
 
     [Fact]
+    public void RollingStart_GreenShowsWhenTheRaceGoesGreen_NotWhenTheFieldIsHeld()
+    {
+        // Micro sprint at Lanier: GreenHeld comes out with OneLapToGreen 8.4 s before the green.
+        var presenter = new FlagPresenter();
+        var options = new FlagOptions { InfoFlagSeconds = 5 };
+        var start = TimeSpan.FromSeconds(125.8);
+
+        var held = presenter.Present(FlagBuilder.Decode(StartReady | GreenHeld | OneLapToGreen), options, start);
+        var green = presenter.Present(FlagBuilder.Decode(StartGo | GreenHeld | OneLapToGreen | Green), options, start + TimeSpan.FromSeconds(8.4));
+
+        Assert.DoesNotContain(held, f => f.Kind == FlagKind.Green);
+        Assert.Contains(green, f => f.Kind == FlagKind.Green);
+    }
+
+    [Theory]
+    [InlineData("Race", 0, false)] // just after the start: nobody can be a lap up yet
+    [InlineData("Race", 1, true)]
+    [InlineData("Practice", 0, true)] // a faster car can come up behind on an out-lap
+    public void BlueFlag_IgnoredOnTheOpeningLapOfARace(string sessionType, int lapsCompleted, bool shown)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        builder.AddVar("SessionNum", IrsdkVarType.Int);
+        builder.AddVar("LapCompleted", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBitField("SessionFlags", Blue | Green);
+            w.SetInt("SessionNum", 0);
+            w.SetInt("LapCompleted", lapsCompleted);
+        });
+        var session = new IRacingOverlay.Sdk.IracingSessionInfo
+        {
+            SessionInfo = new IRacingOverlay.Sdk.SessionInfoSection { Sessions = [new IRacingOverlay.Sdk.SessionEntry { SessionNum = 0, SessionType = sessionType }] },
+        };
+
+        Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.Blue));
+    }
+
+    [Theory]
+    [InlineData("Offline Testing", false)] // test drive: the bit stays up all session, no green ever comes
+    [InlineData("Lone Qualify", true)] // the warm-up lap before the qualifying lap
+    [InlineData("Race", true)]
+    public void OneLapToGreen_IgnoredInATestDrive(string sessionType, bool shown)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        builder.AddVar("SessionNum", IrsdkVarType.Int);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBitField("SessionFlags", StartHidden | Servicible | OneLapToGreen);
+            w.SetInt("SessionNum", 0);
+        });
+        var session = new IRacingOverlay.Sdk.IracingSessionInfo
+        {
+            SessionInfo = new IRacingOverlay.Sdk.SessionInfoSection { Sessions = [new IRacingOverlay.Sdk.SessionEntry { SessionNum = 0, SessionType = sessionType }] },
+        };
+
+        Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.OneLapToGreen));
+    }
+
+    [Fact]
+    public void OneLapToGreen_IgnoredOnceTheCheckeredIsOut()
+    {
+        // End of a lone qualify and the cool down: 0x10040201, no green coming.
+        Assert.Equal(FlagKind.Checkered, Assert.Single(FlagBuilder.Decode(StartHidden | Servicible | OneLapToGreen | Checkered)).Kind);
+    }
+
+    [Fact]
     public void NoFlagsSet_ReturnsEmpty()
     {
         Assert.Empty(Shown(0));
@@ -62,7 +130,6 @@ public class FlagBuilderTests
     [InlineData(Checkered, FlagKind.Checkered)]
     [InlineData(White, FlagKind.White)]
     [InlineData(Green, FlagKind.Green)]
-    [InlineData(GreenHeld, FlagKind.Green)]
     [InlineData(StartGo, FlagKind.Green)]
     [InlineData(Yellow, FlagKind.Yellow)]
     [InlineData(Red, FlagKind.Red)]
