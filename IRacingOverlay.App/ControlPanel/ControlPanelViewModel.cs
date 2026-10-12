@@ -90,27 +90,27 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         // Layouts stands alone, without a heading: one page, and the one most people open next.
         NavItems.Add(NavItem.ForPage(
             LayoutsPageKey, "Layouts", "Saved arrangements of your widgets, and the second-monitor dashboard.",
-            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", "#layouts"));
+            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", "#layouts", isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
             GeneralPageKey, "General", "The window, units, and the overlays as a whole.",
             "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9",
-            SettingsGroupTitle));
+            SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
             PerformancePageKey, "Performance", "How often the fast displays redraw, and what it costs.",
             "M12,20 A8,8 0 1 1 12.01,20 M12,12 L16,8 M12,4 V5.5 M4,12 H5.5 M18.5,12 H20",
-            SettingsGroupTitle));
+            SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
             HotkeysPageKey, "Hotkeys", "Keyboard shortcuts that work while you drive.",
             "M3,6 H21 V18 H3 Z M7,10 H7.01 M11,10 H11.01 M15,10 H15.01 M7,14 H17",
-            SettingsGroupTitle));
+            SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
             DiagnosticsPageKey, "Diagnostics", "Logs and a report to attach to a bug report.",
             "M3,12 H7 L9.5,6 L14.5,18 L17,12 H21",
-            SettingsGroupTitle));
+            SettingsGroupTitle, isPinned: true));
 
         AddHelpPage();
 
@@ -121,10 +121,14 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
         UpdateWidgetCount();
 
-        NavView = CollectionViewSource.GetDefaultView(NavItems);
+        // Two lists over the same pages, each with its own view: the widgets scroll at the top, the
+        // pinned pages (Layouts, settings) stay at the foot. Help sits below both, in neither.
+        NavView = new ListCollectionView(NavItems);
         NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
-        // Help sits at the foot of the rail rather than in its list.
-        NavView.Filter = item => item is NavItem { IsFooter: false };
+        NavView.Filter = item => item is NavItem { IsFooter: false, IsPinned: false };
+        PinnedNavView = new ListCollectionView(NavItems);
+        PinnedNavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
+        PinnedNavView.Filter = item => item is NavItem { IsPinned: true };
 
         Select(NavItems[0]);
     }
@@ -157,6 +161,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public ICollectionView NavView { get; }
 
+    public ICollectionView PinnedNavView { get; }
+
     public IReadOnlyCollection<WidgetSlot> Slots => _slots.Values;
 
     public IReadOnlyList<string> MonitorNames { get; }
@@ -178,7 +184,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     /// lighting the page that was open before Help, and so clicking that page opens it again.</summary>
     public NavItem? RailSelected
     {
-        get => _selected is { IsFooter: false } page ? page : null;
+        get => _selected is { IsFooter: false, IsPinned: false } page ? page : null;
+        set => Select(value);
+    }
+
+    /// <summary>The selection of the rail's pinned list at its foot, on the same terms as
+    /// <see cref="RailSelected"/>: only one of the two lists ever lights a page.</summary>
+    public NavItem? PinnedRailSelected
+    {
+        get => _selected is { IsPinned: true } page ? page : null;
         set => Select(value);
     }
 
@@ -288,6 +302,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             var section = NavSection.For(WidgetCatalog.HeadingOf(category.Key));
             section.Badge = $"{on}/{total}";
             section.BadgeTip = $"{on} of {total} switched on";
+            section.HasActive = on > 0;
         }
     }
 
@@ -457,6 +472,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
         OnPropertyChanged(nameof(Selected));
         OnPropertyChanged(nameof(RailSelected));
+        OnPropertyChanged(nameof(PinnedRailSelected));
         OnPropertyChanged(nameof(SelectedWidget));
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsHomePage));

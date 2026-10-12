@@ -858,25 +858,19 @@
         <Setter Property="ItemContainerStyle" Value="{StaticResource Cp.NavItem}"/>
     </Style>
 
-    <!-- A widget's state as a dot: green on screen, grey switched off, amber switched on but not
-         showing right now (waiting for the car, or hidden by the hotkey), red when its window could
-         not open. Bound to a WidgetSlot; the words are always one hover away in the tooltip, so the
-         colour never has to carry the meaning on its own. -->
+    <!-- A widget on screen right now, as a green dot. Only then: off, waiting or failed are already
+         told by the switch beside it and by the tooltip, and a dot repeating the switch is noise.
+         Bound to a WidgetSlot; the words are one hover away in the tooltip. -->
     <Style x:Key="Cp.StateDot" TargetType="Ellipse">
         <Setter Property="Width" Value="8"/>
         <Setter Property="Height" Value="8"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Fill" Value="{StaticResource Cp.Idle}"/>
+        <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
+        <Setter Property="Visibility" Value="Collapsed"/>
         <Setter Property="ToolTip" Value="{Binding StateLabel}"/>
         <Style.Triggers>
             <DataTrigger Binding="{Binding State}" Value="OnScreen">
-                <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="Waiting">
-                <Setter Property="Fill" Value="{StaticResource Cp.Warning}"/>
-            </DataTrigger>
-            <DataTrigger Binding="{Binding State}" Value="Failed">
-                <Setter Property="Fill" Value="{StaticResource Cp.Danger}"/>
+                <Setter Property="Visibility" Value="Visible"/>
             </DataTrigger>
         </Style.Triggers>
     </Style>
@@ -903,8 +897,7 @@
                        VerticalAlignment="Center" Foreground="{StaticResource Cp.TextSoft}"
                        TextTrimming="CharacterEllipsis"/>
 
-            <Ellipse Grid.Column="2" Style="{StaticResource Cp.StateDot}" DataContext="{Binding Widget}" Margin="0,0,12,0"
-                     Visibility="{Binding DataContext.IsWidget, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource Cp.BoolToVis}}"/>
+            <Ellipse Grid.Column="2" Style="{StaticResource Cp.StateDot}" DataContext="{Binding Widget}" Margin="0,0,12,0"/>
 
             <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}"
                       IsChecked="{Binding Widget.IsEnabled, Mode=TwoWay}"
@@ -973,11 +966,21 @@
                                       IsChecked="{Binding Name.IsCollapsed, Mode=TwoWay}">
                             <DockPanel>
                                 <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
-                                <!-- How many of the section's widgets are switched on, e.g. "4/12". -->
+                                <!-- How many of the section's widgets are switched on, e.g. "4/12";
+                                     green while any of them is. -->
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Name.Badge}" ToolTip="{Binding Name.BadgeTip}"
-                                           Style="{StaticResource Cp.Mono}" FontSize="{StaticResource Cp.Size.Micro}"
-                                           VerticalAlignment="Center"
-                                           Visibility="{Binding Name.Badge, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"
+                                           Visibility="{Binding Name.Badge, Converter={StaticResource Cp.EmptyToCollapsed}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Mono}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Name.HasActive}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource Cp.Live}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <TextBlock Text="{Binding Name.Title}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
                             </DockPanel>
                         </ToggleButton>

@@ -14,6 +14,7 @@ public sealed class NavSection : INotifyPropertyChanged
 
     private string _badge = "";
     private string? _badgeTip;
+    private bool _hasActive;
 
     private NavSection(string title) => Title = title;
 
@@ -51,6 +52,22 @@ public sealed class NavSection : INotifyPropertyChanged
 
             _badge = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Badge)));
+        }
+    }
+
+    /// <summary>Whether any of the section's widgets is switched on, which lights the count.</summary>
+    public bool HasActive
+    {
+        get => _hasActive;
+        set
+        {
+            if (_hasActive == value)
+            {
+                return;
+            }
+
+            _hasActive = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasActive)));
         }
     }
 
@@ -125,6 +142,10 @@ public sealed class NavItem
     /// <summary>Kept out of the list and reached from the foot of the rail instead (Help).</summary>
     public bool IsFooter { get; }
 
+    /// <summary>Listed at the foot of the rail, above Help, so it stays in reach however long the
+    /// widget list grows (Layouts and the settings pages).</summary>
+    public bool IsPinned { get; init; }
+
     /// <summary>Tabs across the top of the page, or empty for a page without any.</summary>
     public IReadOnlyList<string> Tabs { get; init; } = [];
 
@@ -138,8 +159,8 @@ public sealed class NavItem
         WidgetCatalog.HeadingOf(slot.Descriptor.Category), slot);
 
     /// <summary>An application page; an empty <paramref name="group"/> lists it without a heading.</summary>
-    public static NavItem ForPage(string key, string title, string blurb, string iconData, string group) =>
-        new(key, title, blurb, iconData, group, widget: null);
+    public static NavItem ForPage(string key, string title, string blurb, string iconData, string group, bool isPinned = false) =>
+        new(key, title, blurb, iconData, group, widget: null) { IsPinned = isPinned };
 
     /// <summary>A page reached from the foot of the rail rather than listed in it.</summary>
     public static NavItem ForFooter(string key, string title, string blurb, string iconData, IReadOnlyList<string> tabs) =>

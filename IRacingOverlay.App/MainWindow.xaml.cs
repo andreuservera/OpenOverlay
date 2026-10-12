@@ -280,6 +280,8 @@ public partial class MainWindow : Window
         _vm = new ControlPanelViewModel();
 
         InitializeComponent();
+        ApplyPaneSplit(PaneSplitStore.ConfigShare);
+        PaneSplitter.DragCompleted += (_, _) => SavePaneSplit();
 
         // Before DataContext, so the preview already knows which options objects to follow by the
         // time the Slot binding hands it its first widget.
@@ -1285,9 +1287,31 @@ public partial class MainWindow : Window
 
     private (GridLength Config, GridLength Preview)? _paneWidths;
 
+    /// <summary>Splits the room right of the rail between the settings and the preview as shares
+    /// rather than pixels, so the split holds as the window is resized.</summary>
+    private void ApplyPaneSplit(double configShare)
+    {
+        ConfigColumn.Width = new GridLength(configShare, GridUnitType.Star);
+        PreviewColumn.Width = new GridLength(1 - configShare, GridUnitType.Star);
+    }
+
+    /// <summary>Remembers where the splitter was left, for this page and the next run.</summary>
+    private void SavePaneSplit()
+    {
+        var total = ConfigColumn.ActualWidth + PreviewColumn.ActualWidth;
+        if (total <= 0)
+        {
+            return;
+        }
+
+        var share = ConfigColumn.ActualWidth / total;
+        PaneSplitStore.Save(share);
+        ApplyPaneSplit(PaneSplitStore.ConfigShare);
+    }
+
     /// <summary>
     /// A page with nothing to preview (the settings pages) gives the preview pane's room back: the
-    /// pane and its splitter go, and the settings take the width, centred at the same reading width.
+    /// pane and its splitter go, and the settings take the width, centred at a reading width.
     /// The split as the user left it comes back with the next page that has a preview.
     /// </summary>
     private void FitPanesToPage()
@@ -1304,7 +1328,6 @@ public partial class MainWindow : Window
             PaneSplitter.Visibility = Visibility.Collapsed;
             PreviewColumn.MinWidth = 0;
             PreviewColumn.Width = new GridLength(0);
-            ConfigColumn.MaxWidth = double.PositiveInfinity;
             ConfigColumn.Width = new GridLength(1, GridUnitType.Star);
             ConfigPane.MaxWidth = 840;
         }
@@ -1312,7 +1335,6 @@ public partial class MainWindow : Window
         {
             _paneWidths = null;
             ConfigPane.ClearValue(MaxWidthProperty);
-            ConfigColumn.MaxWidth = 800;
             ConfigColumn.Width = widths.Config;
             PreviewColumn.MinWidth = 340;
             PreviewColumn.Width = widths.Preview;
@@ -1336,9 +1358,9 @@ public partial class MainWindow : Window
     /// <summary>A page opened from elsewhere (a link, a search result) may be below the rail's fold.</summary>
     private void Rail_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (Rail.SelectedItem is { } item)
+        if (sender is System.Windows.Controls.ListBox { SelectedItem: { } item } list)
         {
-            Rail.ScrollIntoView(item);
+            list.ScrollIntoView(item);
         }
     }
 

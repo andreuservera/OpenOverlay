@@ -204,12 +204,11 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="278"/>
-                <!-- Capped so settings never stretch past ~760 px of content: a switch a thousand
-                     pixels from its label is no longer read as belonging to it. A wide window gives
-                     the room to the preview instead. -->
-                <ColumnDefinition x:Name="ConfigColumn" Width="1.05*" MinWidth="360" MaxWidth="800"/>
+                <!-- Settings and preview split 40/60 by default; where the splitter is left is
+                     remembered (PaneSplitStore), as a share so it holds on any window width. -->
+                <ColumnDefinition x:Name="ConfigColumn" Width="0.4*" MinWidth="360"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition x:Name="PreviewColumn" Width="1.35*" MinWidth="340"/>
+                <ColumnDefinition x:Name="PreviewColumn" Width="0.6*" MinWidth="340"/>
             </Grid.ColumnDefinitions>
 
             <!-- ===== Rail ===== -->
@@ -301,6 +300,19 @@
                             </DockPanel>
                         </Button>
                     </Border>
+
+                    <!-- Layouts and the settings pages, pinned above Help so they are always in
+                         reach while the widgets above them scroll. -->
+                    <ListBox x:Name="PinnedRail" DockPanel.Dock="Bottom" Style="{StaticResource Cp.NavList}"
+                             Padding="0,0,0,6" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                             ItemsSource="{Binding PinnedNavView}"
+                             SelectedItem="{Binding PinnedRailSelected, Mode=TwoWay}"
+                             PreviewMouseLeftButtonUp="Rail_PreviewMouseLeftButtonUp"
+                             ItemTemplate="{StaticResource Cp.NavItemTemplate}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle ContainerStyle="{StaticResource Cp.NavGroupStyle}"/>
+                        </ListBox.GroupStyle>
+                    </ListBox>
 
                     <!-- Grouped on NavItem.Group, so a new section in the rail is a new string in the
                          view model and never a change here. -->
@@ -550,8 +562,10 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
+                <!-- Only with the sim connected: without it the line is a row of dashes. -->
                 <TextBlock Text="{Binding TelemetryLine}" Style="{StaticResource Cp.Mono}"
-                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"/>
+                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"
+                           Visibility="{Binding IsConnected, Converter={StaticResource Cp.BoolToVis}}"/>
                 <!-- Health first: it is the line that says whether the rest can be trusted. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                             VerticalAlignment="Center" Margin="24,0,0,0">
