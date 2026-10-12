@@ -1367,6 +1367,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Search from the folded rail: unfolds it, so there is a box to type in.</summary>
+    private void RailSearch_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.IsRailCollapsed = false;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => SearchBox.Focus());
+    }
+
     /// <summary>A page opened from elsewhere (a link, a search result) may be below the rail's fold.</summary>
     private void Rail_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {

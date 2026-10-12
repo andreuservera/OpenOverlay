@@ -190,6 +190,28 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         set => Select(value);
     }
 
+    private const string RailCollapseKey = "Rail/IconsOnly";
+    private ICommand? _toggleRail;
+
+    /// <summary>The rail folded to its icons, for more room to the settings and the preview. The
+    /// names are one hover away; remembered for next time.</summary>
+    public bool IsRailCollapsed
+    {
+        get => CollapseStore.IsCollapsed(RailCollapseKey);
+        set
+        {
+            if (value == IsRailCollapsed)
+            {
+                return;
+            }
+
+            CollapseStore.SetCollapsed(RailCollapseKey, value);
+            OnPropertyChanged();
+        }
+    }
+
+    public ICommand ToggleRailCommand => _toggleRail ??= new RelayCommand(() => IsRailCollapsed = !IsRailCollapsed);
+
     /// <summary>Widgets unlocked: they can be dragged and resized on screen. A single switch for the
     /// whole application rather than per widget: "let me move things" is a mode you are in, not a
     /// property of one panel. Widgets an open layout controls move too; that is saved as their own

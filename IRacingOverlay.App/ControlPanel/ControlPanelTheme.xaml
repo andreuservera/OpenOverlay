@@ -817,6 +817,21 @@
     </Style>
 
     <!-- ===== Navigation rail ===== -->
+    <!-- The sidebar toggle's icon: a panel with its left strip, drawn in the 24×24 icon frame. -->
+    <Geometry x:Key="Cp.Icon.Sidebar">M3,4 H21 V20 H3 Z M9,4 V20</Geometry>
+    <!-- Search: a lens and its handle, in the same 24×24 frame. -->
+    <Geometry x:Key="Cp.Icon.Search">M17,10.5 A6.5,6.5 0 1 1 4,10.5 A6.5,6.5 0 1 1 17,10.5 Z M15.2,15.2 L20,20</Geometry>
+    <Style x:Key="Cp.RailToggleIcon" TargetType="Path">
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}"/>
+        <Setter Property="StrokeThickness" Value="1.7"/>
+        <Setter Property="StrokeLineJoin" Value="Round"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+    </Style>
+
     <Style x:Key="Cp.NavItem" TargetType="ListBoxItem">
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Padding" Value="0"/>
@@ -880,7 +895,7 @@
          new entry of either kind is a data change and never a layout change. Hovering the row says
          what the page is for. -->
     <DataTemplate x:Key="Cp.NavItemTemplate" DataType="{x:Type cp:NavItem}">
-        <Grid Height="36" Margin="10,0,8,0" Background="Transparent" ToolTip="{Binding Blurb}">
+        <Grid x:Name="Row" Height="36" Margin="10,0,8,0" Background="Transparent" ToolTip="{Binding Blurb}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -892,14 +907,14 @@
                   Data="{Binding IconData}" Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.7"
                   StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
 
-            <TextBlock Grid.Column="1" Text="{Binding Title}" FontFamily="{DynamicResource Theme.FontFamily}"
+            <TextBlock x:Name="Label" Grid.Column="1" Text="{Binding Title}" FontFamily="{DynamicResource Theme.FontFamily}"
                        FontSize="{StaticResource Cp.Size.Body}" FontWeight="Medium" Margin="11,0,8,0"
                        VerticalAlignment="Center" Foreground="{StaticResource Cp.TextSoft}"
                        TextTrimming="CharacterEllipsis"/>
 
-            <Ellipse Grid.Column="2" Style="{StaticResource Cp.StateDot}" DataContext="{Binding Widget}" Margin="0,0,12,0"/>
+            <Ellipse x:Name="Dot" Grid.Column="2" Style="{StaticResource Cp.StateDot}" DataContext="{Binding Widget}" Margin="0,0,12,0"/>
 
-            <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}"
+            <CheckBox x:Name="Switch" Grid.Column="3" Style="{StaticResource Cp.Switch}"
                       IsChecked="{Binding Widget.IsEnabled, Mode=TwoWay}"
                       ToolTip="Show this widget on screen"
                       Visibility="{Binding IsWidget, Converter={StaticResource Cp.BoolToVis}}"/>
@@ -907,6 +922,18 @@
         <DataTemplate.Triggers>
             <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                 <Setter TargetName="Icon" Property="Stroke" Value="{StaticResource Cp.Accent}"/>
+            </DataTrigger>
+            <!-- Rail folded to icons: the icon alone, centred, named on hover; a widget on screen
+                 keeps its green dot, on the icon's corner. -->
+            <DataTrigger Binding="{Binding DataContext.IsRailCollapsed, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                <Setter TargetName="Row" Property="Margin" Value="14,0,0,0"/>
+                <Setter TargetName="Row" Property="ToolTip" Value="{Binding Title}"/>
+                <Setter TargetName="Label" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="Switch" Property="Visibility" Value="Collapsed"/>
+                <Setter TargetName="Dot" Property="Grid.Column" Value="0"/>
+                <Setter TargetName="Dot" Property="HorizontalAlignment" Value="Right"/>
+                <Setter TargetName="Dot" Property="VerticalAlignment" Value="Top"/>
+                <Setter TargetName="Dot" Property="Margin" Value="0,6,-5,0"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
@@ -1002,6 +1029,14 @@
                                 </Setter.Value>
                             </Setter>
                         </MultiDataTrigger>
+                        <!-- Rail folded to icons: no headings to fold or read, a hairline between
+                             sections instead, and every page showing, folded section or not. -->
+                        <DataTrigger Binding="{Binding DataContext.IsRailCollapsed, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                            <Setter TargetName="Header" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="Rule" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="Rule" Property="Margin" Value="14,8,14,4"/>
+                            <Setter TargetName="Pages" Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

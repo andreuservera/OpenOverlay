@@ -203,7 +203,7 @@
         <!-- ===== Body ===== -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="278"/>
+                <ColumnDefinition Width="Auto"/>
                 <!-- Settings and preview split 40/60 by default; where the splitter is left is
                      remembered (PaneSplitStore), as a share so it holds on any window width. -->
                 <ColumnDefinition x:Name="ConfigColumn" Width="0.4*" MinWidth="360"/>
@@ -212,14 +212,45 @@
             </Grid.ColumnDefinitions>
 
             <!-- ===== Rail ===== -->
+            <!-- Folds to its icons (IsRailCollapsed): names, switches and headings go, the icons
+                 stay in place and say their name on hover. -->
             <Border Grid.Column="0" Background="{StaticResource Cp.Rail}"
                     BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,1,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Width" Value="278"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRailCollapsed}" Value="True">
+                                <Setter Property="Width" Value="62"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <DockPanel>
-                    <Border DockPanel.Dock="Top" Margin="14,14,14,2" Height="32" CornerRadius="7"
+                    <!-- Folded: the button that unfolds it, and search, which unfolds it to type. -->
+                    <StackPanel DockPanel.Dock="Top" Margin="0,14,0,2"
+                                Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.BoolToVis}}">
+                        <Button Style="{StaticResource Cp.StepButton}" Width="32" Height="32" HorizontalAlignment="Center"
+                                Command="{Binding ToggleRailCommand}" ToolTip="Show the sidebar's names">
+                            <Path Data="{StaticResource Cp.Icon.Sidebar}" Style="{StaticResource Cp.RailToggleIcon}"/>
+                        </Button>
+                        <Button Style="{StaticResource Cp.StepButton}" Width="32" Height="32" HorizontalAlignment="Center"
+                                Margin="0,4,0,0" Click="RailSearch_Click" ToolTip="Search settings">
+                            <Path Data="{StaticResource Cp.Icon.Search}" Style="{StaticResource Cp.RailToggleIcon}"/>
+                        </Button>
+                    </StackPanel>
+
+                    <DockPanel DockPanel.Dock="Top" Margin="14,14,10,2"
+                               Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Width="30" Height="32" Margin="6,0,0,0"
+                            Command="{Binding ToggleRailCommand}" ToolTip="Fold the sidebar to icons">
+                        <Path Data="{StaticResource Cp.Icon.Sidebar}" Style="{StaticResource Cp.RailToggleIcon}"/>
+                    </Button>
+                    <Border Height="32" CornerRadius="7"
                             Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}"
                             BorderThickness="1">
                         <Grid>
-                            <Path Data="M10,10 A5,5 0 1 0 10.01,10 M14,14 L18,18" Width="14" Height="14"
+                            <Path Data="{StaticResource Cp.Icon.Search}" Width="14" Height="14"
                                   Stretch="Uniform" HorizontalAlignment="Left" Margin="10,0,0,0"
                                   Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.8"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
@@ -250,6 +281,7 @@
                             </TextBlock>
                         </Grid>
                     </Border>
+                    </DockPanel>
 
                     <!-- Help at the foot of the rail, apart from the pages you configure: one place for
                          what's new, the changelog and the version. Lit like a rail entry while open. -->
@@ -274,12 +306,17 @@
                                             <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Selected}"/>
                                             <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsRailCollapsed}" Value="True">
+                                            <Setter TargetName="Chrome" Property="Padding" Value="14,0,0,0"/>
+                                            <Setter TargetName="Chrome" Property="ToolTip" Value="Help"/>
+                                        </DataTrigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding VersionLabel}" Style="{StaticResource Cp.Mono}"
-                                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"/>
+                                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"
+                                           Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}"/>
                                 <Path Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"
                                       Data="M12,3 A9,9 0 1 0 12.01,3 Z M12,11 V16.5 M12,7.5 V7.51" StrokeThickness="1.7"
                                       StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
@@ -296,7 +333,8 @@
                                 </Path>
                                 <TextBlock Text="Help" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Body}"
                                            FontWeight="Medium" Foreground="{StaticResource Cp.TextSoft}" Margin="11,0,0,0"
-                                           VerticalAlignment="Center"/>
+                                           VerticalAlignment="Center"
+                                           Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}"/>
                             </DockPanel>
                         </Button>
                     </Border>
