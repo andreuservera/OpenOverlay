@@ -56,8 +56,6 @@
     <SolidColorBrush x:Key="Cp.Warning" Color="#F5A524"/>
     <SolidColorBrush x:Key="Cp.WarningWash" Color="#1AF5A524"/>
     <SolidColorBrush x:Key="Cp.Idle" Color="#5C6672"/>
-    <!-- A setting changed from its default: blue, which says nothing about on, off or danger. -->
-    <SolidColorBrush x:Key="Cp.Info" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Cp.Danger" Color="#F26D6D"/>
     <SolidColorBrush x:Key="Cp.DangerWash" Color="#1AF26D6D"/>
 
@@ -1837,18 +1835,9 @@
                         <DataTemplate>
                             <Border x:Name="Band" Margin="-10,0" Padding="10,0" CornerRadius="6"
                                     Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
-                                <Grid>
-                                    <ContentPresenter Content="{Binding}"/>
-                                    <!-- Changed from how it came: a dot in the margin, level with the label. -->
-                                    <Ellipse x:Name="ModifiedDot" Width="6" Height="6" Fill="{StaticResource Cp.Info}"
-                                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-8,17,0,0"
-                                             ToolTip="Changed from the default" Visibility="Collapsed"/>
-                                </Grid>
+                                <ContentPresenter Content="{Binding}"/>
                             </Border>
                             <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding IsModified}" Value="True">
-                                    <Setter TargetName="ModifiedDot" Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
                                     <Setter TargetName="Band" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
                                     <Setter TargetName="Band" Property="BorderBrush" Value="#99FFD24D"/>

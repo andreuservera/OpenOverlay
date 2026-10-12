@@ -78,7 +78,7 @@ public abstract class SettingItem : INotifyPropertyChanged
     /// what <see cref="IsModified"/> compares with and a section's Reset puts back.</summary>
     internal SettingItem? Default { get; set; }
 
-    /// <summary>Differs from how it came: the row wears a dot, and its section offers Reset.</summary>
+    /// <summary>Differs from how it came: its section then offers Reset.</summary>
     public bool IsModified => Default is not null && SettingDefaults.KeyOf(this) != SettingDefaults.KeyOf(Default);
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
