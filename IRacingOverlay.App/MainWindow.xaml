@@ -583,7 +583,7 @@
                         <TextBlock DockPanel.Dock="Bottom" Text="{Binding HomeScreenCaption}" Style="{StaticResource Cp.Hint}"
                                    HorizontalAlignment="Center" Margin="0,0,0,18"/>
                         <cp:LayoutPreview Layout="{Binding HomeScreen}"
-                                          EmptyMessage="Nothing on screen. Switch a widget on from the rail, or set up from a preset."/>
+                                          EmptyMessage="{loc:T home.preview.empty}"/>
                     </DockPanel>
                 </Grid>
             </DockPanel>

@@ -34,7 +34,7 @@ public sealed partial class ControlPanelViewModel
     // what left it blank: the old selection is dropped with the old list.
     public IReadOnlyList<string> ScenarioChoices => PreviewData.ScenarioLabels;
 
-    public IReadOnlyList<string> FlagChoices { get; } = PreviewData.FlagScenarios.Select(scenario => scenario.Label).ToList();
+    public IReadOnlyList<string> FlagChoices => Loc.CachedList(nameof(FlagChoices), () => PreviewData.FlagScenarios.Select(scenario => scenario.Label).ToList());
 
     public int ScenarioIndex
     {

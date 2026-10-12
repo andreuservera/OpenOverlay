@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.FuelCalculatorPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              x:Name="Root">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -168,7 +169,7 @@
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding Options.ShowLapsRemaining, ElementName=Root, Converter={StaticResource BoolToVis}}">
                         <TextBlock x:Name="LapsRemainingText" Text="—" Style="{StaticResource DisplayValue}"/>
-                        <TextBlock Text="LAPS" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
+                        <TextBlock Text="{loc:T fuel.laps}" Style="{StaticResource UnitLabel}" VerticalAlignment="Bottom" Margin="6,0,0,6"/>
                     </StackPanel>
 
                     <Border x:Name="LevelTrack" Style="{StaticResource MeterTrack}" Height="8" Margin="0,6,0,0"
@@ -201,7 +202,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="LAST" Style="{StaticResource CellLabel}"/>
+                                <TextBlock Text="{loc:T fuel.last}" Style="{StaticResource CellLabel}"/>
                                 <StackPanel Style="{StaticResource CellValuePanel}">
                                     <TextBlock x:Name="LastLapText" Text="—" Style="{StaticResource CellValue}"/>
                                     <TextBlock x:Name="LastLapUnitText" Text="L" Style="{StaticResource CellUnit}"/>
@@ -220,7 +221,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock x:Name="AverageLabel" Text="AVG" Style="{StaticResource CellLabel}"/>
+                                <TextBlock x:Name="AverageLabel" Text="{loc:T fuel.avg}" Style="{StaticResource CellLabel}"/>
                                 <!-- The average is the figure the strategy figures are actually derived
                                      from, so it's the one of the four that reads at full strength. -->
                                 <StackPanel Style="{StaticResource CellValuePanel}">
@@ -242,7 +243,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="MIN" Style="{StaticResource CellLabel}"/>
+                                <TextBlock Text="{loc:T fuel.min}" Style="{StaticResource CellLabel}"/>
                                 <StackPanel Style="{StaticResource CellValuePanel}">
                                     <TextBlock x:Name="MinText" Text="—" Style="{StaticResource CellValue}"/>
                                     <TextBlock x:Name="MinUnitText" Text="L" Style="{StaticResource CellUnit}"/>
@@ -261,7 +262,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="MAX" Style="{StaticResource CellLabel}"/>
+                                <TextBlock Text="{loc:T fuel.max}" Style="{StaticResource CellLabel}"/>
                                 <StackPanel Style="{StaticResource CellValuePanel}">
                                     <TextBlock x:Name="MaxText" Text="—" Style="{StaticResource CellValue}"/>
                                     <TextBlock x:Name="MaxUnitText" Text="L" Style="{StaticResource CellUnit}"/>
@@ -286,7 +287,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="FUEL LEFT" Style="{StaticResource CellLabel}"/>
+                                <TextBlock Text="{loc:T fuel.fuelLeft}" Style="{StaticResource CellLabel}"/>
                                 <StackPanel Style="{StaticResource CellValuePanel}">
                                     <TextBlock x:Name="LevelText" Text="—" Style="{StaticResource StrategyValue}"/>
                                     <TextBlock x:Name="LevelUnitText" Text="L" Style="{StaticResource StrategyUnit}"/>
@@ -305,7 +306,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="TO FINISH" Style="{StaticResource CellLabel}"/>
+                                <TextBlock Text="{loc:T fuel.toFinish}" Style="{StaticResource CellLabel}"/>
                                 <StackPanel Style="{StaticResource CellValuePanel}">
                                     <TextBlock x:Name="FuelDeltaText" Text="—" Style="{StaticResource StrategyValue}"/>
                                     <TextBlock x:Name="FuelDeltaUnitText" Text="" Style="{StaticResource StrategyUnit}"/>
@@ -324,7 +325,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="REFUEL" Style="{StaticResource CellLabel}"/>
+                                <TextBlock Text="{loc:T fuel.refuel}" Style="{StaticResource CellLabel}"/>
                                 <StackPanel Style="{StaticResource CellValuePanel}">
                                     <TextBlock x:Name="RefuelText" Text="—" Style="{StaticResource StrategyValue}"/>
                                     <TextBlock x:Name="RefuelUnitText" Text="" Style="{StaticResource StrategyUnit}"/>

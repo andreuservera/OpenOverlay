@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.Widgets.WeatherPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
              x:Name="Root">
     <!-- Four cards — track temperature, air temperature, rain, wind — inside one frame, stacked, or
@@ -119,10 +120,10 @@
     <Border Style="{StaticResource OverlayPanel}" Padding="5">
     <w:SpacedStackPanel Style="{StaticResource CardStack}">
         <!-- Track temperature: a road in perspective, its lane dashes cut out of the surface. -->
-        <Border Style="{StaticResource Card}" ToolTip="Track surface temperature"
+        <Border Style="{StaticResource Card}" ToolTip="{loc:T weather.trackSurfaceTemperature}"
                 Visibility="{Binding Options.ShowTrackCard, ElementName=Root, Converter={StaticResource BoolToVis}}">
             <StackPanel Style="{StaticResource CardBody}">
-                <TextBlock Text="TRACK TEMP" Style="{StaticResource Caption}"/>
+                <TextBlock Text="{loc:T weather.trackTemp}" Style="{StaticResource Caption}"/>
                 <StackPanel Orientation="Horizontal">
                     <Path Style="{StaticResource Glyph}" Margin="0,0,8,0"
                           Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
@@ -134,7 +135,7 @@
         </Border>
 
         <!-- Air temperature, with the sky the sim reports right now as its icon. -->
-        <Border Style="{StaticResource Card}" ToolTip="Air temperature"
+        <Border Style="{StaticResource Card}" ToolTip="{loc:T weather.airTemperature}"
                 Visibility="{Binding Options.ShowAirCard, ElementName=Root, Converter={StaticResource BoolToVis}}">
             <StackPanel Style="{StaticResource CardBody}">
                 <!-- Humidity rides on the caption line, right-aligned: it belongs with the air and
@@ -144,8 +145,8 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="AIR TEMP" Style="{StaticResource Caption}"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,4" ToolTip="Relative humidity"
+                    <TextBlock Text="{loc:T weather.airTemp}" Style="{StaticResource Caption}"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,4" ToolTip="{loc:T weather.relativeHumidity}"
                                 Visibility="{Binding Options.ShowHumidity, ElementName=Root, Converter={StaticResource BoolToVis}}">
                         <Path Style="{StaticResource Glyph}" Width="8" Height="11" Margin="0,0,4,0"
                               Data="{StaticResource Icon.Drop}"/>
@@ -182,8 +183,8 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <TextBlock Grid.ColumnSpan="2" Text="RAIN CHANCE" Style="{StaticResource Caption}"/>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" ToolTip="Chance of rain"
+                <TextBlock Grid.ColumnSpan="2" Text="{loc:T weather.rainChance}" Style="{StaticResource Caption}"/>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" ToolTip="{loc:T weather.chanceOfRain}"
                             Visibility="{Binding Options.ShowRainProbability, ElementName=Root, Converter={StaticResource BoolToVis}}">
                     <w:WeatherIcon Condition="Rain" VerticalAlignment="Center" Margin="0,0,8,0"
                                    Width="{Binding Options.IconPixels, ElementName=Root}" Height="{Binding Options.IconPixels, ElementName=Root}"
@@ -192,7 +193,7 @@
                 </StackPanel>
                 <!-- Surface state as a quiet label. -->
                 <w:SpacedStackPanel Style="{StaticResource RainDetails}">
-                    <TextBlock x:Name="WetnessText" Text="—" Style="{StaticResource FieldLabel}" ToolTip="Track surface"
+                    <TextBlock x:Name="WetnessText" Text="—" Style="{StaticResource FieldLabel}" ToolTip="{loc:T weather.trackSurface}"
                                FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}"
                                Visibility="{Binding Options.ShowTrackWetness, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
                 </w:SpacedStackPanel>
@@ -217,14 +218,14 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="WIND" Style="{StaticResource WindCaption}"/>
+                <TextBlock Text="{loc:T weather.wind}" Style="{StaticResource WindCaption}"/>
                 <w:WindCompass x:Name="WindDial" Style="{StaticResource WindDialPlacement}"
                                Width="{Binding Options.ArrowPixels, ElementName=Root}" Height="{Binding Options.ArrowPixels, ElementName=Root}"
                                RingBrush="{StaticResource Surface.Track}" LetterBrush="{StaticResource Text.Muted}"
                                NorthBrush="{StaticResource State.Negative}" NoseBrush="{StaticResource Text.Primary}"
                                ArrowBrush="{StaticResource State.Info}" CarBrush="{StaticResource Text.Secondary}"
                                Visibility="{Binding Options.ShowWindArrow, ElementName=Root, Converter={StaticResource BoolToVis}}"/>
-                <StackPanel Orientation="Horizontal" ToolTip="Wind speed" Style="{StaticResource WindSpeedPlacement}"
+                <StackPanel Orientation="Horizontal" ToolTip="{loc:T weather.windSpeed}" Style="{StaticResource WindSpeedPlacement}"
                             Visibility="{Binding Options.ShowWindSpeed, ElementName=Root, Converter={StaticResource BoolToVis}}">
                     <Path Style="{StaticResource Glyph}" Fill="{x:Null}" Stroke="{StaticResource Text.Secondary}"
                           StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="20" Height="16" Margin="0,0,7,0"

@@ -20,7 +20,7 @@ public sealed class PedalTraceState
         : "—";
 
     /// <summary>KPH or MPH, as the label under the speed.</summary>
-    public string SpeedUnitDisplay => UnitSystem == UnitSystem.Imperial ? "MPH" : "KPH";
+    public string SpeedUnitDisplay => Loc.T(UnitSystem == UnitSystem.Imperial ? "pedal.mph" : "pedal.kph");
 
     /// <summary>The icon's rotation in screen degrees: clockwise positive, so a left turn turns it
     /// anticlockwise.</summary>

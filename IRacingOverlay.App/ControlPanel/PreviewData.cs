@@ -25,9 +25,9 @@ public static class PreviewData
     /// <summary>The session as the driver tables' header names it.</summary>
     public static string SessionType(PreviewScenario scenario) => scenario switch
     {
-        PreviewScenario.Practice => "PRACTICE",
-        PreviewScenario.Qualifying => "QUALIFY",
-        _ => "RACE",
+        PreviewScenario.Practice => Loc.T("session.practice"),
+        PreviewScenario.Qualifying => Loc.T("session.qualifying"),
+        _ => Loc.T("session.race"),
     };
 
     /// <summary>Whether the scenario's field mixes classes.</summary>
@@ -151,7 +151,9 @@ public static class PreviewData
                 ClassPosition = classPositions[classIndex],
                 StartPosition = startPositions[i],
                 StartClassPosition = startClassPositions[i],
-                Name = scenario == PreviewScenario.Spectating && i == PlayerPosition - 1 ? SpectatedDriver : entry.Name,
+                Name = i == PlayerPosition - 1
+                    ? scenario == PreviewScenario.Spectating ? SpectatedDriver : Loc.T("preview.you")
+                    : entry.Name,
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
@@ -283,10 +285,14 @@ public static class PreviewData
         DeltaSeconds = -0.184,
         RateOfChange = -0.06,
         IsValid = true,
-        ReferenceLabel = "SESSION BEST",
+        ReferenceLabel = Loc.T("delta.vsSessionBest"),
     };
 
-    public sealed record FlagScenario(string Label, IReadOnlyList<ActiveFlag> Flags);
+    public sealed record FlagScenario(Func<string> LabelOf, IReadOnlyList<ActiveFlag> Flags)
+    {
+        /// <summary>What the preview's picker calls it, in the current language.</summary>
+        public string Label => LabelOf();
+    }
 
     /// <summary>What the flag preview can simulate: a busy moment first (a primary flag with two
     /// advisories, so the stacking shows), then every flag and variant in
@@ -297,16 +303,16 @@ public static class PreviewData
     {
         var scenarios = new List<FlagScenario>
         {
-            new("Race moment — waving yellow, debris, blue",
+            new(() => Loc.T("preview.flagScenario.raceMoment"),
                 [new(FlagKind.Yellow, FlagVariant.Waving), new(FlagKind.Debris), new(FlagKind.Blue)]),
         };
 
         foreach (var definition in FlagCatalog.All)
         {
-            scenarios.Add(new(definition.Label, [new(definition.Kind)]));
+            scenarios.Add(new(() => definition.Label, [new(definition.Kind)]));
             foreach (var variant in definition.Variants)
             {
-                scenarios.Add(new($"{definition.Label} — {variant.Label}", [new(definition.Kind, variant.Variant)]));
+                scenarios.Add(new(() => $"{definition.Label} — {variant.Label}", [new(definition.Kind, variant.Variant)]));
             }
         }
 

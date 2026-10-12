@@ -18,11 +18,11 @@ public sealed record IncidentReport(IncidentKind Kind, int Points, long Sequence
 {
     public string Label => Kind switch
     {
-        IncidentKind.LossOfControl => "LOSS OF CONTROL",
-        IncidentKind.OffTrack => "OFF TRACK",
-        IncidentKind.WallContact => "WALL CONTACT",
-        IncidentKind.CarContact => "CAR CONTACT",
-        _ => "INCIDENT",
+        IncidentKind.LossOfControl => Loc.T("incident.lossOfControl"),
+        IncidentKind.OffTrack => Loc.T("incident.offTrack"),
+        IncidentKind.WallContact => Loc.T("incident.wallContact"),
+        IncidentKind.CarContact => Loc.T("incident.carContact"),
+        _ => Loc.T("incident.generic"),
     };
 
     /// <summary>

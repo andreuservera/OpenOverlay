@@ -80,9 +80,9 @@ internal sealed class IncidentAlertTracker
     /// <summary>The name inferred from the points alone, for when the sim doesn't say.</summary>
     public static string LabelOf(int points) => points switch
     {
-        1 => "OFF TRACK",
-        2 => "LOSS OF CONTROL",
-        4 => "CONTACT",
-        _ => "INCIDENT",
+        1 => Loc.T("incident.offTrack"),
+        2 => Loc.T("incident.lossOfControl"),
+        4 => Loc.T("incident.contact"),
+        _ => Loc.T("incident.generic"),
     };
 }

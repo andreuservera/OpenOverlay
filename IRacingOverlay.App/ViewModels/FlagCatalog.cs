@@ -1,7 +1,16 @@
 namespace IRacingOverlay.App.ViewModels;
 
-/// <summary>A labelled state of a flag, as offered in the preview and drawn in the widget.</summary>
-public sealed record FlagVariantInfo(FlagVariant Variant, string Label, string Name, string Description);
+/// <summary>A labelled state of a flag, as offered in the preview and drawn in the widget. Its texts
+/// come from the language files, under flag.{Kind}.{Variant}.</summary>
+public sealed record FlagVariantInfo(FlagKind Kind, FlagVariant Variant)
+{
+    /// <summary>What the preview's picker calls this state ("waving").</summary>
+    public string Label => Loc.T($"flag.{Kind}.{Variant}.label");
+
+    public string Name => Loc.T($"flag.{Kind}.{Variant}.name");
+
+    public string Description => Loc.T($"flag.{Kind}.{Variant}.description");
+}
 
 /// <summary>
 /// Everything the application knows about one kind of flag: how it looks, what it means, where it
@@ -11,14 +20,21 @@ public sealed record FlagVariantInfo(FlagVariant Variant, string Label, string N
 public sealed record FlagDefinition(
     FlagKind Kind,
     FlagGroup Group,
-    string Label,
-    string Name,
-    string Description,
     FlagVisualStyle Style,
     string Background,
     string Foreground,
     string Accent)
 {
+    /// <summary>The flag in the settings and the preview's picker ("Yellow"). Its texts come from the
+    /// language files, under flag.{Kind}.</summary>
+    public string Label => Loc.T($"flag.{Kind}.label");
+
+    /// <summary>What the widget writes across the flag ("YELLOW").</summary>
+    public string Name => Loc.T($"flag.{Kind}.name");
+
+    /// <summary>What the flag asks of the driver, under its name.</summary>
+    public string Description => Loc.T($"flag.{Kind}.description");
+
     public string Glyph { get; init; } = "";
 
     /// <summary>Informational flags that hide after the configured duration; safety flags stay up
@@ -68,54 +84,54 @@ public static class FlagCatalog
     /// earlier one wins, and the widget lists them in this order.</summary>
     public static IReadOnlyList<FlagDefinition> All { get; } =
     [
-        new(FlagKind.Disqualified, FlagGroup.Driver, "Disqualified", "DISQUALIFIED", "Removed from the results",
+        new(FlagKind.Disqualified, FlagGroup.Driver,
             FlagVisualStyle.BlackWithCross, FlagBlack, FlagWhite, AccentRed)
         {
-            Variants = [new(FlagVariant.ScoreVoided, "score voided", "DISQUALIFIED", "Score voided · leave the track")],
+            Variants = [new(FlagKind.Disqualified, FlagVariant.ScoreVoided)],
         },
-        new(FlagKind.Black, FlagGroup.Driver, "Black", "BLACK FLAG", "Penalty · serve it in the pits",
+        new(FlagKind.Black, FlagGroup.Driver,
             FlagVisualStyle.Solid, FlagBlack, FlagWhite, FlagWhite),
-        new(FlagKind.Red, FlagGroup.Track, "Red", "RED FLAG", "Session stopped",
+        new(FlagKind.Red, FlagGroup.Track,
             FlagVisualStyle.Solid, FlagRed, FlagWhite, AccentRed),
-        new(FlagKind.Meatball, FlagGroup.Driver, "Meatball", "MEATBALL", "Damage · pit for repairs",
+        new(FlagKind.Meatball, FlagGroup.Driver,
             FlagVisualStyle.Meatball, FlagBlack, FlagOrange, FlagOrange),
-        new(FlagKind.Furled, FlagGroup.Driver, "Furled black", "SLOW DOWN", "Slow down penalty",
+        new(FlagKind.Furled, FlagGroup.Driver,
             FlagVisualStyle.CornerCross, FlagBlack, FlagWhite, FlagWhite),
-        new(FlagKind.Checkered, FlagGroup.Race, "Checkered", "CHECKERED", "Session complete",
+        new(FlagKind.Checkered, FlagGroup.Race,
             FlagVisualStyle.Checkered, FlagWhite, FlagBlack, FlagWhite),
-        new(FlagKind.Caution, FlagGroup.Track, "Caution", "CAUTION", "Full-course yellow · hold position",
+        new(FlagKind.Caution, FlagGroup.Track,
             FlagVisualStyle.Solid, FlagYellow, FlagBlack, FlagYellow)
         {
-            Variants = [new(FlagVariant.Waving, "waving", "CAUTION", "Caution called · slow, no passing")],
+            Variants = [new(FlagKind.Caution, FlagVariant.Waving)],
         },
-        new(FlagKind.Yellow, FlagGroup.Track, "Yellow", "YELLOW", "Hazard ahead · no passing",
+        new(FlagKind.Yellow, FlagGroup.Track,
             FlagVisualStyle.Solid, FlagYellow, FlagBlack, FlagYellow)
         {
-            Variants = [new(FlagVariant.Waving, "waving", "WAVING YELLOW", "Hazard close by · slow down")],
+            Variants = [new(FlagKind.Yellow, FlagVariant.Waving)],
         },
-        new(FlagKind.Debris, FlagGroup.Advisory, "Debris", "DEBRIS", "Slippery surface ahead",
+        new(FlagKind.Debris, FlagGroup.Advisory,
             FlagVisualStyle.DebrisStripes, FlagYellow, FlagRed, FlagYellow),
-        new(FlagKind.Blue, FlagGroup.Advisory, "Blue", "BLUE FLAG", "Faster car behind",
+        new(FlagKind.Blue, FlagGroup.Advisory,
             FlagVisualStyle.BlueWithOrangeStripe, FlagBlue, FlagOrange, AccentBlue),
-        new(FlagKind.White, FlagGroup.Race, "White", "WHITE FLAG", "Final lap",
+        new(FlagKind.White, FlagGroup.Race,
             FlagVisualStyle.Solid, FlagWhite, FlagBlack, FlagWhite),
-        new(FlagKind.OneLapToGreen, FlagGroup.Race, "One to green", "ONE TO GREEN", "Green flag next time by",
+        new(FlagKind.OneLapToGreen, FlagGroup.Race,
             FlagVisualStyle.LapBoard, Board, AccentGreen, AccentGreen) { Glyph = "1" },
-        new(FlagKind.StartLights, FlagGroup.Track, "Start lights", "READY", "Start lights on",
+        new(FlagKind.StartLights, FlagGroup.Track,
             FlagVisualStyle.StartLights, Board, FlagRed, AccentRed)
         {
-            Variants = [new(FlagVariant.LightsSet, "set", "SET", "Lights red · green is next")],
+            Variants = [new(FlagKind.StartLights, FlagVariant.LightsSet)],
         },
-        new(FlagKind.Green, FlagGroup.Track, "Green", "GREEN", "Track clear · race on",
+        new(FlagKind.Green, FlagGroup.Track,
             FlagVisualStyle.Solid, FlagGreen, FlagWhite, AccentGreen) { IsTransient = true },
-        new(FlagKind.FiveToGo, FlagGroup.Race, "5 to go", "5 TO GO", "Five laps remaining",
+        new(FlagKind.FiveToGo, FlagGroup.Race,
             FlagVisualStyle.LapBoard, Board, FlagWhite, AccentNeutral) { Glyph = "5", IsTransient = true },
-        new(FlagKind.TenToGo, FlagGroup.Race, "10 to go", "10 TO GO", "Ten laps remaining",
+        new(FlagKind.TenToGo, FlagGroup.Race,
             FlagVisualStyle.LapBoard, Board, FlagWhite, AccentNeutral) { Glyph = "10", IsTransient = true },
-        new(FlagKind.Crossed, FlagGroup.Race, "Halfway", "HALFWAY", "Crossed flags · half distance",
+        new(FlagKind.Crossed, FlagGroup.Race,
             FlagVisualStyle.CrossedFlags, Board, FlagWhite, AccentNeutral) { IsTransient = true },
         // iRacing sets this bit without documenting it; off unless someone asks for it.
-        new(FlagKind.RandomWaving, FlagGroup.Advisory, "Waving flags", "FLAGS WAVING", "Flag stand is waving",
+        new(FlagKind.RandomWaving, FlagGroup.Advisory,
             FlagVisualStyle.Mixed, Board, FlagWhite, "#F5A524") { IsTransient = true, EnabledByDefault = false },
     ];
 

@@ -159,7 +159,7 @@ public sealed partial class ControlPanelViewModel
     }
 
     private static string SectionTitle(ChangelogSection section) =>
-        section.Title.Length > 0 ? section.Title.ToUpperInvariant() : Loc.T("updated.changes");
+        section.Title.Length > 0 ? section.DisplayTitle.ToUpperInvariant() : Loc.T("updated.changes");
 
     private SettingsGroup ReleaseLinks(ChangelogEntry? entry) => new SettingsGroup(Loc.T("help.more"))
         .With(

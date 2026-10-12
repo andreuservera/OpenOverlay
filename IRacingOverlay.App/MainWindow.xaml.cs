@@ -1257,7 +1257,9 @@ public partial class MainWindow : Window
 
         var report = _health.Snapshot();
         _vm.Health = report.Overall;
-        _vm.HealthLine = report.Summary;
+        // The healthy line is the one people see every day; a problem keeps its English detail,
+        // which is what a bug report needs.
+        _vm.HealthLine = report.Overall == HealthStatus.Healthy ? Loc.T("health.allHealthy") : report.Summary;
         _vm.ConnectionState = telemetry.State;
         _vm.SessionLabel = _connection.IsConnected ? _sessionLabel : null;
 

@@ -12,10 +12,10 @@ internal static class DeltaBuilder
     {
         var (varName, okName, ddName, label) = reference switch
         {
-            DeltaReference.SessionBest => (TelemetryVarNames.DeltaToSessionBestLap, TelemetryVarNames.DeltaToSessionBestLapOk, TelemetryVarNames.DeltaToSessionBestLapRate, "VS SESSION BEST"),
-            DeltaReference.PersonalBestAllTime => (TelemetryVarNames.DeltaToBestLap, TelemetryVarNames.DeltaToBestLapOk, TelemetryVarNames.DeltaToBestLapRate, "VS ALL-TIME BEST"),
-            DeltaReference.OptimalLap => (TelemetryVarNames.DeltaToOptimalLap, TelemetryVarNames.DeltaToOptimalLapOk, TelemetryVarNames.DeltaToOptimalLapRate, "VS OPTIMAL LAP"),
-            _ => (TelemetryVarNames.DeltaToSessionBestLap, TelemetryVarNames.DeltaToSessionBestLapOk, TelemetryVarNames.DeltaToSessionBestLapRate, "VS SESSION BEST"),
+            DeltaReference.SessionBest => (TelemetryVarNames.DeltaToSessionBestLap, TelemetryVarNames.DeltaToSessionBestLapOk, TelemetryVarNames.DeltaToSessionBestLapRate, Loc.T("delta.vsSessionBest")),
+            DeltaReference.PersonalBestAllTime => (TelemetryVarNames.DeltaToBestLap, TelemetryVarNames.DeltaToBestLapOk, TelemetryVarNames.DeltaToBestLapRate, Loc.T("delta.vsAllTimeBest")),
+            DeltaReference.OptimalLap => (TelemetryVarNames.DeltaToOptimalLap, TelemetryVarNames.DeltaToOptimalLapOk, TelemetryVarNames.DeltaToOptimalLapRate, Loc.T("delta.vsOptimal")),
+            _ => (TelemetryVarNames.DeltaToSessionBestLap, TelemetryVarNames.DeltaToSessionBestLapOk, TelemetryVarNames.DeltaToSessionBestLapRate, Loc.T("delta.vsSessionBest")),
         };
 
         if (!telemetry.HasVariable(varName))

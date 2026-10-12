@@ -88,11 +88,12 @@ public sealed class FlagState
 
     public string Key => $"{Kind}:{Variant}:{IsPrimary}";
 
-    public static FlagState None { get; } = new()
+    // Built on each use, so it reads in the current language.
+    public static FlagState None => new()
     {
         Kind = FlagKind.None,
-        Name = "NO FLAG",
-        Description = "Nothing out on track",
+        Name = Loc.T("flag.none.name"),
+        Description = Loc.T("flag.none.description"),
         Style = FlagVisualStyle.Placeholder,
         BackgroundColor = "#161B22",
         ForegroundColor = "#6B7682",

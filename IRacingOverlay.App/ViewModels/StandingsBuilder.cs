@@ -1018,11 +1018,11 @@ internal static class StandingsBuilder
     internal static string SessionTypeLabel(string? type) => (type ?? "").Trim() switch
     {
         "" => "",
-        var t when t.Contains("Race", StringComparison.OrdinalIgnoreCase) => "RACE",
-        var t when t.Contains("Qualify", StringComparison.OrdinalIgnoreCase) => "QUALIFYING",
-        var t when t.Contains("Practice", StringComparison.OrdinalIgnoreCase) => "PRACTICE",
-        var t when t.Contains("Warmup", StringComparison.OrdinalIgnoreCase) => "WARMUP",
-        var t when t.Contains("Testing", StringComparison.OrdinalIgnoreCase) => "TESTING",
+        var t when t.Contains("Race", StringComparison.OrdinalIgnoreCase) => Loc.T("session.race"),
+        var t when t.Contains("Qualify", StringComparison.OrdinalIgnoreCase) => Loc.T("session.qualifying"),
+        var t when t.Contains("Practice", StringComparison.OrdinalIgnoreCase) => Loc.T("session.practice"),
+        var t when t.Contains("Warmup", StringComparison.OrdinalIgnoreCase) => Loc.T("session.warmup"),
+        var t when t.Contains("Testing", StringComparison.OrdinalIgnoreCase) => Loc.T("session.testing"),
         var t => t.ToUpperInvariant(),
     };
 

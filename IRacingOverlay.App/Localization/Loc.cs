@@ -101,14 +101,17 @@ public sealed class Loc : INotifyPropertyChanged
 
     /// <summary>The texts for <paramref name="keys"/>, as one list that stays the same instance until
     /// the language changes — what a ComboBox needs, since a new list drops its selection.</summary>
-    public static IReadOnlyList<string> List(params string[] keys)
+    public static IReadOnlyList<string> List(params string[] keys) => CachedList(string.Join('|', keys), () => keys.Select(T).ToList());
+
+    /// <summary>As <see cref="List"/>, for texts built in code: <paramref name="build"/> runs once per
+    /// language, and the same list comes back until the language changes.</summary>
+    public static IReadOnlyList<string> CachedList(string id, Func<IReadOnlyList<string>> build)
     {
-        var id = string.Join('|', keys);
         lock (Lists)
         {
             if (!Lists.TryGetValue(id, out var cached) || cached.Language != Current)
             {
-                cached = (Current, keys.Select(T).ToList());
+                cached = (Current, build());
                 Lists[id] = cached;
             }
 

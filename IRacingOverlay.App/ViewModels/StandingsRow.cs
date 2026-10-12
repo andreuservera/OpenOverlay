@@ -15,7 +15,7 @@ public sealed class StandingsRow : DriverRow
     // Formatted with InvariantCulture: this machine's locale uses a comma decimal separator, which
     // silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
     public override string GapDisplay => RankInOwnRace == 1
-        ? "Leader"
+        ? Loc.T("standings.leader")
         : LapsDown > 0
             ? string.Create(CultureInfo.InvariantCulture, $"+{LapsDown}L")
             : double.IsNaN(GapToLeaderSeconds)

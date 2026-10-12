@@ -76,7 +76,11 @@ public partial class LocalizationTests
             var text = File.ReadAllText(file);
             var keys = file.EndsWith(".xaml", StringComparison.Ordinal)
                 ? XamlKey().Matches(text).Select(match => match.Groups[1].Value)
-                : CodeLiteral().Matches(text).Select(match => match.Groups[1].Value).Where(key => prefixes.Contains(key.Split('.')[0]));
+                // Timing probes and logs name things with dots too; they are not texts.
+                : text.Split('\n')
+                    .Where(line => !line.Contains("PerfProbe.", StringComparison.Ordinal) && !line.Contains("AppLog.", StringComparison.Ordinal))
+                    .SelectMany(line => CodeLiteral().Matches(line).Select(match => match.Groups[1].Value))
+                    .Where(key => prefixes.Contains(key.Split('.')[0]));
             unknown.AddRange(keys
                 .Where(key => !English.ContainsKey(key) && !English.ContainsKey(key + ".one"))
                 .Select(key => $"{Path.GetFileName(file)}: {key}"));

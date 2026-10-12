@@ -61,9 +61,9 @@ To add a language:
    different placeholders.
 
 When adding a text in code, add its key to `en.json` and every other language file, then use
-`Loc.T("key")` (or `Loc.F("key", args)` with placeholders) in C#, and `{loc:T key}` in XAML. Logs
-and the diagnostics report stay in English. The widgets' own labels on track (POS, LAP…) are
-racing abbreviations and are not translated yet.
+`Loc.T("key")` (or `Loc.F("key", args)` with placeholders) in C#, and `{loc:T key}` in XAML. The
+widgets are translated too, except racing acronyms (SOF, SR, ABS, TC, BB). Logs, the diagnostics
+report and the release notes stay in English.
 
 ## Reporting bugs / requesting features
 

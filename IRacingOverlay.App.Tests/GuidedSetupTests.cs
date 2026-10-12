@@ -82,7 +82,7 @@ public class GuidedSetupTests
 
         Assert.Equal("RACE", PreviewData.SessionType(PreviewScenario.Race));
         Assert.Equal("PRACTICE", PreviewData.SessionType(PreviewScenario.Practice));
-        Assert.Equal("QUALIFY", PreviewData.SessionType(PreviewScenario.Qualifying));
+        Assert.Equal("QUALIFYING", PreviewData.SessionType(PreviewScenario.Qualifying));
 
         Assert.Equal(WeatherCondition.Rain, PreviewData.Weather(PreviewScenario.Rain).Condition);
         Assert.Equal(WeatherCondition.Rain, PreviewData.TableConditions(PreviewScenario.Rain).Condition);

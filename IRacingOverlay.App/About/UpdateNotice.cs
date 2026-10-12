@@ -33,7 +33,7 @@ public sealed record UpdateNotice(
         return new UpdateNotice(
             title,
             released + Loc.T("updated.heresWhatsNew"),
-            teaser.Title.Length > 0 ? teaser.Title.ToUpperInvariant() : Loc.T("updated.changes"),
+            teaser.Title.Length > 0 ? teaser.DisplayTitle.ToUpperInvariant() : Loc.T("updated.changes"),
             items,
             remaining > 0 ? Loc.Plural("updated.more", remaining) : null,
             sections.Any(section => section.IsWarning));
