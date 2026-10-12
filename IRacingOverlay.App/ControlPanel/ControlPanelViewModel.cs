@@ -94,7 +94,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
         NavItems.Add(NavItem.ForPage(
             GeneralPageKey, "General", "The window, units, and the overlays as a whole.",
-            "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9",
+            "M9.65,4.77 L10.26,2.15 L13.74,2.15 L14.35,4.77 L15.45,5.23 L17.74,3.81 L20.19,6.26 L18.77,8.55 L19.23,9.65 L21.85,10.26 L21.85,13.74 L19.23,14.35 L18.77,15.45 L20.19,17.74 L17.74,20.19 L15.45,18.77 L14.35,19.23 L13.74,21.85 L10.26,21.85 L9.65,19.23 L8.55,18.77 L6.26,20.19 L3.81,17.74 L5.23,15.45 L4.77,14.35 L2.15,13.74 L2.15,10.26 L4.77,9.65 L5.23,8.55 L3.81,6.26 L6.26,3.81 L8.55,5.23 Z M12,8.5 A3.5,3.5 0 1 0 12.01,8.5 Z",
             SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
