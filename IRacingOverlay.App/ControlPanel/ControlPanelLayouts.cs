@@ -254,11 +254,11 @@ public sealed partial class ControlPanelViewModel
                         () => OpenLayoutEditor(selected.Id))),
             new SettingsGroup("MANAGE")
                 .With(
-                    new ActionSetting("Rename", null, "Rename", () => RenameLayout(selected.Id)),
+                    new ActionSetting(selected.Name, "Layout name", "✎  Rename", () => RenameLayout(selected.Id)),
                     new ActionSetting("Duplicate", null, "Duplicate", () => DuplicateLayout(selected.Id)),
                     new ActionSetting("Export", null, "Export", () => ExportLayout(selected.Id)),
                     LayoutShortcut(selected),
-                    new ActionSetting("Delete", "Can't be undone.", "Delete", () => DeleteLayout(selected.Id))),
+                    new ActionSetting("Delete this layout", "Can't be undone.", "Delete layout…", () => DeleteLayout(selected.Id)) { IsDestructive = true }),
             new SettingsGroup("NEW")
                 .With(create, import),
         ];

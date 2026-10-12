@@ -43,6 +43,11 @@
         <Border Grid.Row="0" Height="58" Background="{StaticResource Cp.Rail}"
                 BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
             <Grid Margin="18,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Width="28" Height="28" CornerRadius="8" Background="{StaticResource Cp.Accent}">
                         <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="7"
@@ -51,48 +56,72 @@
                     </Border>
                     <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Title}" Margin="11,0,0,0"
                                VerticalAlignment="Center"/>
-                    <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="13,0"/>
-                    <TextBlock Text="CONTROL PANEL" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
-                    <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="13,0"/>
-                    <!-- Connection to the sim: app status, so it sits with the app's name, apart from the
-                         widget controls on the right. The lamp and the label share the state colour, so it
-                         reads as a live status and not as one more caption. -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent"
-                                ToolTip="Connection to the iRacing simulator.">
-                        <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="{StaticResource Cp.Idle}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                            <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionDegraded}" Value="True">
-                                            <Setter Property="Fill" Value="{StaticResource Cp.Accent}"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock Text="{Binding ConnectionLabel}" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Eyebrow}">
-                                    <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsConnected}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource Cp.Live}"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding ConnectionDegraded}" Value="True">
-                                            <Setter Property="Foreground" Value="{StaticResource Cp.Accent}"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Connection to the sim, as a pill whose colour is the state: green connected (with
+                     the track and session), amber waiting or degraded, red when something is wrong.
+                     The colour never stands alone: the pill says it in words, and while waiting the
+                     line beside it says what to do. -->
+                <DockPanel Grid.Column="1" Margin="18,0,12,0" VerticalAlignment="Center" LastChildFill="True">
+                    <Border DockPanel.Dock="Left" CornerRadius="13" Height="26" Padding="10,0,12,0" BorderThickness="1"
+                            ToolTip="Connection to the iRacing simulator.">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource Cp.WarningWash}"/>
+                                <Setter Property="BorderBrush" Value="#66F5A524"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ConnectionTone}" Value="Live">
+                                        <Setter Property="Background" Value="{StaticResource Cp.LiveWash}"/>
+                                        <Setter Property="BorderBrush" Value="#663DD68C"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ConnectionTone}" Value="Error">
+                                        <Setter Property="Background" Value="{StaticResource Cp.DangerWash}"/>
+                                        <Setter Property="BorderBrush" Value="#66F26D6D"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Warning}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Live">
+                                                <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Error">
+                                                <Setter Property="Fill" Value="{StaticResource Cp.Danger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding ConnectionLabel}" VerticalAlignment="Center"
+                                       FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Small}"
+                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="420">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource Cp.Warning}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Live">
+                                                <Setter Property="Foreground" Value="{StaticResource Cp.Live}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding ConnectionTone}" Value="Error">
+                                                <Setter Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding ConnectionHint}" Style="{StaticResource Cp.Hint}" Margin="12,0,0,0"
+                               VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding ConnectionHint}"/>
+                </DockPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <!-- Layouts at hand: pick one and switch it on; while one is open, picking another
                          switches to it. Lit in the accent colour while a layout is open. -->
                     <Border CornerRadius="6" Height="32" Padding="12,0,3,0" BorderThickness="1"
@@ -164,9 +193,9 @@
                             ToolTip="Create a layout on the Layouts page."/>
 
                     <Border Width="1" Height="16" Background="{StaticResource Cp.Border}" Margin="12,0"/>
-                    <ToggleButton Style="{StaticResource Cp.LockToggle}" Content="{Binding EditModeLabel}"
+                    <ToggleButton Style="{StaticResource Cp.MoveToggle}" Content="{Binding EditModeLabel}"
                                   IsChecked="{Binding IsEditMode, Mode=TwoWay}"
-                                  ToolTip="Unlocked, widgets can be dragged into place; hover one for the − M + size control, or hold Ctrl and scroll. With a layout open, the changes are temporary: the layout itself doesn't change."/>
+                                  ToolTip="Drag widgets into place on screen; hover one for the − M + size control, or hold Ctrl and scroll. Press Done when finished. With a layout open, the changes are temporary: the layout itself doesn't change."/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -175,7 +204,10 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="278"/>
-                <ColumnDefinition Width="1.05*" MinWidth="360"/>
+                <!-- Capped so settings never stretch past ~760 px of content: a switch a thousand
+                     pixels from its label is no longer read as belonging to it. A wide window gives
+                     the room to the preview instead. -->
+                <ColumnDefinition Width="1.05*" MinWidth="360" MaxWidth="800"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="1.35*" MinWidth="340"/>
             </Grid.ColumnDefinitions>
@@ -254,11 +286,14 @@
                              to reach it, no synchronisation code between them. -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                     Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
-                            <TextBlock Text="{Binding SelectedWidget.StateLabel}" Style="{StaticResource Cp.Eyebrow}"
-                                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Ellipse Style="{StaticResource Cp.StateDot}" DataContext="{Binding SelectedWidget}"
+                                     Margin="0,0,10,0"/>
+                            <TextBlock Text="Show on screen" Style="{StaticResource Cp.Body}"
+                                       Foreground="{StaticResource Cp.Text}" Margin="0,0,10,0"
+                                       ToolTip="{Binding SelectedWidget.StateLabel}"/>
                             <CheckBox Style="{StaticResource Cp.Switch}"
                                       IsChecked="{Binding SelectedWidget.IsEnabled, Mode=TwoWay}"
-                                      ToolTip="Show this widget on screen"/>
+                                      ToolTip="{Binding SelectedWidget.StateLabel}"/>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -351,7 +386,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{Binding TelemetryLine}" Style="{StaticResource Cp.Mono}"
-                           VerticalAlignment="Center"/>
+                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"/>
                 <!-- Health first: it is the line that says whether the rest can be trusted. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                             VerticalAlignment="Center" Margin="24,0,0,0">
@@ -361,7 +396,7 @@
                                 <Setter Property="Fill" Value="{StaticResource Cp.Live}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding Health}" Value="Degraded">
-                                        <Setter Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                                        <Setter Property="Fill" Value="{StaticResource Cp.Warning}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Health}" Value="Failed">
                                         <Setter Property="Fill" Value="{StaticResource Cp.Danger}"/>
@@ -371,14 +406,17 @@
                         </Ellipse.Style>
                     </Ellipse>
                     <TextBlock Text="{Binding HealthLine}" Style="{StaticResource Cp.Mono}" Foreground="{StaticResource Cp.TextSoft}"
+                               FontSize="{StaticResource Cp.Size.Micro}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                ToolTip="General › Diagnostics has the full report."/>
                 </StackPanel>
                 <TextBlock Grid.Column="2" Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
+                           FontSize="{StaticResource Cp.Size.Micro}"
                            Foreground="{StaticResource Cp.TextFaint}" Margin="18,0,0,0"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 <!-- The running version, always in the same corner: the first thing a bug report needs. -->
                 <Button Grid.Column="3" Style="{StaticResource Cp.TextButton}" Content="{Binding VersionLabel}"
+                        FontSize="{StaticResource Cp.Size.Micro}"
                         ToolTip="{Binding VersionToolTip}" Command="{Binding ShowAboutCommand}"
                         Margin="18,0,0,0" VerticalAlignment="Center"/>
             </Grid>

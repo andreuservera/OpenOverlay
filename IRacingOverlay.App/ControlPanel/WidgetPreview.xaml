@@ -15,25 +15,29 @@
              decision being made here. -->
         <cp:PreviewBackdrop x:Name="Backdrop"/>
 
-        <ScrollViewer x:Name="Viewport" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+        <!-- Fit, by default: a widget wider than the pane is scaled down until all of it shows,
+             because a preview cut off at the tyre column hides exactly the column being changed.
+             "Actual size" turns the fit off and the scrollbars on, for judging how much screen the
+             widget will really cover. -->
+        <ScrollViewer x:Name="Viewport" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
                       Padding="28" Focusable="False">
             <!-- The panel is scaled by the same ladder factor the widget uses, laid out through a
-                 LayoutTransform so the surrounding space reflects the real footprint the widget will
-                 occupy on screen — not a shrunk-to-fit thumbnail.
+                 LayoutTransform so the space around it reflects the real footprint the widget will
+                 occupy on screen. The Viewbox only ever shrinks it (DownOnly), and only while fitting.
 
-                 The spacer grid takes at least the viewport's size so a small widget sits centred,
-                 while anything larger still overflows into the scrollbars rather than being scaled
-                 down to fit and misrepresenting how much screen it will actually cover. -->
+                 The spacer grid takes at least the viewport's size so a small widget sits centred. -->
             <Grid MinWidth="{Binding ViewportWidth, ElementName=Viewport}"
                   MinHeight="{Binding ViewportHeight, ElementName=Viewport}">
-                <!-- Opacity sits on the stage, not on the panel, so it composites over the backdrop
-                     exactly the way the window's own opacity composites over iRacing. -->
-                <ContentPresenter x:Name="Stage" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                  SizeChanged="Stage_SizeChanged">
-                    <ContentPresenter.LayoutTransform>
-                        <ScaleTransform x:Name="StageScale" ScaleX="1" ScaleY="1"/>
-                    </ContentPresenter.LayoutTransform>
-                </ContentPresenter>
+                <Viewbox x:Name="Fitter" Stretch="Uniform" StretchDirection="DownOnly"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" SizeChanged="Fitter_SizeChanged">
+                    <!-- Opacity sits on the stage, not on the panel, so it composites over the backdrop
+                         exactly the way the window's own opacity composites over iRacing. -->
+                    <ContentPresenter x:Name="Stage" SizeChanged="Stage_SizeChanged">
+                        <ContentPresenter.LayoutTransform>
+                            <ScaleTransform x:Name="StageScale" ScaleX="1" ScaleY="1"/>
+                        </ContentPresenter.LayoutTransform>
+                    </ContentPresenter>
+                </Viewbox>
             </Grid>
         </ScrollViewer>
 
@@ -41,8 +45,31 @@
              preview for a connection to iRacing. -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12"
                 Background="#99000000" CornerRadius="5" Padding="8,4">
-            <TextBlock Text="SAMPLE DATA" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="10.5"
-                       FontWeight="Bold" Foreground="#8A949E"/>
+            <TextBlock Text="SAMPLE DATA" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="12"
+                       FontWeight="SemiBold" Foreground="#B4BCC8"/>
         </Border>
+
+        <!-- Fit / actual size. Says how far a fitted preview is scaled down, so a widget shown
+             smaller than it will be is never mistaken for its real size. -->
+        <ToggleButton x:Name="ActualSizeToggle" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12"
+                      Cursor="Hand" Focusable="False" Checked="ActualSizeToggle_Changed" Unchecked="ActualSizeToggle_Changed"
+                      ToolTip="Fit shrinks the preview until the whole widget shows. Actual size shows it as big as it will be on screen; scroll to see the rest.">
+            <ToggleButton.Template>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="#99000000" CornerRadius="5" Padding="8,4"
+                            BorderBrush="Transparent" BorderThickness="1">
+                        <TextBlock x:Name="Caption" Text="{Binding FitCaption, ElementName=Root}"
+                                   FontFamily="{DynamicResource Theme.FontFamily}" FontSize="12"
+                                   FontWeight="SemiBold" Foreground="#B4BCC8"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#66FFD24D"/>
+                            <Setter TargetName="Caption" Property="Foreground" Value="#FFD24D"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </ToggleButton.Template>
+        </ToggleButton>
     </Grid>
 </UserControl>

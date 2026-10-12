@@ -473,8 +473,7 @@ public sealed class ActionSetting : SettingItem
 {
     private string _buttonText;
 
-    /// <param name="isEnabled">False for an action that is planned but not available yet: the row
-    /// still says what it will do, and the disabled button says so.</param>
+    /// <param name="isEnabled">False for an action that can't run right now.</param>
     public ActionSetting(string label, string? hint, string buttonText, Action invoke, bool isEnabled = true)
         : base(label, hint)
     {
@@ -490,6 +489,10 @@ public sealed class ActionSetting : SettingItem
     public ICommand InvokeCommand { get; }
 
     public bool IsEnabled { get; }
+
+    /// <summary>Removes or resets something for good: the button is drawn in red, and the action
+    /// itself is expected to confirm first.</summary>
+    public bool IsDestructive { get; init; }
 
     public string ButtonText
     {

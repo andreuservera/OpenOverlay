@@ -223,7 +223,7 @@ public sealed partial class ControlPanelViewModel
             new SettingsGroup("RELEASE NOTES").With(
                 new ActionSetting("What's new", "The changes in the version you're running.", "Open", ShowWhatsNew),
                 new ActionSetting("Changelog", "Every release so far, newest first.", "Open", () => Navigate(ChangelogPageKey))),
-            new SettingsGroup("HELP AND COMMUNITY").With(
+            new SettingsGroup("HELP AND COMMUNITY").With([
                 new ActionSetting("GitHub", "Source code, releases and the issue tracker.", "Open", () => ProjectLinks.Open(ProjectLinks.Repository)),
                 new ActionSetting("Documentation", "Setup, features and troubleshooting.", "Open", () => ProjectLinks.Open(ProjectLinks.Documentation)),
                 new ActionSetting(
@@ -231,13 +231,9 @@ public sealed partial class ControlPanelViewModel
                     "Attach the report from General › Diagnostics.",
                     "Open",
                     () => ProjectLinks.Open(ProjectLinks.NewIssue)),
-                ProjectLinks.Discord is { } discord
-                    ? new ActionSetting("Discord", "Talk to other drivers and the developers.", "Open", () => ProjectLinks.Open(discord))
-                    : Planned("Discord", null)),
+                .. Discord()]),
             new SettingsGroup("SUPPORT TOOLS").With(
-                new ActionSetting("Diagnostics", "Report and logs for this run.", "Open", () => Navigate(GeneralPageKey)),
-                Planned("Check for updates now", "Updates are already checked at every start."),
-                Planned("Send feedback", "Use GitHub for now.")),
+                new ActionSetting("Diagnostics", "Report and logs for this run.", "Open", () => Navigate(GeneralPageKey))),
             new SettingsGroup("LICENSE").With(
                 new ActionSetting(
                     "MIT License",
@@ -247,9 +243,11 @@ public sealed partial class ControlPanelViewModel
         ];
     }
 
-    /// <summary>A support tool that doesn't exist yet, listed so its place is already known.</summary>
-    private static ActionSetting Planned(string label, string? hint) =>
-        new(label, hint, "Coming soon", () => { }, isEnabled: false);
+    /// <summary>The community link, only once there is one: a button that can't be pressed is a
+    /// promise, not an option.</summary>
+    private static IEnumerable<SettingItem> Discord() => ProjectLinks.Discord is { } discord
+        ? [new ActionSetting("Discord", "Talk to other drivers and the developers.", "Open", () => ProjectLinks.Open(discord))]
+        : [];
 
     private static string? VersionHint() => BuildInfo.Release is { IsPrerelease: true } ? "A preview release." : null;
 

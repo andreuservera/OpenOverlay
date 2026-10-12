@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
@@ -120,10 +122,55 @@ public partial class WidgetPreview : UserControl
 
     private void OnOptionsChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
+    public static readonly DependencyProperty FitCaptionProperty = DependencyProperty.Register(
+        nameof(FitCaption), typeof(string), typeof(WidgetPreview), new PropertyMetadata("FIT"));
+
+    /// <summary>The fit toggle's caption: "FIT", "FIT · 74 %" when the widget is shown smaller
+    /// than it will be, or "ACTUAL SIZE".</summary>
+    public string FitCaption
+    {
+        get => (string)GetValue(FitCaptionProperty);
+        private set => SetValue(FitCaptionProperty, value);
+    }
+
+    private bool ShowsActualSize => ActualSizeToggle.IsChecked == true;
+
+    private void ActualSizeToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        var actual = ShowsActualSize;
+        Fitter.Stretch = actual ? Stretch.None : Stretch.Uniform;
+        Viewport.HorizontalScrollBarVisibility = actual ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        Viewport.VerticalScrollBarVisibility = actual ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        UpdateFitCaption();
+    }
+
+    private void Fitter_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateFitCaption();
+
+    private void UpdateFitCaption()
+    {
+        if (ShowsActualSize)
+        {
+            FitCaption = "ACTUAL SIZE";
+            return;
+        }
+
+        // The Viewbox's size against the stage's own (ladder-scaled) footprint is how far it shrank it.
+        var natural = Stage.DesiredSize.Width;
+        var shown = Fitter.ActualWidth;
+        var factor = natural > 0 && shown > 0 ? shown / natural : 1;
+        FitCaption = factor < 0.995
+            ? string.Create(CultureInfo.InvariantCulture, $"FIT · {factor * 100:0} %")
+            : "FIT";
+    }
+
     /// <summary>Panels that draw into a canvas (the trace, the map, the wear bars) read their own
     /// ActualWidth when updating, so their first paint has to wait until they have been measured.
     /// Re-pushing on size change covers that without a polling timer.</summary>
-    private void Stage_SizeChanged(object sender, SizeChangedEventArgs e) => Refresh();
+    private void Stage_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        Refresh();
+        UpdateFitCaption();
+    }
 
     private void Rebuild()
     {

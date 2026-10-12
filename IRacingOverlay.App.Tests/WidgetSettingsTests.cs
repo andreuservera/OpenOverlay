@@ -26,12 +26,12 @@ public sealed class WidgetSettingsTests
     }
 
     [Theory]
-    [InlineData(WidgetCatalog.Standings, new[] { "COLUMNS", "TABLE" })]
-    [InlineData(WidgetCatalog.Relative, new[] { "COLUMNS", "TABLE" })]
+    [InlineData(WidgetCatalog.Standings, new[] { "COLUMNS", "ROWS & INFO BAR" })]
+    [InlineData(WidgetCatalog.Relative, new[] { "COLUMNS", "ROWS & INFO BAR" })]
     [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
     [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
-    [InlineData(WidgetCatalog.Cockpit, new[] { "MODULES", "UPDATE RATE" })]
-    [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS", "UPDATE RATE" })]
+    [InlineData(WidgetCatalog.Cockpit, new[] { "MODULES" })]
+    [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS" })]
     [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
     [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]
     [InlineData(WidgetCatalog.Delta, new[] { "REFERENCE" })]

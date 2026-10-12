@@ -10,6 +10,9 @@ public sealed class NavSection : INotifyPropertyChanged
 {
     private static readonly Dictionary<string, NavSection> ByTitle = [];
 
+    private string _badge = "";
+    private string? _badgeTip;
+
     private NavSection(string title) => Title = title;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -28,6 +31,38 @@ public sealed class NavSection : INotifyPropertyChanged
 
             CollapseStore.SetCollapsed(Key, value);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
+        }
+    }
+
+    /// <summary>A short count beside the heading ("4/12"), or empty for none.</summary>
+    public string Badge
+    {
+        get => _badge;
+        set
+        {
+            if (_badge == value)
+            {
+                return;
+            }
+
+            _badge = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Badge)));
+        }
+    }
+
+    /// <summary>The count in words, for the tooltip.</summary>
+    public string? BadgeTip
+    {
+        get => _badgeTip;
+        set
+        {
+            if (_badgeTip == value)
+            {
+                return;
+            }
+
+            _badgeTip = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(BadgeTip)));
         }
     }
 
@@ -84,8 +119,11 @@ public sealed class NavItem
 
     public ObservableCollection<SettingsGroup> Settings { get; } = [];
 
+    /// <summary>The rail heading every widget files itself under.</summary>
+    public const string WidgetsGroup = "WIDGETS";
+
     public static NavItem ForWidget(WidgetSlot slot) => new(
-        slot.Key, slot.Descriptor.Name, slot.Descriptor.Blurb, slot.Descriptor.IconData, "WIDGETS", slot);
+        slot.Key, slot.Descriptor.Name, slot.Descriptor.Blurb, slot.Descriptor.IconData, WidgetsGroup, slot);
 
     public static NavItem ForPage(string key, string title, string blurb, string iconData, string group = "APPLICATION") =>
         new(key, title, blurb, iconData, group, widget: null);

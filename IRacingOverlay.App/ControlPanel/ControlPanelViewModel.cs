@@ -31,6 +31,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private bool _isEditMode;
     private bool _isConnected;
     private ConnectionState _connectionState;
+    private string? _sessionLabel;
     private HealthStatus _health;
     private string _healthLine = "Starting";
     private string _telemetryLine = "Speed —   Lap —   Gear —";
@@ -71,6 +72,13 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         {
             var slot = new WidgetSlot(descriptor, () => CreateWidget(descriptor.Key));
             slot.CameOnScreen += OnWidgetCameOnScreen;
+            slot.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(WidgetSlot.IsEnabled))
+                {
+                    UpdateWidgetCount();
+                }
+            };
             _slots[descriptor.Key] = slot;
             NavItems.Add(NavItem.ForWidget(slot));
         }
@@ -93,6 +101,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         // Second monitor by default: a dashboard on the same screen as the sim is in the way, which
         // is the one thing it must never be.
         _selectedMonitorIndex = MonitorNames.Count > 1 ? 1 : 0;
+
+        UpdateWidgetCount();
 
         NavView = CollectionViewSource.GetDefaultView(NavItems);
         NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
@@ -205,7 +215,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     }
 
     /// <summary>What the toolbar button does when clicked.</summary>
-    public string EditModeLabel => _isEditMode ? "Lock widgets" : "Unlock widgets";
+    public string EditModeLabel => _isEditMode ? "Done" : "Move widgets";
 
     public bool IsConnected
     {
@@ -219,16 +229,66 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _isConnected = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(ConnectionLabel));
+            OnConnectionChanged();
         }
     }
 
-    public string ConnectionLabel => _connectionState switch
+    /// <summary>The toolbar's status pill, in words. An application problem outranks the link,
+    /// since it says the rest can't be trusted; then a link that is up but stalled; then the session
+    /// itself.</summary>
+    public string ConnectionLabel => ConnectionTone switch
     {
-        ConnectionState.Stale => "TELEMETRY STALLED",
-        ConnectionState.Recovering => "RECONNECTING",
-        _ => _isConnected ? "CONNECTED" : "WAITING FOR IRACING",
+        ConnectionTone.Error => "Problem — see General › Diagnostics",
+        ConnectionTone.Degraded => _connectionState == ConnectionState.Stale ? "Telemetry stalled" : "Reconnecting to iRacing",
+        ConnectionTone.Live => string.IsNullOrEmpty(_sessionLabel) ? "iRacing connected" : $"iRacing connected · {_sessionLabel}",
+        _ => "Waiting for iRacing",
     };
+
+    /// <summary>What to do about the state the pill shows, when there is something to do.</summary>
+    public string ConnectionHint => ConnectionTone == ConnectionTone.Waiting
+        ? "Start a session and overlays will appear."
+        : "";
+
+    /// <summary>The pill's colour: green connected, amber waiting or degraded, red a problem.</summary>
+    public ConnectionTone ConnectionTone =>
+        _health == HealthStatus.Failed ? ConnectionTone.Error
+        : ConnectionDegraded ? ConnectionTone.Degraded
+        : _isConnected ? ConnectionTone.Live
+        : ConnectionTone.Waiting;
+
+    /// <summary>Track and session for the pill ("Spa · Race"), pushed in by the window while
+    /// connected; null when there is none to show.</summary>
+    public string? SessionLabel
+    {
+        get => _sessionLabel;
+        set
+        {
+            if (_sessionLabel == value)
+            {
+                return;
+            }
+
+            _sessionLabel = value;
+            OnPropertyChanged();
+            OnConnectionChanged();
+        }
+    }
+
+    private void OnConnectionChanged()
+    {
+        OnPropertyChanged(nameof(ConnectionLabel));
+        OnPropertyChanged(nameof(ConnectionHint));
+        OnPropertyChanged(nameof(ConnectionTone));
+    }
+
+    /// <summary>Puts "4/12" beside the WIDGETS heading: how many are switched on, at a glance.</summary>
+    private void UpdateWidgetCount()
+    {
+        var on = _slots.Values.Count(slot => slot.IsEnabled);
+        var section = NavSection.For(NavItem.WidgetsGroup);
+        section.Badge = $"{on}/{_slots.Count}";
+        section.BadgeTip = $"{on} of {_slots.Count} widgets switched on";
+    }
 
     /// <summary>The reader's own view of the link, polled once a second: it knows about stalls and
     /// retries that the connected/disconnected events never report.</summary>
@@ -244,8 +304,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _connectionState = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(ConnectionLabel));
             OnPropertyChanged(nameof(ConnectionDegraded));
+            OnConnectionChanged();
         }
     }
 
@@ -263,6 +323,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
             _health = value;
             OnPropertyChanged();
+            OnConnectionChanged();
         }
     }
 
@@ -434,4 +495,13 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>The colour of the toolbar's connection pill.</summary>
+public enum ConnectionTone
+{
+    Waiting,
+    Live,
+    Degraded,
+    Error,
 }

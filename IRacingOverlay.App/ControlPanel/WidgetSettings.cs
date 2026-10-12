@@ -58,8 +58,8 @@ public static class WidgetSettings
         WidgetCatalog.Relative => [RelativeColumns(context), RelativeTable(context)],
         WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
         WidgetCatalog.Flag => [FlagTypes(context), FlagContent(context), FlagLayoutGroup(context)],
-        WidgetCatalog.Cockpit => [CockpitModulesGroup(context), HighRateNote()],
-        WidgetCatalog.PedalTrace => [PedalTraceElements(context), HighRateNote()],
+        WidgetCatalog.Cockpit => [CockpitModulesGroup(context)],
+        WidgetCatalog.PedalTrace => [PedalTraceElements(context)],
         WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context)],
         WidgetCatalog.TrackInfo => [TrackInfoElements(context)],
         WidgetCatalog.Delta => [DeltaReferenceGroup(context)],
@@ -92,16 +92,16 @@ public static class WidgetSettings
     private static string ColumnLabel(DriverTableColumn column) => column switch
     {
         DriverTableColumn.Position => "Pos",
-        DriverTableColumn.PlacesGained => "Places +/-",
+        DriverTableColumn.PlacesGained => "Positions gained/lost",
         DriverTableColumn.CarNumber => "Car #",
-        DriverTableColumn.CarBrand => "Brand",
+        DriverTableColumn.CarBrand => "Car make (logo)",
         DriverTableColumn.CountryFlag => "Flag",
         DriverTableColumn.Driver => "Driver",
         DriverTableColumn.LastPitStop => "Last pit",
         DriverTableColumn.TireCompound => "Tire",
         DriverTableColumn.IRating => "iRating",
         DriverTableColumn.IRatingDelta => "Gain / loss",
-        DriverTableColumn.License => "SR",
+        DriverTableColumn.License => "SR — Safety Rating",
         DriverTableColumn.Lap => "Lap",
         DriverTableColumn.BestLap => "Best",
         DriverTableColumn.LastLap => "Last",
@@ -115,7 +115,7 @@ public static class WidgetSettings
             context.Persist(() => DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible));
         });
 
-    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("TABLE", "Which drivers to show, and what goes above and below the table.")
+    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("ROWS & INFO BAR", "Which drivers to show, and the session info above and below them.")
         .With(
             new NumberSetting(
                 "Drivers around me",
@@ -147,7 +147,7 @@ public static class WidgetSettings
                 }),
             new ToggleSetting(
                 "SOF per class",
-                null,
+                "Strength of field: the class's average iRating.",
                 context.Standings.ShowClassSof,
                 value =>
                 {
@@ -157,7 +157,7 @@ public static class WidgetSettings
             ColumnHeadersToggle(context.Standings, context))
         .With(InfoPlacements(context.Standings, context).ToArray());
 
-    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("TABLE", "How many cars to show around you, and what goes above and below the table.")
+    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("ROWS & INFO BAR", "How many cars to show around you, and the session info above and below them.")
         .With(
             new NumberSetting(
                 "Drivers each side",
@@ -205,7 +205,7 @@ public static class WidgetSettings
             TableInfoElement.Incidents => "Incidents",
             _ => "Humidity",
         },
-        null,
+        element == TableInfoElement.Sof ? "Strength of field: the average iRating of the cars in the race." : null,
         SlotChoices,
         options.IsShown(element) ? (int)options.SlotOf(element) + 1 : 0,
         index =>
@@ -639,10 +639,4 @@ public static class WidgetSettings
                 context.Delta.Reference = (DeltaReference)index;
                 context.Persist(() => { });
             }));
-
-    // ===== Notes =====
-
-    private static SettingsGroup HighRateNote() => new SettingsGroup(
-        "UPDATE RATE",
-        "Set in General › Performance.");
 }

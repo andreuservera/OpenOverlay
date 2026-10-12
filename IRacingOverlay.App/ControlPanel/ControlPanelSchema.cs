@@ -16,8 +16,9 @@ namespace IRacingOverlay.App.ControlPanel;
 /// factory case, and — only if it has settings of its own — one case below. No XAML, no new handler,
 /// no new field, and nothing to remember to add to a loop somewhere else.
 ///
-/// Every page ends with the same PLACEMENT group. Consistency across widgets was an explicit goal:
-/// wherever you are, size and auto-hide are in the same place, and they look the same.
+/// Every page ends with the same POSITION &amp; VISIBILITY group (and, where a widget has one, an
+/// ADVANCED note after it). Consistency across widgets was an explicit goal: wherever you are, size
+/// and auto-hide are in the same place, and they look the same.
 /// </summary>
 public sealed partial class ControlPanelViewModel
 {
@@ -110,6 +111,7 @@ public sealed partial class ControlPanelViewModel
         IEnumerable<SettingsGroup> groups = slot.Key switch
         {
             WidgetCatalog.Flag => [FlagPreviewGroup(), .. own, Placement(slot)],
+            WidgetCatalog.Cockpit or WidgetCatalog.PedalTrace => [.. own, Placement(slot), RefreshRateNote()],
             _ => [.. own, Placement(slot)],
         };
 
@@ -182,8 +184,8 @@ public sealed partial class ControlPanelViewModel
     /// <summary>Size and auto-hide: the two things every widget has, laid out identically on every
     /// page so they can be changed without reading anything.</summary>
     private SettingsGroup Placement(WidgetSlot slot) => new SettingsGroup(
-        "PLACEMENT",
-        "Unlock widgets from the toolbar, then drag the widget to move it.")
+        "POSITION & VISIBILITY",
+        "Size, transparency and when it shows. To move it, use Move widgets in the toolbar.")
         .With(
             new SegmentedSetting(
                 "Size",
@@ -204,6 +206,15 @@ public sealed partial class ControlPanelViewModel
                 "Hidden in menus, the garage, replays and while spectating.",
                 slot.HideOutsideCar,
                 value => slot.HideOutsideCar = value));
+
+    /// <summary>The fast displays' refresh rate is one setting for all of them, on General; the
+    /// widgets that use it point there rather than offering a second copy of it.</summary>
+    private SettingsGroup RefreshRateNote() => new SettingsGroup("ADVANCED")
+        .With(new ActionSetting(
+            "Refresh rate",
+            "Shared by the proximity bars, ABS light and pedal trace. Set in General › Performance.",
+            "Open General",
+            () => Navigate(GeneralPageKey)));
 
     // ===== Flags =====
 
@@ -226,9 +237,9 @@ public sealed partial class ControlPanelViewModel
             "In the tray, overlays keep running. Exit from the tray menu.")
             .With(
                 new ChoiceSetting(
-                    "Close button behavior",
+                    "When I close this window",
                     null,
-                    ["Minimize to system tray (recommended)", "Exit application"],
+                    ["Keep overlays running in tray", "Quit OpenOverlay"],
                     (int)TrayPreferencesStore.CloseBehavior,
                     index => TrayPreferencesStore.SaveCloseBehavior((CloseBehavior)index)),
                 new ActionSetting(
@@ -313,12 +324,12 @@ public sealed partial class ControlPanelViewModel
     private IEnumerable<SettingsGroup> PerformanceGroups() =>
     [
         new SettingsGroup(
-            "PERFORMANCE · HIGH-RATE DISPLAYS",
-            "Proximity bars, ABS light and pedal trace.")
+            "PERFORMANCE",
+            "How often the fast displays redraw: proximity bars, ABS light and pedal trace.")
             .With(new ChoiceSetting(
                 "Refresh rate",
-                "Faster costs more CPU.",
-                ["Fastest (~60 Hz)", "Fast (30 Hz)", "Normal (15 Hz)", "Slow (10 Hz)", "Slowest (5 Hz)"],
+                "Faster is a smoother pedal trace and radar, for slightly more CPU.",
+                ["Smoothest (~60 Hz)", "Smooth (30 Hz)", "Normal (15 Hz)", "Light (10 Hz)", "Lightest (5 Hz)"],
                 _criticalRefreshIndex,
                 index =>
                 {
@@ -351,8 +362,8 @@ public sealed partial class ControlPanelViewModel
                         _selectedMonitorIndex,
                         index => _selectedMonitorIndex = index),
                     new ChoiceSetting(
-                        "Theme",
-                        "Floating widgets aren't affected.",
+                        "Dashboard theme",
+                        "Only changes the second-monitor dashboard.",
                         ["Classic", "Digital HUD", "Raw DIY"],
                         (int)_dashboardTheme,
                         index =>

@@ -187,17 +187,23 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         }
     }
 
-    /// <summary>What the rail says under the widget's name. Three states rather than two, because
-    /// "on, but currently hidden because you aren't driving" is the one a user would otherwise
-    /// report as a bug.</summary>
+    /// <summary>Where the widget stands, as the rail's dot shows it. Four states rather than two,
+    /// because "on, but not showing right now because you aren't driving" is the one a user would
+    /// otherwise report as a bug.</summary>
+    public WidgetState State => !_isEnabled
+        ? WidgetState.Off
+        : _openFailed ? WidgetState.Failed
+        : ShouldBeOnScreen ? WidgetState.OnScreen : WidgetState.Waiting;
+
+    /// <summary>The state in words, for the dot's tooltip and the diagnostics report.</summary>
     public string StateLabel => !_isEnabled
-        ? "HIDDEN"
-        : _openFailed ? "COULD NOT OPEN"
-        : _isSuppressed && !_isEditMode ? "HIDDEN BY HOTKEY"
-        : ShouldBeOnScreen ? "VISIBLE" : "WAITING FOR CAR";
+        ? "Hidden"
+        : _openFailed ? "Could not open"
+        : _isSuppressed && !_isEditMode ? "Hidden by hotkey"
+        : ShouldBeOnScreen ? "On screen" : "Waiting for the car";
 
     /// <summary>True when the widget is actually on screen right now, as opposed to merely switched
-    /// on. Drives the rail's live dot.</summary>
+    /// on.</summary>
     public bool IsOnScreen => ShouldBeOnScreen;
 
     /// <summary>The global "hide all overlays" switch. Edit mode still shows the widget — you
@@ -260,6 +266,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             Discard();
         }
 
+        OnPropertyChanged(nameof(State));
         OnPropertyChanged(nameof(StateLabel));
         OnPropertyChanged(nameof(IsOnScreen));
         if (cameOnScreen && _window is { IsVisible: true })
@@ -389,4 +396,20 @@ public sealed class WidgetSlot : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+/// <summary>What the rail's dot says about a widget. See <see cref="WidgetSlot.State"/>.</summary>
+public enum WidgetState
+{
+    /// <summary>Switched off.</summary>
+    Off,
+
+    /// <summary>Switched on and showing.</summary>
+    OnScreen,
+
+    /// <summary>Switched on, but held back for now: not driving, or hidden by the hotkey.</summary>
+    Waiting,
+
+    /// <summary>Switched on, but its window could not open.</summary>
+    Failed,
 }

@@ -60,6 +60,8 @@ public partial class MainWindow : Window
     private IracingSessionInfo? _observedSession;
     private string? _sessionKey;
     private string? _sessionDescription;
+    // Track and session type alone, for the control panel's status pill.
+    private string? _sessionLabel;
     private bool _awaitingReconnect;
     private volatile string? _telemetryErrorRef;
     // Cockpit (proximity/ABS bars) and the pedal trace are the two displays where update rate is
@@ -1106,6 +1108,11 @@ public partial class MainWindow : Window
             playerCar?.CarScreenNameShort,
         }.Where(part => !string.IsNullOrEmpty(part)));
         AppLog.Session = _sessionDescription;
+        _sessionLabel = string.Join(" · ", new[]
+        {
+            weekend.TrackDisplayShortName ?? weekend.TrackDisplayName ?? weekend.TrackName,
+            string.IsNullOrEmpty(sessionType) ? null : sessionType,
+        }.Where(part => !string.IsNullOrEmpty(part)));
 
         var key = string.Create(CultureInfo.InvariantCulture, $"{weekend.SubSessionID}|{weekend.TrackName}|{playerCar?.CarID}");
         if (key == _sessionKey)
@@ -1228,6 +1235,7 @@ public partial class MainWindow : Window
         _vm.Health = report.Overall;
         _vm.HealthLine = report.Summary;
         _vm.ConnectionState = telemetry.State;
+        _vm.SessionLabel = _connection.IsConnected ? _sessionLabel : null;
 
         DiagnosticsReport.LatestContext = new DiagnosticsContext(
             _connection.IsConnected ? _sessionDescription : null,

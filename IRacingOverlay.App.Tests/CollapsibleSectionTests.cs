@@ -39,7 +39,7 @@ public sealed class CollapsibleSectionTests : IDisposable
 
         Assert.True(Group("Standings").IsCollapsed);
         Assert.False(Group("Relative").IsCollapsed);            // same title, other widget
-        Assert.False(Group("Standings", "TABLE").IsCollapsed);  // other group, same widget
+        Assert.False(Group("Standings", "ROWS & INFO BAR").IsCollapsed);  // other group, same widget
     }
 
     [Fact]

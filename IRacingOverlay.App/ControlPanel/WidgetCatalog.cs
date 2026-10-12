@@ -76,8 +76,9 @@ public static class WidgetCatalog
         new(Incident, "Incidents", "Your incidents, and your team's in a team race.",
             "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8"),
 
+        // A map pin: the "i" in a circle is About's.
         new(TrackInfo, "Track & session", "Weather, track state and what's left of the session.",
-            "M3,12 A9,9 0 1 0 21,12 A9,9 0 1 0 3,12 Z M12,7.5 V7.7 M12,11 V16.5"),
+            "M12,21.5 C12,21.5 5,14.6 5,9.5 A7,7 0 0 1 19,9.5 C19,14.6 12,21.5 12,21.5 Z M12,7 A2.5,2.5 0 1 0 12.01,7 Z"),
 
         new(Weather, "Weather", "Temperatures, wind relative to your car, humidity and the sky.",
             "M7,19 H17 A4,4 0 0 0 17,11 A5.5,5.5 0 0 0 6.6,12.2 A3.4,3.4 0 0 0 7,19 Z M14,3 V4.5 M18.6,5.4 L17.5,6.5 M20.5,10 H19"),
