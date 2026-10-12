@@ -365,6 +365,7 @@ public partial class MainWindow : Window
             }
         };
         _vm.ControlPanelToggleRequested += ToggleControlPanel;
+        _vm.RevealRequested += RevealSetting;
         // A layout switched to by shortcut is announced from the tray: the sim has the screen.
         _vm.LayoutSwitchedNotice += (title, text) => _tray?.ShowNotice(title, text);
 
@@ -1247,4 +1248,54 @@ public partial class MainWindow : Window
     private static string DescribeSlot(WidgetSlot slot) => string.Create(
         CultureInfo.InvariantCulture,
         $"{slot.Descriptor.Name}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
+
+    // ===== Search =====
+
+    /// <summary>A click in the rail ends a search, even on the page already open (which raises no
+    /// selection change of its own).</summary>
+    private void Rail_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_vm.IsSearching)
+        {
+            Dispatcher.BeginInvoke(_vm.ClearSearch);
+        }
+    }
+
+    /// <summary>A page opened from elsewhere (a link, a search result) may be below the rail's fold.</summary>
+    private void Rail_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (Rail.SelectedItem is { } item)
+        {
+            Rail.ScrollIntoView(item);
+        }
+    }
+
+    /// <summary>Scrolls the setting a search result led to into view, with room above it so its
+    /// section's heading still shows.</summary>
+    private void RevealSetting(SettingItem item)
+    {
+        if (FindByDataContext(SettingsScroller, item) is { } row)
+        {
+            row.BringIntoView(new Rect(0, -60, row.ActualWidth, row.ActualHeight + 120));
+        }
+    }
+
+    private static FrameworkElement? FindByDataContext(DependencyObject parent, object context)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is FrameworkElement { } element && ReferenceEquals(element.DataContext, context))
+            {
+                return element;
+            }
+
+            if (FindByDataContext(child, context) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
 }

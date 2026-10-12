@@ -6,17 +6,17 @@ using IRacingOverlay.App.Diagnostics;
 namespace IRacingOverlay.App.ControlPanel;
 
 /// <summary>
-/// The ABOUT section of the rail — What's New, the Changelog and About OpenOverlay — and the
-/// version in the status bar. What they show comes from three places: the changelog this build
+/// Help, at the foot of the rail: one page with three tabs — What's new, Changelog and About — and
+/// the version in the status bar, which opens it. What they show comes from three places: the changelog this build
 /// embeds (<see cref="ReleaseCatalog"/>), the build's own stamp (<see cref="BuildInfo"/>) and this
 /// PC's install history (<see cref="InstallHistory"/>).
 /// </summary>
 public sealed partial class ControlPanelViewModel
 {
-    private const string AboutGroup = "ABOUT";
-    private const string WhatsNewPageKey = "app.whatsnew";
-    private const string ChangelogPageKey = "app.changelog";
-    private const string AboutPageKey = "app.about";
+    private const string HelpPageKey = "app.help";
+    private const int WhatsNewTab = 0;
+    private const int ChangelogTab = 1;
+    private const int AboutTab = 2;
 
     private string _updateStatus = "Not checked yet";
     private InfoSetting? _updateStatusRow;
@@ -27,17 +27,22 @@ public sealed partial class ControlPanelViewModel
 
     public string VersionToolTip => $"{BuildInfo.Summary}\nClick for version details, what's new and the changelog.";
 
-    /// <summary>Under the logo in the side panel of the ABOUT pages.</summary>
+    /// <summary>Under the logo in the side panel of the Help page.</summary>
     public string VersionHeadline => $"Version {BuildInfo.Version} · {BuildInfo.Channel}";
 
     public ICommand ShowAboutCommand => _showAbout ??= new RelayCommand(() =>
     {
         AppLog.Activity("Control Panel", "Version in the status bar clicked");
-        Navigate(AboutPageKey);
+        Navigate(HelpPageKey, AboutTab);
     });
 
-    /// <summary>An ABOUT page: nothing to preview, so the side panel shows the product instead.</summary>
-    public bool IsInfoPage => _selected?.Group == AboutGroup;
+    private RelayCommand? _showHelp;
+
+    /// <summary>The Help entry at the foot of the rail.</summary>
+    public ICommand ShowHelpCommand => _showHelp ??= new RelayCommand(() => Navigate(HelpPageKey, _selected?.Key == HelpPageKey ? _selectedTab : WhatsNewTab));
+
+    /// <summary>The Help page: nothing to preview, so the side panel shows the product instead.</summary>
+    public bool IsInfoPage => _selected?.Key == HelpPageKey;
 
     public bool ShowsPreviewPlaceholder => !HasPreview && !IsInfoPage && !HasLayoutPreview;
 
@@ -63,32 +68,39 @@ public sealed partial class ControlPanelViewModel
     }
 
     /// <summary>Opens What's New: the update notice's "View details".</summary>
-    public void ShowWhatsNew() => Navigate(WhatsNewPageKey);
+    public void ShowWhatsNew() => Navigate(HelpPageKey, WhatsNewTab);
 
-    private void AddAboutPages()
+    private void AddHelpPage()
     {
-        NavItems.Add(NavItem.ForPage(
-            WhatsNewPageKey, "What's New", "The changes in the version you're running.",
-            "M12,3 L13.8,10.2 L21,12 L13.8,13.8 L12,21 L10.2,13.8 L3,12 L10.2,10.2 Z",
-            AboutGroup));
-
-        NavItems.Add(NavItem.ForPage(
-            ChangelogPageKey, "Changelog", "Every release so far, newest first.",
-            "M3,12 A9,9 0 1 0 12,3 A9.75,9.75 0 0 0 5.26,5.74 L3,8 M3,3 V8 H8 M12,7 V12 L16,14",
-            AboutGroup));
-
-        NavItems.Add(NavItem.ForPage(
-            AboutPageKey, "About OpenOverlay", "Version, build, update channel, links and support.",
+        NavItems.Add(NavItem.ForFooter(
+            HelpPageKey, "Help", "What's new, the changelog, version details and where to get help.",
             "M12,3 A9,9 0 1 0 12.01,3 Z M12,11 V16.5 M12,7.5 V7.51",
-            AboutGroup));
+            ["What's new", "Changelog", "About"]));
     }
 
-    private void Navigate(string key)
+    /// <summary>Opens a page, on one of its tabs.</summary>
+    private void Navigate(string key, int tab = 0)
     {
-        // A search that hides the page would leave the rail without a selection.
-        SearchText = "";
-        Selected = NavItems.First(item => item.Key == key);
+        ClearSearch();
+        _selectedTab = tab;
+        var page = NavItems.First(item => item.Key == key);
+        if (ReferenceEquals(_selected, page))
+        {
+            BuildSettings(page);
+            OnPropertyChanged(nameof(SelectedTab));
+        }
+        else
+        {
+            Selected = page;
+        }
     }
+
+    private IEnumerable<SettingsGroup> HelpPage() => _selectedTab switch
+    {
+        ChangelogTab => ChangelogPage(),
+        AboutTab => AboutPage(),
+        _ => WhatsNewPage(),
+    };
 
     // ===== What's New =====
 
@@ -148,7 +160,7 @@ public sealed partial class ControlPanelViewModel
 
     private SettingsGroup ReleaseLinks(ChangelogEntry? entry) => new SettingsGroup("MORE")
         .With(
-            new ActionSetting("Full changelog", "Every release so far, newest first.", "Open", () => Navigate(ChangelogPageKey)),
+            new ActionSetting("Full changelog", "Every release so far, newest first.", "Open", () => Navigate(HelpPageKey, ChangelogTab)),
             entry is not null
                 ? new ActionSetting("Release page", $"{entry.Version} on GitHub, with its downloads.", "Open", () => ProjectLinks.Open(ProjectLinks.Release(entry.Version)))
                 : new ActionSetting("Releases", "Every release on GitHub, with its downloads.", "Open", () => ProjectLinks.Open(ProjectLinks.Releases)));
@@ -220,20 +232,17 @@ public sealed partial class ControlPanelViewModel
                     new InfoSetting("Update channel", ChannelHint(), BuildInfo.Channel.ToString()),
                     updateStatusRow,
                     copy),
-            new SettingsGroup("RELEASE NOTES").With(
-                new ActionSetting("What's new", "The changes in the version you're running.", "Open", ShowWhatsNew),
-                new ActionSetting("Changelog", "Every release so far, newest first.", "Open", () => Navigate(ChangelogPageKey))),
             new SettingsGroup("HELP AND COMMUNITY").With([
                 new ActionSetting("GitHub", "Source code, releases and the issue tracker.", "Open", () => ProjectLinks.Open(ProjectLinks.Repository)),
                 new ActionSetting("Documentation", "Setup, features and troubleshooting.", "Open", () => ProjectLinks.Open(ProjectLinks.Documentation)),
                 new ActionSetting(
                     "Report a problem",
-                    "Attach the report from General › Diagnostics.",
+                    "Attach the report from Settings › Diagnostics.",
                     "Open",
                     () => ProjectLinks.Open(ProjectLinks.NewIssue)),
                 .. Discord()]),
             new SettingsGroup("SUPPORT TOOLS").With(
-                new ActionSetting("Diagnostics", "Report and logs for this run.", "Open", () => Navigate(GeneralPageKey))),
+                new ActionSetting("Diagnostics", "Report and logs for this run.", "Open", () => Navigate(DiagnosticsPageKey))),
             new SettingsGroup("LICENSE").With(
                 new ActionSetting(
                     "MIT License",

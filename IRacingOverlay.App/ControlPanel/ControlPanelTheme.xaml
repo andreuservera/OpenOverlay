@@ -886,7 +886,7 @@
          new entry of either kind is a data change and never a layout change. Hovering the row says
          what the page is for. -->
     <DataTemplate x:Key="Cp.NavItemTemplate" DataType="{x:Type cp:NavItem}">
-        <Grid Height="40" Margin="10,0,8,0" Background="Transparent" ToolTip="{Binding Blurb}">
+        <Grid Height="36" Margin="10,0,8,0" Background="Transparent" ToolTip="{Binding Blurb}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -966,7 +966,10 @@
             <Setter.Value>
                 <ControlTemplate TargetType="GroupItem">
                     <StackPanel>
-                        <ToggleButton Style="{StaticResource Cp.SectionHeader}" Margin="11,10,8,0"
+                        <!-- A section without a heading (Layouts) is set apart by a hairline instead. -->
+                        <Border x:Name="Rule" Height="1" Margin="19,10,16,4" Background="{StaticResource Cp.Border}"
+                                Visibility="Collapsed"/>
+                        <ToggleButton x:Name="Header" Style="{StaticResource Cp.SectionHeader}" Margin="11,10,8,0"
                                       IsChecked="{Binding Name.IsCollapsed, Mode=TwoWay}">
                             <DockPanel>
                                 <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
@@ -981,10 +984,13 @@
                         <ItemsPresenter x:Name="Pages"/>
                     </StackPanel>
                     <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Name.HasHeading}" Value="False">
+                            <Setter TargetName="Header" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="Rule" Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
                         <MultiDataTrigger>
                             <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding Name.IsCollapsed}" Value="True"/>
-                                <Condition Binding="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType=ListBox}}" Value=""/>
                             </MultiDataTrigger.Conditions>
                             <Setter TargetName="Pages" Property="Visibility" Value="Collapsed"/>
                             <Setter TargetName="Chevron" Property="RenderTransform">
@@ -1043,6 +1049,211 @@
             <ContentPresenter Margin="0,10,0,0"/>
         </StackPanel>
     </ControlTemplate>
+
+    <!-- ===== Menu =====
+         A small popup list of actions behind a ⋯ button, for what is used less often than the
+         buttons beside it. Each entry is a plain row; a destructive one is red. -->
+    <Style x:Key="Cp.MenuButton" TargetType="ToggleButton">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="ToolTip" Value="More actions"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.SurfaceAlt}" CornerRadius="6"
+                            BorderBrush="{StaticResource Cp.Border}" BorderThickness="1" SnapsToDevicePixels="True">
+                        <Path x:Name="Dots" Fill="{StaticResource Cp.TextSoft}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path.Data>
+                                <GeometryGroup>
+                                    <EllipseGeometry Center="1.6,1.6" RadiusX="1.6" RadiusY="1.6"/>
+                                    <EllipseGeometry Center="7.6,1.6" RadiusX="1.6" RadiusY="1.6"/>
+                                    <EllipseGeometry Center="13.6,1.6" RadiusX="1.6" RadiusY="1.6"/>
+                                </GeometryGroup>
+                            </Path.Data>
+                        </Path>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Selected}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter TargetName="Dots" Property="Fill" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.MenuItem" TargetType="Button">
+        <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
+        <Setter Property="FontSize" Value="{StaticResource Cp.Size.Control}"/>
+        <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="4" Padding="10,7" MinWidth="170">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Cp.DangerMenuItem" TargetType="Button" BasedOn="{StaticResource Cp.MenuItem}">
+        <Setter Property="Foreground" Value="{StaticResource Cp.Danger}"/>
+    </Style>
+
+    <Style x:Key="Cp.MenuPopup" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Cp.SurfaceAlt}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="Margin" Value="0,4,8,8"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.55" Color="#000000"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Layout cards =====
+         One card per layout: its monitor in miniature, its name, where it goes, and Open/Close and
+         Edit at hand. The card that is selected (shown large in the preview) wears the accent edge;
+         the open one says so in green, in words. -->
+    <DataTemplate DataType="{x:Type cp:LayoutCardsSetting}">
+        <ItemsControl ItemsSource="{Binding Cards}" Focusable="False" Margin="0,10,0,6">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type cp:LayoutCard}">
+                    <Border x:Name="Card" Width="186" Margin="0,0,10,10" CornerRadius="8" Cursor="Hand"
+                            Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
+                            SnapsToDevicePixels="True">
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}"/>
+                        </Border.InputBindings>
+                        <StackPanel>
+                            <Border Height="96" CornerRadius="7,7,0,0" ClipToBounds="True" Background="#090C0F">
+                                <cp:LayoutPreview Layout="{Binding Layout}" IsCompact="True"/>
+                            </Border>
+                            <StackPanel Margin="12,10,12,12">
+                                <DockPanel>
+                                    <Border x:Name="OpenBadge" DockPanel.Dock="Right" CornerRadius="9" Padding="7,1,8,2"
+                                            Background="{StaticResource Cp.LiveWash}" BorderBrush="#663DD68C" BorderThickness="1"
+                                            VerticalAlignment="Center" Visibility="Collapsed">
+                                        <TextBlock Text="On screen" FontFamily="{DynamicResource Theme.FontFamily}"
+                                                   FontSize="{StaticResource Cp.Size.Micro}" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource Cp.Live}"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Cp.Body}" FontWeight="SemiBold"
+                                               Foreground="{StaticResource Cp.Text}" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Cp.Hint}" TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}"/>
+                                <DockPanel Margin="0,10,0,0">
+                                    <Grid DockPanel.Dock="Right">
+                                        <ToggleButton x:Name="More" Style="{StaticResource Cp.MenuButton}"
+                                                      IsChecked="{Binding IsMenuOpen, Mode=TwoWay}"/>
+                                        <Popup IsOpen="{Binding IsMenuOpen, Mode=TwoWay}" StaysOpen="False"
+                                               PlacementTarget="{Binding ElementName=More}" Placement="Bottom"
+                                               AllowsTransparency="True" PopupAnimation="Fade">
+                                            <Border Style="{StaticResource Cp.MenuPopup}">
+                                                <StackPanel>
+                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="Rename…" Command="{Binding RenameCommand}"/>
+                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="Duplicate" Command="{Binding DuplicateCommand}"/>
+                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="Export…" Command="{Binding ExportCommand}"/>
+                                                    <Border Height="1" Margin="6,4" Background="{StaticResource Cp.Border}"/>
+                                                    <Button Style="{StaticResource Cp.DangerMenuItem}" Content="Delete layout…" Command="{Binding DeleteCommand}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button x:Name="Toggle" Style="{StaticResource Cp.PrimaryButton}" Content="{Binding ToggleText}"
+                                                Command="{Binding ToggleCommand}" ToolTip="{Binding ToggleTip}" MinWidth="64"/>
+                                        <Button Style="{StaticResource Cp.Button}" Content="Edit" Margin="6,0,0,0"
+                                                Command="{Binding EditCommand}" ToolTip="Open it in the layout editor."/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                        </Trigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsOpen}" Value="True">
+                            <Setter TargetName="OpenBadge" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="Toggle" Property="Style" Value="{StaticResource Cp.Button}"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </DataTemplate>
+
+    <!-- ===== Search results =====
+         What was found, where it lives, and what it does: the whole row opens it. -->
+    <DataTemplate x:Key="Cp.SearchResultTemplate" DataType="{x:Type cp:SearchResult}">
+        <Button Command="{Binding OpenCommand}" Cursor="Hand" Focusable="False" Margin="0,0,0,6"
+                HorizontalContentAlignment="Stretch">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="{StaticResource Cp.Surface}" BorderBrush="{StaticResource Cp.Border}"
+                            BorderThickness="1" CornerRadius="8" Padding="14,10" SnapsToDevicePixels="True">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Path Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Top" Margin="0,2,12,0"
+                      Data="{Binding IconData}" Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.7"
+                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}"
+                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Path}" Style="{StaticResource Cp.Hint}" Foreground="{StaticResource Cp.TextMuted}"
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,1,0,0"/>
+                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Cp.Hint}" Margin="0,3,0,0"
+                               Visibility="{Binding Detail, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
+                </StackPanel>
+                <Path Grid.Column="2" Data="M0,0 L4,4 L0,8" Width="5" Height="9" Stretch="Uniform" Margin="12,0,0,0"
+                      VerticalAlignment="Center" Stroke="{StaticResource Cp.TextMuted}" StrokeThickness="1.6"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+            </Grid>
+        </Button>
+    </DataTemplate>
 
     <!-- ===== Setting item templates =====
          Implicit by type. Adding a new kind of control to the whole application is: one class
@@ -1406,12 +1617,23 @@
                         </StackPanel>
                     </DockPanel>
                 </ToggleButton>
+                <!-- Each row sits on a band that lights when a search result leads to it; the band
+                     bleeds into the card's padding so the light frames the row, not its text. -->
                 <ItemsControl x:Name="Rows" ItemsSource="{Binding Items}">
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="Margin" Value="0"/>
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="Band" Margin="-10,0" Padding="10,0" CornerRadius="6"
+                                    Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+                                <ContentPresenter Content="{Binding}"/>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                    <Setter TargetName="Band" Property="Background" Value="{StaticResource Cp.AccentWash}"/>
+                                    <Setter TargetName="Band" Property="BorderBrush" Value="#99FFD24D"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
         </Border>

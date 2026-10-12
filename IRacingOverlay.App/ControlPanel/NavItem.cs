@@ -4,8 +4,9 @@ using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
 
-/// <summary>A heading in the rail (WIDGETS, APPLICATION, ABOUT) that can be folded to hide its
-/// pages. One instance per title, so the rail can group on it; folded or not is remembered.</summary>
+/// <summary>A heading in the rail (RACE, SETTINGS…) that can be folded to hide its pages. One
+/// instance per title, so the rail can group on it; folded or not is remembered. An empty title is a
+/// section without a heading — a page that stands on its own, like Layouts.</summary>
 public sealed class NavSection : INotifyPropertyChanged
 {
     private static readonly Dictionary<string, NavSection> ByTitle = [];
@@ -19,12 +20,14 @@ public sealed class NavSection : INotifyPropertyChanged
 
     public string Title { get; }
 
+    public bool HasHeading => Title.Length > 0;
+
     public bool IsCollapsed
     {
-        get => CollapseStore.IsCollapsed(Key);
+        get => HasHeading && CollapseStore.IsCollapsed(Key);
         set
         {
-            if (value == IsCollapsed)
+            if (!HasHeading || value == IsCollapsed)
             {
                 return;
             }
@@ -90,8 +93,9 @@ public sealed class NavSection : INotifyPropertyChanged
 /// </summary>
 public sealed class NavItem
 {
-    private NavItem(string key, string title, string blurb, string iconData, string group, WidgetSlot? widget)
+    private NavItem(string key, string title, string blurb, string iconData, string group, WidgetSlot? widget, bool isFooter = false)
     {
+        IsFooter = isFooter;
         Key = key;
         Title = title;
         Blurb = blurb;
@@ -117,14 +121,26 @@ public sealed class NavItem
 
     public bool IsWidget => Widget is not null;
 
+    /// <summary>Kept out of the list and reached from the foot of the rail instead (Help).</summary>
+    public bool IsFooter { get; }
+
+    /// <summary>Tabs across the top of the page, or empty for a page without any.</summary>
+    public IReadOnlyList<string> Tabs { get; init; } = [];
+
+    public bool HasTabs => Tabs.Count > 0;
+
     public ObservableCollection<SettingsGroup> Settings { get; } = [];
 
-    /// <summary>The rail heading every widget files itself under.</summary>
-    public const string WidgetsGroup = "WIDGETS";
-
+    /// <summary>A widget's page, under the heading of its category.</summary>
     public static NavItem ForWidget(WidgetSlot slot) => new(
-        slot.Key, slot.Descriptor.Name, slot.Descriptor.Blurb, slot.Descriptor.IconData, WidgetsGroup, slot);
+        slot.Key, slot.Descriptor.Name, slot.Descriptor.Blurb, slot.Descriptor.IconData,
+        WidgetCatalog.HeadingOf(slot.Descriptor.Category), slot);
 
-    public static NavItem ForPage(string key, string title, string blurb, string iconData, string group = "APPLICATION") =>
+    /// <summary>An application page; an empty <paramref name="group"/> lists it without a heading.</summary>
+    public static NavItem ForPage(string key, string title, string blurb, string iconData, string group) =>
         new(key, title, blurb, iconData, group, widget: null);
+
+    /// <summary>A page reached from the foot of the rail rather than listed in it.</summary>
+    public static NavItem ForFooter(string key, string title, string blurb, string iconData, IReadOnlyList<string> tabs) =>
+        new(key, title, blurb, iconData, "", widget: null, isFooter: true) { Tabs = tabs };
 }

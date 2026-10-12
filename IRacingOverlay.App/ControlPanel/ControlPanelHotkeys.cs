@@ -1,11 +1,11 @@
+using System.Windows;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
 
 namespace IRacingOverlay.App.ControlPanel;
 
 /// <summary>
-/// Global hotkeys: the saved bindings, the actions they trigger, and their groups on the General
-/// page. Registration with Windows lives in MainWindow's <see cref="GlobalHotkeyManager"/>; this side
+/// Global hotkeys: the saved bindings, the actions they trigger, and the Hotkeys page. Registration with Windows lives in MainWindow's <see cref="GlobalHotkeyManager"/>; this side
 /// only says what the bindings are and reports back which ones Windows refused.
 /// </summary>
 public sealed partial class ControlPanelViewModel
@@ -150,7 +150,7 @@ public sealed partial class ControlPanelViewModel
         return action switch
         {
             HotkeyActions.ToggleOverlays => "Show / hide all overlays",
-            HotkeyActions.ToggleEditMode => "Lock / unlock widgets",
+            HotkeyActions.ToggleEditMode => "Move widgets on / off",
             HotkeyActions.ToggleControlPanel => "Show / hide Control Panel",
             HotkeyActions.RestartOverlays => "Restart overlays",
             HotkeyActions.ToggleLayout => "Open / close layout",
@@ -195,10 +195,10 @@ public sealed partial class ControlPanelViewModel
         }
 
         var global = new SettingsGroup(
-            "HOTKEYS",
-            "Work in any app. Click a shortcut and press new keys; Esc cancels. Avoid keys iRacing uses.");
-        var layouts = new SettingsGroup("HOTKEYS · LAYOUTS", "Each layout's own shortcut is set on the Layouts page.");
-        var widgets = new SettingsGroup("HOTKEYS · WIDGETS");
+            "OVERLAYS",
+            "Work in any app, iRacing included. Click a shortcut and press new keys; Esc cancels. Avoid keys iRacing uses.");
+        var layouts = new SettingsGroup("LAYOUTS", "Each layout's own shortcut is on the Layouts page.");
+        var widgets = new SettingsGroup("WIDGETS", "Show or hide one widget. None are set to begin with.");
         foreach (var binding in _hotkeys)
         {
             var action = binding.Action;
@@ -225,20 +225,53 @@ public sealed partial class ControlPanelViewModel
             global,
             layouts,
             widgets,
-            new SettingsGroup("HOTKEYS · RESET")
+            new SettingsGroup("DEFAULTS")
                 .With(
                     new ActionSetting(
-                        "Default shortcuts",
-                        "Ctrl + Shift + F8 to F12, no widget shortcuts.",
-                        "Restore defaults",
-                        RestoreDefaultHotkeys),
-                    new ActionSetting(
-                        "Overlay positions",
-                        "Move every widget back to its default spot.",
-                        "Reset positions",
-                        ResetLayout)),
+                        "Restore default shortcuts",
+                        DefaultsHint(),
+                        "Restore defaults…",
+                        ConfirmRestoreDefaultHotkeys) { IsDestructive = true }),
         ];
     }
+
+    /// <summary>The shortcuts that differ from how they came, so "restore" says what it would undo.</summary>
+    private List<HotkeyBinding> ChangedFromDefaults() =>
+        _hotkeys.Where(binding => HotkeyDefaults.For(binding.Action) is var (hotkey, enabled) &&
+                                  (binding.Hotkey != hotkey || binding.Enabled != enabled))
+            .ToList();
+
+    private string DefaultsHint() => ChangedFromDefaults().Count switch
+    {
+        0 => "All your shortcuts are as they came.",
+        1 => "1 shortcut differs from how it came.",
+        var count => $"{count} shortcuts differ from how they came.",
+    };
+
+    private void ConfirmRestoreDefaultHotkeys()
+    {
+        var changed = ChangedFromDefaults();
+        if (changed.Count == 0)
+        {
+            return;
+        }
+
+        var answer = IRacingOverlay.App.Layouts.LayoutDialog.Ask(
+            Application.Current?.MainWindow,
+            "Restore default shortcuts?",
+            "These go back to how they came:" + Environment.NewLine + Environment.NewLine +
+                string.Join(Environment.NewLine, changed.Select(binding => $"• {Describe(binding.Action)}: {Display(HotkeyDefaults.For(binding.Action))}")) +
+                Environment.NewLine + Environment.NewLine + "Each layout's own shortcut stays.",
+            ["Restore defaults", "Cancel"],
+            primary: 1);
+        if (answer == 0)
+        {
+            RestoreDefaultHotkeys();
+        }
+    }
+
+    private static string Display((Hotkey? Hotkey, bool Enabled) value) =>
+        value.Hotkey is null ? "none" : value.Enabled ? value.Hotkey.Display : $"{value.Hotkey.Display} (off)";
 
     /// <summary>Refuses a combination another action already has; null means it was taken.</summary>
     private string? AssignHotkey(string action, Hotkey? hotkey)

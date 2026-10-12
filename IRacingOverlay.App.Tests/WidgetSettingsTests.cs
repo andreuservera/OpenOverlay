@@ -26,21 +26,57 @@ public sealed class WidgetSettingsTests
     }
 
     [Theory]
-    [InlineData(WidgetCatalog.Standings, new[] { "COLUMNS", "ROWS & INFO BAR" })]
-    [InlineData(WidgetCatalog.Relative, new[] { "COLUMNS", "ROWS & INFO BAR" })]
-    [InlineData(WidgetCatalog.FuelCalculator, new[] { "BLOCKS", "DISPLAY", "CALCULATION" })]
-    [InlineData(WidgetCatalog.Flag, new[] { "FLAG TYPES", "CONTENT", "LAYOUT" })]
-    [InlineData(WidgetCatalog.Cockpit, new[] { "MODULES" })]
-    [InlineData(WidgetCatalog.PedalTrace, new[] { "ELEMENTS" })]
-    [InlineData(WidgetCatalog.Weather, new[] { "ELEMENTS", "DISPLAY" })]
-    [InlineData(WidgetCatalog.TrackInfo, new[] { "ELEMENTS" })]
-    [InlineData(WidgetCatalog.Delta, new[] { "REFERENCE" })]
+    [InlineData(WidgetCatalog.Standings, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.Relative, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.FuelCalculator, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.Flag, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.Cockpit, new[] { "CONTENT" })]
+    [InlineData(WidgetCatalog.PedalTrace, new[] { "CONTENT" })]
+    [InlineData(WidgetCatalog.Weather, new[] { "CONTENT", "APPEARANCE", "ADVANCED" })]
+    [InlineData(WidgetCatalog.TrackInfo, new[] { "CONTENT" })]
+    [InlineData(WidgetCatalog.Delta, new[] { "BEHAVIOR" })]
     [InlineData(WidgetCatalog.TireInfo, new string[0])]
     public void For_ReturnsTheWidgetPagesOwnGroups_InPageOrder(string type, string[] titles)
     {
         var (context, _) = NewContext();
 
         Assert.Equal(titles, WidgetSettings.For(type, context).Select(group => group.Title));
+    }
+
+    /// <summary>Every widget sorts its options into the same sections in the same order, so a page
+    /// learnt on one widget reads the same on all of them; ADVANCED starts folded.</summary>
+    [Theory]
+    [MemberData(nameof(CatalogTypes))]
+    public void Sections_AreTheFixedOnes_InTheFixedOrder(string type)
+    {
+        string[] order = [WidgetSettings.Content, WidgetSettings.Appearance, WidgetSettings.Behavior, WidgetSettings.Advanced];
+        var (context, _) = NewContext();
+
+        var groups = WidgetSettings.For(type, context);
+
+        var positions = groups.Select(group => Array.IndexOf(order, group.Title)).ToList();
+        Assert.DoesNotContain(-1, positions);
+        Assert.Equal(positions.Order(), positions);
+        Assert.Equal(positions.Distinct(), positions);
+        Assert.All(groups.Where(group => group.Title == WidgetSettings.Advanced), group => Assert.True(group.CollapsedByDefault));
+    }
+
+    /// <summary>"Reset to defaults" applies what fresh options read as: applied to options that were
+    /// changed, it puts back every value.</summary>
+    [Theory]
+    [MemberData(nameof(CatalogTypes))]
+    public void Defaults_PutEveryRowBack(string type)
+    {
+        var (context, codec) = NewContext(type);
+        var defaults = WidgetDefaults.ConfigOf(type);
+        foreach (var row in Rows(WidgetSettings.For(type, context)))
+        {
+            row.Change();
+        }
+
+        codec!.Apply(defaults);
+
+        Assert.Equal(defaults.ToJsonString(), codec.Read().ToJsonString());
     }
 
     /// <summary>

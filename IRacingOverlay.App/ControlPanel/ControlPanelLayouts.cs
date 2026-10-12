@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -6,6 +7,7 @@ using System.Windows.Interop;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Layouts;
 using IRacingOverlay.App.Overlay;
+using IRacingOverlay.App.ViewModels;
 using Screen = System.Windows.Forms.Screen;
 
 namespace IRacingOverlay.App.ControlPanel;
@@ -173,6 +175,12 @@ public sealed partial class ControlPanelViewModel
         return _layoutEditor is null;
     }
 
+    /// <summary>
+    /// The layouts as cards — a thumbnail of each, whether it is open, and its actions — rather than a
+    /// second dropdown: the toolbar's picker is the one place a layout is chosen to go on screen, and
+    /// a card clicked here only shows that layout large in the preview. Below the cards, each
+    /// layout's shortcut, then the second-monitor dashboard, which is a layout of its own kind.
+    /// </summary>
     private IEnumerable<SettingsGroup> LayoutsPage()
     {
         var layouts = LayoutStore.List();
@@ -200,6 +208,7 @@ public sealed partial class ControlPanelViewModel
                     "LAYOUTS",
                     "A layout is a saved arrangement of your widgets — where each goes, how big and how it's set up — for one monitor.")
                     .With(create, import),
+                .. DashboardGroups(),
             ];
         }
 
@@ -211,56 +220,83 @@ public sealed partial class ControlPanelViewModel
         }
 
         var openId = LayoutStore.Open?.LayoutId;
-        SettingItem openOrStatus = selected.Id == openId
-            ? new InfoSetting("Status", "Close it from OPEN NOW above.", "Open now")
-            : new ActionSetting(
-                "Open layout",
-                openId is null ? "Shows its widgets on its monitor, set up as designed." : $"Switches from \"{OpenLayoutName}\".",
-                "Open",
-                () => OpenLayout(selected.Id));
-
-        List<SettingsGroup> groups = [];
-        if (openId is not null)
+        var cards = layouts.Select(layout => new LayoutCard(layout, layout.Id == openId, layout.Id == selected.Id)).ToList();
+        foreach (var card in cards)
         {
-            groups.Add(new SettingsGroup("OPEN NOW", "Its widgets follow the layout until you close it.")
-                .With(
-                    new InfoSetting("Layout", null, OpenLayoutName ?? ""),
-                    new ActionSetting("Close layout", "Puts its widgets back as they were before it opened.", "Close", CloseLayout)));
+            var id = card.Id;
+            card.SelectCommand = new RelayCommand(() => SelectLayoutCard(cards, card));
+            card.ToggleCommand = new RelayCommand(() => ToggleLayoutById(id));
+            card.EditCommand = new RelayCommand(() => OpenLayoutEditor(id));
+            card.RenameCommand = card.MenuAction(() => RenameLayout(id));
+            card.DuplicateCommand = card.MenuAction(() => DuplicateLayout(id));
+            card.ExportCommand = card.MenuAction(() => ExportLayout(id));
+            card.DeleteCommand = card.MenuAction(() => DeleteLayout(id));
+        }
+
+        var shortcuts = new SettingsGroup("SHORTCUTS", "Each opens its layout, or closes it if it's open.");
+        foreach (var layout in layouts)
+        {
+            shortcuts.Items.Add(LayoutShortcut(layout));
         }
 
         return
         [
-            .. groups,
-            new SettingsGroup("LAYOUT")
+            new SettingsGroup(
+                "YOUR LAYOUTS",
+                "Switch one on from the toolbar or with Open. Click a card to see it in the preview.")
+                .With(new LayoutCardsSetting(cards), create, import),
+            shortcuts,
+            .. DashboardGroups(),
+        ];
+    }
+
+    /// <summary>Shows a card's layout in the preview, without rebuilding the page.</summary>
+    private void SelectLayoutCard(IReadOnlyList<LayoutCard> cards, LayoutCard chosen)
+    {
+        foreach (var card in cards)
+        {
+            card.IsSelected = ReferenceEquals(card, chosen);
+        }
+
+        _selectedLayoutId = chosen.Id;
+        SetPreviewLayout(chosen.Layout);
+    }
+
+    /// <summary>The second-monitor dashboard: a fullscreen layout of its own, with its own theme.</summary>
+    private IEnumerable<SettingsGroup> DashboardGroups()
+    {
+        var button = new ActionSetting(
+            "Second-monitor dashboard",
+            null,
+            "Show dashboard",
+            () => DashboardToggleRequested?.Invoke());
+        if (!_buildingIndex)
+        {
+            DashboardButton = button;
+        }
+
+        return
+        [
+            new SettingsGroup("SECOND-MONITOR DASHBOARD", "A fullscreen layout of its own, for a screen beside the sim.")
                 .With(
                     new ChoiceSetting(
-                        "Layout",
+                        "Monitor",
                         null,
-                        layouts.Select(layout => layout.Name).ToList(),
-                        layouts.ToList().FindIndex(layout => layout.Id == selected.Id),
+                        MonitorNames,
+                        _selectedMonitorIndex,
+                        index => _selectedMonitorIndex = index),
+                    new ChoiceSetting(
+                        "Dashboard theme",
+                        "Only changes the second-monitor dashboard.",
+                        ["Classic", "Digital HUD", "Raw DIY"],
+                        (int)_dashboardTheme,
                         index =>
                         {
-                            _selectedLayoutId = layouts[index].Id;
-                            RefreshLayoutsPage();
+                            _dashboardTheme = (DashboardTheme)index;
+                            DashboardThemeStore.Save(_dashboardTheme);
+                            DashboardThemeChanged?.Invoke(_dashboardTheme);
                         }),
-                    new InfoSetting("Monitor", null, selected.Monitor.FriendlyName),
-                    new InfoSetting("Resolution", null, string.Create(CultureInfo.InvariantCulture, $"{selected.Width}×{selected.Height}")),
-                    new InfoSetting("Widgets", null, $"{selected.Widgets.Count} of {Layout.MaxWidgets}"),
-                    openOrStatus,
-                    new ActionSetting(
-                        "Edit layout",
-                        null,
-                        "Edit",
-                        () => OpenLayoutEditor(selected.Id))),
-            new SettingsGroup("MANAGE")
-                .With(
-                    new ActionSetting(selected.Name, "Layout name", "✎  Rename", () => RenameLayout(selected.Id)),
-                    new ActionSetting("Duplicate", null, "Duplicate", () => DuplicateLayout(selected.Id)),
-                    new ActionSetting("Export", null, "Export", () => ExportLayout(selected.Id)),
-                    LayoutShortcut(selected),
-                    new ActionSetting("Delete this layout", "Can't be undone.", "Delete layout…", () => DeleteLayout(selected.Id)) { IsDestructive = true }),
-            new SettingsGroup("NEW")
-                .With(create, import),
+                    button),
         ];
     }
 
@@ -700,14 +736,14 @@ public sealed partial class ControlPanelViewModel
         HotkeysChanged?.Invoke();
     }
 
-    /// <summary>The layout's own shortcut, on its Layouts page.</summary>
+    /// <summary>A layout's own shortcut, on the Layouts page.</summary>
     private HotkeySetting LayoutShortcut(Layout layout)
     {
         var id = layout.Id;
         var action = HotkeyActions.OpenLayout(id);
         var setting = new HotkeySetting(
-            "Shortcut",
-            "Opens this layout, or closes it if it's open.",
+            layout.Name,
+            null,
             layout.Hotkey,
             layout.HotkeyEnabled,
             hotkey =>
@@ -797,4 +833,95 @@ public sealed record LayoutChoice(Guid Id, string Name)
     /// <summary>What the closed dropdown shows: the theme's dropdown draws the selected item as
     /// text, without the DisplayMemberPath the open list uses.</summary>
     public override string ToString() => Name;
+}
+
+/// <summary>A layout on the Layouts page: its thumbnail, whether it is open, and what can be done
+/// with it. The less common actions sit behind the card's ⋯ menu, which closes as one is chosen.</summary>
+public sealed class LayoutCard : INotifyPropertyChanged
+{
+    private bool _isSelected;
+    private bool _isMenuOpen;
+
+    public LayoutCard(Layout layout, bool isOpen, bool isSelected)
+    {
+        Layout = layout;
+        IsOpen = isOpen;
+        _isSelected = isSelected;
+        Detail = string.Create(CultureInfo.InvariantCulture,
+            $"{layout.Monitor.FriendlyName} · {layout.Width}×{layout.Height} · {layout.Widgets.Count} {(layout.Widgets.Count == 1 ? "widget" : "widgets")}");
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public Layout Layout { get; }
+
+    public Guid Id => Layout.Id;
+
+    public string Name => Layout.Name;
+
+    public string Detail { get; }
+
+    /// <summary>Its widgets are on screen now.</summary>
+    public bool IsOpen { get; }
+
+    public string ToggleText => IsOpen ? "Close" : "Open";
+
+    public string ToggleTip => IsOpen
+        ? "Close the layout: its widgets go back to how they were before it opened."
+        : "Open this layout: its widgets take their place and settings from it.";
+
+    /// <summary>The one shown in the preview.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+            {
+                return;
+            }
+
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+
+    public bool IsMenuOpen
+    {
+        get => _isMenuOpen;
+        set
+        {
+            if (_isMenuOpen == value)
+            {
+                return;
+            }
+
+            _isMenuOpen = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMenuOpen)));
+        }
+    }
+
+    public ICommand? SelectCommand { get; set; }
+    public ICommand? ToggleCommand { get; set; }
+    public ICommand? EditCommand { get; set; }
+    public ICommand? RenameCommand { get; set; }
+    public ICommand? DuplicateCommand { get; set; }
+    public ICommand? ExportCommand { get; set; }
+    public ICommand? DeleteCommand { get; set; }
+
+    /// <summary>An action from the ⋯ menu: the menu closes first, before any dialog opens.</summary>
+    internal ICommand MenuAction(Action action) => new RelayCommand(() =>
+    {
+        IsMenuOpen = false;
+        action();
+    });
+}
+
+/// <summary>The layouts as a wrap of cards.</summary>
+public sealed class LayoutCardsSetting : SettingItem
+{
+    public LayoutCardsSetting(IReadOnlyList<LayoutCard> cards)
+        : base("Layouts", null) => Cards = cards;
+
+    public IReadOnlyList<LayoutCard> Cards { get; }
 }

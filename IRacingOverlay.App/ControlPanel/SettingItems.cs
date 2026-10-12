@@ -36,6 +36,25 @@ public abstract class SettingItem : INotifyPropertyChanged
     /// <summary>Where the setting lives ("Standings › Columns › "), stamped when its page is built.</summary>
     internal string TracePath { get; set; } = "";
 
+    private bool _isHighlighted;
+
+    /// <summary>Lit for a moment after a search result leads here, so the eye lands on the row the
+    /// search was for rather than somewhere near it.</summary>
+    public bool IsHighlighted
+    {
+        get => _isHighlighted;
+        set
+        {
+            if (_isHighlighted == value)
+            {
+                return;
+            }
+
+            _isHighlighted = value;
+            OnPropertyChanged();
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
@@ -779,9 +798,17 @@ public sealed class SettingsGroup : INotifyPropertyChanged
     /// <summary>A group with nothing in it (a notice) has nothing to fold.</summary>
     public bool IsCollapsible => Items.Count > 0;
 
+    /// <summary>Starts folded until the user opens it (ADVANCED): what is stored for such a group is
+    /// that it was opened, under its own key, so the two defaults never read each other's state.</summary>
+    public bool CollapsedByDefault { get; init; }
+
+    private string OpenedKey => $"+{CollapseKey}";
+
     public bool IsCollapsed
     {
-        get => !KeepOpen && IsCollapsible && CollapseStore.IsCollapsed(CollapseKey);
+        get => !KeepOpen && IsCollapsible && (CollapsedByDefault
+            ? !CollapseStore.IsCollapsed(OpenedKey)
+            : CollapseStore.IsCollapsed(CollapseKey));
         set
         {
             if (value == IsCollapsed || !IsCollapsible)
@@ -790,7 +817,15 @@ public sealed class SettingsGroup : INotifyPropertyChanged
             }
 
             KeepOpen = false;
-            CollapseStore.SetCollapsed(CollapseKey, value);
+            if (CollapsedByDefault)
+            {
+                CollapseStore.SetCollapsed(OpenedKey, !value);
+            }
+            else
+            {
+                CollapseStore.SetCollapsed(CollapseKey, value);
+            }
+
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCollapsed)));
         }
     }

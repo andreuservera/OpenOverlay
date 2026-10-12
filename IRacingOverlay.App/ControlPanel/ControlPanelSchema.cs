@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Windows.Input;
 using IRacingOverlay.App.Diagnostics;
+using IRacingOverlay.App.Layouts;
 using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
@@ -46,24 +48,9 @@ public sealed partial class ControlPanelViewModel
     private void BuildSettings(NavItem item)
     {
         item.Settings.Clear();
-
-        var groups = BuildGroups(item).ToList();
-        var term = _searchText.Trim();
-        if (term.Length > 0 && !Contains(item.Title, term))
-        {
-            // Searching: the page shows just the groups that matched, whole, so each keeps its context.
-            // A page found by its name shows everything; one found by its blurb still narrows.
-            var matching = groups.Where(group => SearchTermsOf(group).Any(text => Contains(text, term))).ToList();
-            if (matching.Count > 0)
-            {
-                groups = matching;
-            }
-        }
-
-        foreach (var group in groups)
+        foreach (var group in BuildGroups(item))
         {
             group.Scope = item.Key;
-            group.KeepOpen = term.Length > 0;
             // Names every change in the activity trail after where the user made it.
             var path = $"{item.Title} › {CultureInfo.InvariantCulture.TextInfo.ToTitleCase(group.Title.ToLowerInvariant())} › ";
             foreach (var setting in group.Items)
@@ -95,96 +82,65 @@ public sealed partial class ControlPanelViewModel
         {
             return item.Key switch
             {
-                DashboardPageKey => DashboardPage(),
                 LayoutsPageKey => LayoutsPage(),
                 GeneralPageKey => GeneralPage(),
-                WhatsNewPageKey => WhatsNewPage(),
-                ChangelogPageKey => ChangelogPage(),
-                AboutPageKey => AboutPage(),
+                PerformancePageKey => PerformancePage(),
+                HotkeysPageKey => HotkeyGroups(),
+                DiagnosticsPageKey => [DiagnosticsGroup()],
+                HelpPageKey => HelpPage(),
                 _ => [],
             };
         }
 
+        return WidgetPage(slot);
+    }
+
+    /// <summary>
+    /// Every widget page in the same order, whatever the widget: CONTENT (what it shows), APPEARANCE
+    /// (how it looks), BEHAVIOR (how it decides), POSITION &amp; VISIBILITY, then ADVANCED, folded.
+    /// A section with nothing in it for this widget is simply not there. Once learnt on one widget,
+    /// the order holds on all twelve.
+    /// </summary>
+    private IEnumerable<SettingsGroup> WidgetPage(WidgetSlot slot)
+    {
         // The widget's own settings come from WidgetSettings, shared with the layout editor; this
         // page adds what belongs to the individual widget alone around them.
         var own = WidgetSettings.For(slot.Key, IndividualSettings);
-        IEnumerable<SettingsGroup> groups = slot.Key switch
+        var advanced = own.FirstOrDefault(group => group.Title == WidgetSettings.Advanced)
+            ?? new SettingsGroup(WidgetSettings.Advanced) { CollapsedByDefault = true };
+        if (slot.Key is WidgetCatalog.Cockpit or WidgetCatalog.PedalTrace)
         {
-            WidgetCatalog.Flag => [FlagPreviewGroup(), .. own, Placement(slot)],
-            WidgetCatalog.Cockpit or WidgetCatalog.PedalTrace => [.. own, Placement(slot), RefreshRateNote()],
-            _ => [.. own, Placement(slot)],
-        };
+            advanced.Items.Add(RefreshRateLink());
+        }
 
+        List<SettingsGroup> groups = [];
         // While a layout controls this widget, the page says so before anything else.
-        return LayoutNotice(slot.Key) is { } notice ? [notice, .. groups] : groups;
+        if (LayoutNotice(slot.Key) is { } notice)
+        {
+            groups.Add(notice);
+        }
+
+        if (slot.Key == WidgetCatalog.Flag)
+        {
+            groups.Add(FlagPreviewGroup());
+        }
+
+        groups.AddRange(own.Where(group => group.Title != WidgetSettings.Advanced));
+        groups.Add(Placement(slot));
+        if (advanced.Items.Count > 0)
+        {
+            groups.Add(advanced);
+        }
+
+        return groups;
     }
-
-    // ===== Search =====
-
-    private bool Matches(NavItem item, string term) =>
-        Contains(item.Title, term) ||
-        Contains(item.Blurb, term) ||
-        (_searchIndex?.TryGetValue(item, out var text) == true && Contains(text, term));
-
-    private Dictionary<NavItem, string> BuildSearchIndex()
-    {
-        _buildingIndex = true;
-        try
-        {
-            return NavItems.ToDictionary(item => item, item => string.Join('\n', BuildGroups(item).SelectMany(SearchTermsOf)));
-        }
-        finally
-        {
-            _buildingIndex = false;
-        }
-    }
-
-    private static IEnumerable<string> SearchTermsOf(SettingsGroup group)
-    {
-        yield return group.Title;
-        if (group.Subtitle is { } subtitle)
-        {
-            yield return subtitle;
-        }
-
-        foreach (var item in group.Items)
-        {
-            // Release notes are prose about the app, not options in it.
-            if (item is BulletSetting or ReleaseSetting)
-            {
-                continue;
-            }
-
-            yield return item.Label;
-            if (item.Hint is { } hint)
-            {
-                yield return hint;
-            }
-
-            IEnumerable<string> extra = item switch
-            {
-                ChoiceSetting choice => choice.Options,
-                SegmentedSetting segmented => segmented.Options,
-                ChipGroupSetting chips => chips.Chips.SelectMany(chip => new[] { chip.Label, chip.Hint ?? "" }),
-                ReorderListSetting columns => columns.Items.Select(column => column.Label),
-                HotkeySetting hotkey => [hotkey.Display],
-                _ => [],
-            };
-            foreach (var text in extra)
-            {
-                yield return text;
-            }
-        }
-    }
-
-    private static bool Contains(string text, string term) => text.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     // ===== Shared =====
 
     /// <summary>Size and auto-hide: the two things every widget has, laid out identically on every
     /// page so they can be changed without reading anything.</summary>
     private SettingsGroup Placement(WidgetSlot slot) => new SettingsGroup(
-        "POSITION & VISIBILITY",
+        WidgetSettings.PositionAndVisibility,
         "Size, transparency and when it shows. To move it, use Move widgets in the toolbar.")
         .With(
             new SegmentedSetting(
@@ -207,14 +163,64 @@ public sealed partial class ControlPanelViewModel
                 slot.HideOutsideCar,
                 value => slot.HideOutsideCar = value));
 
-    /// <summary>The fast displays' refresh rate is one setting for all of them, on General; the
-    /// widgets that use it point there rather than offering a second copy of it.</summary>
-    private SettingsGroup RefreshRateNote() => new SettingsGroup("ADVANCED")
-        .With(new ActionSetting(
-            "Refresh rate",
-            "Shared by the proximity bars, ABS light and pedal trace. Set in General › Performance.",
-            "Open General",
-            () => Navigate(GeneralPageKey)));
+    private RelayCommand? _resetWidget;
+    private bool _isWidgetMenuOpen;
+
+    /// <summary>The ⋯ menu in a widget page's header.</summary>
+    public bool IsWidgetMenuOpen
+    {
+        get => _isWidgetMenuOpen;
+        set
+        {
+            if (_isWidgetMenuOpen == value)
+            {
+                return;
+            }
+
+            _isWidgetMenuOpen = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Puts the open widget back as it came: its options, size, opacity and auto-hide. Where
+    /// it sits on screen stays — that has its own reset, for every widget at once, on General.</summary>
+    public ICommand ResetWidgetCommand => _resetWidget ??= new RelayCommand(() =>
+    {
+        IsWidgetMenuOpen = false;
+        if (SelectedWidget is not { } slot)
+        {
+            return;
+        }
+
+        var answer = LayoutDialog.Ask(
+            DialogOwner,
+            $"Reset {slot.Descriptor.Name} to defaults?",
+            "Its options, size, opacity and \"Hide when I'm not driving\" go back to how they came. Where it sits on screen doesn't change.",
+            ["Reset", "Cancel"],
+            primary: 1);
+        if (answer != 0)
+        {
+            return;
+        }
+
+        AppLog.Activity("Control Panel", $"{slot.Descriptor.Name} reset to defaults");
+        CreateConfigCodecs()[slot.Key].Apply(WidgetDefaults.ConfigOf(slot.Key));
+        slot.Scale = ScaleLevels.Default;
+        slot.Opacity = WidgetOpacityStore.Default;
+        slot.HideOutsideCar = false;
+        if (_selected is { } page)
+        {
+            BuildSettings(page);
+        }
+    });
+
+    /// <summary>The fast displays' refresh rate is one setting for all of them, on the Performance
+    /// page; the widgets that use it point there rather than offering a second copy of it.</summary>
+    private ActionSetting RefreshRateLink() => new(
+        "Refresh rate",
+        "Shared by the proximity bars, ABS light and pedal trace. Set in Settings › Performance.",
+        "Open Performance",
+        () => Navigate(PerformancePageKey));
 
     // ===== Flags =====
 
@@ -228,13 +234,13 @@ public sealed partial class ControlPanelViewModel
 
     // ===== Application pages =====
 
-    /// <summary>Everything about the application rather than one widget, on one page: the window,
-    /// units, performance, hotkeys and diagnostics.</summary>
+    /// <summary>The application as a whole: its window, its units, and the overlays all at once.
+    /// Performance, hotkeys and diagnostics have their own pages beside it.</summary>
     private IEnumerable<SettingsGroup> GeneralPage() =>
     [
         new SettingsGroup(
             "WINDOW",
-            "In the tray, overlays keep running. Exit from the tray menu.")
+            "In the tray, overlays keep running. Quit from the tray menu.")
             .With(
                 new ChoiceSetting(
                     "When I close this window",
@@ -248,10 +254,33 @@ public sealed partial class ControlPanelViewModel
                     "Open folder",
                     OpenConfigFolder)),
         .. UnitsGroups(),
-        .. PerformanceGroups(),
-        .. HotkeyGroups(),
-        DiagnosticsGroup(),
+        new SettingsGroup("OVERLAYS", "Every widget at once.")
+            .With(
+                new ActionSetting(
+                    "Reset positions",
+                    "Moves every widget back to its default spot. Sizes and options stay.",
+                    "Reset positions…",
+                    ConfirmResetPositions) { IsDestructive = true },
+                new ActionSetting(
+                    "Restart overlays",
+                    "Closes and reopens every widget window, which clears a rendering glitch.",
+                    "Restart",
+                    RestartOverlays)),
     ];
+
+    private void ConfirmResetPositions()
+    {
+        var answer = LayoutDialog.Ask(
+            DialogOwner,
+            "Reset every widget's position?",
+            "Every widget goes back to its default spot on screen, including ones that are off. Sizes and options don't change.",
+            ["Reset positions", "Cancel"],
+            primary: 1);
+        if (answer == 0)
+        {
+            ResetLayout();
+        }
+    }
 
     /// <summary>Everything a bug report needs, one click away. The report masks the Windows user
     /// folder, so it can be pasted into a public issue as is.</summary>
@@ -272,7 +301,7 @@ public sealed partial class ControlPanelViewModel
         var errors = problems.Where(p => p.Level >= LogLevel.Error).Sum(p => p.Count);
         var warnings = problems.Where(p => p.Level == LogLevel.Warning).Sum(p => p.Count);
         return new SettingsGroup(
-            "DIAGNOSTICS",
+            "THIS RUN",
             $"This run: {AppInfo.RunId} · {errors} {(errors == 1 ? "error" : "errors")} · {warnings} {(warnings == 1 ? "warning" : "warnings")}. " +
             "Logs stay on your PC.")
             .With(
@@ -321,7 +350,7 @@ public sealed partial class ControlPanelViewModel
                 })),
     ];
 
-    private IEnumerable<SettingsGroup> PerformanceGroups() =>
+    private IEnumerable<SettingsGroup> PerformancePage() =>
     [
         new SettingsGroup(
             "PERFORMANCE",
@@ -338,41 +367,4 @@ public sealed partial class ControlPanelViewModel
                     CriticalRefreshChanged?.Invoke(CriticalRefreshIntervalMs);
                 })),
     ];
-
-    private IEnumerable<SettingsGroup> DashboardPage()
-    {
-        var button = new ActionSetting(
-            "Second-monitor dashboard",
-            null,
-            "Show dashboard",
-            () => DashboardToggleRequested?.Invoke());
-        if (!_buildingIndex)
-        {
-            DashboardButton = button;
-        }
-
-        return
-        [
-            new SettingsGroup("OUTPUT")
-                .With(
-                    new ChoiceSetting(
-                        "Monitor",
-                        null,
-                        MonitorNames,
-                        _selectedMonitorIndex,
-                        index => _selectedMonitorIndex = index),
-                    new ChoiceSetting(
-                        "Dashboard theme",
-                        "Only changes the second-monitor dashboard.",
-                        ["Classic", "Digital HUD", "Raw DIY"],
-                        (int)_dashboardTheme,
-                        index =>
-                        {
-                            _dashboardTheme = (DashboardTheme)index;
-                            DashboardThemeStore.Save(_dashboardTheme);
-                            DashboardThemeChanged?.Invoke(_dashboardTheme);
-                        }),
-                    button),
-        ];
-    }
 }

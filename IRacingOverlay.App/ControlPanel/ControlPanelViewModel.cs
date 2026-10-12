@@ -36,11 +36,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private string _healthLine = "Starting";
     private string _telemetryLine = "Speed —   Lap —   Gear —";
     private string _diagnosticsLine = "";
-    private string _searchText = "";
     private int _selectedMonitorIndex;
     private DashboardTheme _dashboardTheme;
     private int _criticalRefreshIndex;
-    private Dictionary<NavItem, string>? _searchIndex;
 
     public ControlPanelViewModel()
     {
@@ -83,19 +81,32 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             NavItems.Add(NavItem.ForWidget(slot));
         }
 
+        // Layouts stands alone, without a heading: one page, and the one most people open next.
         NavItems.Add(NavItem.ForPage(
-            LayoutsPageKey, "Layouts", "Saved arrangements of your widgets for one monitor.",
-            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20"));
+            LayoutsPageKey, "Layouts", "Saved arrangements of your widgets, and the second-monitor dashboard.",
+            "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", ""));
 
         NavItems.Add(NavItem.ForPage(
-            GeneralPageKey, "General", "Units, performance, hotkeys, the tray and diagnostics.",
-            "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9"));
+            GeneralPageKey, "General", "The window, units, and the overlays as a whole.",
+            "M12,9 A3,3 0 1 0 12.01,9 Z M12,2 V5 M12,19 V22 M2,12 H5 M19,12 H22 M4.9,4.9 L7,7 M17,17 L19.1,19.1 M4.9,19.1 L7,17 M17,7 L19.1,4.9",
+            SettingsGroupTitle));
 
         NavItems.Add(NavItem.ForPage(
-            DashboardPageKey, "Dashboard", "The fullscreen layout for a second monitor.",
-            "M3,4 H21 V16 H3 Z M9,20 H15 M12,16 V20"));
+            PerformancePageKey, "Performance", "How often the fast displays redraw, and what it costs.",
+            "M12,20 A8,8 0 1 1 12.01,20 M12,12 L16,8 M12,4 V5.5 M4,12 H5.5 M18.5,12 H20",
+            SettingsGroupTitle));
 
-        AddAboutPages();
+        NavItems.Add(NavItem.ForPage(
+            HotkeysPageKey, "Hotkeys", "Keyboard shortcuts that work while you drive.",
+            "M3,6 H21 V18 H3 Z M7,10 H7.01 M11,10 H11.01 M15,10 H15.01 M7,14 H17",
+            SettingsGroupTitle));
+
+        NavItems.Add(NavItem.ForPage(
+            DiagnosticsPageKey, "Diagnostics", "Logs and a report to attach to a bug report.",
+            "M3,12 H7 L9.5,6 L14.5,18 L17,12 H21",
+            SettingsGroupTitle));
+
+        AddHelpPage();
 
         MonitorNames = Screen.AllScreens.Select(DescribeScreen).ToList();
         // Second monitor by default: a dashboard on the same screen as the sim is in the way, which
@@ -106,12 +117,17 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
         NavView = CollectionViewSource.GetDefaultView(NavItems);
         NavView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Section)));
+        // Help sits at the foot of the rail rather than in its list.
+        NavView.Filter = item => item is NavItem { IsFooter: false };
 
         Select(NavItems[0]);
     }
 
-    private const string DashboardPageKey = "app.dashboard";
     private const string GeneralPageKey = "app.general";
+    private const string PerformancePageKey = "app.performance";
+    private const string HotkeysPageKey = "app.hotkeys";
+    private const string DiagnosticsPageKey = "app.diagnostics";
+    private const string SettingsGroupTitle = "SETTINGS";
 
     // ===== Shared option objects =====
     // These are the same instances handed to the widgets and to the preview, which is what makes a
@@ -149,43 +165,6 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     {
         get => _selected;
         set => Select(value);
-    }
-
-    /// <summary>Filters the rail. Matching on the blurb as well as the name is deliberate: it lets
-    /// someone find the widget by what it does ("fuel", "gap", "weather") when they don't yet know
-    /// what this application decided to call it. Every option on every page counts too — its
-    /// label, hint and choices, hotkeys included — and the open page narrows to the groups that
-    /// matched, so "imperial" lands on the units setting rather than somewhere on General.</summary>
-    public string SearchText
-    {
-        get => _searchText;
-        set
-        {
-            if (_searchText == value)
-            {
-                return;
-            }
-
-            _searchText = value;
-            var term = value.Trim();
-            if (term.Length == 0)
-            {
-                _searchIndex = null;
-                NavView.Filter = null;
-            }
-            else
-            {
-                // Built once per search, not per keystroke: every page's options, as plain text.
-                _searchIndex ??= BuildSearchIndex();
-                NavView.Filter = item => item is NavItem nav && Matches(nav, term);
-            }
-
-            OnPropertyChanged();
-            if (_selected is { } page)
-            {
-                BuildSettings(page);
-            }
-        }
     }
 
     /// <summary>Widgets unlocked: they can be dragged and resized on screen. A single switch for the
@@ -238,7 +217,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     /// itself.</summary>
     public string ConnectionLabel => ConnectionTone switch
     {
-        ConnectionTone.Error => "Problem — see General › Diagnostics",
+        ConnectionTone.Error => "Problem — see Settings › Diagnostics",
         ConnectionTone.Degraded => _connectionState == ConnectionState.Stale ? "Telemetry stalled" : "Reconnecting to iRacing",
         ConnectionTone.Live => string.IsNullOrEmpty(_sessionLabel) ? "iRacing connected" : $"iRacing connected · {_sessionLabel}",
         _ => "Waiting for iRacing",
@@ -281,13 +260,18 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ConnectionTone));
     }
 
-    /// <summary>Puts "4/12" beside the WIDGETS heading: how many are switched on, at a glance.</summary>
+    /// <summary>Puts "2/5" beside each widget heading: how many of its widgets are switched on, at a
+    /// glance, so what is on screen never has to be read off twelve rows.</summary>
     private void UpdateWidgetCount()
     {
-        var on = _slots.Values.Count(slot => slot.IsEnabled);
-        var section = NavSection.For(NavItem.WidgetsGroup);
-        section.Badge = $"{on}/{_slots.Count}";
-        section.BadgeTip = $"{on} of {_slots.Count} widgets switched on";
+        foreach (var category in _slots.Values.GroupBy(slot => slot.Descriptor.Category))
+        {
+            var on = category.Count(slot => slot.IsEnabled);
+            var total = category.Count();
+            var section = NavSection.For(WidgetCatalog.HeadingOf(category.Key));
+            section.Badge = $"{on}/{total}";
+            section.BadgeTip = $"{on} of {total} switched on";
+        }
     }
 
     /// <summary>The reader's own view of the link, polled once a second: it knows about stalls and
@@ -367,7 +351,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     public DeltaReference DeltaReference => DeltaOptions.Reference;
 
     /// <summary>Timer period for the two displays whose whole value is latency — the proximity/ABS
-    /// bars and the pedal trace. Index order matches the labels General › Performance offers.</summary>
+    /// bars and the pedal trace. Index order matches the labels Settings › Performance offers.</summary>
     public int CriticalRefreshIntervalMs => _criticalRefreshIndex switch
     {
         0 => 16,
@@ -417,14 +401,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     private void Select(NavItem? item)
     {
-        // A null arrives when the search filters the selected entry out from under the list. Keeping
-        // the current page is the useful behaviour: the pane the user was working in stays put while
-        // they look for the next one, instead of blanking on every keystroke.
+        // A null arrives when the page is one the rail doesn't list (Help, at its foot): the list
+        // loses its selection, and the page stays.
         if (item is null || ReferenceEquals(_selected, item))
         {
             return;
         }
 
+        // Picking a page is the end of a search: the results give way to the page.
+        ClearSearch();
         _selected = item;
 
         // The widget's own +/- control writes the same setting, so the page is rebuilt from current
@@ -439,6 +424,26 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
+        OnPropertyChanged(nameof(SelectedTab));
+    }
+
+    private int _selectedTab;
+
+    /// <summary>The open tab on a page that has tabs (Help); 0 elsewhere.</summary>
+    public int SelectedTab
+    {
+        get => _selected?.HasTabs == true ? _selectedTab : 0;
+        set
+        {
+            if (value < 0 || _selected is not { HasTabs: true } page || value == _selectedTab)
+            {
+                return;
+            }
+
+            _selectedTab = value;
+            BuildSettings(page);
+            OnPropertyChanged();
+        }
     }
 
     public WidgetSlot? SelectedWidget => _selected?.Widget;

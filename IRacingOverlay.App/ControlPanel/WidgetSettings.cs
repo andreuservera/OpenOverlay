@@ -45,22 +45,42 @@ public sealed record WidgetSettingsContext(
 /// <summary>
 /// The settings groups that configure a widget itself — the same rows on its control panel page and
 /// in the layout editor, built once here so the two can never offer different options. What is not
-/// here is what does not belong to a layout: PLACEMENT (size, opacity, auto-hide), which the page
-/// binds to the widget's slot and the editor to the layout entry, and the flag preview scenario.
+/// here is what does not belong to a layout: POSITION &amp; VISIBILITY (size, opacity, auto-hide),
+/// which the page binds to the widget's slot and the editor to the layout entry, and the flag preview
+/// scenario.
+///
+/// Every widget sorts its options into the same sections, in the same order — <see cref="Content"/>,
+/// <see cref="Appearance"/>, <see cref="Behavior"/>, then (on the page) position and visibility, and
+/// <see cref="Advanced"/> last — so a user who has learnt one widget's page has learnt them all.
 /// </summary>
 public static class WidgetSettings
 {
+    /// <summary>What the widget shows, and in what order.</summary>
+    public const string Content = "CONTENT";
+
+    /// <summary>How it looks: orientation, labels, sizes of its parts.</summary>
+    public const string Appearance = "APPEARANCE";
+
+    /// <summary>What it decides: counts, references, calculations.</summary>
+    public const string Behavior = "BEHAVIOR";
+
+    /// <summary>Size, opacity and when it shows; added by the page, not here.</summary>
+    public const string PositionAndVisibility = "POSITION & VISIBILITY";
+
+    /// <summary>Technical options most people never need, folded until opened.</summary>
+    public const string Advanced = "ADVANCED";
+
     /// <summary>The widget's own settings groups, in the order its page shows them. Empty for a
     /// widget with no options of its own.</summary>
     public static IReadOnlyList<SettingsGroup> For(string type, WidgetSettingsContext context) => type switch
     {
-        WidgetCatalog.Standings => [StandingsColumns(context), StandingsTable(context)],
-        WidgetCatalog.Relative => [RelativeColumns(context), RelativeTable(context)],
+        WidgetCatalog.Standings => [StandingsContent(context), TableAppearance(context.Standings, context), StandingsBehavior(context)],
+        WidgetCatalog.Relative => [RelativeContent(context), TableAppearance(context.Relative, context), RelativeBehavior(context)],
         WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
-        WidgetCatalog.Flag => [FlagTypes(context), FlagContent(context), FlagLayoutGroup(context)],
+        WidgetCatalog.Flag => [FlagTypes(context), FlagAppearance(context), FlagBehavior(context)],
         WidgetCatalog.Cockpit => [CockpitModulesGroup(context)],
         WidgetCatalog.PedalTrace => [PedalTraceElements(context)],
-        WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context)],
+        WidgetCatalog.Weather => [WeatherElements(context), WeatherDisplay(context), WeatherAdvanced(context)],
         WidgetCatalog.TrackInfo => [TrackInfoElements(context)],
         WidgetCatalog.Delta => [DeltaReferenceGroup(context)],
         _ => [],
@@ -68,14 +88,37 @@ public static class WidgetSettings
 
     // ===== Driver tables =====
 
-    private static SettingsGroup StandingsColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
-        .With(ColumnList(context.Standings, context));
+    private static SettingsGroup StandingsContent(WidgetSettingsContext context) => new SettingsGroup(
+        Content, "The columns, and the session info above and below the rows.")
+        .With(
+            ColumnList(context.Standings, context),
+            new ToggleSetting(
+                "Drivers per class",
+                null,
+                context.Standings.ShowClassDrivers,
+                value =>
+                {
+                    context.Standings.ShowClassDrivers = value;
+                    context.Persist(() => DriverTableOptionsStore.SaveClassDrivers(DriverTable.Standings, value));
+                }),
+            new ToggleSetting(
+                "SOF per class",
+                "Strength of field: the class's average iRating.",
+                context.Standings.ShowClassSof,
+                value =>
+                {
+                    context.Standings.ShowClassSof = value;
+                    context.Persist(() => DriverTableOptionsStore.SaveClassSof(DriverTable.Standings, value));
+                }))
+        .With(InfoPlacements(context.Standings, context).ToArray());
 
-    private static SettingsGroup RelativeColumns(WidgetSettingsContext context) => new SettingsGroup("COLUMNS")
-        .With(ColumnList(context.Relative, context));
+    private static SettingsGroup RelativeContent(WidgetSettingsContext context) => new SettingsGroup(
+        Content, "The columns, and the session info above and below the rows.")
+        .With(ColumnList(context.Relative, context))
+        .With(InfoPlacements(context.Relative, context).ToArray());
 
     private static ReorderListSetting ColumnList(DriverTableOptions options, WidgetSettingsContext context) => new(
-        "Visible columns",
+        "Columns",
         "Drag a row by its handle to change the order.",
         options.ColumnOrder.Select(column => column == DriverTableColumn.IRating
             ? new ReorderListItem(
@@ -115,11 +158,11 @@ public static class WidgetSettings
             context.Persist(() => DriverTableOptionsStore.SaveColumn(options.Table, column, isVisible));
         });
 
-    private static SettingsGroup StandingsTable(WidgetSettingsContext context) => new SettingsGroup("ROWS & INFO BAR", "Which drivers to show, and the session info above and below them.")
+    private static SettingsGroup StandingsBehavior(WidgetSettingsContext context) => new SettingsGroup(Behavior)
         .With(
             new NumberSetting(
                 "Drivers around me",
-                null,
+                "Rows kept around your own, besides the top 3.",
                 context.Standings.FocusSize,
                 DriverTableOptions.MinFocusSize,
                 60,
@@ -129,48 +172,28 @@ public static class WidgetSettings
                 value => SetFocusSize(context.Standings, value, context)),
             new ToggleSetting(
                 "Split by class",
-                null,
+                "In multiclass races, one block per class.",
                 context.Standings.ShowMulticlass,
                 value =>
                 {
                     context.Standings.ShowMulticlass = value;
                     context.Persist(() => DriverTableOptionsStore.SaveMulticlass(DriverTable.Standings, value));
-                }),
-            new ToggleSetting(
-                "Drivers per class",
-                null,
-                context.Standings.ShowClassDrivers,
-                value =>
-                {
-                    context.Standings.ShowClassDrivers = value;
-                    context.Persist(() => DriverTableOptionsStore.SaveClassDrivers(DriverTable.Standings, value));
-                }),
-            new ToggleSetting(
-                "SOF per class",
-                "Strength of field: the class's average iRating.",
-                context.Standings.ShowClassSof,
-                value =>
-                {
-                    context.Standings.ShowClassSof = value;
-                    context.Persist(() => DriverTableOptionsStore.SaveClassSof(DriverTable.Standings, value));
-                }),
-            ColumnHeadersToggle(context.Standings, context))
-        .With(InfoPlacements(context.Standings, context).ToArray());
+                }));
 
-    private static SettingsGroup RelativeTable(WidgetSettingsContext context) => new SettingsGroup("ROWS & INFO BAR", "How many cars to show around you, and the session info above and below them.")
-        .With(
-            new NumberSetting(
-                "Drivers each side",
-                null,
-                context.Relative.FocusSize,
-                DriverTableOptions.MinFocusSize,
-                30,
-                1,
-                "0",
-                null,
-                value => SetFocusSize(context.Relative, value, context)),
-            ColumnHeadersToggle(context.Relative, context))
-        .With(InfoPlacements(context.Relative, context).ToArray());
+    private static SettingsGroup RelativeBehavior(WidgetSettingsContext context) => new SettingsGroup(Behavior)
+        .With(new NumberSetting(
+            "Drivers each side",
+            "Cars shown ahead of you and behind you.",
+            context.Relative.FocusSize,
+            DriverTableOptions.MinFocusSize,
+            30,
+            1,
+            "0",
+            null,
+            value => SetFocusSize(context.Relative, value, context)));
+
+    private static SettingsGroup TableAppearance(DriverTableOptions options, WidgetSettingsContext context) =>
+        new SettingsGroup(Appearance).With(ColumnHeadersToggle(options, context));
 
     // Bound straight in the panels, so the row goes (and the widget shrinks) without a header nudge.
     private static ToggleSetting ColumnHeadersToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
@@ -236,7 +259,7 @@ public static class WidgetSettings
     private static SettingsGroup FuelCalculatorBlocks(WidgetSettingsContext context)
     {
         var options = context.FuelCalculator;
-        return new SettingsGroup("BLOCKS")
+        return new SettingsGroup(Content, "The blocks it shows, and their order.")
             .With(
                 new ChipGroupSetting(
                     "Headline",
@@ -246,17 +269,7 @@ public static class WidgetSettings
                         FuelBlock("Fuel bar", options.ShowFuelBar, v => options.ShowFuelBar = v, context),
                     ]),
                 FuelCells("Usage", options.UsageOrder, order => options.UsageOrder = order, context),
-                FuelCells("Strategy", options.StrategyOrder, order => options.StrategyOrder = order, context),
-                new SegmentedSetting(
-                    "First group",
-                    "Auto puts usage first across and strategy first when vertical.",
-                    ["Auto", "Usage", "Strategy"],
-                    (int)options.FirstGroup,
-                    index =>
-                    {
-                        options.FirstGroup = (FuelGroupOrder)index;
-                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
-                    }));
+                FuelCells("Strategy", options.StrategyOrder, order => options.StrategyOrder = order, context));
     }
 
     /// <summary>One group of cells as a drag list, each with its switch.</summary>
@@ -295,23 +308,34 @@ public static class WidgetSettings
     private static SettingsGroup FuelCalculatorDisplay(WidgetSettingsContext context)
     {
         var options = context.FuelCalculator;
-        return new SettingsGroup("DISPLAY")
-            .With(new SegmentedSetting(
-                "Orientation",
-                null,
-                ["Horizontal", "Vertical"],
-                options.Vertical ? 1 : 0,
-                index =>
-                {
-                    options.Vertical = index == 1;
-                    context.Persist(() => FuelCalculatorOptionsStore.Save(options));
-                }));
+        return new SettingsGroup(Appearance)
+            .With(
+                new SegmentedSetting(
+                    "Orientation",
+                    null,
+                    ["Horizontal", "Vertical"],
+                    options.Vertical ? 1 : 0,
+                    index =>
+                    {
+                        options.Vertical = index == 1;
+                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+                    }),
+                new SegmentedSetting(
+                    "First group",
+                    "Auto puts usage first across and strategy first when vertical.",
+                    ["Auto", "Usage", "Strategy"],
+                    (int)options.FirstGroup,
+                    index =>
+                    {
+                        options.FirstGroup = (FuelGroupOrder)index;
+                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
+                    }));
     }
 
     private static SettingsGroup FuelCalculatorMath(WidgetSettingsContext context)
     {
         var options = context.FuelCalculator;
-        return new SettingsGroup("CALCULATION")
+        return new SettingsGroup(Behavior, "How the fuel figures are worked out.")
             .With(
                 new ChoiceSetting(
                     "Average over",
@@ -356,9 +380,9 @@ public static class WidgetSettings
     private static SettingsGroup WeatherElements(WidgetSettingsContext context)
     {
         var options = context.Weather;
-        return new SettingsGroup("ELEMENTS")
+        return new SettingsGroup(Content)
             .With(new ChipGroupSetting(
-                "Visible elements",
+                "Readouts",
                 null,
                 [
                     WeatherChip("Air temp", options.ShowAirTemp, v => options.ShowAirTemp = v, context),
@@ -378,7 +402,7 @@ public static class WidgetSettings
     private static SettingsGroup WeatherDisplay(WidgetSettingsContext context)
     {
         var options = context.Weather;
-        return new SettingsGroup("DISPLAY")
+        return new SettingsGroup(Appearance)
             .With(
                 new ToggleSetting(
                     "Show labels",
@@ -402,7 +426,14 @@ public static class WidgetSettings
                     null,
                     GraphicSizes,
                     (int)options.ArrowSize,
-                    index => SaveWeather(() => options.ArrowSize = (WeatherGraphicSize)index, context)),
+                    index => SaveWeather(() => options.ArrowSize = (WeatherGraphicSize)index, context)));
+    }
+
+    private static SettingsGroup WeatherAdvanced(WidgetSettingsContext context)
+    {
+        var options = context.Weather;
+        return new SettingsGroup(Advanced) { CollapsedByDefault = true }
+            .With(
                 new SliderSetting(
                     "Wind compass refresh",
                     "10 Hz moves the arrow on each update; faster animates it and costs more GPU.",
@@ -425,9 +456,9 @@ public static class WidgetSettings
     private static SettingsGroup TrackInfoElements(WidgetSettingsContext context)
     {
         var options = context.TrackInfo;
-        return new SettingsGroup("ELEMENTS")
+        return new SettingsGroup(Content)
             .With(new ReorderListSetting(
-                "Visible elements",
+                "Readouts",
                 "Drag a row by its handle to change the order.",
                 options.FieldOrder.Select(field => new ReorderListItem(field, TrackInfoChip(field, options, context))),
                 order =>
@@ -462,9 +493,9 @@ public static class WidgetSettings
     private static SettingsGroup PedalTraceElements(WidgetSettingsContext context)
     {
         var options = context.PedalTrace;
-        return new SettingsGroup("ELEMENTS")
+        return new SettingsGroup(Content)
             .With(new ReorderListSetting(
-                "Visible elements",
+                "Parts",
                 "Drag a row by its handle to change the order.",
                 options.ElementOrder.Select(element => new ReorderListItem(element, PedalTraceChip(element, options, context))),
                 order =>
@@ -495,10 +526,10 @@ public static class WidgetSettings
     private static SettingsGroup CockpitModulesGroup(WidgetSettingsContext context)
     {
         var options = context.Cockpit;
-        return new SettingsGroup("MODULES")
+        return new SettingsGroup(Content)
             .With(
                 new ReorderListSetting(
-                    "Visible modules",
+                    "Modules",
                     "Drag a row by its handle to change the order. Two small modules in a row share a column.",
                     options.ModuleOrder.Select(module => new ReorderListItem(module, CockpitModuleChip(module, options, context))),
                     order =>
@@ -539,8 +570,8 @@ public static class WidgetSettings
     {
         var options = context.Flag;
         var group = new SettingsGroup(
-            "FLAG TYPES",
-            "Switched-off flags never appear. Each category shows one at a time.");
+            Content,
+            "Which flags can appear. Switched-off flags never do; each category shows one at a time.");
 
         foreach (var (flagGroup, label, hint) in FlagGroupLabels)
         {
@@ -560,12 +591,12 @@ public static class WidgetSettings
         return group;
     }
 
-    private static SettingsGroup FlagContent(WidgetSettingsContext context)
+    private static SettingsGroup FlagAppearance(WidgetSettingsContext context)
     {
         var options = context.Flag;
-        return new SettingsGroup("CONTENT")
+        return new SettingsGroup(Appearance)
             .With(
-                new ChoiceSetting(
+                new SegmentedSetting(
                     "Show",
                     null,
                     ["Icon and text", "Icon only"],
@@ -581,6 +612,25 @@ public static class WidgetSettings
                     "What the flag asks of you.",
                     options.ShowDescription,
                     value => SaveFlags(() => options.ShowDescription = value, context)),
+                new SegmentedSetting(
+                    "Stack flags",
+                    null,
+                    ["Vertically", "Side by side"],
+                    (int)options.Layout,
+                    index => SaveFlags(() => options.Layout = (FlagLayout)index, context)),
+                new SegmentedSetting(
+                    "Icon position",
+                    null,
+                    ["Left of text", "Above text"],
+                    (int)options.IconPlacement,
+                    index => SaveFlags(() => options.IconPlacement = (FlagIconPlacement)index, context)));
+    }
+
+    private static SettingsGroup FlagBehavior(WidgetSettingsContext context)
+    {
+        var options = context.Flag;
+        return new SettingsGroup(Behavior)
+            .With(
                 new NumberSetting(
                     "Flags at once",
                     "Most important first, and larger.",
@@ -599,25 +649,6 @@ public static class WidgetSettings
                     index => SaveFlags(() => options.InfoFlagSeconds = FlagOptions.HoldChoices[index], context)));
     }
 
-    private static SettingsGroup FlagLayoutGroup(WidgetSettingsContext context)
-    {
-        var options = context.Flag;
-        return new SettingsGroup("LAYOUT")
-            .With(
-                new ChoiceSetting(
-                    "Stack flags",
-                    null,
-                    ["Vertically", "Side by side"],
-                    (int)options.Layout,
-                    index => SaveFlags(() => options.Layout = (FlagLayout)index, context)),
-                new ChoiceSetting(
-                    "Icon position",
-                    null,
-                    ["Left of the text", "Above the text"],
-                    (int)options.IconPlacement,
-                    index => SaveFlags(() => options.IconPlacement = (FlagIconPlacement)index, context)));
-    }
-
     private static void SaveFlags(Action change, WidgetSettingsContext context)
     {
         change();
@@ -628,11 +659,11 @@ public static class WidgetSettings
 
     /// <summary>Never saved for the individual widget (it starts every run at the session best), so
     /// there is nothing to persist; a layout still keeps its own choice.</summary>
-    private static SettingsGroup DeltaReferenceGroup(WidgetSettingsContext context) => new SettingsGroup("REFERENCE")
-        .With(new ChoiceSetting(
+    private static SettingsGroup DeltaReferenceGroup(WidgetSettingsContext context) => new SettingsGroup(Behavior)
+        .With(new SegmentedSetting(
             "Compare against",
             null,
-            ["Session best lap", "Personal best (all-time)", "Optimal lap"],
+            ["Session best", "Personal best", "Optimal lap"],
             (int)context.Delta.Reference,
             index =>
             {

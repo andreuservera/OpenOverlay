@@ -61,10 +61,10 @@
                    Style="{StaticResource Cp.Hint}" HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextAlignment="Center" Margin="12" Visibility="Collapsed"/>
 
-        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
+        <Border x:Name="ResolutionBadge" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8"
                 Background="#99000000" CornerRadius="5" Padding="8,4">
-            <TextBlock x:Name="ResolutionText" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="10.5"
-                       FontWeight="Bold" Foreground="#8A949E"/>
+            <TextBlock x:Name="ResolutionText" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="12"
+                       FontWeight="SemiBold" Foreground="#B4BCC8"/>
         </Border>
     </Grid>
 </UserControl>

@@ -16,18 +16,37 @@ public partial class LayoutPreview : UserControl
         nameof(Layout), typeof(Layout), typeof(LayoutPreview),
         new PropertyMetadata(null, (d, _) => ((LayoutPreview)d).Rebuild()));
 
+    public static readonly DependencyProperty IsCompactProperty = DependencyProperty.Register(
+        nameof(IsCompact), typeof(bool), typeof(LayoutPreview),
+        new PropertyMetadata(false, (d, _) => ((LayoutPreview)d).ApplyCompact()));
+
     /// <summary>Margin around the frame, in screen pixels.</summary>
-    private const double Inset = 24;
+    private double Inset => IsCompact ? 8 : 24;
 
     public LayoutPreview()
     {
         InitializeComponent();
+        IsVisibleChanged += (_, _) => FitWhenLaidOut();
     }
 
     public Layout? Layout
     {
         get => (Layout?)GetValue(LayoutProperty);
         set => SetValue(LayoutProperty, value);
+    }
+
+    /// <summary>A thumbnail (a Layouts card): a thinner margin, and no resolution badge or empty-layout
+    /// note, which the card says in words beside it.</summary>
+    public bool IsCompact
+    {
+        get => (bool)GetValue(IsCompactProperty);
+        set => SetValue(IsCompactProperty, value);
+    }
+
+    private void ApplyCompact()
+    {
+        ResolutionBadge.Visibility = IsCompact ? Visibility.Collapsed : Visibility.Visible;
+        Rebuild();
     }
 
     private void Rebuild()
@@ -44,11 +63,16 @@ public partial class LayoutPreview : UserControl
         ResolutionText.Text = string.Create(CultureInfo.InvariantCulture, $"{layout.Width}×{layout.Height}");
         var items = layout.ControlledBottomToTop().Select(widget => new EditorWidgetItem(widget)).ToList();
         Items.ItemsSource = items;
-        EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyText.Visibility = items.Count == 0 && !IsCompact ? Visibility.Visible : Visibility.Collapsed;
         Fit();
+        FitWhenLaidOut();
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e) => Fit();
+
+    /// <summary>Fits again once laid out. A preview shown again at the size it had before it was hidden
+    /// raises no SizeChanged, so a layout handed to it while hidden would otherwise stay unscaled.</summary>
+    private void FitWhenLaidOut() => Dispatcher.BeginInvoke(Fit, System.Windows.Threading.DispatcherPriority.Loaded);
 
     /// <summary>Scales the monitor to fit the pane, never above its real size.</summary>
     private void Fit()

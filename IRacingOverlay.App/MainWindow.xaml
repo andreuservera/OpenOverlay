@@ -224,10 +224,18 @@
                                   Stretch="Uniform" HorizontalAlignment="Left" Margin="10,0,0,0"
                                   Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.8"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                            <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,10,0"
+                            <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,30,0"
                                      FontFamily="{DynamicResource Theme.FontFamily}"
-                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Search options" IsHitTestVisible="False" Margin="33,0,0,0"
+                                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <Button Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="11" Width="22" Height="22"
+                                    HorizontalAlignment="Right" Margin="0,0,5,0" ToolTip="Clear the search (Esc)"
+                                    Command="{Binding ClearSearchCommand}"
+                                    Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}"/>
+                            <TextBlock Text="Search settings" IsHitTestVisible="False" Margin="33,0,0,0"
                                        VerticalAlignment="Center" Foreground="{StaticResource Cp.TextFaint}"
                                        FontSize="{StaticResource Cp.Size.Body}">
                                 <TextBlock.Style>
@@ -244,10 +252,62 @@
                         </Grid>
                     </Border>
 
+                    <!-- Help at the foot of the rail, apart from the pages you configure: one place for
+                         what's new, the changelog and the version. Lit like a rail entry while open. -->
+                    <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0"
+                            Padding="8,6">
+                        <Button Command="{Binding ShowHelpCommand}" Cursor="Hand" Focusable="False"
+                                HorizontalContentAlignment="Stretch" ToolTip="What's new, the changelog, version details and where to get help.">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="7" Height="36" Padding="10,0,8,0">
+                                        <Grid>
+                                            <Border x:Name="Marker" Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left"
+                                                    Margin="-18,0,0,0" Background="{StaticResource Cp.Accent}" Visibility="Collapsed"/>
+                                            <ContentPresenter VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Hover}"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
+                                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Selected}"/>
+                                            <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding VersionLabel}" Style="{StaticResource Cp.Mono}"
+                                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"/>
+                                <Path Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"
+                                      Data="M12,3 A9,9 0 1 0 12.01,3 Z M12,11 V16.5 M12,7.5 V7.51" StrokeThickness="1.7"
+                                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Stroke" Value="{StaticResource Cp.TextMuted}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsInfoPage}" Value="True">
+                                                    <Setter Property="Stroke" Value="{StaticResource Cp.Accent}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <TextBlock Text="Help" FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Body}"
+                                           FontWeight="Medium" Foreground="{StaticResource Cp.TextSoft}" Margin="11,0,0,0"
+                                           VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Button>
+                    </Border>
+
                     <!-- Grouped on NavItem.Group, so a new section in the rail is a new string in the
                          view model and never a change here. -->
-                    <ListBox Style="{StaticResource Cp.NavList}" ItemsSource="{Binding NavView}"
+                    <ListBox x:Name="Rail" Style="{StaticResource Cp.NavList}" ItemsSource="{Binding NavView}"
                              SelectedItem="{Binding Selected, Mode=TwoWay}"
+                             PreviewMouseLeftButtonUp="Rail_PreviewMouseLeftButtonUp"
+                             SelectionChanged="Rail_SelectionChanged"
                              ItemTemplate="{StaticResource Cp.NavItemTemplate}">
                         <ListBox.GroupStyle>
                             <GroupStyle ContainerStyle="{StaticResource Cp.NavGroupStyle}"/>
@@ -258,8 +318,19 @@
 
             <!-- ===== Configuration ===== -->
             <DockPanel Grid.Column="1">
+                <!-- While searching, the pane shows what matched instead of a page. -->
+                <Border DockPanel.Dock="Top" Padding="24,18,22,17" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Search" Style="{StaticResource Cp.Display}"/>
+                        <TextBlock Text="{Binding SearchSummary}" Style="{StaticResource Cp.Hint}"
+                                   FontSize="{StaticResource Cp.Size.Body}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
                 <Border DockPanel.Dock="Top" Padding="24,18,22,17"
-                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1">
+                        BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsSearching, Converter={StaticResource Cp.NotBoolToVis}}">
+                    <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -294,13 +365,54 @@
                             <CheckBox Style="{StaticResource Cp.Switch}"
                                       IsChecked="{Binding SelectedWidget.IsEnabled, Mode=TwoWay}"
                                       ToolTip="{Binding SelectedWidget.StateLabel}"/>
+                            <!-- Less common actions on the widget as a whole. -->
+                            <Grid Margin="14,0,0,0">
+                                <ToggleButton x:Name="WidgetMenuButton" Style="{StaticResource Cp.MenuButton}"
+                                              IsChecked="{Binding IsWidgetMenuOpen, Mode=TwoWay}"/>
+                                <Popup IsOpen="{Binding IsWidgetMenuOpen, Mode=TwoWay}" StaysOpen="False"
+                                       PlacementTarget="{Binding ElementName=WidgetMenuButton}" Placement="Bottom"
+                                       AllowsTransparency="True" PopupAnimation="Fade">
+                                    <Border Style="{StaticResource Cp.MenuPopup}">
+                                        <Button Style="{StaticResource Cp.DangerMenuItem}" Content="Reset to defaults…"
+                                                Command="{Binding ResetWidgetCommand}"/>
+                                    </Border>
+                                </Popup>
+                            </Grid>
                         </StackPanel>
                     </Grid>
+                    <!-- Tabs, on a page that has them (Help). -->
+                    <ListBox Style="{StaticResource Cp.Segmented}" Margin="52,14,0,0"
+                             ItemsSource="{Binding Selected.Tabs}" SelectedIndex="{Binding SelectedTab, Mode=TwoWay}"
+                             Visibility="{Binding Selected.HasTabs, Converter={StaticResource Cp.BoolToVis}}"/>
+                    </StackPanel>
                 </Border>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False">
-                    <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
-                </ScrollViewer>
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False"
+                                  Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}">
+                        <StackPanel>
+                            <ItemsControl ItemsSource="{Binding SearchResults}" Focusable="False"
+                                          ItemTemplate="{StaticResource Cp.SearchResultTemplate}"/>
+                            <TextBlock Text="Try a widget's name, a setting such as “opacity”, or a column such as “iRating”."
+                                       Margin="0,4,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Cp.Hint}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchResults.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ScrollViewer x:Name="SettingsScroller" VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False"
+                                  Visibility="{Binding IsSearching, Converter={StaticResource Cp.NotBoolToVis}}">
+                        <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
+                    </ScrollViewer>
+                </Grid>
             </DockPanel>
 
             <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="Transparent"
@@ -408,7 +520,7 @@
                     <TextBlock Text="{Binding HealthLine}" Style="{StaticResource Cp.Mono}" Foreground="{StaticResource Cp.TextSoft}"
                                FontSize="{StaticResource Cp.Size.Micro}"
                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                               ToolTip="General › Diagnostics has the full report."/>
+                               ToolTip="Settings › Diagnostics has the full report."/>
                 </StackPanel>
                 <TextBlock Grid.Column="2" Text="{Binding DiagnosticsLine}" Style="{StaticResource Cp.Mono}"
                            FontSize="{StaticResource Cp.Size.Micro}"
