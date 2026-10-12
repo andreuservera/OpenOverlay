@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -53,6 +54,37 @@ public partial class TrackInfoPanel : UserControl
 
         PropertyChangedEventManager.AddHandler(Options, OnOptionChanged, string.Empty);
         LayoutBar();
+        Loaded += (_, _) => HoldWidths();
+    }
+
+    /// <summary>
+    /// The readings that change while driving, each with its widest possible value in either unit
+    /// system. Each keeps that width whatever it shows, so the bar never changes size as a decimal
+    /// or a digit comes and goes (22°C ↔ 22.5°C, 10:00 → 9:59, E ↔ WNW) — a widget that grows and
+    /// shrinks moves everything after it, and can't be placed against anything else on screen. The
+    /// dashes shown without data get the same room, so the widget is the same size either way.
+    /// </summary>
+    private (TextBlock Text, string[] Widest)[] HeldReadings =>
+    [
+        (AirTempText, ["-88.8°F", "-88.8°C"]),
+        (TrackTempText, ["-88.8°F", "-88.8°C"]),
+        (WindText, ["88.8 km/h WNW", "88.8 mph WNW"]),
+        (HumidityText, ["100%"]),
+        (TrackUsageText, ["MODERATELY HIGH"]),
+        (TimeRemainingText, ["8:88:88"]),
+        (LapText, ["88/~88.8", "888/888"]),
+    ];
+
+    private void HoldWidths()
+    {
+        var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        foreach (var (text, widest) in HeldReadings)
+        {
+            var typeface = new Typeface(text.FontFamily, text.FontStyle, text.FontWeight, text.FontStretch);
+            text.MinWidth = widest.Max(sample => new FormattedText(
+                sample, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, text.FontSize, Brushes.White, pixelsPerDip)
+                .WidthIncludingTrailingWhitespace);
+        }
     }
 
     public TrackInfoOptions Options
