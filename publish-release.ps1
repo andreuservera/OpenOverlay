@@ -5,8 +5,8 @@
 .DESCRIPTION
     Runs `dotnet publish` in Release configuration (JIT optimizations on, debug checks off) with
     ReadyToRun precompilation for faster startup. By default this is framework-dependent (requires
-    the .NET 8 desktop runtime already installed, which this dev machine has), so pass -SelfContained
-    to bundle the runtime instead, for running on a machine without .NET 8 installed.
+    the .NET 10 desktop runtime already installed, which this dev machine has), so pass -SelfContained
+    to bundle the runtime instead, for running on a machine without .NET 10 installed.
 
 .PARAMETER SelfContained
     Bundle the .NET runtime into the output instead of depending on a system-wide install.

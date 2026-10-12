@@ -6,7 +6,7 @@ ideas from anyone are welcome.
 ## Getting set up
 
 1. Fork the repo and clone your fork.
-2. Install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+2. Install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 3. Build and run the tests:
    ```powershell
    dotnet build

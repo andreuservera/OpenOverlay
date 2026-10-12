@@ -144,7 +144,7 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 ## Requirements
 
 - Windows 10/11 (64-bit).
-- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) — only if you use the
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) — only if you use the
   framework-dependent release build. The self-contained build needs nothing extra.
 - [iRacing](https://www.iracing.com) installed. You must actually be in a session (practice,
   qualify, race, or replay) for live data to show — at the main menu there's simply nothing to
@@ -192,7 +192,7 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 
 ## Building from source
 
-Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```powershell
 git clone https://github.com/andreuservera/OpenOverlay.git
@@ -204,7 +204,7 @@ dotnet test
 To produce an optimized Release build as a loose folder of files (no installer, no auto-update):
 
 ```powershell
-.\publish-release.ps1                      # framework-dependent, needs .NET 8 Desktop Runtime installed
+.\publish-release.ps1                      # framework-dependent, needs .NET 10 Desktop Runtime installed
 .\publish-release.ps1 -SelfContained       # bundles the runtime, runs on a bare machine
 ```
 

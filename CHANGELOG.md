@@ -2,10 +2,13 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.11.1] - 2026-10-12
+### [0.12.0] - 2026-10-12
 
 #### Changed
 - Relative and Standings: while spectating or watching a replay, the tables centre on and highlight the car the camera is on.
+
+#### Improved
+- OpenOverlay now runs on .NET 10, which keeps receiving security updates, and starts faster because the installer ships it precompiled.
 
 #### Fixed
 - Standings: the estimated iRating change is more accurate, now within about a point of iRacing's, and in multiclass races it counts only the cars in your class.
