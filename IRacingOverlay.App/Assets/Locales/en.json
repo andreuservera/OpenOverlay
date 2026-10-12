@@ -906,5 +906,6 @@
   "delta.vsOptimal": "VS OPTIMAL LAP",
   "preview.you": "You",
   "tire.compound": "Compound {0}",
-  "main.layoutPreviewNamed": "PREVIEW · {0}"
+  "main.layoutPreviewNamed": "PREVIEW · {0}",
+  "layouts.dashboardComingSoon": "Being redesigned; it will be back in a later version."
 }

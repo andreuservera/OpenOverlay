@@ -1001,6 +1001,11 @@ public partial class MainWindow : Window
 
     private void ToggleDashboard()
     {
+        if (!ControlPanelViewModel.DashboardAvailable && _dashboard is not { IsVisible: true })
+        {
+            return;
+        }
+
         if (_dashboard is { IsVisible: true })
         {
             AppLog.Activity("Dashboard", "Hidden");

@@ -273,13 +273,18 @@ public sealed partial class ControlPanelViewModel
     }
 
     /// <summary>The second-monitor dashboard: a fullscreen layout of its own, with its own theme.</summary>
+    /// <summary>Whether the second-monitor dashboard can be opened. Off while it is redesigned.</summary>
+    internal const bool DashboardAvailable = false;
+
     private IEnumerable<SettingsGroup> DashboardGroups()
     {
+        // Switched off until the dashboard is redesigned: the button stays, greyed, and says why.
         var button = new ActionSetting(
             Loc.T("layouts.secondMonitorDashboard"),
-            null,
+            DashboardAvailable ? null : Loc.T("layouts.dashboardComingSoon"),
             Loc.T("layouts.showDashboard"),
-            () => DashboardToggleRequested?.Invoke());
+            () => DashboardToggleRequested?.Invoke(),
+            isEnabled: DashboardAvailable);
         if (!_buildingIndex)
         {
             DashboardButton = button;

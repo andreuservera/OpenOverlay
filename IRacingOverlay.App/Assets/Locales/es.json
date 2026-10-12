@@ -906,5 +906,6 @@
   "delta.vsOptimal": "VS VUELTA ÓPTIMA",
   "preview.you": "Tú",
   "tire.compound": "Compuesto {0}",
-  "main.layoutPreviewNamed": "VISTA PREVIA · {0}"
+  "main.layoutPreviewNamed": "VISTA PREVIA · {0}",
+  "layouts.dashboardComingSoon": "Se está rediseñando; volverá en una próxima versión."
 }
