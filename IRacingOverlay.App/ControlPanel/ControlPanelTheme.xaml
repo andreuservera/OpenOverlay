@@ -1131,8 +1131,9 @@
     </Style>
 
     <!-- ===== Layout cards =====
-         One card per layout: its monitor in miniature, its name, where it goes, and Open/Close and
-         Edit at hand. The card that is selected (shown large in the preview) wears the accent edge;
+         One card per layout: its name, where it goes, and Open/Close and Edit at hand. No miniature:
+         drawing every layout's widgets with their real panels made the page take seconds to open,
+         and the selected one is drawn large in the preview anyway. The card that is selected (shown large in the preview) wears the accent edge;
          the open one says so in green, in words. -->
     <DataTemplate DataType="{x:Type cp:LayoutCardsSetting}">
         <ItemsControl ItemsSource="{Binding Cards}" Focusable="False" Margin="0,10,0,6">
@@ -1150,9 +1151,6 @@
                             <MouseBinding MouseAction="LeftClick" Command="{Binding SelectCommand}"/>
                         </Border.InputBindings>
                         <StackPanel>
-                            <Border Height="96" CornerRadius="7,7,0,0" ClipToBounds="True" Background="#090C0F">
-                                <cp:LayoutPreview Layout="{Binding Layout}" IsCompact="True"/>
-                            </Border>
                             <StackPanel Margin="12,10,12,12">
                                 <DockPanel>
                                     <Border x:Name="OpenBadge" DockPanel.Dock="Right" CornerRadius="9" Padding="7,1,8,2"
@@ -1165,8 +1163,7 @@
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource Cp.Body}" FontWeight="SemiBold"
                                                Foreground="{StaticResource Cp.Text}" TextTrimming="CharacterEllipsis"/>
                                 </DockPanel>
-                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Cp.Hint}" TextWrapping="NoWrap"
-                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail}"/>
+                                <TextBlock Text="{Binding Detail}" Style="{StaticResource Cp.Hint}" ToolTip="{Binding Detail}"/>
                                 <DockPanel Margin="0,10,0,0">
                                     <Grid DockPanel.Dock="Right">
                                         <ToggleButton x:Name="More" Style="{StaticResource Cp.MenuButton}"

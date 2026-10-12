@@ -15,10 +15,6 @@ public partial class LayoutPreview : UserControl
         nameof(Layout), typeof(Layout), typeof(LayoutPreview),
         new PropertyMetadata(null, (d, _) => ((LayoutPreview)d).Rebuild()));
 
-    public static readonly DependencyProperty IsCompactProperty = DependencyProperty.Register(
-        nameof(IsCompact), typeof(bool), typeof(LayoutPreview),
-        new PropertyMetadata(false, (d, _) => ((LayoutPreview)d).ApplyCompact()));
-
     public static readonly DependencyProperty EmptyMessageProperty = DependencyProperty.Register(
         nameof(EmptyMessage), typeof(string), typeof(LayoutPreview),
         new PropertyMetadata("No widgets yet — add them in the editor.", (d, e) => ((LayoutPreview)d).EmptyText.Text = (string)e.NewValue));
@@ -31,7 +27,7 @@ public partial class LayoutPreview : UserControl
     }
 
     /// <summary>Margin around the frame, in screen pixels.</summary>
-    private double Inset => IsCompact ? 8 : 24;
+    private const double Inset = 24;
 
     public LayoutPreview()
     {
@@ -46,16 +42,6 @@ public partial class LayoutPreview : UserControl
         set => SetValue(LayoutProperty, value);
     }
 
-    /// <summary>A thumbnail (a Layouts card): a thinner margin, and no empty-layout note, which the
-    /// card says in words beside it.</summary>
-    public bool IsCompact
-    {
-        get => (bool)GetValue(IsCompactProperty);
-        set => SetValue(IsCompactProperty, value);
-    }
-
-    private void ApplyCompact() => Rebuild();
-
     private void Rebuild()
     {
         if (Layout is not { } layout)
@@ -69,7 +55,7 @@ public partial class LayoutPreview : UserControl
         Surface.Height = layout.Height;
         var items = layout.ControlledBottomToTop().Select(widget => new EditorWidgetItem(widget)).ToList();
         Items.ItemsSource = items;
-        EmptyText.Visibility = items.Count == 0 && !IsCompact ? Visibility.Visible : Visibility.Collapsed;
+        EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         Fit();
         FitWhenLaidOut();
     }

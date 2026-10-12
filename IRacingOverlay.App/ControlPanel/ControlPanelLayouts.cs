@@ -182,7 +182,7 @@ public sealed partial class ControlPanelViewModel
     }
 
     /// <summary>
-    /// The layouts as cards — a thumbnail of each, whether it is open, and its actions — rather than a
+    /// The layouts as cards — whether each is open, and its actions — rather than a
     /// second dropdown: the toolbar's picker is the one place a layout is chosen to go on screen, and
     /// a card clicked here only shows that layout large in the preview. Below the cards, each
     /// layout's shortcut, then the second-monitor dashboard, which is a layout of its own kind.
@@ -850,8 +850,7 @@ public sealed record LayoutChoice(Guid Id, string Name)
     public override string ToString() => Name;
 }
 
-/// <summary>A layout on the Layouts page: its thumbnail, whether it is open, and what can be done
-/// with it. The less common actions sit behind the card's ⋯ menu, which closes as one is chosen.</summary>
+/// <summary>A layout on the Layouts page: whether it is open, and what can be done with it. The less common actions sit behind the card's ⋯ menu, which closes as one is chosen.</summary>
 public sealed class LayoutCard : INotifyPropertyChanged
 {
     private bool _isSelected;
@@ -863,7 +862,7 @@ public sealed class LayoutCard : INotifyPropertyChanged
         IsOpen = isOpen;
         _isSelected = isSelected;
         Detail = string.Create(CultureInfo.InvariantCulture,
-            $"{layout.Monitor.FriendlyName} · {layout.Width}×{layout.Height} · {layout.Widgets.Count} {(layout.Widgets.Count == 1 ? "widget" : "widgets")}");
+            $"{layout.Monitor.FriendlyName}\n{layout.Width}×{layout.Height} · {layout.Widgets.Count} {(layout.Widgets.Count == 1 ? "widget" : "widgets")}");
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
