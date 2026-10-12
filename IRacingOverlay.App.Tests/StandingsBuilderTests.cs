@@ -1736,7 +1736,7 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildMulticlassView_PlayerClassKeepsThePodiumAndTheBlockAroundThePlayer()
     {
-        var display = StandingsBuilder.BuildMulticlassView(ThreeClassField(), maxDynamicDrivers: 5);
+        var display = StandingsBuilder.BuildMulticlassView(ThreeClassField(), maxDynamicDrivers: 4);
 
         // Class podium, then the window centred on the player — positions within the class, not overall.
         Assert.Equal(
@@ -1818,7 +1818,7 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildFocusedView_MulticlassSession_CountsOnlyOwnClassCarsAsSkipped()
     {
-        var separator = StandingsBuilder.BuildFocusedView(ThreeClassField(), maxDynamicDrivers: 5)
+        var separator = StandingsBuilder.BuildFocusedView(ThreeClassField(), maxDynamicDrivers: 4)
             .OfType<StandingsSeparatorRow>().Single();
 
         // GT3 P4 and P5 are the only cars between the class podium and the block — cars from the
@@ -2362,12 +2362,20 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildFocusedView_MidfieldPlayer_PinsTopThreeAndCentresTheBlockOnThePlayer()
     {
-        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 15), maxDynamicDrivers: 5);
+        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 15), maxDynamicDrivers: 4);
 
-        // Top 3, a separator, then P13..P17 — the player plus two cars each side.
+        // Top 3, a separator, then P13..P17 — four drivers around the player, two each side.
         Assert.Equal([1, 2, 3], display.OfType<StandingsRow>().Take(3).Select(r => r.Position));
         Assert.Single(display.OfType<StandingsSeparatorRow>());
         Assert.Equal([13, 14, 15, 16, 17], display.OfType<StandingsRow>().Skip(3).Select(r => r.Position));
+    }
+
+    [Fact]
+    public void BuildFocusedView_OddCountAroundThePlayer_PutsTheExtraDriverBehind()
+    {
+        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 15), maxDynamicDrivers: 5);
+
+        Assert.Equal([13, 14, 15, 16, 17, 18], display.OfType<StandingsRow>().Skip(3).Select(r => r.Position));
     }
 
     [Fact]
@@ -2382,7 +2390,7 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildFocusedView_PlayerInsideTopThree_ShowsNoDriverTwice()
     {
-        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 2), maxDynamicDrivers: 5);
+        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 2), maxDynamicDrivers: 4);
 
         var positions = display.OfType<StandingsRow>().Select(r => r.Position).ToList();
         Assert.Equal(positions.Distinct(), positions);
@@ -2393,7 +2401,7 @@ public class StandingsBuilderTests
     [Fact]
     public void BuildFocusedView_PlayerLast_SlidesTheBlockBackInsteadOfShrinkingIt()
     {
-        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 30), maxDynamicDrivers: 5);
+        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: 30), maxDynamicDrivers: 4);
 
         // Same row count as any other position — the widget must not change height just because the
         // window ran out of field behind the player.
@@ -2428,7 +2436,7 @@ public class StandingsBuilderTests
     public void BuildFocusedView_Spectating_FallsBackToTheCarsBehindThePodium()
     {
         // Nobody flagged as the player: still a usable view rather than an empty dynamic block.
-        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: -1), maxDynamicDrivers: 4);
+        var display = StandingsBuilder.BuildFocusedView(MakeField(30, playerPosition: -1), maxDynamicDrivers: 3);
 
         Assert.Equal([4, 5, 6, 7], display.OfType<StandingsRow>().Skip(3).Select(r => r.Position));
     }

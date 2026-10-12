@@ -72,7 +72,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     /// player. There is deliberately no ceiling: asking for more cars than the session has just
     /// shows everyone, since the builders clamp to what exists.</summary>
     public const int MinFocusSize = 1;
-    public const int DefaultStandingsFocusSize = 7;
+    public const int DefaultStandingsFocusSize = 6;
     public const int DefaultRelativeFocusSize = 4;
 
     private bool _showPosition = true;

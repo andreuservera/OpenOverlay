@@ -136,6 +136,9 @@ public sealed partial class ControlPanelViewModel
 
     public bool HasLayoutPreview => PreviewLayout is not null;
 
+    /// <summary>The preview pane's heading while it shows a layout: which one.</summary>
+    public string LayoutPreviewHeading => PreviewLayout is { } layout ? Loc.F("main.layoutPreviewNamed", layout.Name) : "";
+
     /// <summary>The previewed layout's resolution, for the preview pane's header.</summary>
     public string PreviewLayoutResolution => PreviewLayout is { } layout
         ? string.Create(CultureInfo.InvariantCulture, $"{layout.Width}×{layout.Height} · {layout.Monitor.FriendlyName}")
@@ -154,6 +157,7 @@ public sealed partial class ControlPanelViewModel
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
         OnPropertyChanged(nameof(PreviewLayoutResolution));
+        OnPropertyChanged(nameof(LayoutPreviewHeading));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
     }
 

@@ -515,6 +515,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
         OnPropertyChanged(nameof(PreviewLayoutResolution));
+        OnPropertyChanged(nameof(LayoutPreviewHeading));
         OnPropertyChanged(nameof(ShowsPreviewPlaceholder));
         OnPropertyChanged(nameof(SelectedTab));
         OnPreviewTargetChanged();

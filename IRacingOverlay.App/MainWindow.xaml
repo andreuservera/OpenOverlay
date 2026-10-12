@@ -388,8 +388,14 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
+                        <!-- Title and the widget's switch on the first row; the description under
+                             both, at full width, so it doesn't wrap beside the switch. -->
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <Border Grid.Column="0" Width="38" Height="38" CornerRadius="10"
+                        <Border Grid.Column="0" Grid.RowSpan="2" Width="38" Height="38" CornerRadius="10"
                                 Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.Border}"
                                 BorderThickness="1" VerticalAlignment="Top">
                             <Path Width="19" Height="19" Stretch="Uniform" Data="{Binding Selected.IconData}"
@@ -397,11 +403,11 @@
                                   StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                         </Border>
 
-                        <StackPanel Grid.Column="1" Margin="14,0,16,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Selected.Title}" Style="{StaticResource Cp.Display}"/>
-                            <TextBlock Text="{Binding Selected.Blurb}" Style="{StaticResource Cp.Hint}"
-                                       FontSize="{StaticResource Cp.Size.Body}" Margin="0,2,0,0"/>
-                        </StackPanel>
+                        <TextBlock Grid.Column="1" Margin="14,0,16,0" VerticalAlignment="Center"
+                                   Text="{Binding Selected.Title}" Style="{StaticResource Cp.Display}"/>
+                        <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="1" Margin="14,2,0,0"
+                                   Text="{Binding Selected.Blurb}" Style="{StaticResource Cp.Hint}"
+                                   FontSize="{StaticResource Cp.Size.Body}"/>
 
                         <!-- The master switch sits with the widget's own title and binds straight to
                              the same slot the rail's switch drives: one piece of state, two places
@@ -522,7 +528,7 @@
                                                 <Setter Property="Text" Value="{loc:T main.onScreenNow}"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding HasLayoutPreview}" Value="True">
-                                                <Setter Property="Text" Value="{loc:T main.layoutPreview}"/>
+                                                <Setter Property="Text" Value="{Binding LayoutPreviewHeading}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -532,7 +538,7 @@
                         <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
                                    Style="{StaticResource Cp.Eyebrow}"
                                    Visibility="{Binding HasPreview, Converter={StaticResource Cp.BoolToVis}}">
-                            <Run Text="{loc:T main.size}"/><Run Text="{Binding SelectedWidget.Scale, Mode=OneWay}"/>
+                            <Run Text="{loc:T main.size}"/><Run Text="{Binding SelectedWidget.Scale.Label, Mode=OneWay}"/>
                         </TextBlock>
                         <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Text="{Binding PreviewLayoutResolution}"
                                    Style="{StaticResource Cp.Mono}" FontSize="{StaticResource Cp.Size.Micro}"

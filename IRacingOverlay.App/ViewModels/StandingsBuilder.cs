@@ -837,7 +837,7 @@ internal static class StandingsBuilder
 
     /// <summary>
     /// Cuts the full field down to what a compact overlay can usefully show: the podium, always
-    /// pinned, plus a block of <paramref name="maxDynamicDrivers"/> cars centred on the player. That
+    /// pinned, plus a block of the player and <paramref name="maxDynamicDrivers"/> cars around them. That
     /// answers the two questions a driver actually asks mid-race — who's winning, and who is right
     /// around me — without a table that grows with the entry list.
     ///
@@ -966,7 +966,8 @@ internal static class StandingsBuilder
             return;
         }
 
-        var windowSize = Math.Clamp(maxDynamicDrivers, 1, rows.Count - pinned);
+        // The setting counts the drivers around the player, not the player: the block is one longer.
+        var windowSize = Math.Clamp(maxDynamicDrivers + 1, 1, rows.Count - pinned);
 
         var playerIndex = -1;
         for (var i = 0; i < rows.Count; i++)
@@ -982,7 +983,7 @@ internal static class StandingsBuilder
         // show underneath is simply the next cars down the order.
         var anchor = playerIndex < pinned ? pinned : playerIndex;
 
-        // Bias the window so the extra car of an even-sized block goes behind the player: what's
+        // Split the drivers around the player evenly; an odd one out goes behind the player: what's
         // coming up behind matters more than one more car already up the road.
         var start = anchor - (windowSize - 1) / 2;
         start = Math.Clamp(start, pinned, rows.Count - windowSize);

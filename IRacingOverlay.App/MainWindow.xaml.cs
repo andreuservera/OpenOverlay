@@ -376,6 +376,12 @@ public partial class MainWindow : Window
             {
                 FitPanesToPage();
             }
+            else if (e.PropertyName is nameof(ControlPanelViewModel.Selected) or nameof(ControlPanelViewModel.SelectedTab))
+            {
+                // A new page starts at its top. A search result scrolls to its setting afterwards,
+                // once the page has been laid out.
+                SettingsScroller.ScrollToTop();
+            }
         };
         // A layout switched to by shortcut is announced from the tray: the sim has the screen.
         _vm.LayoutSwitchedNotice += (title, text) => _tray?.ShowNotice(title, text);

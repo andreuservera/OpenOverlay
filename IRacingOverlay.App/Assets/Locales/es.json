@@ -14,7 +14,7 @@
   "widget.Cockpit.blurb": "Luces de cambio, marcha, velocidad y los coches a tu lado.",
   "widget.TireInfo.name": "Neumáticos",
   "widget.TireInfo.blurb": "Presiones, temperaturas y desgaste en cada rueda.",
-  "widget.FuelCalculator.name": "Calculadora de combustible",
+  "widget.FuelCalculator.name": "Combustible",
   "widget.FuelCalculator.blurb": "Lo que vas a gastar, lo que necesitas y lo que hay que repostar.",
   "widget.Delta.name": "Delta",
   "widget.Delta.blurb": "Diferencia en directo con tu vuelta de referencia.",
@@ -155,7 +155,7 @@
   "ws.rowsKeptAroundYour": "Filas que se mantienen alrededor de la tuya, además del top 3.",
   "ws.splitByClass": "Separar por clase",
   "ws.inMulticlassRacesOne": "En carreras multiclase, un bloque por clase.",
-  "ws.driversEachSide": "Pilotos a cada lado",
+  "ws.driversEachSide": "Pilotos a mi alrededor, por lado",
   "ws.carsShownAheadOf": "Coches mostrados delante y detrás de ti.",
   "ws.showColumnHeaders": "Mostrar cabeceras de columna",
   "ws.infoBar": "Barra de información",
@@ -341,7 +341,6 @@
   "updated.more.other": "…y {0} cambios más.",
   "preview.sampleData": "DATOS DE EJEMPLO",
   "preview.fitShrinksThePreview": "Ajustar reduce la vista previa hasta que se ve el widget entero. Tamaño real lo muestra tan grande como será en pantalla; desplázate para ver el resto.",
-  "preview.fit": "AJUSTAR",
   "preview.actualSize": "TAMAÑO REAL",
   "preview.fitScaled": "AJUSTAR · {0} %",
   "layoutPreview.noWidgetsYetAdd": "Aún no hay widgets — añádelos en el editor.",
@@ -577,8 +576,7 @@
   "main.undo": "Deshacer",
   "main.livePreview": "VISTA PREVIA EN VIVO",
   "main.onScreenNow": "EN PANTALLA AHORA",
-  "main.layoutPreview": "VISTA PREVIA DEL LAYOUT",
-  "main.size": "TAMAÑO ",
+  "main.size": "Tamaño ",
   "main.whatTheWidgetIs": "Sobre qué se muestra el widget: comprueba que se lee bien con la opacidad elegida.",
   "main.scenario": "ESCENARIO",
   "main.seeTheWidgetIn": "Mira el widget en otra sesión sin iRacing.",
@@ -907,5 +905,6 @@
   "delta.vsAllTimeBest": "VS MEJOR PERSONAL",
   "delta.vsOptimal": "VS VUELTA ÓPTIMA",
   "preview.you": "Tú",
-  "tire.compound": "Compuesto {0}"
+  "tire.compound": "Compuesto {0}",
+  "main.layoutPreviewNamed": "VISTA PREVIA · {0}"
 }

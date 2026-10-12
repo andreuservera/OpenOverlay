@@ -155,7 +155,7 @@
   "ws.rowsKeptAroundYour": "Rows kept around your own, besides the top 3.",
   "ws.splitByClass": "Split by class",
   "ws.inMulticlassRacesOne": "In multiclass races, one block per class.",
-  "ws.driversEachSide": "Drivers each side",
+  "ws.driversEachSide": "Drivers around me, each side",
   "ws.carsShownAheadOf": "Cars shown ahead of you and behind you.",
   "ws.showColumnHeaders": "Show column headers",
   "ws.infoBar": "Info bar",
@@ -341,7 +341,6 @@
   "updated.more.other": "…and {0} more changes.",
   "preview.sampleData": "SAMPLE DATA",
   "preview.fitShrinksThePreview": "Fit shrinks the preview until the whole widget shows. Actual size shows it as big as it will be on screen; scroll to see the rest.",
-  "preview.fit": "FIT",
   "preview.actualSize": "ACTUAL SIZE",
   "preview.fitScaled": "FIT · {0} %",
   "layoutPreview.noWidgetsYetAdd": "No widgets yet — add them in the editor.",
@@ -577,8 +576,7 @@
   "main.undo": "Undo",
   "main.livePreview": "LIVE PREVIEW",
   "main.onScreenNow": "ON SCREEN NOW",
-  "main.layoutPreview": "LAYOUT PREVIEW",
-  "main.size": "SIZE ",
+  "main.size": "Size ",
   "main.whatTheWidgetIs": "What the widget is shown over: check it stays readable at the opacity you chose.",
   "main.scenario": "SCENARIO",
   "main.seeTheWidgetIn": "See the widget in another session without iRacing.",
@@ -907,5 +905,6 @@
   "delta.vsAllTimeBest": "VS ALL-TIME BEST",
   "delta.vsOptimal": "VS OPTIMAL LAP",
   "preview.you": "You",
-  "tire.compound": "Compound {0}"
+  "tire.compound": "Compound {0}",
+  "main.layoutPreviewNamed": "PREVIEW · {0}"
 }
