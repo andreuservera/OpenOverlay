@@ -355,16 +355,9 @@ public sealed partial class ControlPanelViewModel
     /// overlays all at once. Hotkeys and diagnostics have their own pages beside it.</summary>
     private IEnumerable<SettingsGroup> GeneralPage() =>
     [
-        new SettingsGroup(
-            Loc.T("general.window"),
-            Loc.T("general.window.hint"))
+        new SettingsGroup(Loc.T("general.window"))
             .With(
-                new ChoiceSetting(
-                    Loc.T("general.closeBehavior"),
-                    null,
-                    [Loc.T("general.closeBehavior.tray"), Loc.T("general.closeBehavior.quit")],
-                    (int)TrayPreferencesStore.CloseBehavior,
-                    index => TrayPreferencesStore.SaveCloseBehavior((CloseBehavior)index)),
+                CloseBehaviorSetting(),
                 new SegmentedSetting(
                     Loc.T("general.interfaceSize"),
                     Loc.T("general.interfaceSize.hint"),
@@ -392,6 +385,27 @@ public sealed partial class ControlPanelViewModel
                     Loc.T("general.restartOverlays.button"),
                     RestartOverlays)),
     ];
+
+    /// <summary>What closing the window does, explained for the option chosen rather than for both:
+    /// telling someone who quits on close that the overlays keep running would be wrong.</summary>
+    private static ChoiceSetting CloseBehaviorSetting()
+    {
+        static string HintFor(CloseBehavior behavior) =>
+            Loc.T(behavior == CloseBehavior.Exit ? "general.closeBehavior.quit.hint" : "general.closeBehavior.tray.hint");
+
+        ChoiceSetting? setting = null;
+        setting = new ChoiceSetting(
+            Loc.T("general.closeBehavior"),
+            HintFor(TrayPreferencesStore.CloseBehavior),
+            [Loc.T("general.closeBehavior.tray"), Loc.T("general.closeBehavior.quit")],
+            (int)TrayPreferencesStore.CloseBehavior,
+            index =>
+            {
+                TrayPreferencesStore.SaveCloseBehavior((CloseBehavior)index);
+                setting!.Hint = HintFor((CloseBehavior)index);
+            });
+        return setting;
+    }
 
     /// <summary>Every widget back to its default spot; undo puts each back where it was.</summary>
     private void ResetPositionsWithUndo()

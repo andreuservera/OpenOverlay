@@ -1872,7 +1872,7 @@
                     <DockPanel>
                         <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
                         <!-- Only while something in the section differs from how it came. -->
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.reset}" Margin="0,0,6,0"
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.reset}" Margin="16,0,6,0"
                                 VerticalAlignment="Center" Command="{Binding ResetCommand}"
                                 ToolTip="{loc:T cp.putThisSectionBack}"
                                 Visibility="{Binding HasModified, Converter={StaticResource Cp.BoolToVis}}"/>
