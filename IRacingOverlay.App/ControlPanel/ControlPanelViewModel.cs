@@ -34,7 +34,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private string? _sessionLabel;
     private HealthStatus _health;
     private string _healthLine = "Starting";
-    private string _telemetryLine = "Speed —   Lap —   Gear —";
+    private string _telemetryLine = Loc.T("status.telemetry.none");
     private string _diagnosticsLine = "";
     private int _selectedMonitorIndex;
     private DashboardTheme _dashboardTheme;
@@ -66,6 +66,24 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
         };
 
+        // A new language rewrites everything the window says: the bound texts refresh by
+        // themselves, the page in view is rebuilt and search starts over in the new words.
+        Loc.Changed += () =>
+        {
+            _searchIndex = null;
+            if (Selected is { } selected)
+            {
+                BuildSettings(selected);
+            }
+
+            UpdateWidgetCount();
+            OnPropertyChanged(string.Empty);
+            // A dropdown handed its list in the new language drops its selection; once every list
+            // has been swapped, say the selections again so each picks its entry back up.
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                () => OnPropertyChanged(string.Empty), System.Windows.Threading.DispatcherPriority.Background);
+        };
+
         AddHomePage();
 
         foreach (var descriptor in WidgetCatalog.All)
@@ -89,21 +107,21 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
         // Layouts stands alone, without a heading: one page, and the one most people open next.
         NavItems.Add(NavItem.ForPage(
-            LayoutsPageKey, "Layouts", "Saved arrangements of your widgets, and the second-monitor dashboard.",
+            LayoutsPageKey, "nav.layouts.title", "nav.layouts.blurb",
             "M3,4 H21 V20 H3 Z M3,9 H21 M10,9 V20", "#layouts", isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
-            GeneralPageKey, "General", "The window, units, performance, and the overlays as a whole.",
+            GeneralPageKey, "nav.general.title", "nav.general.blurb",
             "M9.65,4.77 L10.26,2.15 L13.74,2.15 L14.35,4.77 L15.45,5.23 L17.74,3.81 L20.19,6.26 L18.77,8.55 L19.23,9.65 L21.85,10.26 L21.85,13.74 L19.23,14.35 L18.77,15.45 L20.19,17.74 L17.74,20.19 L15.45,18.77 L14.35,19.23 L13.74,21.85 L10.26,21.85 L9.65,19.23 L8.55,18.77 L6.26,20.19 L3.81,17.74 L5.23,15.45 L4.77,14.35 L2.15,13.74 L2.15,10.26 L4.77,9.65 L5.23,8.55 L3.81,6.26 L6.26,3.81 L8.55,5.23 Z M12,8.5 A3.5,3.5 0 1 0 12.01,8.5 Z",
             SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
-            HotkeysPageKey, "Hotkeys", "Keyboard shortcuts that work while you drive.",
+            HotkeysPageKey, "nav.hotkeys.title", "nav.hotkeys.blurb",
             "M3,6 H21 V18 H3 Z M7,10 H7.01 M11,10 H11.01 M15,10 H15.01 M7,14 H17",
             SettingsGroupTitle, isPinned: true));
 
         NavItems.Add(NavItem.ForPage(
-            DiagnosticsPageKey, "Diagnostics", "Logs and a report to attach to a bug report.",
+            DiagnosticsPageKey, "nav.diagnostics.title", "nav.diagnostics.blurb",
             "M3,12 H7 L9.5,6 L14.5,18 L17,12 H21",
             SettingsGroupTitle, isPinned: true));
 
@@ -240,7 +258,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     }
 
     /// <summary>What the toolbar button does when clicked.</summary>
-    public string EditModeLabel => _isEditMode ? "Done" : "Move widgets";
+    public string EditModeLabel => Loc.T(_isEditMode ? "toolbar.editMode.done" : "toolbar.editMode.move");
 
     public bool IsConnected
     {
@@ -263,15 +281,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     /// itself.</summary>
     public string ConnectionLabel => ConnectionTone switch
     {
-        ConnectionTone.Error => "Problem — see Settings › Diagnostics",
-        ConnectionTone.Degraded => _connectionState == ConnectionState.Stale ? "Telemetry stalled" : "Reconnecting to iRacing",
-        ConnectionTone.Live => string.IsNullOrEmpty(_sessionLabel) ? "iRacing connected" : $"iRacing connected · {_sessionLabel}",
-        _ => "Waiting for iRacing",
+        ConnectionTone.Error => Loc.T("connection.problem"),
+        ConnectionTone.Degraded => Loc.T(_connectionState == ConnectionState.Stale ? "connection.stalled" : "connection.reconnecting"),
+        ConnectionTone.Live => string.IsNullOrEmpty(_sessionLabel) ? Loc.T("connection.connected") : Loc.F("connection.connectedSession", _sessionLabel),
+        _ => Loc.T("connection.waiting"),
     };
 
     /// <summary>What to do about the state the pill shows, when there is something to do.</summary>
     public string ConnectionHint => ConnectionTone == ConnectionTone.Waiting
-        ? "Start a session and overlays will appear."
+        ? Loc.T("connection.waitingHint")
         : "";
 
     /// <summary>The pill's colour: green connected, amber waiting or degraded, red a problem.</summary>
@@ -317,7 +335,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             var total = category.Count();
             var section = NavSection.For(WidgetCatalog.HeadingOf(category.Key));
             section.Badge = $"{on}/{total}";
-            section.BadgeTip = $"{on} of {total} switched on";
+            section.BadgeTip = Loc.F("nav.section.badgeTip", on, total);
             section.HasActive = on > 0;
         }
     }
@@ -567,7 +585,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
     private static string DescribeScreen(Screen screen, int index)
     {
         var bounds = screen.Bounds;
-        var role = screen.Primary ? "primary" : $"display {index + 1}";
+        var role = screen.Primary ? Loc.T("monitor.primary") : Loc.F("monitor.display", index + 1);
         return $"{bounds.Width}×{bounds.Height} ({role})";
     }
 

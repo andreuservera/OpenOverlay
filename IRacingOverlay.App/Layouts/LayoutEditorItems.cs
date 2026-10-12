@@ -225,11 +225,11 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
 /// <summary>A widget in the editor's catalog, and whether it can still be added.</summary>
 public sealed record CatalogEntry(WidgetDescriptor Descriptor, bool IsAvailable)
 {
-    public string Status => IsAvailable ? "" : "IN LAYOUT";
+    public string Status => IsAvailable ? "" : Loc.T("editor.inLayout");
 
     public double EntryOpacity => IsAvailable ? 1 : 0.45;
 
     public string Hint => IsAvailable
-        ? "Drag onto the screen, or double-click to add."
-        : "Already in this layout. Use the bin to remove it.";
+        ? Loc.T("editor.catalog.available")
+        : Loc.T("editor.catalog.taken");
 }

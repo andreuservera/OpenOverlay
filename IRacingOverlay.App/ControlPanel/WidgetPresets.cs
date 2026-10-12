@@ -3,7 +3,12 @@ using System.Windows;
 namespace IRacingOverlay.App.ControlPanel;
 
 /// <summary>A starting set of widgets, for someone who would rather not think about twelve of them.</summary>
-public sealed record WidgetPreset(string Name, string Description, IReadOnlyList<string> Widgets);
+public sealed record WidgetPreset(string Id, IReadOnlyList<string> Widgets)
+{
+    public string Name => Loc.T($"preset.{Id}.name");
+
+    public string Description => Loc.T($"preset.{Id}.description");
+}
 
 /// <summary>
 /// The setup assistant's presets, and where each widget starts on the monitor iRacing runs on: the
@@ -16,15 +21,12 @@ public static class WidgetPresets
     public static IReadOnlyList<WidgetPreset> All { get; } =
     [
         new("Essential",
-            "The three most drivers race with: who is around you, your car, and the flags.",
             [WidgetCatalog.Relative, WidgetCatalog.Cockpit, WidgetCatalog.Flag]),
         new("Complete",
-            "A full race weekend: timing, the map, your car, tyres, fuel and the session.",
             [WidgetCatalog.Relative, WidgetCatalog.Standings, WidgetCatalog.TrackMap, WidgetCatalog.Flag,
              WidgetCatalog.Cockpit, WidgetCatalog.TireInfo, WidgetCatalog.FuelCalculator, WidgetCatalog.Delta,
              WidgetCatalog.TrackInfo]),
         new("Streamer",
-            "What viewers follow: the running order, the map, flags, incidents and the conditions.",
             [WidgetCatalog.Relative, WidgetCatalog.Standings, WidgetCatalog.TrackMap, WidgetCatalog.Flag,
              WidgetCatalog.Incident, WidgetCatalog.TrackInfo, WidgetCatalog.Weather]),
     ];

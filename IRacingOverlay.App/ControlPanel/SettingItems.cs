@@ -791,8 +791,8 @@ public sealed class HotkeySetting : SettingItem
     /// <summary>What the field shows: the live combination while recording, the saved one otherwise,
     /// and an invitation to add one when there is none.</summary>
     public string Display => _isRecording
-        ? _heldModifiers == ModifierKeys.None ? "Press a shortcut…" : Hotkey.Describe(_heldModifiers, "…")
-        : _hotkey?.Display ?? "Add shortcut";
+        ? _heldModifiers == ModifierKeys.None ? Loc.T("hotkeys.field.press") : Hotkey.Describe(_heldModifiers, "…")
+        : _hotkey?.Display ?? Loc.T("hotkeys.field.add");
 
     /// <summary>Why the last recorded combination was refused, or why Windows wouldn't register it.</summary>
     public string? Message => _error ?? _status;
@@ -981,7 +981,8 @@ public sealed class SettingsGroup : INotifyPropertyChanged
         }
     }
 
-    public string CollapseKey => $"{Scope}/{Title}";
+    // Saved under the English heading, so a folded section stays folded in every language.
+    public string CollapseKey => $"{Scope}/{Loc.ToEnglish(Title)}";
 
     /// <summary>A group with nothing in it (a notice) has nothing to fold.</summary>
     public bool IsCollapsible => Items.Count > 0;
@@ -1220,12 +1221,12 @@ public sealed class InfoBarSlot(TableSlot slot)
 
     public string Name { get; } = slot switch
     {
-        TableSlot.TopLeft => "Top left",
-        TableSlot.TopCenter => "Top center",
-        TableSlot.TopRight => "Top right",
-        TableSlot.BottomLeft => "Bottom left",
-        TableSlot.BottomCenter => "Bottom center",
-        _ => "Bottom right",
+        TableSlot.TopLeft => Loc.T("slot.topLeft"),
+        TableSlot.TopCenter => Loc.T("slot.topCenter"),
+        TableSlot.TopRight => Loc.T("slot.topRight"),
+        TableSlot.BottomLeft => Loc.T("slot.bottomLeft"),
+        TableSlot.BottomCenter => Loc.T("slot.bottomCenter"),
+        _ => Loc.T("slot.bottomRight"),
     };
 
     public ObservableCollection<InfoChip> Chips { get; } = [];

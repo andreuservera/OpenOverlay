@@ -64,7 +64,7 @@ public sealed partial class ControlPanelViewModel
         }
     }
 
-    public IReadOnlyList<string> BackdropChoices { get; } = ["Circuit", "Sky", "Checker"];
+    public IReadOnlyList<string> BackdropChoices => Loc.List("preview.backdrop.circuit", "preview.backdrop.sky", "preview.backdrop.checker");
 
     public int BackdropIndex
     {

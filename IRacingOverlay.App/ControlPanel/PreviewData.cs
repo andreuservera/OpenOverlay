@@ -18,8 +18,9 @@ namespace IRacingOverlay.App.ControlPanel;
 public static class PreviewData
 {
     /// <summary>What each scenario is called in the preview's picker, in <see cref="PreviewScenario"/> order.</summary>
-    public static IReadOnlyList<string> ScenarioLabels { get; } =
-        ["Race · multiclass", "Race · one class", "Practice", "Qualifying", "Rain", "Spectating"];
+    public static IReadOnlyList<string> ScenarioLabels => Loc.List(
+        "preview.scenario.multiclass", "preview.scenario.oneClass", "preview.scenario.practice",
+        "preview.scenario.qualifying", "preview.scenario.rain", "preview.scenario.spectating");
 
     /// <summary>The session as the driver tables' header names it.</summary>
     public static string SessionType(PreviewScenario scenario) => scenario switch

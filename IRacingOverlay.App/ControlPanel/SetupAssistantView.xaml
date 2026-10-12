@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.ControlPanel.SetupAssistantView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel">
     <!-- Merged here too: StaticResource lookups run while this control is built, before it has a
          parent window to find the theme in. -->
@@ -24,7 +25,7 @@
         <StackPanel>
             <DockPanel>
                 <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="13"
-                        Margin="0,-6,-10,0" ToolTip="Close (Esc)" Command="{Binding CancelCommand}"/>
+                        Margin="0,-6,-10,0" ToolTip="{loc:T setup.closeEsc}" Command="{Binding CancelCommand}"/>
                 <TextBlock Text="{Binding StepLabel}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
             </DockPanel>
 
@@ -40,8 +41,8 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock Text="Where do you race?" Style="{StaticResource Cp.Display}"/>
-                <TextBlock Text="Pick the monitor iRacing runs on. Your widgets will be placed there."
+                <TextBlock Text="{loc:T setup.whereDoYouRace}" Style="{StaticResource Cp.Display}"/>
+                <TextBlock Text="{loc:T setup.pickTheMonitorIracing}"
                            Style="{StaticResource Cp.Hint}" FontSize="{StaticResource Cp.Size.Body}" Margin="0,4,0,16"/>
                 <ItemsControl ItemsSource="{Binding Monitors}" ItemTemplate="{StaticResource Cp.SetupChoiceTemplate}" Focusable="False"/>
             </StackPanel>
@@ -58,8 +59,8 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock Text="Which widgets?" Style="{StaticResource Cp.Display}"/>
-                <TextBlock Text="Start from a set; you can switch any widget on or off later."
+                <TextBlock Text="{loc:T setup.whichWidgets}" Style="{StaticResource Cp.Display}"/>
+                <TextBlock Text="{loc:T setup.startFromASet}"
                            Style="{StaticResource Cp.Hint}" FontSize="{StaticResource Cp.Size.Body}" Margin="0,4,0,16"/>
                 <ItemsControl ItemsSource="{Binding Presets}" ItemTemplate="{StaticResource Cp.SetupChoiceTemplate}" Focusable="False"/>
             </StackPanel>
@@ -76,13 +77,11 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock Text="Put them where you want them" Style="{StaticResource Cp.Display}"/>
+                <TextBlock Text="{loc:T setup.putThemWhereYou}" Style="{StaticResource Cp.Display}"/>
                 <TextBlock Text="{Binding Summary}" Style="{StaticResource Cp.Hint}" FontSize="{StaticResource Cp.Size.Body}"
                            Margin="0,4,0,12"/>
-                <TextBlock Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}" TextWrapping="Wrap">
-                    They start in sensible spots. With Move widgets on, drag each one into place, and hover one for
-                    the − M + size control. Press Done in the toolbar when you're finished.
-                </TextBlock>
+                <TextBlock Style="{StaticResource Cp.Body}" Foreground="{StaticResource Cp.Text}" TextWrapping="Wrap"
+                           Text="{loc:T setup.finalBody}"/>
             </StackPanel>
 
             <DockPanel Margin="0,24,0,0">
@@ -90,9 +89,9 @@
                         FontFamily="{DynamicResource Theme.FontFamily}" FontSize="{StaticResource Cp.Size.Control}"
                         VerticalAlignment="Center" Command="{Binding CancelCommand}"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource Cp.Button}" Content="Back" Margin="0,0,8,0" Command="{Binding BackCommand}"
+                    <Button Style="{StaticResource Cp.Button}" Content="{loc:T setup.back}" Margin="0,0,8,0" Command="{Binding BackCommand}"
                             Visibility="{Binding CanGoBack, Converter={StaticResource Cp.BoolToVis}}"/>
-                    <Button Content="Next" MinWidth="96" Command="{Binding NextCommand}">
+                    <Button Content="{loc:T setup.next}" MinWidth="96" Command="{Binding NextCommand}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource Cp.PrimaryButton}">
                                 <Style.Triggers>
@@ -114,8 +113,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <Button Style="{StaticResource Cp.Button}" Content="Later" Margin="0,0,8,0" Command="{Binding FinishCommand}"/>
-                        <Button Style="{StaticResource Cp.PrimaryButton}" Content="Move widgets now" Command="{Binding MoveNowCommand}"/>
+                        <Button Style="{StaticResource Cp.Button}" Content="{loc:T setup.later}" Margin="0,0,8,0" Command="{Binding FinishCommand}"/>
+                        <Button Style="{StaticResource Cp.PrimaryButton}" Content="{loc:T setup.moveWidgetsNow}" Command="{Binding MoveNowCommand}"/>
                     </StackPanel>
                 </StackPanel>
             </DockPanel>

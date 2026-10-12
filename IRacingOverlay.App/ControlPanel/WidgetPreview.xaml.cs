@@ -137,7 +137,7 @@ public partial class WidgetPreview : UserControl
     private void OnOptionsChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
 
     public static readonly DependencyProperty FitCaptionProperty = DependencyProperty.Register(
-        nameof(FitCaption), typeof(string), typeof(WidgetPreview), new PropertyMetadata("FIT"));
+        nameof(FitCaption), typeof(string), typeof(WidgetPreview), new PropertyMetadata(Loc.T("preview.fit")));
 
     /// <summary>The fit toggle's caption: "FIT", "FIT · 74 %" when the widget is shown smaller
     /// than it will be, or "ACTUAL SIZE".</summary>
@@ -164,7 +164,7 @@ public partial class WidgetPreview : UserControl
     {
         if (ShowsActualSize)
         {
-            FitCaption = "ACTUAL SIZE";
+            FitCaption = Loc.T("preview.actualSize");
             return;
         }
 
@@ -173,8 +173,8 @@ public partial class WidgetPreview : UserControl
         var shown = Fitter.ActualWidth;
         var factor = natural > 0 && shown > 0 ? shown / natural : 1;
         FitCaption = factor < 0.995
-            ? string.Create(CultureInfo.InvariantCulture, $"FIT · {factor * 100:0} %")
-            : "FIT";
+            ? Loc.F("preview.fitScaled", Math.Round(factor * 100))
+            : Loc.T("preview.fit");
     }
 
     /// <summary>Panels that draw into a canvas (the trace, the map, the wear bars) read their own

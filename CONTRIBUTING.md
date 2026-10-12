@@ -44,6 +44,27 @@ When a change is worth telling drivers about, add a line for it under `### [Unre
 top, written for a driver rather than a developer. Nothing reads that entry until the release
 renames it to its version.
 
+## Translations
+
+Every text in the Control Panel and its dialogs comes from a language file in
+[`IRacingOverlay.App/Assets/Locales`](IRacingOverlay.App/Assets/Locales): a flat JSON map from key
+to text, embedded in the app and listed in **Settings › General › Language** automatically.
+
+To add a language:
+
+1. Copy `en.json` to `<code>.json`, where `<code>` is the two-letter ISO 639-1 code (`fr`, `de`,
+   `pt`…). That code is also what **Automatic** matches against Windows' display language.
+2. Set `"_language"` to the language's name in itself (`"Français"`, `"Deutsch"`).
+3. Translate the values; never the keys. Keep every `{0}`, `{1}`… placeholder, in whatever order
+   the sentence needs. Keys ending in `.one` / `.other` are the singular and plural of one text.
+4. Run `dotnet test`: `LocalizationTests` lists any key that is missing, left over or has
+   different placeholders.
+
+When adding a text in code, add its key to `en.json` and every other language file, then use
+`Loc.T("key")` (or `Loc.F("key", args)` with placeholders) in C#, and `{loc:T key}` in XAML. Logs
+and the diagnostics report stay in English. The widgets' own labels on track (POS, LAP…) are
+racing abbreviations and are not translated yet.
+
 ## Reporting bugs / requesting features
 
 Open an issue with:

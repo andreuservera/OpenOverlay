@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib"
                     xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel">
     <!--
@@ -916,7 +917,7 @@
 
             <CheckBox x:Name="Switch" Grid.Column="3" Style="{StaticResource Cp.Switch}"
                       IsChecked="{Binding Widget.IsEnabled, Mode=TwoWay}"
-                      ToolTip="Show this widget on screen"
+                      ToolTip="{loc:T cp.showThisWidgetOn}"
                       Visibility="{Binding IsWidget, Converter={StaticResource Cp.BoolToVis}}"/>
         </Grid>
         <DataTemplate.Triggers>
@@ -1008,7 +1009,7 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <TextBlock Text="{Binding Name.Title}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name.Heading}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
                             </DockPanel>
                         </ToggleButton>
                         <ItemsPresenter x:Name="Pages"/>
@@ -1096,7 +1097,7 @@
         <Setter Property="Height" Value="32"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Focusable" Value="False"/>
-        <Setter Property="ToolTip" Value="More actions"/>
+        <Setter Property="ToolTip" Value="{loc:T cp.moreActions}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -1194,7 +1195,7 @@
                                     <Border x:Name="OpenBadge" DockPanel.Dock="Right" CornerRadius="9" Padding="7,1,8,2"
                                             Background="{StaticResource Cp.LiveWash}" BorderBrush="#663DD68C" BorderThickness="1"
                                             VerticalAlignment="Center" Visibility="Collapsed">
-                                        <TextBlock Text="On screen" FontFamily="{DynamicResource Theme.FontFamily}"
+                                        <TextBlock Text="{loc:T cp.onScreen}" FontFamily="{DynamicResource Theme.FontFamily}"
                                                    FontSize="{StaticResource Cp.Size.Micro}" FontWeight="SemiBold"
                                                    Foreground="{StaticResource Cp.Live}"/>
                                     </Border>
@@ -1211,11 +1212,11 @@
                                                AllowsTransparency="True" PopupAnimation="Fade">
                                             <Border Style="{StaticResource Cp.MenuPopup}">
                                                 <StackPanel>
-                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="Rename…" Command="{Binding RenameCommand}"/>
-                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="Duplicate" Command="{Binding DuplicateCommand}"/>
-                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="Export…" Command="{Binding ExportCommand}"/>
+                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="{loc:T cp.rename}" Command="{Binding RenameCommand}"/>
+                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="{loc:T cp.duplicate}" Command="{Binding DuplicateCommand}"/>
+                                                    <Button Style="{StaticResource Cp.MenuItem}" Content="{loc:T cp.export}" Command="{Binding ExportCommand}"/>
                                                     <Border Height="1" Margin="6,4" Background="{StaticResource Cp.Border}"/>
-                                                    <Button Style="{StaticResource Cp.DangerMenuItem}" Content="Delete layout…" Command="{Binding DeleteCommand}"/>
+                                                    <Button Style="{StaticResource Cp.DangerMenuItem}" Content="{loc:T cp.deleteLayout}" Command="{Binding DeleteCommand}"/>
                                                 </StackPanel>
                                             </Border>
                                         </Popup>
@@ -1223,8 +1224,8 @@
                                     <StackPanel Orientation="Horizontal">
                                         <Button x:Name="Toggle" Style="{StaticResource Cp.Button}" Content="{Binding ToggleText}"
                                                 Command="{Binding ToggleCommand}" ToolTip="{Binding ToggleTip}" MinWidth="64"/>
-                                        <Button Style="{StaticResource Cp.Button}" Content="Edit" Margin="6,0,0,0"
-                                                Command="{Binding EditCommand}" ToolTip="Open it in the layout editor."/>
+                                        <Button Style="{StaticResource Cp.Button}" Content="{loc:T cp.edit}" Margin="6,0,0,0"
+                                                Command="{Binding EditCommand}" ToolTip="{loc:T cp.openItInThe}"/>
                                     </StackPanel>
                                 </DockPanel>
                             </StackPanel>
@@ -1263,7 +1264,7 @@
                            FontSize="{StaticResource Cp.Size.Small}" FontWeight="SemiBold"
                            Foreground="{StaticResource Cp.Accent}" VerticalAlignment="Center"/>
                 <Button Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="10" Width="18" Height="18"
-                        Margin="4,0,0,0" ToolTip="Hide it" cp:InfoBarDrag.Removes="True"/>
+                        Margin="4,0,0,0" ToolTip="{loc:T cp.hideIt}" cp:InfoBarDrag.Removes="True"/>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -1332,12 +1333,12 @@
                                           ItemTemplate="{StaticResource Cp.InfoBarSlotTemplate}"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="NOT SHOWN" Style="{StaticResource Cp.Eyebrow}" Margin="0,12,0,6"/>
+                    <TextBlock Text="{loc:T cp.notShown}" Style="{StaticResource Cp.Eyebrow}" Margin="0,12,0,6"/>
                     <Border x:Name="Tray" MinHeight="40" CornerRadius="6" Padding="6,6,0,0"
                             Background="Transparent" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
                             cp:InfoBarDrag.Target="{x:Static cp:InfoBarDrag.Tray}">
                         <Grid>
-                            <TextBlock x:Name="TrayEmpty" Text="Everything is on the table." Style="{StaticResource Cp.Hint}"
+                            <TextBlock x:Name="TrayEmpty" Text="{loc:T cp.everythingIsOnThe}" Style="{StaticResource Cp.Hint}"
                                        Foreground="{StaticResource Cp.TextFaint}" Margin="4,0,0,6" Visibility="Collapsed"
                                        VerticalAlignment="Center"/>
                             <ItemsControl ItemsSource="{Binding Available}" Focusable="False"
@@ -1504,7 +1505,7 @@
         <ContentControl Template="{StaticResource Cp.SettingRow}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="StepDown" Style="{StaticResource Cp.StepButton}" Content="−" Margin="0,0,4,0"
-                        Command="{Binding StepDownCommand}" ToolTip="One step down" Visibility="Collapsed"/>
+                        Command="{Binding StepDownCommand}" ToolTip="{loc:T cp.oneStepDown}" Visibility="Collapsed"/>
                 <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center"
                         Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                         SmallChange="{Binding Step}" LargeChange="{Binding Step}"
@@ -1512,11 +1513,11 @@
                         cp:WheelSteps.IsEnabled="{Binding HasSteppers}"
                         Value="{Binding Value, Mode=TwoWay}"/>
                 <Button x:Name="StepUp" Style="{StaticResource Cp.StepButton}" Content="+" Margin="4,0,0,0"
-                        Command="{Binding StepUpCommand}" ToolTip="One step up" Visibility="Collapsed"/>
+                        Command="{Binding StepUpCommand}" ToolTip="{loc:T cp.oneStepUp}" Visibility="Collapsed"/>
                 <!-- The value is also a field: type an exact one and press Enter. -->
                 <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
                         CornerRadius="6" Height="30" Width="64" Margin="10,0,0,0" Padding="8,0" SnapsToDevicePixels="True"
-                        ToolTip="Type a value and press Enter">
+                        ToolTip="{loc:T cp.typeAValueAnd}">
                     <TextBox Style="{StaticResource Cp.TextBox}" TextAlignment="Right" cp:CommitOnEnter.IsEnabled="True"
                              Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                 </Border>
@@ -1682,7 +1683,7 @@
                            Visibility="{Binding HasError, Converter={StaticResource Cp.BoolToVis}}"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <cp:HotkeyRecorder MinWidth="150" ToolTip="Click, then press the new shortcut. Esc cancels.">
+                <cp:HotkeyRecorder MinWidth="150" ToolTip="{loc:T cp.clickThenPressThe}">
                     <cp:HotkeyRecorder.Style>
                         <Style TargetType="cp:HotkeyRecorder" BasedOn="{StaticResource Cp.Button}">
                             <Setter Property="Template">
@@ -1724,9 +1725,9 @@
                 <!-- Clear and the switch only mean something once there is a key: until then they keep
                      their room (so every row's field lines up) but aren't there. -->
                 <Button x:Name="ClearButton" Style="{StaticResource Cp.Button}" Content="✕" Padding="0" Width="32" Margin="6,0,0,0"
-                        ToolTip="Clear this shortcut" Command="{Binding ClearCommand}"/>
+                        ToolTip="{loc:T cp.clearThisShortcut}" Command="{Binding ClearCommand}"/>
                 <CheckBox x:Name="EnabledSwitch" Style="{StaticResource Cp.Switch}" IsChecked="{Binding Enabled, Mode=TwoWay}" Margin="14,0,0,0"
-                          VerticalAlignment="Center" ToolTip="Enable or disable this shortcut"/>
+                          VerticalAlignment="Center" ToolTip="{loc:T cp.enableOrDisableThis}"/>
             </StackPanel>
         </Grid>
         <DataTemplate.Triggers>
@@ -1781,7 +1782,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Border x:Name="Handle" cp:ReorderListDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
-                        ToolTip="Drag to reorder">
+                        ToolTip="{loc:T cp.dragToReorder}">
                     <!-- Six dots, the usual "this can be dragged" grip. -->
                     <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Path.Data>
@@ -1800,7 +1801,7 @@
                            Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"/>
                 <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.CompanionChip}" Margin="0,0,10,0"
                               Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
-                              ToolTip="The estimated iRating gain or loss for this race, beside the rating"/>
+                              ToolTip="{loc:T cp.theEstimatedIratingGain}"/>
                 <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
                           IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
             </Grid>
@@ -1842,15 +1843,15 @@
         <ContentControl Template="{StaticResource Cp.SettingStack}">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <Button Style="{StaticResource Cp.ListLink}" Content="Show all" Command="{Binding ShowAllCommand}"/>
-                    <Button Style="{StaticResource Cp.ListLink}" Content="Hide all" Command="{Binding HideAllCommand}"/>
-                    <Button Style="{StaticResource Cp.ListLink}" Content="Reset order" Command="{Binding ResetOrderCommand}"
+                    <Button Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.showAll}" Command="{Binding ShowAllCommand}"/>
+                    <Button Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.hideAll}" Command="{Binding HideAllCommand}"/>
+                    <Button Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.resetOrder}" Command="{Binding ResetOrderCommand}"
                             Visibility="{Binding CanResetOrder, Converter={StaticResource Cp.BoolToVis}}"
-                            ToolTip="Back to the order it came in. What is shown doesn't change."/>
+                            ToolTip="{loc:T cp.backToTheOrder}"/>
                 </StackPanel>
                 <ItemsControl ItemsSource="{Binding VisibleItems}" cp:ReorderListDrag.IsEnabled="True" Focusable="False"
                               ItemTemplate="{StaticResource Cp.ReorderRow}"/>
-                <TextBlock x:Name="HiddenTitle" Text="HIDDEN" Style="{StaticResource Cp.Eyebrow}" Margin="0,10,0,6"/>
+                <TextBlock x:Name="HiddenTitle" Text="{loc:T cp.hidden}" Style="{StaticResource Cp.Eyebrow}" Margin="0,10,0,6"/>
                 <ItemsControl ItemsSource="{Binding HiddenItems}" Focusable="False" ItemTemplate="{StaticResource Cp.ReorderRow}"/>
             </StackPanel>
         </ContentControl>
@@ -1871,9 +1872,9 @@
                     <DockPanel>
                         <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
                         <!-- Only while something in the section differs from how it came. -->
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="Reset" Margin="0,0,6,0"
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.reset}" Margin="0,0,6,0"
                                 VerticalAlignment="Center" Command="{Binding ResetCommand}"
-                                ToolTip="Put this section back as it came"
+                                ToolTip="{loc:T cp.putThisSectionBack}"
                                 Visibility="{Binding HasModified, Converter={StaticResource Cp.BoolToVis}}"/>
                         <StackPanel>
                             <!-- Secondary text, not amber: amber is kept for what is on or selected. -->

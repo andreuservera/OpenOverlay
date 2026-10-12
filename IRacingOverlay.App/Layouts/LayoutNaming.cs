@@ -8,7 +8,7 @@ namespace IRacingOverlay.App.Layouts;
 /// "Race (3)" rather than "Race (2) (2)".</summary>
 public static partial class LayoutNaming
 {
-    public const string DefaultName = "Layout";
+    public static string DefaultName => Loc.T("layout.defaultName");
 
     public static string Unique(string desired, IEnumerable<string> taken)
     {

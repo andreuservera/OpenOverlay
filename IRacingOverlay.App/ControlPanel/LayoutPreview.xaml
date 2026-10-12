@@ -1,6 +1,7 @@
 <UserControl x:Class="IRacingOverlay.App.ControlPanel.LayoutPreview"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
         xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
              IsHitTestVisible="False"
@@ -57,7 +58,7 @@
             </Grid>
         </Border>
 
-        <TextBlock x:Name="EmptyText" Text="No widgets yet — add them in the editor."
+        <TextBlock x:Name="EmptyText" Text="{loc:T layoutPreview.noWidgetsYetAdd}"
                    Style="{StaticResource Cp.Hint}" HorizontalAlignment="Center" VerticalAlignment="Center"
                    TextAlignment="Center" Margin="12" Visibility="Collapsed"/>
     </Grid>

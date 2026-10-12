@@ -17,7 +17,7 @@ public partial class LayoutPreview : UserControl
 
     public static readonly DependencyProperty EmptyMessageProperty = DependencyProperty.Register(
         nameof(EmptyMessage), typeof(string), typeof(LayoutPreview),
-        new PropertyMetadata("No widgets yet — add them in the editor.", (d, e) => ((LayoutPreview)d).EmptyText.Text = (string)e.NewValue));
+        new PropertyMetadata(null, (d, e) => ((LayoutPreview)d).EmptyText.Text = (string)e.NewValue));
 
     /// <summary>What the picture says when there is nothing in it.</summary>
     public string EmptyMessage

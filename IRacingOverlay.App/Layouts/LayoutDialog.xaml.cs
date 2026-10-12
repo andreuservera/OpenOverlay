@@ -53,7 +53,7 @@ public partial class LayoutDialog : Window
     /// <summary>Asks for a name; null when cancelled.</summary>
     public static string? Prompt(Window? owner, string heading, string message, string initial, string confirm)
     {
-        var dialog = new LayoutDialog(owner, heading, message, [confirm, "Cancel"], primary: 0);
+        var dialog = new LayoutDialog(owner, heading, message, [confirm, Loc.T("layouts.cancel")], primary: 0);
         dialog.InputFrame.Visibility = Visibility.Visible;
         dialog.Input.Text = initial;
         dialog.Loaded += (_, _) =>
@@ -66,7 +66,7 @@ public partial class LayoutDialog : Window
     }
 
     /// <summary>Tells the user something; one button to dismiss it.</summary>
-    public static void Inform(Window? owner, string heading, string message) => Ask(owner, heading, message, ["OK"]);
+    public static void Inform(Window? owner, string heading, string message) => Ask(owner, heading, message, [Loc.T("common.ok")]);
 
     private void OnDrag(object sender, MouseButtonEventArgs e)
     {

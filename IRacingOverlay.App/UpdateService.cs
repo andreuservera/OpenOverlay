@@ -1,3 +1,4 @@
+using System.Globalization;
 using IRacingOverlay.App.Diagnostics;
 using Velopack;
 using Velopack.Sources;
@@ -35,7 +36,7 @@ internal sealed class UpdateService : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _task;
     private volatile UpdateState _state = UpdateState.NotStarted;
-    private volatile string _detail = "Not checked yet";
+    private volatile DetailText _detail = new("update.notChecked", []);
     private volatile string? _lastErrorRef;
     private int _failures;
 
@@ -44,7 +45,11 @@ internal sealed class UpdateService : IDisposable
 
     public UpdateState State => _state;
 
-    public string Detail => _detail;
+    /// <summary>What the updater is doing, in English: health and diagnostics read this.</summary>
+    public string Detail => string.Format(CultureInfo.InvariantCulture, Loc.English(_detail.Key), _detail.Args);
+
+    /// <summary><see cref="Detail"/> in the current language, for the About page.</summary>
+    public string DisplayDetail => Loc.F(_detail.Key, _detail.Args);
 
     public int Failures => Volatile.Read(ref _failures);
 
@@ -73,13 +78,13 @@ internal sealed class UpdateService : IDisposable
             var manager = new UpdateManager(new GithubSource(App.GitHubRepoUrl, accessToken: null, prerelease: false));
             if (!manager.IsInstalled)
             {
-                Set(UpdateState.NotInstalled, "Development build: only installed copies update");
+                Set(UpdateState.NotInstalled, "update.devBuild");
                 return;
             }
 
             if (manager.UpdatePendingRestart is { } pending)
             {
-                Set(UpdateState.ReadyOnRestart, $"Version {pending.Version} installs on the next start");
+                Set(UpdateState.ReadyOnRestart, "update.installsOnRestart", pending.Version);
                 return;
             }
 
@@ -95,12 +100,12 @@ internal sealed class UpdateService : IDisposable
                     Interlocked.Increment(ref _failures);
                     if (attempt >= RetryDelays.Length)
                     {
-                        Set(UpdateState.Failed, $"{e.Message} — checking again next launch");
+                        Set(UpdateState.Failed, "update.failedNextLaunch", e.Message);
                         _lastErrorRef = AppLog.Warn("Updates", "Update check failed; giving up until next launch", e)?.Ref ?? _lastErrorRef;
                         return;
                     }
 
-                    Set(UpdateState.Failed, $"{e.Message} — retrying in {RetryDelays[attempt].TotalMinutes:0} min");
+                    Set(UpdateState.Failed, "update.failedRetry", e.Message, RetryDelays[attempt].TotalMinutes);
                     _lastErrorRef = AppLog.Warn("Updates", "Update check failed; will retry", e)?.Ref ?? _lastErrorRef;
                     await Task.Delay(RetryDelays[attempt], token);
                 }
@@ -120,11 +125,11 @@ internal sealed class UpdateService : IDisposable
 
     private async Task CheckAndDownloadAsync(UpdateManager manager, CancellationToken token)
     {
-        Set(UpdateState.Checking, "Checking GitHub for a newer release");
+        Set(UpdateState.Checking, "update.checking");
         var update = await manager.CheckForUpdatesAsync().WaitAsync(CheckTimeout, token);
         if (update is null)
         {
-            Set(UpdateState.UpToDate, $"Version {AppInfo.Version} is the latest");
+            Set(UpdateState.UpToDate, "update.upToDate", AppInfo.Version);
             AppLog.Info("Updates", "Up to date");
             return;
         }
@@ -137,23 +142,26 @@ internal sealed class UpdateService : IDisposable
                 AppLog.Info("Updates", "Update download deferred until iRacing is closed", Version(version));
             }
 
-            Set(UpdateState.Deferred, $"Version {version} downloads once iRacing is closed");
+            Set(UpdateState.Deferred, "update.deferred", version);
             await Task.Delay(DeferPoll, token);
         }
 
-        Set(UpdateState.Downloading, $"Downloading version {version}");
+        Set(UpdateState.Downloading, "update.downloading", version);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(DownloadTimeout);
         await manager.DownloadUpdatesAsync(update, null, timeout.Token);
-        Set(UpdateState.ReadyOnRestart, $"Version {version} installs on the next start");
+        Set(UpdateState.ReadyOnRestart, "update.installsOnRestart", version);
         AppLog.Info("Updates", "Update downloaded; it is applied on the next start", Version(version));
     }
 
-    private void Set(UpdateState state, string detail)
+    private void Set(UpdateState state, string detailKey, params object?[] args)
     {
         _state = state;
-        _detail = detail;
+        _detail = new DetailText(detailKey, args);
     }
+
+    /// <summary>What the updater is doing, as a text key and what fills it in.</summary>
+    private sealed record DetailText(string Key, object?[] Args);
 
     private static Dictionary<string, string> Version(string version) => new() { ["version"] = version };
 }

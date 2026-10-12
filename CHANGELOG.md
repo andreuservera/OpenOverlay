@@ -4,6 +4,9 @@ All notable changes to OpenOverlay, newest first.
 
 ### [0.12.0] - 2026-10-12
 
+#### Added
+- The Control Panel leanguaje selector: pick a language in Settings › General › Language, or leave it on Automatic to follow Windows. More languages can be added with a single file.
+
 #### Changed
 - Relative and Standings: while spectating or watching a replay, the tables centre on and highlight the car the camera is on.
 

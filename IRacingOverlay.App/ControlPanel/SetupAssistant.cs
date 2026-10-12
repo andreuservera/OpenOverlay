@@ -23,10 +23,10 @@ public sealed class SetupAssistant : INotifyPropertyChanged
     /// <param name="apply">Switches the preset on, on the monitor (step 2 → 3).</param>
     /// <param name="close">Closes the assistant; true asks for the widgets to be made movable.</param>
     /// <param name="isFirstRun">Offered on its own on a fresh install, rather than opened by hand:
-    /// leaving it is then "Skip for now", not "Cancel".</param>
+    /// leaving it is then Loc.T("setup.skipForNow"), not Loc.T("setup.cancel").</param>
     public SetupAssistant(IReadOnlyList<SetupChoice> monitors, Action<SetupChoice, SetupChoice> apply, Action<bool> close, bool isFirstRun = false)
     {
-        CancelText = isFirstRun ? "Skip for now" : "Cancel";
+        CancelText = isFirstRun ? Loc.T("setup.skipForNow") : Loc.T("setup.cancel");
         _apply = apply;
         _close = close;
         Monitors = monitors;
@@ -72,7 +72,7 @@ public sealed class SetupAssistant : INotifyPropertyChanged
         }
     }
 
-    public string StepLabel => $"Step {_step + 1} of 3";
+    public string StepLabel => Loc.F("setup.step", _step + 1);
 
     public bool CanGoBack => _step == PresetStep;
 
@@ -82,7 +82,7 @@ public sealed class SetupAssistant : INotifyPropertyChanged
 
     /// <summary>What the last step says was done.</summary>
     public string Summary => Preset is { } preset && Monitor is { } monitor
-        ? $"{preset.Name} is on: {preset.Detail}, on {monitor.Name}. The rest are off; switch any on from the rail."
+        ? Loc.F("setup.summary", preset.Name, preset.Detail, monitor.Name)
         : "";
 
     /// <summary>What leaving without finishing is called.</summary>

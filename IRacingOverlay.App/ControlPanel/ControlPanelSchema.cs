@@ -159,8 +159,8 @@ public sealed partial class ControlPanelViewModel
     private static SettingsGroup PlacementDefaults() => new SettingsGroup(WidgetSettings.PositionAndVisibility)
         .With(
             SizeRow(WidgetScale.Default, _ => { }),
-            new SliderSetting("Opacity", null, WidgetOpacityStore.Default, 0, 1, 0.01, _ => { }),
-            new ToggleSetting("Hide when I'm not driving", null, false, _ => { }));
+            new SliderSetting(Loc.T("placement.opacity"), null, WidgetOpacityStore.Default, 0, 1, 0.01, _ => { }),
+            new ToggleSetting(Loc.T("placement.hideOutsideCar"), null, false, _ => { }));
 
     // ===== Shared =====
 
@@ -168,11 +168,11 @@ public sealed partial class ControlPanelViewModel
     /// page so they can be changed without reading anything.</summary>
     private SettingsGroup Placement(WidgetSlot slot) => new SettingsGroup(
         WidgetSettings.PositionAndVisibility,
-        "Size, transparency and when it shows. To move it, use Move widgets in the toolbar.")
+        Loc.T("placement.hint"))
         .With(
             SizeRow(slot),
             new SliderSetting(
-                "Opacity",
+                Loc.T("placement.opacity"),
                 null,
                 slot.Opacity,
                 0,
@@ -180,14 +180,14 @@ public sealed partial class ControlPanelViewModel
                 0.01,
                 value => slot.Opacity = value),
             new ToggleSetting(
-                "Hide when I'm not driving",
-                "Hidden in menus, the garage, replays and while spectating.",
+                Loc.T("placement.hideOutsideCar"),
+                Loc.T("placement.hideOutsideCar.hint"),
                 slot.HideOutsideCar,
                 value => slot.HideOutsideCar = value),
             new ActionSetting(
-                "Use on every widget",
-                "Gives all twelve this size, opacity and \"Hide when I'm not driving\".",
-                "Apply to all",
+                Loc.T("placement.applyAll"),
+                Loc.F("placement.applyAll.hint", Loc.T("placement.hideOutsideCar")),
+                Loc.T("placement.applyAll.button"),
                 () => ApplyPlacementToAll(slot)));
 
     private RelayCommand? _resetWidget;
@@ -228,14 +228,14 @@ public sealed partial class ControlPanelViewModel
 
         var codec = CreateConfigCodecs()[slot.Key];
         var before = (Config: codec.Read(), slot.Scale, slot.Opacity, slot.HideOutsideCar);
-        AppLog.Activity("Control Panel", $"{slot.Descriptor.Name} reset to defaults");
+        AppLog.Activity("Control Panel", $"{slot.Descriptor.LogName} reset to defaults");
         codec.Apply(WidgetDefaults.ConfigOf(slot.Key));
         slot.Scale = WidgetScale.Default;
         slot.Opacity = WidgetOpacityStore.Default;
         slot.HideOutsideCar = false;
         RebuildPage();
 
-        ShowToast($"{slot.Descriptor.Name} is back to its defaults.", () =>
+        ShowToast(Loc.F("widgetMenu.resetToast", slot.Descriptor.Name), () =>
         {
             CreateConfigCodecs()[slot.Key].Apply(before.Config);
             slot.Scale = before.Scale;
@@ -253,7 +253,7 @@ public sealed partial class ControlPanelViewModel
         : LayoutStore.List()
             .Where(layout => layout.Contains(slot.Key))
             .Select(layout => new MenuEntry(
-                layout.Id == LayoutStore.Open?.LayoutId ? $"{layout.Name} · open now, keep these changes" : layout.Name,
+                layout.Id == LayoutStore.Open?.LayoutId ? Loc.F("widgetMenu.openNow", layout.Name) : layout.Name,
                 new RelayCommand(() => CopyWidgetToLayout(slot, layout.Id))))
             .ToList();
 
@@ -272,11 +272,11 @@ public sealed partial class ControlPanelViewModel
         var before = (System.Text.Json.Nodes.JsonObject)entry.Config.DeepClone();
         entry.Config = CreateConfigCodecs()[slot.Key].Read();
         LayoutStore.Save(layout);
-        AppLog.Activity("Layouts", $"{slot.Descriptor.Name} settings copied to \"{layout.Name}\"");
+        AppLog.Activity("Layouts", $"{slot.Descriptor.LogName} settings copied to \"{layout.Name}\"");
         ReapplyIfOpen(layoutId);
         RefreshLayoutsPage();
 
-        ShowToast($"{slot.Descriptor.Name} settings copied to \"{layout.Name}\".", () =>
+        ShowToast(Loc.F("widgetMenu.copiedToast", slot.Descriptor.Name, layout.Name), () =>
         {
             if (LayoutStore.Get(layoutId) is { } current && current.Widgets.FirstOrDefault(widget => widget.Type == slot.Key) is { } restored)
             {
@@ -300,8 +300,8 @@ public sealed partial class ControlPanelViewModel
             slot.HideOutsideCar = source.HideOutsideCar;
         }
 
-        AppLog.Activity("Control Panel", $"{source.Descriptor.Name}'s size, opacity and auto-hide applied to every widget");
-        ShowToast($"Every widget now has {source.Descriptor.Name}'s size, opacity and auto-hide.", () =>
+        AppLog.Activity("Control Panel", $"{source.Descriptor.LogName}'s size, opacity and auto-hide applied to every widget");
+        ShowToast(Loc.F("placement.appliedToast", source.Descriptor.Name), () =>
         {
             foreach (var (slot, scale, opacity, hide) in before)
             {
@@ -328,8 +328,8 @@ public sealed partial class ControlPanelViewModel
 
     /// <summary>A widget's size as a percentage of the standard size, to the percent.</summary>
     private static SliderSetting SizeRow(WidgetScale scale, Action<WidgetScale> apply) => new(
-        "Size",
-        "100 % is the standard size.",
+        Loc.T("placement.size"),
+        Loc.T("placement.size.hint"),
         scale.Percent,
         WidgetScale.MinPercent,
         WidgetScale.MaxPercent,
@@ -340,9 +340,9 @@ public sealed partial class ControlPanelViewModel
     /// <summary>The fast displays' refresh rate is one setting for all of them, on the General
     /// page; the widgets that use it point there rather than offering a second copy of it.</summary>
     private ActionSetting RefreshRateLink() => new(
-        "Refresh rate",
-        "Shared by the proximity bars, ABS light and pedal trace. Set in Settings › General › Performance.",
-        "Open setting",
+        Loc.T("refreshLink.label"),
+        Loc.T("refreshLink.hint"),
+        Loc.T("refreshLink.button"),
         () =>
         {
             Navigate(GeneralPageKey);
@@ -356,39 +356,40 @@ public sealed partial class ControlPanelViewModel
     private IEnumerable<SettingsGroup> GeneralPage() =>
     [
         new SettingsGroup(
-            "WINDOW",
-            "In the tray, overlays keep running. Quit from the tray menu.")
+            Loc.T("general.window"),
+            Loc.T("general.window.hint"))
             .With(
                 new ChoiceSetting(
-                    "When I close this window",
+                    Loc.T("general.closeBehavior"),
                     null,
-                    ["Keep overlays running in tray", "Quit OpenOverlay"],
+                    [Loc.T("general.closeBehavior.tray"), Loc.T("general.closeBehavior.quit")],
                     (int)TrayPreferencesStore.CloseBehavior,
                     index => TrayPreferencesStore.SaveCloseBehavior((CloseBehavior)index)),
                 new SegmentedSetting(
-                    "Interface size",
-                    "How big this window draws its text and controls. The widgets have their own sizes.",
+                    Loc.T("general.interfaceSize"),
+                    Loc.T("general.interfaceSize.hint"),
                     InterfaceScaleStore.Steps.Select(step => string.Create(CultureInfo.InvariantCulture, $"{step * 100:0} %")).ToList(),
                     Array.IndexOf(InterfaceScaleStore.Steps, InterfaceScale),
                     index => InterfaceScale = InterfaceScaleStore.Steps[index]),
                 new ActionSetting(
-                    "Configuration folder",
-                    "Layouts, options and hotkeys.",
-                    "Open folder",
+                    Loc.T("general.configFolder"),
+                    Loc.T("general.configFolder.hint"),
+                    Loc.T("common.openFolder"),
                     OpenConfigFolder)),
+        LanguageGroup(),
         .. UnitsGroups(),
         PerformanceGroup(),
-        new SettingsGroup("OVERLAYS", "Every widget at once.")
+        new SettingsGroup(Loc.T("general.overlays"), Loc.T("general.overlays.hint"))
             .With(
                 new ActionSetting(
-                    "Reset positions",
-                    "Moves every widget back to its default spot. Sizes and options stay.",
-                    "Reset positions",
+                    Loc.T("general.resetPositions"),
+                    Loc.T("general.resetPositions.hint"),
+                    Loc.T("general.resetPositions"),
                     ResetPositionsWithUndo) { IsDestructive = true },
                 new ActionSetting(
-                    "Restart overlays",
-                    "Closes and reopens every widget window, which clears a rendering glitch.",
-                    "Restart",
+                    Loc.T("general.restartOverlays"),
+                    Loc.T("general.restartOverlays.hint"),
+                    Loc.T("general.restartOverlays.button"),
                     RestartOverlays)),
     ];
 
@@ -397,7 +398,7 @@ public sealed partial class ControlPanelViewModel
     {
         var before = _slots.Values.Select(slot => (Slot: slot, Position: slot.SavedPosition)).ToList();
         ResetLayout();
-        ShowToast("Every widget is back in its default spot.", () =>
+        ShowToast(Loc.T("general.resetPositions.toast"), () =>
         {
             foreach (var (slot, position) in before)
             {
@@ -419,33 +420,32 @@ public sealed partial class ControlPanelViewModel
     {
         ActionSetting? copy = null;
         copy = new ActionSetting(
-            "Copy diagnostics",
+            Loc.T("diagnostics.copy"),
             null,
-            "Copy",
+            Loc.T("diagnostics.copy.button"),
             () =>
             {
                 System.Windows.Clipboard.SetText(DiagnosticsReport.Build("Copied by the user"));
-                copy!.ButtonText = "Copied";
+                copy!.ButtonText = Loc.T("diagnostics.copy.done");
             });
 
         var problems = AppLog.Problems();
         var errors = problems.Where(p => p.Level >= LogLevel.Error).Sum(p => p.Count);
         var warnings = problems.Where(p => p.Level == LogLevel.Warning).Sum(p => p.Count);
         return new SettingsGroup(
-            "THIS RUN",
-            $"This run: {AppInfo.RunId} · {errors} {(errors == 1 ? "error" : "errors")} · {warnings} {(warnings == 1 ? "warning" : "warnings")}. " +
-            "Logs stay on your PC.")
+            Loc.T("diagnostics.thisRun"),
+            Loc.F("diagnostics.thisRun.hint", AppInfo.RunId, Loc.Plural("diagnostics.errors", errors), Loc.Plural("diagnostics.warnings", warnings)))
             .With(
                 copy,
                 new ActionSetting(
-                    "Export report",
-                    "A .zip with logs, crash reports and settings.",
-                    "Export",
+                    Loc.T("diagnostics.export"),
+                    Loc.T("diagnostics.export.hint"),
+                    Loc.T("diagnostics.export.button"),
                     () => ShowInExplorer(DiagnosticsReport.Export())),
                 new ActionSetting(
-                    "Log files",
-                    "One per day, kept 30 days.",
-                    "Open folder",
+                    Loc.T("diagnostics.logFiles"),
+                    Loc.T("diagnostics.logFiles.hint"),
+                    Loc.T("common.openFolder"),
                     () =>
                     {
                         Directory.CreateDirectory(AppLog.LogDirectory);
@@ -463,15 +463,34 @@ public sealed partial class ControlPanelViewModel
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{TrayPreferencesStore.ConfigFolder}\"") { UseShellExecute = true });
     }
 
+    /// <summary>Following Windows, or one of the languages this build has. Every text the window
+    /// shows changes the moment one is picked.</summary>
+    private static SettingsGroup LanguageGroup()
+    {
+        var preference = LanguagePreferenceStore.Get();
+        var codes = Loc.Available.Select(language => language.Code).Prepend(Loc.Automatic).ToList();
+        return new SettingsGroup(Loc.T("general.language"))
+            .With(new ChoiceSetting(
+                Loc.T("general.language.label"),
+                Loc.T("general.language.hint"),
+                Loc.Available.Select(language => language.NativeName).Prepend(Loc.T("general.language.auto")).ToList(),
+                Math.Max(0, codes.IndexOf(preference)),
+                index =>
+                {
+                    LanguagePreferenceStore.Save(codes[index]);
+                    Loc.SetLanguage(codes[index]);
+                }));
+    }
+
     private IEnumerable<SettingsGroup> UnitsGroups() =>
     [
-        new SettingsGroup("UNITS")
+        new SettingsGroup(Loc.T("units.title"))
             .With(new SegmentedSetting(
-                "Units",
+                Loc.T("units.label"),
                 Units.IRacingSetting is { } iracing
-                    ? $"iRacing is set to {(iracing == UnitSystem.Imperial ? "imperial" : "metric")}."
-                    : "Metric until iRacing reports its setting.",
-                ["Follow iRacing", "Metric", "Imperial"],
+                    ? Loc.T(iracing == UnitSystem.Imperial ? "units.iracingImperial" : "units.iracingMetric")
+                    : Loc.T("units.unknown"),
+                [Loc.T("units.follow"), Loc.T("units.metric"), Loc.T("units.imperial")],
                 (int)Units.Preference,
                 index =>
                 {
@@ -481,17 +500,17 @@ public sealed partial class ControlPanelViewModel
                 })),
     ];
 
-    private const string PerformanceGroupTitle = "PERFORMANCE";
-    private const string RefreshRateLabel = "Refresh rate";
+    private static string PerformanceGroupTitle => Loc.T("performance.title");
+    private static string RefreshRateLabel => Loc.T("refreshLink.label");
 
     private SettingsGroup PerformanceGroup() =>
         new SettingsGroup(
             PerformanceGroupTitle,
-            "How often the fast displays redraw: proximity bars, ABS light and pedal trace.")
+            Loc.T("performance.hint"))
             .With(new ChoiceSetting(
                 RefreshRateLabel,
-                "Faster is a smoother pedal trace and radar, for slightly more CPU.",
-                ["Smoothest (~60 Hz)", "Smooth (30 Hz)", "Normal (15 Hz)", "Light (10 Hz)", "Lightest (5 Hz)"],
+                Loc.T("performance.refresh.hint"),
+                [Loc.T("performance.refresh.60"), Loc.T("performance.refresh.30"), Loc.T("performance.refresh.15"), Loc.T("performance.refresh.10"), Loc.T("performance.refresh.5")],
                 _criticalRefreshIndex,
                 index =>
                 {

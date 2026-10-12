@@ -201,8 +201,8 @@ public partial class MainWindow : Window
         if (!TrayPreferencesStore.TrayNoticeShown)
         {
             _tray?.ShowNotice(
-                "OpenOverlay is still running",
-                "OpenOverlay will continue running in the background. You can access it from the system tray icon.");
+                Loc.T("tray.stillRunning"),
+                Loc.T("tray.stillRunning.body"));
             TrayPreferencesStore.MarkTrayNoticeShown();
         }
     }
@@ -215,14 +215,14 @@ public partial class MainWindow : Window
         }
 
         var (status, text) = _vm.Health == HealthStatus.Failed
-            ? (TrayStatus.Error, $"Problem: {_vm.HealthLine}")
+            ? (TrayStatus.Error, Loc.F("tray.status.problem", _vm.HealthLine))
             : _connection.LastError is { } error
-            ? (TrayStatus.Error, $"Telemetry error: {error}")
+            ? (TrayStatus.Error, Loc.F("tray.status.telemetryError", error))
             : !_connection.IsConnected
-                ? (TrayStatus.NoSession, "Waiting for iRacing")
+                ? (TrayStatus.NoSession, Loc.T("connection.waiting"))
                 : _vm.OverlaysHidden
-                    ? (TrayStatus.OverlaysHidden, "Connected · overlays hidden")
-                    : (TrayStatus.Running, "Connected · overlays on");
+                    ? (TrayStatus.OverlaysHidden, Loc.T("tray.status.hidden"))
+                    : (TrayStatus.Running, Loc.T("tray.status.on"));
         _tray.Update(status, $"OpenOverlay — {text}", _vm.OverlaysHidden);
     }
     private PedalTraceBuilder _pedalTraceBuilder = new();
@@ -293,7 +293,7 @@ public partial class MainWindow : Window
         foreach (var descriptor in WidgetCatalog.All)
         {
             var key = descriptor.Key;
-            _widgetGuards[key] = _health.CreateGuard($"Widget: {descriptor.Name}", stage => RecoverWidget(key, stage));
+            _widgetGuards[key] = _health.CreateGuard($"Widget: {descriptor.LogName}", stage => RecoverWidget(key, stage));
         }
 
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
@@ -390,8 +390,8 @@ public partial class MainWindow : Window
         if (AppInfo.IsRecoveredLaunch)
         {
             _tray.ShowNotice(
-                "OpenOverlay restarted itself",
-                "It recovered from a problem on its own. A report was saved — Control Panel › General › Diagnostics.");
+                Loc.T("tray.restarted"),
+                Loc.T("tray.restarted.body"));
         }
 
         StateChanged += (_, _) =>
@@ -478,7 +478,7 @@ public partial class MainWindow : Window
     {
         _latestStandings = [];
         _lastCockpitFeed = null;
-        _vm.TelemetryLine = "Waiting for iRacing";
+        _vm.TelemetryLine = Loc.T("connection.waiting");
 
         _sessionType = "";
         _strengthOfField = 0;
@@ -932,7 +932,7 @@ public partial class MainWindow : Window
         var speed = telemetry.HasVariable("Speed") ? Units.SpeedFromMs(telemetry.GetFloat("Speed"), units) : 0;
         var lap = telemetry.HasVariable("Lap") ? telemetry.GetInt("Lap") : 0;
         var gear = telemetry.HasVariable("Gear") ? telemetry.GetInt("Gear") : 0;
-        _vm.TelemetryLine = $"Speed {speed:0} {Units.SpeedUnit(units)}    Lap {lap}    Gear {gear}";
+        _vm.TelemetryLine = Loc.F("status.telemetry", Math.Round(speed), Units.SpeedUnit(units), lap, gear);
     }
 
     private void UpdateDiagnostics()
@@ -999,7 +999,7 @@ public partial class MainWindow : Window
         {
             AppLog.Activity("Dashboard", "Hidden");
             _dashboard.Hide();
-            SetDashboardButtonCaption("Show dashboard");
+            SetDashboardButtonCaption(Loc.T("layouts.showDashboard"));
             return;
         }
 
@@ -1014,7 +1014,7 @@ public partial class MainWindow : Window
         AppLog.Activity("Dashboard", $"Shown on display {display + 1}");
         _dashboard ??= CreateDashboard();
         _dashboard.MoveToScreen(screens[display]);
-        SetDashboardButtonCaption("Hide dashboard");
+        SetDashboardButtonCaption(Loc.T("layouts.hideDashboard"));
     }
 
     private DashboardWindow CreateDashboard()
@@ -1032,7 +1032,7 @@ public partial class MainWindow : Window
                 _dashboard = null;
             }
 
-            SetDashboardButtonCaption("Show dashboard");
+            SetDashboardButtonCaption(Loc.T("layouts.showDashboard"));
         };
         return dashboard;
     }
@@ -1244,7 +1244,7 @@ public partial class MainWindow : Window
             _updates.Detail,
             failures: _updates.Failures,
             lastErrorRef: _updates.LastErrorRef);
-        _vm.UpdateStatus = _updates.Detail;
+        _vm.UpdateStatus = _updates.DisplayDetail;
 
         var uiProblem = GlobalExceptionHandler.LastHandledUtc is { } uiFailure && now - uiFailure < RecentProblemWindow;
         _health.Report(
@@ -1270,7 +1270,7 @@ public partial class MainWindow : Window
 
     private static string DescribeSlot(WidgetSlot slot) => string.Create(
         CultureInfo.InvariantCulture,
-        $"{slot.Descriptor.Name}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
+        $"{slot.Descriptor.LogName}: {(slot.IsEnabled ? "on" : "off")}, {slot.StateLogLabel.ToLowerInvariant()}, size {slot.Scale}, opacity {slot.Opacity:P0}{(slot.HideOutsideCar ? ", hides outside car" : "")}");
 
     // ===== Setup assistant =====
 

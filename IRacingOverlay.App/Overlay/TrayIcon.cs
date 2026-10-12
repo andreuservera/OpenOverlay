@@ -25,7 +25,12 @@ internal sealed class TrayIcon : IDisposable
     private const int MaxTooltipLength = 127;
 
     private readonly Forms.NotifyIcon _icon;
+    private readonly Forms.ToolStripMenuItem _open;
     private readonly Forms.ToolStripMenuItem _toggleOverlays;
+    private readonly Forms.ToolStripMenuItem _restart;
+    private readonly Forms.ToolStripMenuItem _configFolder;
+    private readonly Forms.ToolStripMenuItem _exit;
+    private bool _overlaysHidden;
     private readonly Dictionary<TrayStatus, Drawing.Icon> _icons;
     private TrayStatus? _status;
 
@@ -34,17 +39,22 @@ internal sealed class TrayIcon : IDisposable
         _icons = CreateStatusIcons();
 
         var menu = new Forms.ContextMenuStrip();
-        var open = new Forms.ToolStripMenuItem("Open OpenOverlay", null, Traced("Open OpenOverlay", () => OpenRequested));
-        open.Font = new Drawing.Font(open.Font, Drawing.FontStyle.Bold);
-        _toggleOverlays = new Forms.ToolStripMenuItem("Hide overlays", null, Traced("Show / hide overlays", () => ToggleOverlaysRequested));
-        menu.Items.Add(open);
+        _open = new Forms.ToolStripMenuItem("", null, Traced("Open OpenOverlay", () => OpenRequested));
+        _open.Font = new Drawing.Font(_open.Font, Drawing.FontStyle.Bold);
+        _toggleOverlays = new Forms.ToolStripMenuItem("", null, Traced("Show / hide overlays", () => ToggleOverlaysRequested));
+        _restart = new Forms.ToolStripMenuItem("", null, Traced("Restart overlays", () => RestartOverlaysRequested));
+        _configFolder = new Forms.ToolStripMenuItem("", null, Traced("Open configuration folder", () => OpenConfigFolderRequested));
+        _exit = new Forms.ToolStripMenuItem("", null, Traced("Exit", () => ExitRequested));
+        menu.Items.Add(_open);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(_toggleOverlays);
-        menu.Items.Add(new Forms.ToolStripMenuItem("Restart overlays", null, Traced("Restart overlays", () => RestartOverlaysRequested)));
+        menu.Items.Add(_restart);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(new Forms.ToolStripMenuItem("Open configuration folder", null, Traced("Open configuration folder", () => OpenConfigFolderRequested)));
+        menu.Items.Add(_configFolder);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(new Forms.ToolStripMenuItem("Exit", null, Traced("Exit", () => ExitRequested)));
+        menu.Items.Add(_exit);
+        Relabel();
+        Loc.Changed += Relabel;
 
         _icon = new Forms.NotifyIcon
         {
@@ -82,7 +92,21 @@ internal sealed class TrayIcon : IDisposable
             _icon.Text = text;
         }
 
-        _toggleOverlays.Text = overlaysHidden ? "Show overlays" : "Hide overlays";
+        if (_overlaysHidden != overlaysHidden)
+        {
+            _overlaysHidden = overlaysHidden;
+            Relabel();
+        }
+    }
+
+    /// <summary>The menu's texts, in the current language.</summary>
+    private void Relabel()
+    {
+        _open.Text = Loc.T("tray.open");
+        _toggleOverlays.Text = Loc.T(_overlaysHidden ? "tray.showOverlays" : "tray.hideOverlays");
+        _restart.Text = Loc.T("general.restartOverlays");
+        _configFolder.Text = Loc.T("tray.configFolder");
+        _exit.Text = Loc.T("tray.exit");
     }
 
     public void ShowNotice(string title, string text) =>
@@ -97,6 +121,7 @@ internal sealed class TrayIcon : IDisposable
     public void Dispose()
     {
         _icon.Visible = false;
+        Loc.Changed -= Relabel;
         _icon.ContextMenuStrip?.Dispose();
         _icon.Dispose();
         foreach (var icon in _icons.Values)

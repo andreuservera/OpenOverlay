@@ -195,12 +195,17 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         : _openFailed ? WidgetState.Failed
         : ShouldBeOnScreen ? WidgetState.OnScreen : WidgetState.Waiting;
 
-    /// <summary>The state in words, for the dot's tooltip and the diagnostics report.</summary>
-    public string StateLabel => !_isEnabled
-        ? "Hidden"
-        : _openFailed ? "Could not open"
-        : _isSuppressed && !_isEditMode ? "Hidden by hotkey"
-        : ShouldBeOnScreen ? "On screen" : "Waiting for the car";
+    /// <summary>The state in words, for the dot's tooltip.</summary>
+    public string StateLabel => Loc.T(StateKey);
+
+    /// <summary>The state in English, for the diagnostics report.</summary>
+    public string StateLogLabel => Loc.English(StateKey);
+
+    private string StateKey => !_isEnabled
+        ? "widgetState.hidden"
+        : _openFailed ? "widgetState.failed"
+        : _isSuppressed && !_isEditMode ? "widgetState.suppressed"
+        : ShouldBeOnScreen ? "widgetState.onScreen" : "widgetState.waiting";
 
     /// <summary>True when the widget is actually on screen right now, as opposed to merely switched
     /// on.</summary>
@@ -353,7 +358,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    private string LogSource => $"Widget: {Descriptor.Name}";
+    private string LogSource => $"Widget: {Descriptor.LogName}";
 
     /// <summary>Forgets the window before closing it, so its Closed event reads as ours.</summary>
     private void Discard()

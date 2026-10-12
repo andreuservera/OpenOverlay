@@ -27,7 +27,7 @@ public sealed partial class ControlPanelViewModel
     private RelayCommand? _runSetup;
 
     private void AddHomePage() => NavItems.Add(NavItem.ForPage(
-        HomePageKey, "Home", "What's on screen, what needs attention, and the things you do most.",
+        HomePageKey, "nav.home.title", "nav.home.blurb",
         "M4,11 L12,4 L20,11 V20 H14 V14 H10 V20 H4 Z", "#home"));
 
     private Layout? _homeScreen;
@@ -58,7 +58,7 @@ public sealed partial class ControlPanelViewModel
             .ThenByDescending(candidate => candidate.IsPrimary)
             .First();
 
-        var screen = new Layout("On screen now", monitor.ToRef(), monitor.Width, monitor.Height);
+        var screen = new Layout(Loc.T("home.onScreenNow"), monitor.ToRef(), monitor.Width, monitor.Height);
         var codecs = CreateConfigCodecs();
         foreach (var (slot, x, y) in placed.Where(widget => On(monitor, widget.X, widget.Y)))
         {
@@ -80,7 +80,7 @@ public sealed partial class ControlPanelViewModel
 
     /// <summary>Under Home's picture: which monitor it is, and how many widgets are on it.</summary>
     public string HomeScreenCaption => _homeScreen is { } screen
-        ? string.Create(CultureInfo.InvariantCulture, $"{screen.Monitor.FriendlyName} · {screen.Width}×{screen.Height} · {screen.Widgets.Count} on screen")
+        ? Loc.F("home.screenSummary", screen.Monitor.FriendlyName, screen.Width, screen.Height, screen.Widgets.Count)
         : "";
 
     private IEnumerable<SettingsGroup> HomePage()
@@ -94,44 +94,44 @@ public sealed partial class ControlPanelViewModel
         var switchedOn = _slots.Values.Count(slot => slot.IsEnabled);
         List<SettingsGroup> groups =
         [
-            new SettingsGroup("RIGHT NOW")
+            new SettingsGroup(Loc.T("home.rightNow"))
                 .With(
                     new InfoSetting("iRacing", ConnectionHint.Length > 0 ? ConnectionHint : null, ConnectionLabel),
                     LayoutRow(),
                     new InfoSetting(
-                        "On screen",
+                        Loc.T("home.onScreen"),
                         onScreen.Count > 0 ? string.Join(", ", onScreen.Select(slot => slot.Descriptor.Name)) : null,
-                        $"{onScreen.Count} of {_slots.Count}"),
-                    new InfoSetting("Switched on", null, $"{switchedOn} of {_slots.Count}")),
+                        Loc.F("home.countOf", onScreen.Count, _slots.Count)),
+                    new InfoSetting(Loc.T("home.switchedOn"), null, Loc.F("home.countOf", switchedOn, _slots.Count))),
         ];
 
         var attention = Attention().ToList();
         if (attention.Count > 0)
         {
-            groups.Add(new SettingsGroup("NEEDS ATTENTION") { IsWarning = true }.With([.. attention]));
+            groups.Add(new SettingsGroup(Loc.T("home.needsAttention")) { IsWarning = true }.With([.. attention]));
         }
 
-        groups.Add(new SettingsGroup("QUICK ACTIONS")
+        groups.Add(new SettingsGroup(Loc.T("home.quickActions"))
             .With(
                 new ActionSetting(
-                    "Move widgets",
-                    _isEditMode ? "Widgets can be dragged now. Press Done before racing." : "Drag widgets into place on screen.",
-                    _isEditMode ? "Done" : "Move widgets",
+                    Loc.T("toolbar.editMode.move"),
+                    Loc.T(_isEditMode ? "home.move.editing" : "home.move.idle"),
+                    EditModeLabel,
                     () => IsEditMode = !IsEditMode),
                 new ActionSetting(
-                    _overlaysHidden ? "Overlays are hidden" : "Hide all overlays",
-                    "Every widget at once, until you show them again or restart.",
-                    _overlaysHidden ? "Show them" : "Hide",
+                    Loc.T(_overlaysHidden ? "home.hidden" : "home.hideAll"),
+                    Loc.T("home.hide.hint"),
+                    Loc.T(_overlaysHidden ? "home.showThem" : "home.hide"),
                     () => OverlaysHidden = !OverlaysHidden),
                 new ActionSetting(
-                    "Layouts",
-                    HasLayouts ? $"{LayoutChoices.Count} saved. Open one from the toolbar." : "Save an arrangement of widgets to switch to in one click.",
-                    "Open Layouts",
+                    Loc.T("nav.layouts.title"),
+                    HasLayouts ? Loc.F("home.layouts.saved", LayoutChoices.Count) : Loc.T("home.layouts.none"),
+                    Loc.T("home.layouts.open"),
                     () => Navigate(LayoutsPageKey)),
                 new ActionSetting(
-                    "Set up from a preset",
-                    "Pick a monitor and a set of widgets, and they're placed for you.",
-                    "Start…",
+                    Loc.T("home.preset"),
+                    Loc.T("home.preset.hint"),
+                    Loc.T("home.preset.start"),
                     OpenSetupAssistant)));
 
         if (NewVersionNotice() is { } notice)
@@ -145,43 +145,43 @@ public sealed partial class ControlPanelViewModel
     /// <summary>The layout the toolbar shows, and whether it is on screen: the toolbar names a layout
     /// even while none is open, so "none open" alone left people wondering which one was meant.</summary>
     private InfoSetting LayoutRow() => OpenLayoutName is { } open
-        ? new InfoSetting("Layout", "Its widgets follow it until you close it.", $"{open} · on screen")
+        ? new InfoSetting(Loc.T("home.layout"), Loc.T("home.layout.openHint"), Loc.F("home.layout.openValue", open))
         : ToolbarLayout is { } chosen
-            ? new InfoSetting("Layout", "Chosen in the toolbar, not open: widgets use their own settings.", $"{chosen.Name} · not open")
-            : new InfoSetting("Layout", "Widgets use their own settings.", "No layouts yet");
+            ? new InfoSetting(Loc.T("home.layout"), Loc.T("home.layout.chosenHint"), Loc.F("home.layout.chosenValue", chosen.Name))
+            : new InfoSetting(Loc.T("home.layout"), Loc.T("home.layout.noneHint"), Loc.T("home.layout.none"));
 
     /// <summary>What would make the overlay look broken while racing, each with its fix.</summary>
     private IEnumerable<SettingItem> Attention()
     {
         if (_overlaysHidden)
         {
-            yield return new ActionSetting("All overlays are hidden", "Hidden with the shortcut.", "Show them", () => OverlaysHidden = false);
+            yield return new ActionSetting(Loc.T("home.attention.hidden"), Loc.T("home.attention.hidden.hint"), Loc.T("home.showThem"), () => OverlaysHidden = false);
         }
 
         if (_isEditMode)
         {
-            yield return new ActionSetting("Widgets can be moved", "Remember to press Done before racing.", "Done", () => IsEditMode = false);
+            yield return new ActionSetting(Loc.T("home.attention.editing"), Loc.T("home.attention.editing.hint"), Loc.T("toolbar.editMode.done"), () => IsEditMode = false);
         }
 
         foreach (var slot in _slots.Values)
         {
             if (slot.State == WidgetState.Failed)
             {
-                yield return new ActionSetting($"{slot.Descriptor.Name} couldn't open", "Settings › Diagnostics has the details.", "Try again", slot.Apply);
+                yield return new ActionSetting(Loc.F("home.attention.failed", slot.Descriptor.Name), Loc.T("home.attention.failed.hint"), Loc.T("home.attention.failed.retry"), slot.Apply);
             }
             else if (IsOffScreen(slot))
             {
                 yield return new ActionSetting(
-                    $"{slot.Descriptor.Name} is off screen",
-                    "Its window is outside every monitor, perhaps one that is now disconnected.",
-                    "Bring it back",
+                    Loc.F("home.attention.offScreen", slot.Descriptor.Name),
+                    Loc.T("home.attention.offScreen.hint"),
+                    Loc.T("home.attention.offScreen.button"),
                     slot.ResetPosition);
             }
         }
 
         if (_health == HealthStatus.Failed)
         {
-            yield return new ActionSetting("Something isn't working", HealthLine, "Diagnostics", () => Navigate(DiagnosticsPageKey));
+            yield return new ActionSetting(Loc.T("home.attention.health"), HealthLine, Loc.T("nav.diagnostics.title"), () => Navigate(DiagnosticsPageKey));
         }
     }
 
@@ -210,11 +210,11 @@ public sealed partial class ControlPanelViewModel
             return null;
         }
 
-        return new SettingsGroup($"NEW IN {entry.Version}")
+        return new SettingsGroup(Loc.F("home.newIn", entry.Version))
             .With(new ActionSetting(
-                "What's new",
+                Loc.T("nav.help.tab.whatsNew"),
                 entry.Summary ?? entry.Sections.SelectMany(section => section.Items).FirstOrDefault()?.Text,
-                "Read",
+                Loc.T("home.whatsNew.read"),
                 ShowWhatsNew));
     }
 
@@ -293,7 +293,7 @@ public sealed partial class ControlPanelViewModel
         var choices = monitors
             .Select((monitor, index) => new SetupChoice(
                 monitor.FriendlyName,
-                monitor.IsPrimary ? "Your main monitor." : "Another monitor.",
+                Loc.T(monitor.IsPrimary ? "setup.mainMonitor" : "setup.otherMonitor"),
                 string.Create(CultureInfo.InvariantCulture, $"{monitor.Width}×{monitor.Height}"),
                 index))
             .ToList();
@@ -333,7 +333,7 @@ public sealed partial class ControlPanelViewModel
         }
 
         AppLog.Activity("Control Panel", $"Preset \"{preset.Name}\" applied on {monitor.FriendlyName}");
-        ShowToast($"{preset.Name} preset is on.", () =>
+        ShowToast(Loc.F("home.presetToast", preset.Name), () =>
         {
             foreach (var (slot, enabled, position) in before)
             {

@@ -47,9 +47,9 @@ public sealed partial class ControlPanelViewModel
     /// <summary>The results pane's heading: how many, for what.</summary>
     public string SearchSummary => SearchResults.Count switch
     {
-        0 => $"Nothing matches “{_searchText.Trim()}”",
-        1 => $"1 result for “{_searchText.Trim()}”",
-        var count => $"{count}{(count >= MaxSearchResults ? "+" : "")} results for “{_searchText.Trim()}”",
+        0 => Loc.F("search.none", _searchText.Trim()),
+        1 => Loc.F("search.one", _searchText.Trim()),
+        var count => Loc.F("search.many", $"{count}{(count >= MaxSearchResults ? "+" : "")}", _searchText.Trim()),
     };
 
     public ICommand ClearSearchCommand => _clearSearch ??= new RelayCommand(ClearSearch);
@@ -93,7 +93,7 @@ public sealed partial class ControlPanelViewModel
         {
             foreach (var page in NavItems)
             {
-                var heading = page.IsFooter ? "Help" : page.Section.HasHeading ? Capitalize(page.Section.Title) : "Page";
+                var heading = page.IsFooter ? Loc.T("nav.help.title") : page.Section.HasHeading ? Capitalize(page.Section.Heading) : Loc.T("nav.page");
                 pages.Add(new SearchEntry(page, 0, null, null, page.Title, heading, page.Blurb, [page.Title, page.Blurb]));
 
                 var tabs = page.HasTabs ? Enumerable.Range(0, page.Tabs.Count) : [0];

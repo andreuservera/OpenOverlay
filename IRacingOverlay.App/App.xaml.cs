@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using IRacingOverlay.App.About;
 using IRacingOverlay.App.Diagnostics;
+using IRacingOverlay.App.Overlay;
 using Velopack;
 
 namespace IRacingOverlay.App;
@@ -53,6 +54,7 @@ public partial class App : Application
         AppLog.Info("Startup", "OpenOverlay starting", AppInfo.Describe());
         RecordEarlierRuns();
         InstallHistory.RecordStartup();
+        Loc.SetLanguage(LanguagePreferenceStore.Get());
 
         var app = new App();
         GlobalExceptionHandler.InstallDispatcherHandler(app);

@@ -10,7 +10,7 @@ namespace IRacingOverlay.App.ControlPanel;
 /// </summary>
 public sealed partial class ControlPanelViewModel
 {
-    private const string HotkeyTakenMessage = "Windows or another app is already using this shortcut.";
+    private static string HotkeyTakenMessage => Loc.T("hotkeys.taken");
 
     private List<HotkeyBinding> _hotkeys = HotkeyStore.Load(AllHotkeyActions()).ToList();
     private readonly Dictionary<string, HotkeySetting> _hotkeySettings = [];
@@ -145,39 +145,39 @@ public sealed partial class ControlPanelViewModel
         if (HotkeyActions.TryGetWidget(action, out var widgetKey))
         {
             var name = WidgetCatalog.All.FirstOrDefault(d => d.Key == widgetKey)?.Name ?? widgetKey;
-            return $"Show / hide {name}";
+            return Loc.F("hotkeys.toggleWidget", name);
         }
 
         return action switch
         {
-            HotkeyActions.ToggleOverlays => "Show / hide all overlays",
-            HotkeyActions.ToggleEditMode => "Move widgets on / off",
-            HotkeyActions.ToggleControlPanel => "Show / hide Control Panel",
-            HotkeyActions.RestartOverlays => "Restart overlays",
-            HotkeyActions.ToggleLayout => "Open / close layout",
-            HotkeyActions.NextLayout => "Next layout",
-            HotkeyActions.PreviousLayout => "Previous layout",
-            HotkeyActions.EditLayout => "Edit layout",
-            _ => "Reset overlay positions",
+            HotkeyActions.ToggleOverlays => Loc.T("hotkeys.showHideAllOverlays"),
+            HotkeyActions.ToggleEditMode => Loc.T("hotkeys.moveWidgetsOnOff"),
+            HotkeyActions.ToggleControlPanel => Loc.T("hotkeys.showHideControlPanel"),
+            HotkeyActions.RestartOverlays => Loc.T("hotkeys.restartOverlays"),
+            HotkeyActions.ToggleLayout => Loc.T("hotkeys.openCloseLayout"),
+            HotkeyActions.NextLayout => Loc.T("hotkeys.nextLayout"),
+            HotkeyActions.PreviousLayout => Loc.T("hotkeys.previousLayout"),
+            HotkeyActions.EditLayout => Loc.T("hotkeys.editLayout"),
+            _ => Loc.T("hotkeys.resetOverlayPositions"),
         };
     }
 
     /// <summary><see cref="Describe"/>, plus a layout's own shortcut, which needs the layout's name.</summary>
     private string DescribeAction(string action) =>
         HotkeyActions.TryGetLayout(action, out var id)
-            ? $"Open / close layout \"{LayoutStore.Get(id)?.Name ?? "deleted layout"}\""
+            ? Loc.F("hotkeys.toggleNamedLayout", LayoutStore.Get(id)?.Name ?? Loc.T("hotkeys.deletedLayout"))
             : Describe(action);
 
     private static string? HintFor(string action) => action switch
     {
-        HotkeyActions.ToggleOverlays => "Floating widgets only.",
+        HotkeyActions.ToggleOverlays => Loc.T("hotkeys.floatingWidgetsOnly"),
         HotkeyActions.ToggleControlPanel => null,
-        HotkeyActions.RestartOverlays => "Clears rendering glitches.",
-        HotkeyActions.ResetLayout => "Off by default.",
-        HotkeyActions.ToggleLayout => "The layout chosen in the toolbar.",
-        HotkeyActions.NextLayout => "Switches straight to it; a notice names it.",
-        HotkeyActions.PreviousLayout => "Switches straight to it; a notice names it.",
-        HotkeyActions.EditLayout => "The open layout, or the one chosen in the toolbar.",
+        HotkeyActions.RestartOverlays => Loc.T("hotkeys.clearsRenderingGlitches"),
+        HotkeyActions.ResetLayout => Loc.T("hotkeys.offByDefault"),
+        HotkeyActions.ToggleLayout => Loc.T("hotkeys.theLayoutChosenIn"),
+        HotkeyActions.NextLayout => Loc.T("hotkeys.switchesStraightToIt"),
+        HotkeyActions.PreviousLayout => Loc.T("hotkeys.switchesStraightToIt"),
+        HotkeyActions.EditLayout => Loc.T("hotkeys.theOpenLayoutOr"),
         _ => null,
     };
 
@@ -196,10 +196,10 @@ public sealed partial class ControlPanelViewModel
         }
 
         var global = new SettingsGroup(
-            "OVERLAYS",
-            "Work in any app, iRacing included. Click a shortcut and press new keys; Esc cancels. Avoid keys iRacing uses.");
-        var layouts = new SettingsGroup("LAYOUTS", "Each layout's own shortcut is on the Layouts page.");
-        var widgets = new SettingsGroup("WIDGETS", "Show or hide one widget. None are set to begin with.");
+            Loc.T("hotkeys.overlays"),
+            Loc.T("hotkeys.workInAnyApp"));
+        var layouts = new SettingsGroup(Loc.T("hotkeys.layouts"), Loc.T("hotkeys.eachLayoutSOwn"));
+        var widgets = new SettingsGroup(Loc.T("hotkeys.widgets"), Loc.T("hotkeys.showOrHideOne"));
         foreach (var binding in _hotkeys)
         {
             var action = binding.Action;
@@ -226,12 +226,12 @@ public sealed partial class ControlPanelViewModel
             global,
             layouts,
             widgets,
-            new SettingsGroup("DEFAULTS")
+            new SettingsGroup(Loc.T("hotkeys.defaults"))
                 .With(
                     new ActionSetting(
-                        "Restore default shortcuts",
+                        Loc.T("hotkeys.restoreDefaultShortcuts"),
                         DefaultsHint(),
-                        "Restore defaults",
+                        Loc.T("hotkeys.restoreDefaults"),
                         RestoreDefaultHotkeysWithUndo) { IsDestructive = true }),
         ];
     }
@@ -244,9 +244,8 @@ public sealed partial class ControlPanelViewModel
 
     private string DefaultsHint() => ChangedFromDefaults().Count switch
     {
-        0 => "All your shortcuts are as they came.",
-        1 => "1 shortcut differs from how it came.",
-        var count => $"{count} shortcuts differ from how they came.",
+        0 => Loc.T("hotkeys.differs.none"),
+        var count => Loc.Plural("hotkeys.differs", count),
     };
 
     /// <summary>Every shortcut back as it came; undo puts back the ones you had.</summary>
@@ -255,13 +254,13 @@ public sealed partial class ControlPanelViewModel
         var changed = ChangedFromDefaults().Count;
         if (changed == 0)
         {
-            ShowToast("Your shortcuts are already the defaults.", null);
+            ShowToast(Loc.T("hotkeys.yourShortcutsAreAlready"), null);
             return;
         }
 
         var before = _hotkeys.ToList();
         RestoreDefaultHotkeys();
-        ShowToast(changed == 1 ? "1 shortcut is back to its default." : $"{changed} shortcuts are back to their defaults.", () =>
+        ShowToast(Loc.Plural("hotkeys.restored", changed), () =>
         {
             _hotkeys = before;
             HotkeyStore.Save(_hotkeys);
@@ -287,7 +286,7 @@ public sealed partial class ControlPanelViewModel
     /// or layout has it — or null if it can.</summary>
     private string? TakenBy(string action, Hotkey? hotkey) =>
         hotkey is not null && Hotkeys.FirstOrDefault(b => b.Action != action && b.Hotkey == hotkey) is { } other
-            ? $"Already used by \"{DescribeAction(other.Action)}\"."
+            ? Loc.F("hotkeys.takenBy", DescribeAction(other.Action))
             : null;
 
     private void UpdateHotkey(string action, Func<HotkeyBinding, HotkeyBinding> change)

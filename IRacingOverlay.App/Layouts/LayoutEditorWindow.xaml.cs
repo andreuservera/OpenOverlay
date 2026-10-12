@@ -141,10 +141,9 @@ public partial class LayoutEditorWindow : Window
             Surface.Height = layout.Height;
             ApplyZoom();
 
-            LayoutTitle.Text = layout.Name + (_model.IsDirty ? "  •  unsaved changes" : "");
-            LayoutSubtitle.Text = string.Create(CultureInfo.InvariantCulture,
-                $"{layout.Width}×{layout.Height} · {layout.Monitor.FriendlyName} · {layout.Widgets.Count} of {Layout.MaxWidgets} widgets");
-            Title = $"{layout.Name} — Layout editor";
+            LayoutTitle.Text = layout.Name + (_model.IsDirty ? Loc.T("editor.unsavedSuffix") : "");
+            LayoutSubtitle.Text = Loc.F("editor.subtitle", layout.Width, layout.Height, layout.Monitor.FriendlyName, layout.Widgets.Count, Layout.MaxWidgets);
+            Title = Loc.F("editor.windowTitle", layout.Name);
             UndoButton.IsEnabled = _model.CanUndo;
             RedoButton.IsEnabled = _model.CanRedo;
             SaveButton.IsEnabled = _model.IsDirty;
@@ -163,7 +162,7 @@ public partial class LayoutEditorWindow : Window
             }
 
             CatalogLimit.Text = layout.Widgets.Count >= Layout.MaxWidgets
-                ? $"Every widget is in this layout ({Layout.MaxWidgets} of {Layout.MaxWidgets}). Each widget can be added once."
+                ? Loc.F("editor.allAdded", Layout.MaxWidgets)
                 : "";
 
             UpdateGridLines();
@@ -237,7 +236,7 @@ public partial class LayoutEditorWindow : Window
         }
 
         MeasuredSize.Text = widget.Width > 0
-            ? string.Create(CultureInfo.InvariantCulture, $"About {Math.Round(widget.Width)} × {Math.Round(widget.Height)} px with sample data. Tables grow and shrink with the field.")
+            ? Loc.F("editor.measured", Math.Round(widget.Width), Math.Round(widget.Height))
             : "";
         XBox.IsEnabled = YBox.IsEnabled = SizePanel.IsEnabled = !widget.Locked;
         LockToggle.IsChecked = widget.Locked;
@@ -274,10 +273,10 @@ public partial class LayoutEditorWindow : Window
         var widget = item.Widget;
         List<SettingsGroup> groups =
         [
-            new SettingsGroup("PLACEMENT", "Size and position are set above.")
+            new SettingsGroup(Loc.T("editor.placement"), Loc.T("editor.placement.hint"))
                 .With(
                     new SliderSetting(
-                        "Opacity",
+                        Loc.T("placement.opacity"),
                         null,
                         widget.Opacity,
                         0,
@@ -285,8 +284,8 @@ public partial class LayoutEditorWindow : Window
                         0.01,
                         value => ApplySetting(() => _model.SetOpacity(type, value))),
                     new ToggleSetting(
-                        "Hide when I'm not driving",
-                        "Hidden in menus, the garage, replays and while spectating.",
+                        Loc.T("placement.hideOutsideCar"),
+                        Loc.T("placement.hideOutsideCar.hint"),
                         widget.HideOutsideCar,
                         value => ApplySetting(() => _model.SetHideOutsideCar(type, value)))),
             .. WidgetSettings.For(type, item.SettingsContext(() => ApplySetting(() => _model.SetConfig(type, item.ReadConfig())))),
@@ -537,7 +536,7 @@ public partial class LayoutEditorWindow : Window
         e.Handled = true;
         if (!entry.IsAvailable)
         {
-            Status($"{entry.Descriptor.Name} is already in this layout. Each widget can be added once.");
+            Status(Loc.F("editor.alreadyIn", entry.Descriptor.Name));
             return;
         }
 
@@ -579,7 +578,7 @@ public partial class LayoutEditorWindow : Window
 
         _catalogRemovedAt = Environment.TickCount64;
         _model.Remove(entry.Descriptor.Key);
-        Status($"Removed {entry.Descriptor.Name}. Undo brings it back.");
+        Status(Loc.F("editor.removedUndo", entry.Descriptor.Name));
     }
 
     private void OnCatalogMouseMove(object sender, MouseEventArgs e)
@@ -605,14 +604,14 @@ public partial class LayoutEditorWindow : Window
 
         if (!entry.IsAvailable)
         {
-            Status($"{entry.Descriptor.Name} is already in this layout. Each widget can be added once.");
+            Status(Loc.F("editor.alreadyIn", entry.Descriptor.Name));
             return;
         }
 
         DragGhostIcon.Data = Geometry.Parse(entry.Descriptor.IconData);
         DragGhostName.Text = entry.Descriptor.Name;
         DragGhostScale.ScaleX = DragGhostScale.ScaleY = 1 / _scale;
-        DropZoneText.Text = $"Drop {entry.Descriptor.Name} anywhere on the screen";
+        DropZoneText.Text = Loc.F("editor.dropHere", entry.Descriptor.Name);
         DropZone.Visibility = Visibility.Visible;
         try
         {
@@ -662,7 +661,7 @@ public partial class LayoutEditorWindow : Window
         {
             _model.Add(widget);
             Select(type);
-            Status($"Added {NameOf(type)}.");
+            Status(Loc.F("editor.added", NameOf(type)));
             return true;
         }
         catch (LayoutRuleException rule)
@@ -716,7 +715,7 @@ public partial class LayoutEditorWindow : Window
         e.Handled = true;
         if (item.IsLocked)
         {
-            Status($"{item.Descriptor.Name} is locked. Unlock it to move it.");
+            Status(Loc.F("editor.lockedMove", item.Descriptor.Name));
             return;
         }
 
@@ -735,7 +734,7 @@ public partial class LayoutEditorWindow : Window
         e.Handled = true;
         if (item.IsLocked)
         {
-            Status($"{item.Descriptor.Name} is locked. Unlock it to move it.");
+            Status(Loc.F("editor.lockedMove", item.Descriptor.Name));
             return;
         }
 
@@ -826,7 +825,7 @@ public partial class LayoutEditorWindow : Window
             level,
             Math.Round(left ? anchorX - width : anchorX),
             Math.Round(top ? anchorY - height : anchorY));
-        Status($"{NameOf(gesture.Type)}: size {level.Label}");
+        Status(Loc.F("editor.sizeStatus", NameOf(gesture.Type), level.Label));
     }
 
     private void OnHandleMouseUp(object sender, MouseButtonEventArgs e)
@@ -935,7 +934,7 @@ public partial class LayoutEditorWindow : Window
         if (TargetOf(sender) is { } type)
         {
             _model.Remove(type);
-            Status($"Removed {NameOf(type)}.");
+            Status(Loc.F("editor.removed", NameOf(type)));
         }
     }
 
@@ -1094,7 +1093,7 @@ public partial class LayoutEditorWindow : Window
             case Key.Delete when SelectedItem is { } item:
                 e.Handled = true;
                 _model.Remove(item.Type);
-                Status($"Removed {item.Descriptor.Name}. Undo brings it back.");
+                Status(Loc.F("editor.removedUndo", item.Descriptor.Name));
                 break;
             case Key.H:
                 e.Handled = true;
@@ -1112,7 +1111,7 @@ public partial class LayoutEditorWindow : Window
     {
         if (SelectedItem is not { } item)
         {
-            Status("Select a widget first.");
+            Status(Loc.T("editor.selectFirst"));
             return;
         }
 
@@ -1121,13 +1120,13 @@ public partial class LayoutEditorWindow : Window
         {
             var locked = !item.Widget.Locked;
             _model.SetLocked(item.Type, locked);
-            Status(locked ? $"{name} locked." : $"{name} unlocked.");
+            Status(Loc.F(locked ? "editor.lockedStatus" : "editor.unlockedStatus", name));
         }
         else
         {
             var visible = !item.Widget.Visible;
             _model.SetVisible(item.Type, visible);
-            Status(visible ? $"{name} shown." : $"{name} hidden: kept in the layout, not opened with it.");
+            Status(Loc.F(visible ? "editor.shown" : "editor.hiddenKept", name));
         }
     }
 
@@ -1167,10 +1166,9 @@ public partial class LayoutEditorWindow : Window
         {
             var answer = LayoutDialog.Ask(
                 this,
-                "Change the resolution",
-                string.Create(CultureInfo.InvariantCulture,
-                    $"From {layout.Width}×{layout.Height} to {target.Width}×{target.Height}. Scale the widgets' positions to keep their place on screen, or keep their pixel positions?"),
-                ["Scale positions", "Keep pixels", "Cancel"]);
+                Loc.T("editor.changeResolution"),
+                Loc.F("editor.changeResolution.body", layout.Width, layout.Height, target.Width, target.Height),
+                [Loc.T("layouts.scalePositions"), Loc.T("layouts.keepPixels"), Loc.T("layouts.cancel")]);
             if (answer is < 0 or 2)
             {
                 return;
@@ -1192,13 +1190,13 @@ public partial class LayoutEditorWindow : Window
         if (!IsAutoSaving)
         {
             _autoSave.Stop();
-            Status("Auto-save off: changes wait for Save.");
+            Status(Loc.T("editor.autoSaveOff"));
             return;
         }
 
         Status(_store.Open?.LayoutId == LayoutId
-            ? "Auto-save on: every change is saved and shown on screen."
-            : "Auto-save on: every change is saved. Open the layout to see changes on screen as you make them.");
+            ? Loc.T("editor.autoSaveOnOpen")
+            : Loc.T("editor.autoSaveOnClosed"));
         ScheduleAutoSave();
     }
 
@@ -1235,14 +1233,14 @@ public partial class LayoutEditorWindow : Window
             var saved = _store.Save(_model.Layout);
             _model.MarkSaved(saved);
             AppLog.Activity("Layouts", $"Saved layout \"{saved.Name}\"");
-            Status($"Saved \"{saved.Name}\".");
+            Status(Loc.F("editor.saved", saved.Name));
             Saved?.Invoke();
             return true;
         }
         catch (Exception error) when (!ExceptionPolicy.IsFatal(error))
         {
             AppLog.Error("Layouts", "Could not save the layout", error);
-            LayoutDialog.Inform(this, "Could not save the layout", error.Message);
+            LayoutDialog.Inform(this, Loc.T("editor.saveFailed"), error.Message);
             return false;
         }
     }
@@ -1274,9 +1272,9 @@ public partial class LayoutEditorWindow : Window
 
         var answer = LayoutDialog.Ask(
             this,
-            "Unsaved changes",
-            $"\"{_model.Layout.Name}\" has changes that haven't been saved.",
-            ["Save", "Discard", "Cancel"]);
+            Loc.T("editor.unsaved"),
+            Loc.F("editor.unsaved.body", _model.Layout.Name),
+            [Loc.T("editor.save"), Loc.T("editor.discard"), Loc.T("layouts.cancel")]);
         return answer switch
         {
             0 => Save(),

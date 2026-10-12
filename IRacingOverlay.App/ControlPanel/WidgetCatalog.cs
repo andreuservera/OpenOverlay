@@ -10,9 +10,6 @@ namespace IRacingOverlay.App.ControlPanel;
 /// <param name="Key">Persistence key. Must match the name the widget passes to
 /// <c>OverlayWindowBase</c>, since that is what WidgetVisibilityStore, HideOutsideCarStore and
 /// WidgetLayoutStore are all keyed by.</param>
-/// <param name="Name">Display name in the rail and as the configuration pane's title.</param>
-/// <param name="Blurb">One line under the title saying what the widget is for. This is the only
-/// documentation most users will ever read, so it says what it shows, not what it is called.</param>
 /// <param name="IconData">Path geometry, drawn stroked in a 24x24 box.</param>
 /// <param name="PreviewWidth">Design width at level M for panels that stretch to fill and so have no
 /// meaningful natural width. Mirrors the DesignWidth the widget's own XAML declares; 0 means "let it
@@ -21,8 +18,6 @@ namespace IRacingOverlay.App.ControlPanel;
 /// <param name="Category">What the widget is for, which is the rail heading it is listed under.</param>
 public sealed record WidgetDescriptor(
     string Key,
-    string Name,
-    string Blurb,
     string IconData,
     double PreviewWidth = 0,
     double PreviewHeight = 0,
@@ -32,6 +27,20 @@ public sealed record WidgetDescriptor(
     /// PersistenceKey each widget's ScalablePanel declares, so the control panel and the widget's
     /// own +/- control read and write the same entry.</summary>
     public string ScaleKey => "Widget." + Key;
+
+    /// <summary>Text key of the display name in the rail and as the configuration pane's title.</summary>
+    public string NameKey => $"widget.{Key}.name";
+
+    /// <summary>Text key of the line under the title saying what the widget is for. This is the only
+    /// documentation most users will ever read, so it says what it shows, not what it is called.</summary>
+    public string BlurbKey => $"widget.{Key}.blurb";
+
+    public string Name => Loc.T(NameKey);
+
+    public string Blurb => Loc.T(BlurbKey);
+
+    /// <summary>The name in English, for logs.</summary>
+    public string LogName => Loc.English(NameKey);
 }
 
 /// <summary>The registry every part of the control panel is generated from.</summary>
@@ -56,43 +65,31 @@ public static class WidgetCatalog
     /// order under one heading per <see cref="WidgetCategory"/>.</summary>
     public static IReadOnlyList<WidgetDescriptor> All { get; } =
     [
-        new(Relative, "Relative", "Cars around you on track, closest first.",
-            "M6,9 L12,4 L18,9 M6,15 L12,20 L18,15 M3,12 H21", PreviewWidth: 300),
+        new(Relative, "M6,9 L12,4 L18,9 M6,15 L12,20 L18,15 M3,12 H21", PreviewWidth: 300),
 
-        new(Standings, "Standings", "Running order, with the top 3 and your battle in view.",
-            "M3,20 H21 M6,20 V13 H10 V20 M10,20 V8 H14 V20 M14,20 V15 H18 V20"),
+        new(Standings, "M3,20 H21 M6,20 V13 H10 V20 M10,20 V8 H14 V20 M14,20 V15 H18 V20"),
 
-        new(TrackMap, "Track map", "Where every car is around the lap, on one bar.",
-            "M5,7 H13 A5,5 0 0 1 13,17 H9 A4,4 0 0 1 9,9 H19", PreviewWidth: 700),
+        new(TrackMap, "M5,7 H13 A5,5 0 0 1 13,17 H9 A4,4 0 0 1 9,9 H19", PreviewWidth: 700),
 
-        new(Flag, "Flags", "Every flag currently being shown to you.",
-            "M5,3 V21 M5,4 H18 L15.5,8.5 L18,13 H5"),
+        new(Flag, "M5,3 V21 M5,4 H18 L15.5,8.5 L18,13 H5"),
 
-        new(Incident, "Incidents", "Your incidents, and your team's in a team race.",
-            "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8"),
+        new(Incident, "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8"),
 
-        new(Cockpit, "Cockpit", "Shift lights, gear, speed and the cars alongside you.",
-            "M3,18 A9,9 0 0 1 21,18 M12,18 L16.5,11 M12,18 H12.01", Category: WidgetCategory.Car),
+        new(Cockpit, "M3,18 A9,9 0 0 1 21,18 M12,18 L16.5,11 M12,18 H12.01", Category: WidgetCategory.Car),
 
-        new(TireInfo, "Tires", "Pressures, temperatures and tread on every corner.",
-            "M12,3 A9,9 0 1 0 12.01,3 Z M12,8 A4,4 0 1 0 12.01,8 Z", Category: WidgetCategory.Car),
+        new(TireInfo, "M12,3 A9,9 0 1 0 12.01,3 Z M12,8 A4,4 0 1 0 12.01,8 Z", Category: WidgetCategory.Car),
 
-        new(FuelCalculator, "Fuel calculator", "What you'll burn, what you need, and what to put in.",
-            "M5,3 H19 V21 H5 Z M8,7 H16 M8,11.5 H10 M13.5,11.5 H16 M8,16 H10 M13.5,16 H16", Category: WidgetCategory.Car),
+        new(FuelCalculator, "M5,3 H19 V21 H5 Z M8,7 H16 M8,11.5 H10 M13.5,11.5 H16 M8,16 H10 M13.5,16 H16", Category: WidgetCategory.Car),
 
-        new(Delta, "Delta", "Live gap to your reference lap.",
-            "M12,21 A8,8 0 1 0 12,5 A8,8 0 0 0 12,21 Z M12,9.5 V13 L14.5,15 M9.5,2.5 H14.5", Category: WidgetCategory.Car),
+        new(Delta, "M12,21 A8,8 0 1 0 12,5 A8,8 0 0 0 12,21 Z M12,9.5 V13 L14.5,15 M9.5,2.5 H14.5", Category: WidgetCategory.Car),
 
-        new(PedalTrace, "Pedal trace", "Gear, speed, steering and your pedals, with ABS activity marked.",
-            "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewHeight: 110, Category: WidgetCategory.Car),
+        new(PedalTrace, "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewHeight: 110, Category: WidgetCategory.Car),
 
         // A map pin: the "i" in a circle is Help's.
-        new(TrackInfo, "Track & session", "Weather, track state and what's left of the session.",
-            "M12,21.5 C12,21.5 5,14.6 5,9.5 A7,7 0 0 1 19,9.5 C19,14.6 12,21.5 12,21.5 Z M12,7 A2.5,2.5 0 1 0 12.01,7 Z",
+        new(TrackInfo, "M12,21.5 C12,21.5 5,14.6 5,9.5 A7,7 0 0 1 19,9.5 C19,14.6 12,21.5 12,21.5 Z M12,7 A2.5,2.5 0 1 0 12.01,7 Z",
             Category: WidgetCategory.Track),
 
-        new(Weather, "Weather", "Temperatures, wind relative to your car, humidity and the sky.",
-            "M7,19 H17 A4,4 0 0 0 17,11 A5.5,5.5 0 0 0 6.6,12.2 A3.4,3.4 0 0 0 7,19 Z M14,3 V4.5 M18.6,5.4 L17.5,6.5 M20.5,10 H19",
+        new(Weather, "M7,19 H17 A4,4 0 0 0 17,11 A5.5,5.5 0 0 0 6.6,12.2 A3.4,3.4 0 0 0 7,19 Z M14,3 V4.5 M18.6,5.4 L17.5,6.5 M20.5,10 H19",
             Category: WidgetCategory.Track),
     ];
 

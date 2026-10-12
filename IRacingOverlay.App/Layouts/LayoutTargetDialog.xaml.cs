@@ -53,8 +53,8 @@ public partial class LayoutTargetDialog : Window
             : monitors;
         monitors = _monitors;
 
-        Heading.Text = imported is not null ? "Import layout" : existing is null ? "New layout" : "Monitor and resolution";
-        ConfirmButton.Content = imported is not null ? "Import" : existing is null ? "Create" : "Apply";
+        Heading.Text = Loc.T(imported is not null ? "target.heading.import" : existing is null ? "target.heading.new" : "target.heading.edit");
+        ConfirmButton.Content = Loc.T(imported is not null ? "target.confirm.import" : existing is null ? "target.confirm.create" : "target.confirm.apply");
         NameRow.Visibility = existing is null ? Visibility.Visible : Visibility.Collapsed;
         NameBox.Text = existing?.Name ?? imported?.Name ?? "";
 
@@ -107,15 +107,15 @@ public partial class LayoutTargetDialog : Window
 
     private string Describe(DisplayMonitor monitor) =>
         _currentIsDisconnected && ReferenceEquals(monitor, _monitors[0])
-            ? string.Create(CultureInfo.InvariantCulture, $"{monitor.FriendlyName} — {monitor.Width}×{monitor.Height} (not connected)")
-            : string.Create(CultureInfo.InvariantCulture, $"{monitor.FriendlyName} — {monitor.Width}×{monitor.Height}{(monitor.IsPrimary ? " (primary)" : "")}");
+            ? Loc.F("target.monitor.disconnected", monitor.FriendlyName, monitor.Width, monitor.Height)
+            : Loc.F(monitor.IsPrimary ? "target.monitor.primary" : "target.monitorLine", monitor.FriendlyName, monitor.Width, monitor.Height);
 
     /// <summary>The spec asks for "Name (2)" to be suggested when a name repeats: say so while typing.</summary>
     private void OnNameChanged(object sender, TextChangedEventArgs e)
     {
         var name = NameBox.Text.Trim();
         var unique = LayoutNaming.Unique(name, _takenNames);
-        NameHint.Text = name.Length > 0 && unique != name ? $"Already used — it will be saved as \"{unique}\"." : "";
+        NameHint.Text = name.Length > 0 && unique != name ? Loc.F("target.nameTaken", unique) : "";
         NameHint.Visibility = NameHint.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -125,10 +125,10 @@ public partial class LayoutTargetDialog : Window
         var monitor = SelectedMonitor;
         var options = new List<string>
         {
-            monitor is null ? "Monitor's resolution" : string.Create(CultureInfo.InvariantCulture, $"Monitor's resolution ({monitor.Width}×{monitor.Height})"),
+            monitor is null ? Loc.T("target.monitorResolution") : Loc.F("target.monitorResolutionValue", monitor.Width, monitor.Height),
         };
         options.AddRange(Presets.Select(preset => string.Create(CultureInfo.InvariantCulture, $"{preset.Width}×{preset.Height}")));
-        options.Add("Custom");
+        options.Add(Loc.T("target.custom"));
         ResolutionBox.ItemsSource = options;
         ResolutionBox.SelectedIndex = keep < 0 ? 0 : keep;
     }
@@ -185,13 +185,13 @@ public partial class LayoutTargetDialog : Window
     {
         if (Resolution() is not var (width, height) || !Layout.IsValidResolution(width, height))
         {
-            ShowError($"Enter a width and height between {Layout.MinResolution} and {Layout.MaxResolution}.");
+            ShowError(Loc.F("target.resolutionRange", Layout.MinResolution, Layout.MaxResolution));
             return;
         }
 
         var monitor = (_currentIsDisconnected && MonitorBox.SelectedIndex == 0 ? _current : SelectedMonitor?.ToRef())
             ?? _current
-            ?? new MonitorRef("", null, "Unknown monitor", width, height);
+            ?? new MonitorRef("", null, Loc.T("target.unknownMonitor"), width, height);
         _result = new LayoutTarget(NameBox.Text.Trim(), monitor, width, height);
         Close();
     }

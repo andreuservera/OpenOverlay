@@ -37,7 +37,7 @@ public static class LayoutFile
     /// <summary>Far more than any real layout needs (one is a few KB); anything bigger isn't one.</summary>
     public const long MaxFileBytes = 1024 * 1024;
 
-    public const string DialogFilter = "Layout files (*.layout.json)|*.layout.json|JSON files (*.json)|*.json|All files (*.*)|*.*";
+    public static string DialogFilter => Loc.T("layouts.dialogFilter");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
