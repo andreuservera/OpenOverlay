@@ -31,6 +31,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\icon.ico" />
+    <!-- The logo, drawn in the control panel's toolbar and the update notice. -->
+    <Resource Include="Assets\logo.png" />
     <!-- Backdrop the control panel previews widgets against. Embedded rather than shipped loose so
          it can't go missing from an install and leave the preview pane empty. -->
     <Resource Include="Assets\spa2.jpg" />

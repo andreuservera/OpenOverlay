@@ -27,10 +27,8 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource Cp.Accent}" VerticalAlignment="Top">
-                <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="9" Stroke="#101316" StrokeThickness="3"
-                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-            </Border>
+            <Image Source="/Assets/logo.png" Width="40" Height="40" VerticalAlignment="Top"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
             <StackPanel Grid.Column="1" Margin="14,0,0,0">
                 <TextBlock Text="UPDATED" Style="{StaticResource Cp.Eyebrow}" Foreground="{StaticResource Cp.Accent}"/>
                 <TextBlock Text="{Binding Title}" Style="{StaticResource Cp.Title}" TextWrapping="Wrap" Margin="0,3,0,0"/>

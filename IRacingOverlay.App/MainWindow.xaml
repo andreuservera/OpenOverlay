@@ -53,11 +53,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="28" Height="28" CornerRadius="8" Background="{StaticResource Cp.Accent}">
-                        <Path Data="M6,17 L11,7 L14,13 L18,7" Stretch="Uniform" Margin="7"
-                              Stroke="#101316" StrokeThickness="2.4"
-                              StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                    </Border>
+                    <Image Source="/Assets/logo.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="OpenOverlay" Style="{StaticResource Cp.Title}" Margin="11,0,0,0"
                                VerticalAlignment="Center"/>
                 </StackPanel>
