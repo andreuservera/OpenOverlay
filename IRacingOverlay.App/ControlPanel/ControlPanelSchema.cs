@@ -128,7 +128,7 @@ public sealed partial class ControlPanelViewModel
         // The same page built from untouched options: each row learns how it came, so a changed one
         // shows it and its section can be reset.
         var defaults = WidgetSettings.For(slot.Key, DefaultSettings)
-            .Append(PlacementDefaults())
+            .Append(PlacementDefaults(slot.Descriptor))
             .ToDictionary(group => group.Title);
         foreach (var group in groups)
         {
@@ -156,11 +156,14 @@ public sealed partial class ControlPanelViewModel
 
     /// <summary>POSITION &amp; VISIBILITY as every widget starts, row for row as <see cref="Placement"/>
     /// builds it.</summary>
-    private static SettingsGroup PlacementDefaults() => new SettingsGroup(WidgetSettings.PositionAndVisibility)
+    private static SettingsGroup PlacementDefaults(WidgetDescriptor descriptor) => new SettingsGroup(WidgetSettings.PositionAndVisibility)
         .With(
+        [
             SizeRow(WidgetScale.Default, _ => { }),
             new SliderSetting(Loc.T("placement.opacity"), null, WidgetOpacityStore.Default, 0, 1, 0.01, _ => { }),
-            new ToggleSetting(Loc.T("placement.hideOutsideCar"), null, false, _ => { }));
+            .. descriptor.HasHeader ? [new ToggleSetting(Loc.T("placement.showHeader"), null, descriptor.HeaderByDefault, _ => { })] : Array.Empty<SettingItem>(),
+            new ToggleSetting(Loc.T("placement.hideOutsideCar"), null, false, _ => { }),
+        ]);
 
     // ===== Shared =====
 
@@ -170,6 +173,7 @@ public sealed partial class ControlPanelViewModel
         WidgetSettings.PositionAndVisibility,
         Loc.T("placement.hint"))
         .With(
+        [
             SizeRow(slot),
             new SliderSetting(
                 Loc.T("placement.opacity"),
@@ -179,6 +183,13 @@ public sealed partial class ControlPanelViewModel
                 1,
                 0.01,
                 value => slot.Opacity = value),
+            .. slot.Descriptor.HasHeader
+                ? [new ToggleSetting(
+                    Loc.T("placement.showHeader"),
+                    Loc.T("placement.showHeader.hint"),
+                    slot.ShowHeader,
+                    value => slot.ShowHeader = value)]
+                : Array.Empty<SettingItem>(),
             new ToggleSetting(
                 Loc.T("placement.hideOutsideCar"),
                 Loc.T("placement.hideOutsideCar.hint"),
@@ -188,7 +199,8 @@ public sealed partial class ControlPanelViewModel
                 Loc.T("placement.applyAll"),
                 Loc.F("placement.applyAll.hint", Loc.T("placement.hideOutsideCar")),
                 Loc.T("placement.applyAll.button"),
-                () => ApplyPlacementToAll(slot)));
+                () => ApplyPlacementToAll(slot)),
+        ]);
 
     private RelayCommand? _resetWidget;
     private bool _isWidgetMenuOpen;
@@ -227,11 +239,12 @@ public sealed partial class ControlPanelViewModel
         }
 
         var codec = CreateConfigCodecs()[slot.Key];
-        var before = (Config: codec.Read(), slot.Scale, slot.Opacity, slot.HideOutsideCar);
+        var before = (Config: codec.Read(), slot.Scale, slot.Opacity, slot.ShowHeader, slot.HideOutsideCar);
         AppLog.Activity("Control Panel", $"{slot.Descriptor.LogName} reset to defaults");
         codec.Apply(WidgetDefaults.ConfigOf(slot.Key));
         slot.Scale = WidgetScale.Default;
         slot.Opacity = WidgetOpacityStore.Default;
+        slot.ShowHeader = slot.Descriptor.HeaderByDefault;
         slot.HideOutsideCar = false;
         RebuildPage();
 
@@ -240,6 +253,7 @@ public sealed partial class ControlPanelViewModel
             CreateConfigCodecs()[slot.Key].Apply(before.Config);
             slot.Scale = before.Scale;
             slot.Opacity = before.Opacity;
+            slot.ShowHeader = before.ShowHeader;
             slot.HideOutsideCar = before.HideOutsideCar;
             RebuildPage();
         });
@@ -292,21 +306,28 @@ public sealed partial class ControlPanelViewModel
     /// one's own back.</summary>
     private void ApplyPlacementToAll(WidgetSlot source)
     {
-        var before = _slots.Values.Select(slot => (Slot: slot, slot.Scale, slot.Opacity, slot.HideOutsideCar)).ToList();
+        var before = _slots.Values.Select(slot => (Slot: slot, slot.Scale, slot.Opacity, slot.ShowHeader, slot.HideOutsideCar)).ToList();
         foreach (var slot in _slots.Values)
         {
             slot.Scale = source.Scale;
             slot.Opacity = source.Opacity;
+            // Only between widgets that have a header; a bar's "off" says nothing about the rest.
+            if (source.Descriptor.HasHeader && slot.Descriptor.HasHeader)
+            {
+                slot.ShowHeader = source.ShowHeader;
+            }
+
             slot.HideOutsideCar = source.HideOutsideCar;
         }
 
         AppLog.Activity("Control Panel", $"{source.Descriptor.LogName}'s size, opacity and auto-hide applied to every widget");
         ShowToast(Loc.F("placement.appliedToast", source.Descriptor.Name), () =>
         {
-            foreach (var (slot, scale, opacity, hide) in before)
+            foreach (var (slot, scale, opacity, header, hide) in before)
             {
                 slot.Scale = scale;
                 slot.Opacity = opacity;
+                slot.ShowHeader = header;
                 slot.HideOutsideCar = hide;
             }
 

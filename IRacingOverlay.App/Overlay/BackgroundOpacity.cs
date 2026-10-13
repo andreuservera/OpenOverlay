@@ -16,7 +16,7 @@ namespace IRacingOverlay.App.Overlay;
 public static class BackgroundOpacity
 {
     /// <summary>The brushes that make up a widget's background.</summary>
-    private static readonly string[] Keys = ["Theme.PanelBackground", "Theme.PanelBorder", "Surface.Inset"];
+    private static readonly string[] Keys = ["Theme.PanelBackground", "Theme.PanelBorder", "Theme.HeaderBackground", "Surface.Inset"];
 
     public static readonly DependencyProperty ValueProperty = DependencyProperty.RegisterAttached(
         "Value", typeof(double), typeof(BackgroundOpacity), new PropertyMetadata(1.0, OnValueChanged));

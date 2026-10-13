@@ -28,7 +28,8 @@ internal sealed class SlotLayoutHost(Func<string, WidgetSlot> slotOf, Func<IRead
             slot.Scale,
             slot.Opacity,
             slot.HideOutsideCar,
-            codecs()[type].Read());
+            codecs()[type].Read(),
+            slot.ShowHeader);
     }
 
     public void Apply(LayoutWidget widget, double left, double top)
@@ -37,6 +38,7 @@ internal sealed class SlotLayoutHost(Func<string, WidgetSlot> slotOf, Func<IRead
         codecs()[widget.Type].Apply(widget.Config);
         slot.Scale = widget.Scale;
         slot.Opacity = widget.Opacity;
+        slot.ShowHeader = widget.ShowsHeader;
         slot.HideOutsideCar = widget.HideOutsideCar;
         // Placed before it is switched on, so it never appears somewhere else first.
         slot.MoveTo(left, top);
@@ -55,6 +57,7 @@ internal sealed class SlotLayoutHost(Func<string, WidgetSlot> slotOf, Func<IRead
         codecs()[snapshot.Type].Apply(snapshot.Config);
         slot.Scale = snapshot.Scale;
         slot.Opacity = snapshot.Opacity;
+        slot.ShowHeader = snapshot.ShowHeader ?? WidgetHeaderStore.DefaultFor(snapshot.Type);
         slot.HideOutsideCar = snapshot.HideOutsideCar;
         if (snapshot.Left is { } left && snapshot.Top is { } top)
         {

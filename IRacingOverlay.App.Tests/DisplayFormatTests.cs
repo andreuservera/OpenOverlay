@@ -28,7 +28,7 @@ public class DisplayFormatTests
         var corner = Corner(0.92, 0.45, 0.18);
 
         Assert.Equal(new[] { "92%", "45%", "18%" }, new[] { corner.WearLeftDisplay, corner.WearMiddleDisplay, corner.WearRightDisplay });
-        Assert.Equal(new[] { "#34D399", "#F5A524", "#F04438" }, new[] { corner.WearLeftColor, corner.WearMiddleColor, corner.WearRightColor });
+        Assert.Equal(new[] { "#3DD68C", "#F5A524", "#F04438" }, new[] { corner.WearLeftColor, corner.WearMiddleColor, corner.WearRightColor });
         Assert.Equal(0.45, corner.WearMiddleFill, precision: 3);
     }
 

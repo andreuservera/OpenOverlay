@@ -17,11 +17,8 @@ public partial class TrackInfoPanel : UserControl
     private static readonly Brush UsageMedium = StatePalette.Warning;
     private static readonly Brush UsageHigh = StatePalette.Critical;
 
-    // Gaps between neighbouring fields: the track name and session sit close, like a title; every
-    // other pair of fields a little further apart; a separator gets room on both sides.
-    private const double HeaderGap = 11;
-    private const double FieldGap = 21;
-    private const double SeparatorGap = 18;
+    // Every reading is a cell: 12 either side, 7 above and below, a 1px rule on its left.
+    private static readonly Thickness CellPadding = new(12, 7, 12, 7);
 
     // Swapping in the persisted instance is a DependencyProperty change, and the bar is laid out
     // again for it.
@@ -30,14 +27,13 @@ public partial class TrackInfoPanel : UserControl
         new PropertyMetadata(new TrackInfoOptions(), (d, e) => ((TrackInfoPanel)d).OnOptionsChanged(e)));
 
     private readonly Dictionary<TrackInfoField, FrameworkElement> _fields;
-    private readonly Dictionary<FrameworkElement, Thickness> _baseMargins = [];
 
     public TrackInfoPanel()
     {
         InitializeComponent();
         _fields = new Dictionary<TrackInfoField, FrameworkElement>
         {
-            [TrackInfoField.TrackName] = TrackNameText,
+            [TrackInfoField.TrackName] = FieldTrackName,
             [TrackInfoField.Session] = SessionLabelText,
             [TrackInfoField.AirTemp] = FieldAirTemp,
             [TrackInfoField.TrackTemp] = FieldTrackTemp,
@@ -47,11 +43,6 @@ public partial class TrackInfoPanel : UserControl
             [TrackInfoField.TimeLeft] = FieldTimeLeft,
             [TrackInfoField.Lap] = FieldLap,
         };
-        foreach (var element in _fields.Values)
-        {
-            _baseMargins[element] = element.Margin;
-        }
-
         PropertyChangedEventManager.AddHandler(Options, OnOptionChanged, string.Empty);
         LayoutBar();
         Loaded += (_, _) => HoldWidths();
@@ -98,25 +89,16 @@ public partial class TrackInfoPanel : UserControl
     private void LayoutBar()
     {
         Bar.Children.Clear();
-        var first = true;
-        foreach (var (field, separatorBefore) in Options.Bar())
+        foreach (var (field, _) in Options.Bar())
         {
-            var element = _fields[field];
-            var gap = 0.0;
-            if (separatorBefore)
+            if (Bar.Children.Count > 0)
             {
-                Bar.Children.Add(new Rectangle { Style = (Style)FindResource("BarSeparator"), Margin = new Thickness(SeparatorGap, 2, 0, 2) });
-                gap = SeparatorGap;
-            }
-            else if (!first)
-            {
-                gap = TrackInfoOptions.GroupOf(field) == TrackInfoGroup.Header ? HeaderGap : FieldGap;
+                Bar.Children.Add(new Rectangle { Style = (Style)FindResource("BarSeparator") });
             }
 
-            var margin = _baseMargins[element];
-            element.Margin = new Thickness(margin.Left + gap, margin.Top, margin.Right, margin.Bottom);
+            var element = _fields[field];
+            element.Margin = CellPadding;
             Bar.Children.Add(element);
-            first = false;
         }
     }
 

@@ -76,7 +76,7 @@ public static class WidgetSettings
     {
         WidgetCatalog.Standings => [StandingsContent(context), TableAppearance(context.Standings, context), StandingsBehavior(context)],
         WidgetCatalog.Relative => [RelativeContent(context), TableAppearance(context.Relative, context), RelativeBehavior(context)],
-        WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorDisplay(context), FuelCalculatorMath(context)],
+        WidgetCatalog.FuelCalculator => [FuelCalculatorBlocks(context), FuelCalculatorMath(context)],
         WidgetCatalog.Flag => [FlagTypes(context), FlagAppearance(context), FlagBehavior(context)],
         WidgetCatalog.Cockpit => [CockpitModulesGroup(context)],
         WidgetCatalog.PedalTrace => [PedalTraceElements(context)],
@@ -263,11 +263,18 @@ public static class WidgetSettings
                     Loc.T("ws.headline"),
                     null,
                     [
+                        FuelBlock(Loc.T("ws.fuelLeft"), options.ShowFuelRemaining, v => options.ShowFuelRemaining = v, context),
                         FuelBlock(Loc.T("ws.lapsLeft"), options.ShowLapsRemaining, v => options.ShowLapsRemaining = v, context),
                         FuelBlock(Loc.T("ws.fuelBar"), options.ShowFuelBar, v => options.ShowFuelBar = v, context),
                     ]),
                 FuelCells(Loc.T("ws.usage"), options.UsageOrder, Defaults.FuelCalculator.UsageOrder, order => options.UsageOrder = order, context),
-                FuelCells(Loc.T("ws.strategy"), options.StrategyOrder, Defaults.FuelCalculator.StrategyOrder, order => options.StrategyOrder = order, context));
+                new ChipGroupSetting(
+                    Loc.T("ws.strategy"),
+                    null,
+                    [
+                        FuelBlock(Loc.T("ws.toFinish"), options.ShowFuelToFinish, v => options.ShowFuelToFinish = v, context),
+                        FuelBlock(Loc.T("ws.refuel"), options.ShowRefuel, v => options.ShowRefuel = v, context),
+                    ]));
     }
 
     /// <summary>One group of cells as a drag list, each with its switch.</summary>
@@ -303,33 +310,6 @@ public static class WidgetSettings
             assign(isVisible);
             context.Persist(() => FuelCalculatorOptionsStore.Save(context.FuelCalculator));
         });
-
-    private static SettingsGroup FuelCalculatorDisplay(WidgetSettingsContext context)
-    {
-        var options = context.FuelCalculator;
-        return new SettingsGroup(Appearance)
-            .With(
-                new SegmentedSetting(
-                    Loc.T("ws.orientation"),
-                    null,
-                    [Loc.T("ws.horizontal"), Loc.T("ws.vertical")],
-                    options.Vertical ? 1 : 0,
-                    index =>
-                    {
-                        options.Vertical = index == 1;
-                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
-                    }),
-                new SegmentedSetting(
-                    Loc.T("ws.firstGroup"),
-                    Loc.T("ws.autoPutsUsageFirst"),
-                    [Loc.T("ws.auto"), Loc.T("ws.usage"), Loc.T("ws.strategy")],
-                    (int)options.FirstGroup,
-                    index =>
-                    {
-                        options.FirstGroup = (FuelGroupOrder)index;
-                        context.Persist(() => FuelCalculatorOptionsStore.Save(options));
-                    }));
-    }
 
     private static SettingsGroup FuelCalculatorMath(WidgetSettingsContext context)
     {

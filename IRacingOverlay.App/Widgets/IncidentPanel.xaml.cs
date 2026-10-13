@@ -19,6 +19,7 @@ public partial class IncidentPanel : UserControl
     public IncidentPanel()
     {
         InitializeComponent();
+        LimitTrack.SizeChanged += (_, _) => SizeLimitFill();
     }
 
     public void UpdateState(IncidentState state)
@@ -49,16 +50,35 @@ public partial class IncidentPanel : UserControl
             _ => StatePalette.TextPrimary,
         };
 
-        MyCountText.Text = state.MyIncidentCount.ToString(CultureInfo.InvariantCulture);
+        MyCountRun.Text = state.MyIncidentCount.ToString(CultureInfo.InvariantCulture);
         MyCaption.Visibility = isTeamRace ? Visibility.Visible : Visibility.Collapsed;
         TeamBlock.Visibility = isTeamRace ? Visibility.Visible : Visibility.Collapsed;
-        TeamCountText.Text = state.TeamIncidentCount?.ToString(CultureInfo.InvariantCulture) ?? "";
+        TeamCountRun.Text = state.TeamIncidentCount?.ToString(CultureInfo.InvariantCulture) ?? "";
 
-        // The limit applies to the team total in a team race, so that's the number that changes colour.
+        // The limit applies to the team total in a team race, so that's the number that changes
+        // colour and carries the "/ limit".
         MyCountText.Foreground = isTeamRace ? StatePalette.TextPrimary : severity;
         TeamCountText.Foreground = severity;
-        LimitText.Text = state.Limit is { } limit ? $"/ {limit.ToString(CultureInfo.InvariantCulture)}" : "";
+        var limitText = state.Limit is { } limit ? $" / {limit.ToString(CultureInfo.InvariantCulture)}" : "";
+        MyLimitRun.Text = isTeamRace ? "" : limitText;
+        TeamLimitRun.Text = isTeamRace ? limitText : "";
+
+        if (state.Limit is { } cap && cap > 0)
+        {
+            LimitTrack.Visibility = Visibility.Visible;
+            _limitFraction = Math.Clamp((double)state.CountedTotal / cap, 0, 1);
+            LimitFill.Fill = state.Severity == IncidentSeverity.Normal ? StatePalette.TextSecondary : severity;
+            SizeLimitFill();
+        }
+        else
+        {
+            LimitTrack.Visibility = Visibility.Collapsed;
+        }
     }
+
+    private double _limitFraction;
+
+    private void SizeLimitFill() => LimitFill.Width = LimitTrack.ActualWidth * _limitFraction;
 
     /// <summary>Title crossfades to the incident, the panel washes in its colour and the count
     /// pulses; everything eases back on its own. A second incident restarts it from the current values.</summary>

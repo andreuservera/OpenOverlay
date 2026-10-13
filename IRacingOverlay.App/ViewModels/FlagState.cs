@@ -78,7 +78,7 @@ public sealed class FlagState
 
     /// <summary>Colour of the row's edge bar and wash. Differs from the flag itself where the flag's
     /// own colour would vanish on a dark panel (black, white-on-black).</summary>
-    public string AccentColor { get; init; } = "#8E99A5";
+    public string AccentColor { get; init; } = "#8B95A3";
 
     /// <summary>Numeral drawn on a lap board ("10", "5", "1").</summary>
     public string Glyph { get; init; } = "";

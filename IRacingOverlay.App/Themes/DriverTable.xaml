@@ -90,11 +90,8 @@
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
 
-    <!-- Same plate as the car-number chip, so every badge on the row belongs to one family. -->
+    <!-- No plate: the iRating is plain secondary text; only its delta segment is tinted. -->
     <Style x:Key="RatingBadge" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource Surface.Chip}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Surface.ChipBorder}"/>
-        <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
         <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
     </Style>
@@ -126,26 +123,22 @@
     <!-- Same height as a data row, so a reserved slot holds its place without the table visibly
          stuttering as cars move in and out of it. -->
     <DataTemplate DataType="{x:Type vm:RelativePlaceholderRow}">
-        <Border Height="{StaticResource Size.Row}" Margin="0,1" Background="{StaticResource Row.Placeholder}"
-                CornerRadius="{StaticResource Radius.Row}"/>
+        <Border Height="{StaticResource Size.RowPitch}" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Surface.RowDivider}"/>
     </DataTemplate>
 
     <!-- Declared against the base row type: WPF's implicit template lookup walks up the type
          hierarchy, so this one template renders both StandingsRow and RelativeRow. The GAP column
          is the only thing the two disagree on, and each supplies its own GapDisplay. -->
     <DataTemplate DataType="{x:Type vm:DriverRow}">
-        <!-- Layers rather than nested borders, so nothing a state adds (outline, bar) can push the
-             cells sideways: every row's columns sit at the same x whatever the row's state. -->
-        <Border Height="{StaticResource Size.Row}" Margin="0,1">
+        <!-- Layers rather than nested borders, so nothing a state adds (fill, bar) can push the
+             cells sideways: every row's columns sit at the same x whatever the row's state. Rows sit
+             straight on the panel, a 1px rule under each one; the pitch is the old row plus its gap,
+             so the table is exactly as tall as before. -->
+        <Border Height="{StaticResource Size.RowPitch}" BorderThickness="0,0,0,1" BorderBrush="{StaticResource Surface.RowDivider}">
             <Grid>
-                <Border x:Name="Band" Background="{StaticResource Row.Base}" CornerRadius="{StaticResource Radius.Row}"/>
-                <!-- Multiclass: the class bar bleeds into the row as a wash that has dissolved into
-                     the panel by the time it reaches the timing columns. Recognisable at a glance,
-                     never louder than the data on top of it. -->
-                <Border x:Name="ClassWash" CornerRadius="{StaticResource Radius.Row}" Visibility="Collapsed"
-                        Background="{Binding ClassColor, Mode=OneTime, Converter={StaticResource ClassGradientConverter}, ConverterParameter=0.22}"/>
-                <Border x:Name="Outline" CornerRadius="{StaticResource Radius.Row}" BorderThickness="1"/>
-                <Border x:Name="EdgeBar" Width="3" HorizontalAlignment="Left" CornerRadius="{StaticResource Radius.RowEdge}"/>
+                <Border x:Name="Band" Background="{StaticResource Row.Base}"/>
+                <!-- Multiclass: the class colour as a 3px bar on the row's edge. -->
+                <Border x:Name="EdgeBar" Width="3" HorizontalAlignment="Left"/>
                 <Grid x:Name="Cells" Margin="{StaticResource CellInset}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="{Binding Options.Columns.Width0, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
@@ -182,7 +175,7 @@
                     </Grid>
 
                     <TextBlock Grid.Column="{Binding Options.Columns.Position, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding PositionDisplay, Mode=OneTime}" Style="{StaticResource PrimaryCell}"
-                               Foreground="{Binding PositionForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
+                               x:Name="PositionText" FontWeight="Bold" Foreground="{StaticResource Text.Secondary}"
                                Visibility="{Binding Options.ShowPosition, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- Places since the start: the iRating badge's arrow and figure, without the plate —
@@ -193,13 +186,11 @@
                         <TextBlock Text="{Binding PlacesGainedDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
                     </StackPanel>
 
-                    <!-- Neutral plate: the class is already on the row's edge, so a filled chip in the
-                         class colour would only repeat it at full volume. -->
-                    <Border x:Name="CarChip" Grid.Column="{Binding Options.Columns.CarNumber, RelativeSource={RelativeSource AncestorType=UserControl}}" Background="{StaticResource Surface.Chip}" BorderBrush="{StaticResource Surface.ChipBorder}"
-                            BorderThickness="1" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}"
-                            Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
-                        <TextBlock Text="{Binding CarNumberDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
-                    </Border>
+                    <!-- The car number as plain text, "#17", in muted ink: an identifier, not data. -->
+                    <TextBlock Grid.Column="{Binding Options.Columns.CarNumber, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               Text="{Binding CarNumberDisplay, Mode=OneTime, StringFormat=#{0}}" Style="{StaticResource ChipText}"
+                               FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}" Foreground="{StaticResource Text.Muted}"
+                               Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- The make: its logo in the secondary ink, or a monogram where the logo can't be
                          read. Cars of no make the app knows (spec and dirt cars) get iRacing's emblem. -->
@@ -270,7 +261,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDeltaSegment}}"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding IRatingDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"
+                            <TextBlock Text="{Binding IRatingDisplay, Mode=OneTime}" Style="{StaticResource ChipText}" Foreground="{StaticResource Text.Secondary}"
                                        Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                             <Border Grid.Column="1" CornerRadius="0,2,2,0"
                                     Background="{Binding IRatingDeltaForeground, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.16}"
@@ -286,14 +277,14 @@
                         </Grid>
                     </Border>
 
-                    <!-- Tinted, outlined chip: the licence colour still says R/D/C/B/A at a glance, but
-                         as a tint it no longer out-shouts the driver's name next to it. -->
+                    <!-- A thin 1px outline, no fill: the licence colour on the edge and the text still says
+                         R/D/C/B/A at a glance without out-shouting the driver's name next to it. -->
                     <Border Grid.Column="{Binding Options.Columns.License, RelativeSource={RelativeSource AncestorType=UserControl}}" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}" BorderThickness="1"
-                            Background="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.24}"
-                            BorderBrush="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.75}"
+                            BorderBrush="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.7}"
                             Visibility="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <TextBlock Text="{Binding LicStringDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"
-                                   FontSize="{StaticResource Type.Micro}" LineHeight="{StaticResource Line.Micro}"/>
+                                   FontSize="{StaticResource Type.Micro}" LineHeight="{StaticResource Line.Micro}"
+                                   Foreground="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
                     </Border>
 
                     <TextBlock Grid.Column="{Binding Options.Columns.Lap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding LapDisplay, Mode=OneTime}" Style="{StaticResource MetaCell}"
@@ -315,7 +306,6 @@
         </Border>
         <DataTemplate.Triggers>
             <DataTrigger Binding="{Binding IsMultiClass, Mode=OneTime}" Value="True">
-                <Setter TargetName="ClassWash" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="EdgeBar" Property="Background" Value="{Binding ClassColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
             </DataTrigger>
             <!-- In the pits: not racing anyone this instant, so the whole row steps back. -->
@@ -339,23 +329,16 @@
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
             </DataTrigger>
             <!-- Declared after the others so it wins: the player's row is always full strength, even
-                 in the pits. Neutral white rather than any hue, so it can't be mistaken for a class:
-                 a lighter band, a white outline and a bold name. The class bar stays in multiclass. -->
+                 in the pits. The one place the accent appears in a table: your position. A lighter
+                 band and a bold name, never a hue on the band, so it can't be mistaken for a class.
+                 The class bar stays in multiclass. -->
             <DataTrigger Binding="{Binding IsPlayer, Mode=OneTime}" Value="True">
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Player}"/>
-                <Setter TargetName="ClassWash" Property="Visibility" Value="Collapsed"/>
-                <Setter TargetName="Outline" Property="BorderBrush" Value="{StaticResource Row.PlayerOutline}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="1"/>
+                <Setter TargetName="PositionText" Property="Foreground" Value="{StaticResource State.Accent}"/>
                 <Setter TargetName="NameText" Property="FontWeight" Value="Bold"/>
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.PlayerInk}"/>
             </DataTrigger>
-            <MultiDataTrigger>
-                <MultiDataTrigger.Conditions>
-                    <Condition Binding="{Binding IsPlayer, Mode=OneTime}" Value="True"/>
-                    <Condition Binding="{Binding IsMultiClass, Mode=OneTime}" Value="False"/>
-                </MultiDataTrigger.Conditions>
-                <Setter TargetName="EdgeBar" Property="Background" Value="{StaticResource Row.PlayerOutline}"/>
-            </MultiDataTrigger>
             <DataTrigger Binding="{Binding IRatingTrend, Mode=OneTime}" Value="-1">
                 <Setter TargetName="TrendArrow" Property="Data" Value="{StaticResource Geometry.ArrowDown}"/>
             </DataTrigger>

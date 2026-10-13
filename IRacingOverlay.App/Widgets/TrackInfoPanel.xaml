@@ -3,38 +3,30 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay">
     <!-- The fields are laid out by the code-behind, in the order and with the visibility the
          options give: a separator wherever neighbouring fields belong to different groups (track
          and session, conditions, timing), and a field's gap to the one before it otherwise. -->
     <UserControl.Resources>
-        <!-- Every field in this bar is the same shape — caption, then value — so the reading rhythm
-             stays constant all the way across and the eye can jump straight to the one it wants.
-             The gutter is a little wider than the old 18: the condensed caption cut freed the
-             room, and the bar keeps its original length. -->
+        <!-- One line of readings (docs/widgets-style.md §7): each a muted caption in capitals then
+             its value, every reading in its own cell with a 1px rule on its left, so the eye can
+             jump straight to the one it wants. -->
         <Style x:Key="BarField" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
-        <Style x:Key="BarCaption" TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
+        <Style x:Key="BarCaption" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
             <Setter Property="Margin" Value="0,0,6,0"/>
-        </Style>
-        <!-- The weather fields wear the Weather widget's icons instead of a caption; the tooltip
-             still names the reading. -->
-        <Style x:Key="BarGlyph" TargetType="Path">
-            <Setter Property="Stretch" Value="Uniform"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Height" Value="15"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
-            <Setter Property="Fill" Value="{StaticResource Text.Secondary}"/>
         </Style>
         <Style x:Key="BarValue" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
+            <Setter Property="FontSize" Value="15"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Text.Primary}"/>
         </Style>
         <Style x:Key="BarSeparator" TargetType="Rectangle">
             <Setter Property="Width" Value="1"/>
             <Setter Property="Fill" Value="{StaticResource Surface.Divider}"/>
-            <Setter Property="Margin" Value="0,2"/>
         </Style>
         <Style x:Key="UsageSegment" TargetType="Rectangle">
             <Setter Property="Width" Value="5"/>
@@ -45,38 +37,39 @@
             <Setter Property="Fill" Value="{StaticResource Surface.Track}"/>
         </Style>
     </UserControl.Resources>
-    <Border Style="{StaticResource OverlayPanel}" Padding="16,9">
+    <!-- The cells carry their own padding. The header is off unless switched on: the bar is one line. -->
+    <ov:WidgetFrame Title="{loc:T widget.TrackInfo.name}">
         <StackPanel x:Name="Bar" Orientation="Horizontal" HorizontalAlignment="Center">
-            <!-- Capped + trimmed: this bar is one long horizontal row, so an unusually long
-                 circuit name would otherwise push the session clock off the right-hand end. -->
-            <TextBlock x:Name="TrackNameText" Text="—" Style="{StaticResource ValueText}" VerticalAlignment="Center"
-                       MaxWidth="220" TextTrimming="CharacterEllipsis"/>
-            <TextBlock x:Name="SessionLabelText" Text="—" Style="{StaticResource PanelTitle}"
-                       VerticalAlignment="Center" Margin="0,2,0,0"/>
+            <!-- The circuit, after the live dot. Capped + trimmed: an unusually long circuit name
+                 would otherwise push the session clock off the right-hand end. -->
+            <StackPanel x:Name="FieldTrackName" Style="{StaticResource BarField}">
+                <Control Template="{StaticResource LiveIndicator}" Margin="0,0,6,0" Focusable="False" IsTabStop="False"/>
+                <TextBlock x:Name="TrackNameText" Text="—" Style="{StaticResource BarValue}" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            <TextBlock x:Name="SessionLabelText" Text="—" Style="{StaticResource BarValue}" Foreground="{StaticResource Text.Secondary}"/>
 
-            <!-- Weather is context, read on purpose rather than at a glance: secondary ink
-                 throughout, with colour left to the one field here that carries a state (usage). -->
+            <!-- The sky icon stays beside the air temperature: it is a reading in itself. -->
             <StackPanel x:Name="FieldAirTemp" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.airTemperature}">
-                <w:WeatherIcon x:Name="SkyIcon" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,5,0"
-                               SunBrush="{StaticResource State.Accent}" MoonBrush="{StaticResource Text.Primary}"
+                <TextBlock Text="{loc:T trackInfo.airShort}" Style="{StaticResource BarCaption}"/>
+                <w:WeatherIcon x:Name="SkyIcon" Width="17" Height="17" VerticalAlignment="Center" Margin="0,0,5,0"
+                               SunBrush="{StaticResource State.Warning}" MoonBrush="{StaticResource Text.Primary}"
                                CloudBrush="{StaticResource Text.Secondary}" CloudShadeBrush="{StaticResource Text.Muted}"
                                RainBrush="{StaticResource State.Info}"/>
                 <TextBlock x:Name="AirTempText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel x:Name="FieldTrackTemp" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.trackTemperature}">
-                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Road}"/>
+                <TextBlock Text="{loc:T trackInfo.trackShort}" Style="{StaticResource BarCaption}"/>
                 <TextBlock x:Name="TrackTempText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel x:Name="FieldWind" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.wind}">
-                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Wind}" Height="13" Fill="{x:Null}"
-                      Stroke="{StaticResource Text.Secondary}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                <TextBlock Text="{loc:T trackInfo.windShort}" Style="{StaticResource BarCaption}"/>
                 <TextBlock x:Name="WindText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel x:Name="FieldHumidity" Style="{StaticResource BarField}" ToolTip="{loc:T trackInfo.relativeHumidity}">
-                <Path Style="{StaticResource BarGlyph}" Data="{StaticResource Icon.Drop}" Height="13"/>
+                <TextBlock Text="{loc:T trackInfo.humidityShort}" Style="{StaticResource BarCaption}"/>
                 <TextBlock x:Name="HumidityText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
@@ -95,18 +88,15 @@
                 <TextBlock x:Name="TrackUsageText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
-            <!-- Time left and the lap count are what a driver actually glances up for mid-stint, so
-                 they end the bar by default, in primary ink rather than the secondary the weather
-                 fields use. -->
             <StackPanel x:Name="FieldTimeLeft" Style="{StaticResource BarField}">
                 <TextBlock Text="{loc:T trackInfo.timeLeft}" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="TimeRemainingText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
 
             <StackPanel x:Name="FieldLap" Style="{StaticResource BarField}">
                 <TextBlock Text="{loc:T trackInfo.lap}" Style="{StaticResource BarCaption}"/>
-                <TextBlock x:Name="LapText" Text="—" Style="{StaticResource ValueTextSmall}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="LapText" Text="—" Style="{StaticResource BarValue}"/>
             </StackPanel>
         </StackPanel>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

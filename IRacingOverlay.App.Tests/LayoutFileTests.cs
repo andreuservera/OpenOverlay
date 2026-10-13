@@ -39,7 +39,7 @@ public sealed class LayoutFileTests : IDisposable
 
         var relative = root["widgets"]!.AsArray()[0]!.AsObject();
         Assert.Equal(
-            ["type", "x", "y", "scale", "width", "height", "zIndex", "visible", "locked", "opacity", "hideOutsideCar", "config"],
+            ["type", "x", "y", "scale", "width", "height", "zIndex", "visible", "locked", "opacity", "hideOutsideCar", "showHeader", "config"],
             relative.Select(pair => pair.Key));
         Assert.Equal("Relative", (string)relative["type"]!);
         Assert.Equal(40, (double)relative["x"]!);

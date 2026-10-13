@@ -2,10 +2,11 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay">
     <!-- Horizontal padding rebalanced against the larger delta numeral, so the panel keeps its
          original footprint. -->
-    <Border Style="{StaticResource OverlayPanel}">
+    <ov:WidgetFrame Title="{loc:T widget.Delta.name}">
         <Grid>
             <!-- Gain/loss wash rising from the bottom edge: readable in peripheral vision. -->
             <Border x:Name="StateWash" CornerRadius="{DynamicResource Theme.PanelCornerRadius}"/>
@@ -16,5 +17,5 @@
                            HorizontalAlignment="Center"/>
             </StackPanel>
         </Grid>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

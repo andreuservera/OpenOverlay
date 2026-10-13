@@ -271,6 +271,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
             }
 
             _isConnected = value;
+            LiveStatus.IsLive = value;
             OnPropertyChanged();
             OnConnectionChanged();
         }

@@ -74,6 +74,9 @@ public sealed class EditorWidgetItem : INotifyPropertyChanged
     /// <summary>The widget's opacity as the real window applies it: to the background only.</summary>
     public double BackgroundOpacity => _widget.Opacity;
 
+    /// <summary>Whether the widget's frame shows its header strip, as the real window would.</summary>
+    public bool ShowHeader => _widget.ShowsHeader;
+
     public bool IsLocked => _widget.Locked;
 
     public bool IsHidden => !_widget.Visible;

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using IRacingOverlay.App.Overlay;
 using IRacingOverlay.App.ViewModels;
 
 namespace IRacingOverlay.App.Widgets;
@@ -33,34 +34,24 @@ public partial class FuelCalculatorPanel : UserControl
             [FuelCell.Average] = AverageCell,
             [FuelCell.Minimum] = MinimumCell,
             [FuelCell.Maximum] = MaximumCell,
-            [FuelCell.FuelRemaining] = FuelRemainingCell,
-            [FuelCell.FuelToFinish] = FuelToFinishCell,
-            [FuelCell.Refuel] = RefuelCell,
         };
         PropertyChangedEventManager.AddHandler(Options, OnOptionChanged, string.Empty);
         ArrangeCells();
     }
 
-    /// <summary>Puts each group's cells in the options' order, and the leading group above the gap.</summary>
+    /// <summary>The per-lap columns in the options' order. The other blocks have fixed places.</summary>
     private void ArrangeCells()
     {
-        Fill(UsageCells, Options.UsageOrder);
-        Fill(StrategyCells, Options.StrategyOrder);
-        Grid.SetRow(UsageCells, Options.UsageOnTop ? 0 : 2);
-        Grid.SetRow(StrategyCells, Options.UsageOnTop ? 2 : 0);
-    }
-
-    private void Fill(Panel group, IReadOnlyList<FuelCell> order)
-    {
-        if (group.Children.Cast<UIElement>().SequenceEqual(order.Select(cell => _cells[cell])))
+        var order = Options.UsageOrder.Select(cell => _cells[cell]).ToList();
+        if (UsageCells.Children.Cast<UIElement>().SequenceEqual(order))
         {
             return;
         }
 
-        group.Children.Clear();
+        UsageCells.Children.Clear();
         foreach (var cell in order)
         {
-            group.Children.Add(_cells[cell]);
+            UsageCells.Children.Add(cell);
         }
     }
 
@@ -82,8 +73,7 @@ public partial class FuelCalculatorPanel : UserControl
 
     private void OnOptionChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(FuelCalculatorOptions.UsageOrder) or nameof(FuelCalculatorOptions.StrategyOrder) or
-            nameof(FuelCalculatorOptions.UsageOnTop))
+        if (e.PropertyName is nameof(FuelCalculatorOptions.UsageOrder))
         {
             ArrangeCells();
         }
@@ -92,29 +82,39 @@ public partial class FuelCalculatorPanel : UserControl
     public void UpdateState(FuelCalculatorState state)
     {
         LevelText.Text = state.LevelDisplay;
+        // No unit after a "—": there's no amount for it to qualify yet.
+        LevelUnitText.Text = UnitAfter(state.LevelDisplay, state.VolumeUnit);
+        LapsRemainingText.Text = state.LapsRemainingDisplay;
         LastLapText.Text = state.LastLapDisplay;
         AverageText.Text = state.AverageDisplay;
         MinText.Text = state.MinDisplay;
         MaxText.Text = state.MaxDisplay;
-        // No unit after a "—": there's no amount for it to qualify yet.
-        ShowUnit(LevelUnitText, state.LevelDisplay, state.VolumeUnit);
-        ShowUnit(LastLapUnitText, state.LastLapDisplay, state.VolumeUnit);
-        ShowUnit(AverageUnitText, state.AverageDisplay, state.VolumeUnit);
-        ShowUnit(MinUnitText, state.MinDisplay, state.VolumeUnit);
-        ShowUnit(MaxUnitText, state.MaxDisplay, state.VolumeUnit);
-        LapsRemainingText.Text = state.LapsRemainingDisplay;
-        FuelDeltaText.Text = state.FuelDeltaValueDisplay;
-        FuelDeltaUnitText.Text = state.FuelDeltaUnitDisplay;
-        RefuelText.Text = state.RefuelValueDisplay;
-        RefuelUnitText.Text = state.RefuelUnitDisplay;
+        FuelToFinishText.Text = state.FuelToFinishValueDisplay;
+        FuelToFinishUnitText.Text = UnitAfter(state.FuelToFinishValueDisplay, state.VolumeUnit);
 
-        // The header spells out which window the average covers, so the number is never ambiguous.
+        // What to add is an amount with a "+", in the warning amber; "not needed" and "full" stay text.
+        RefuelText.Text = state.NeedsRefuel ? $"+{state.RefuelValueDisplay}" : state.RefuelValueDisplay;
+        RefuelUnitText.Text = state.RefuelUnitDisplay.Length > 0 ? $" {state.RefuelUnitDisplay}" : "";
+        RefuelLine.Foreground = state.NeedsRefuel ? StatePalette.Warning : StatePalette.TextPrimary;
+
+        // The caption spells out which window the average covers, so the number is never ambiguous.
         AverageLabel.Text = Options.AverageSource.Label();
 
         var trackWidth = LevelTrack.ActualWidth;
         LevelFill.Width = trackWidth > 0 ? Math.Clamp(state.LevelPct, 0, 1) * trackWidth : 0;
+        var neededPct = state.CanProjectToFinish && state.TankCapacityLiters > 0
+            ? state.FuelToFinishLiters / state.TankCapacityLiters
+            : double.NaN;
+        if (trackWidth > 0 && neededPct is > 0 and <= 1)
+        {
+            NeededMark.Margin = new Thickness(Math.Max(0, neededPct * trackWidth - 1), 0, 0, 0);
+            NeededMark.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            NeededMark.Visibility = Visibility.Collapsed;
+        }
     }
 
-    private static void ShowUnit(TextBlock unit, string value, string volumeUnit) =>
-        unit.Text = value == "—" ? "" : volumeUnit;
+    private static string UnitAfter(string value, string volumeUnit) => value == "—" ? "" : $" {volumeUnit}";
 }

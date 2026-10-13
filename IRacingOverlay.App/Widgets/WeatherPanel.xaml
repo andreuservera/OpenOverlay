@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay">
     <!-- Four cards — track temperature, air temperature, rain, wind — inside one frame, stacked, or
          side by side in horizontal mode. Every element binds its own toggle and each card's flag is
          derived in WeatherOptions; SpacedStackPanel only spaces visible children, so hiding a card
@@ -33,18 +34,16 @@
         </Style>
         <Style x:Key="CardStack" TargetType="w:SpacedStackPanel">
             <Setter Property="Spacing" Value="5"/>
+            <Setter Property="DividerBrush" Value="{StaticResource Surface.Divider}"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Options.Compact, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                     <Setter Property="Orientation" Value="Horizontal"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
-        <!-- A card is an inset well inside the widget's frame, like the pedal trace's plot. -->
+        <!-- A section straight on the panel; the stack draws a hairline between sections, no boxes
+             inside the box. -->
         <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource Surface.Inset}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Surface.ChipBorder}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource Radius.Row}"/>
             <Setter Property="Padding" Value="10,6,10,8"/>
         </Style>
         <!-- A card's contents: top-aligned when stacked; centred side by side, where every card
@@ -117,7 +116,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Style="{StaticResource OverlayPanel}" Padding="5">
+    <ov:WidgetFrame Padding="5" Title="{loc:T widget.Weather.name}">
     <w:SpacedStackPanel Style="{StaticResource CardStack}">
         <!-- Track temperature: a road in perspective, its lane dashes cut out of the surface. -->
         <Border Style="{StaticResource Card}" ToolTip="{loc:T weather.trackSurfaceTemperature}"
@@ -236,5 +235,5 @@
             </Grid>
         </Border>
     </w:SpacedStackPanel>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

@@ -53,10 +53,10 @@ public class StandingsRowTests
     }
 
     [Theory]
-    [InlineData(91.2, 90.5, false, "#C4CCD4")] // slower than their best: plain
-    [InlineData(90.5, 90.5, false, "#34D399")] // personal best: green
+    [InlineData(91.2, 90.5, false, "#B4BCC8")] // slower than their best: plain
+    [InlineData(90.5, 90.5, false, "#3DD68C")] // personal best: green
     [InlineData(90.5, 90.5, true, "#B58CFF")]  // personal best that is also the session's fastest: purple
-    [InlineData(0, 0, false, "#C4CCD4")]       // no lap yet
+    [InlineData(0, 0, false, "#B4BCC8")]       // no lap yet
     public void LastLapForeground_MarksPersonalAndSessionBests(double last, double best, bool fastest, string expected)
     {
         Assert.Equal(expected, Row(lastLap: last, bestLap: best, sessionFastest: fastest).LastLapForeground);
@@ -122,11 +122,11 @@ public class StandingsRowTests
     public void IRatingDeltaForeground_PositiveIsGreen_NegativeIsRed_NoSwingIsNeutral()
     {
         // The ViewModel hands the UI a colour string, so these have to agree with the palette by hand.
-        Assert.Equal("#34D399", Row(iRatingDelta: 5).IRatingDeltaForeground);
-        Assert.Equal("#FF6B6B", Row(iRatingDelta: -5).IRatingDeltaForeground);
-        Assert.Equal("#8E99A5", Row(iRatingDelta: 0).IRatingDeltaForeground);
+        Assert.Equal("#3DD68C", Row(iRatingDelta: 5).IRatingDeltaForeground);
+        Assert.Equal("#F26D6D", Row(iRatingDelta: -5).IRatingDeltaForeground);
+        Assert.Equal("#8B95A3", Row(iRatingDelta: 0).IRatingDeltaForeground);
         // Colour follows the rounded value too, so a dash is never tinted as a gain.
-        Assert.Equal("#8E99A5", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
+        Assert.Equal("#8B95A3", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
     }
 
     [Theory]

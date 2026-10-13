@@ -4,10 +4,11 @@
              xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay">
     <!-- Columns, cell styles and the row template all come from Themes/DriverTable.xaml, merged
          application-wide and shared with RelativePanel. -->
-    <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
+    <ov:WidgetFrame Padding="10,8" Title="{loc:T widget.Standings.name}">
         <DockPanel>
             <!-- The session information itself: kept here, collapsed, until TableInfoBands moves each
                  element into the slot the options give it. -->
@@ -228,5 +229,5 @@
                 </ItemsControl>
             </Grid>
         </DockPanel>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

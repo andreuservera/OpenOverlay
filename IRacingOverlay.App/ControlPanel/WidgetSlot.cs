@@ -27,6 +27,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
     private bool _hideOutsideCar;
     private WidgetScale _scale;
     private double _opacity;
+    private bool _showHeader;
     private bool _isEditMode;
     private bool _isDriving;
     private bool _isSuppressed;
@@ -44,6 +45,7 @@ public sealed class WidgetSlot : INotifyPropertyChanged
         _hideOutsideCar = HideOutsideCarStore.Get(descriptor.Key);
         _scale = ScaleLevelStore.Get(descriptor.ScaleKey);
         _opacity = WidgetOpacityStore.Get(descriptor.Key);
+        _showHeader = WidgetHeaderStore.Get(descriptor.Key);
     }
 
     public WidgetDescriptor Descriptor { get; }
@@ -157,6 +159,32 @@ public sealed class WidgetSlot : INotifyPropertyChanged
             else
             {
                 WidgetOpacityStore.Save(Key, clamped);
+            }
+
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Whether the widget shows its header strip. Persisted here as well as by the window,
+    /// for the same reason as <see cref="Opacity"/>.</summary>
+    public bool ShowHeader
+    {
+        get => _showHeader;
+        set
+        {
+            if (_showHeader == value)
+            {
+                return;
+            }
+
+            _showHeader = value;
+            if (_window is not null)
+            {
+                _window.ShowHeader = value;
+            }
+            else
+            {
+                WidgetHeaderStore.Save(Key, value);
             }
 
             OnPropertyChanged();

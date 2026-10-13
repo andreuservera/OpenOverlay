@@ -29,50 +29,36 @@
                 <GradientStop Color="#161C24" Offset="0"/>
                 <GradientStop Color="#05070A" Offset="1"/>
             </RadialGradientBrush>
-            <!-- Deep graphite with a whisper of blue, lit from above: the top of every panel sits a
-                 shade lighter than the bottom, which reads as depth without a drop shadow (a shadow
-                 would be clipped by the widget window's own edge anyway). Kept at ~95% opacity: a
-                 bright sky or a white car behind the overlay must not eat the contrast of small text. -->
-            <LinearGradientBrush x:Key="Theme.PanelBackground" StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#F4161B22" Offset="0"/>
-                <GradientStop Color="#F20D1015" Offset="1"/>
-            </LinearGradientBrush>
-            <!-- Hairline edge, brighter along the top: the "machined bezel" highlight broadcast
-                 graphics use instead of a heavy outline. -->
-            <LinearGradientBrush x:Key="Theme.PanelBorder" StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#4DFFFFFF" Offset="0"/>
-                <GradientStop Color="#1FFFFFFF" Offset="0.35"/>
-                <GradientStop Color="#14FFFFFF" Offset="1"/>
-            </LinearGradientBrush>
+            <!-- The widget frame (docs/widgets-style.md): bg #0E1116 at 84 %, a 1px edge in the border
+                 colour at 70 %, 8px corners. Flat, no gradients: the opacity setting fades exactly
+                 this background (see Overlay/BackgroundOpacity.cs) and never the data on it. -->
+            <SolidColorBrush x:Key="Theme.PanelBackground" Color="#D60E1116"/>
+            <SolidColorBrush x:Key="Theme.PanelBorder" Color="#B3262C36"/>
+            <!-- The optional header strip: surface #161A21 at 70 %, over the panel background. -->
+            <SolidColorBrush x:Key="Theme.HeaderBackground" Color="#B3161A21"/>
             <Thickness x:Key="Theme.PanelBorderThickness">1</Thickness>
             <CornerRadius x:Key="Theme.PanelCornerRadius">8</CornerRadius>
-            <SolidColorBrush x:Key="Theme.LabelForeground" Color="#A9B3BE"/>
+            <!-- Widget titles: text-2. -->
+            <SolidColorBrush x:Key="Theme.LabelForeground" Color="#B4BCC8"/>
 
             <!--
-              Four font roles rather than one, so text is chosen by the job it does:
+              Font roles, so text is chosen by the job it does:
                 FontFamily        — prose and anything not covered below.
                 LabelFontFamily   — titles, column headers, captions.
                 NumericFontFamily — the hero readouts (speed, RPM, delta, fuel, incidents).
-                DataFontFamily    — table cells (driver names, lap times, gaps).
-              Bahnschrift is the DIN 1451 industrial/instrument face bundled with Windows 10 1709+; its
-              condensed cuts fit more digits into a fixed column than Segoe UI or Consolas at the same
-              point size. Each list keeps a plain-Windows fallback so nothing ever renders in Times.
+                DataFontFamily    — table cells and values.
+              Inside the widgets everything is Barlow Semi Condensed (bundled, SIL OFL, Medium /
+              SemiBold / Bold): the same face as the landing page's widgets, with tabular figures so
+              gaps and times never shift sideways. Bahnschrift stays as the plain-Windows fallback.
             -->
-            <FontFamily x:Key="Theme.FontFamily">Bahnschrift, Segoe UI</FontFamily>
-            <!-- Titles, column headers and captions: the broadcast-caption cut. Semi-condensed is
-                 what lets the type scale grow a step without any label getting wider. -->
-            <FontFamily x:Key="Theme.LabelFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold</FontFamily>
-            <FontFamily x:Key="Theme.NumericFontFamily">Bahnschrift SemiBold SemiCondensed, Bahnschrift SemiBold, Segoe UI Semibold, Consolas</FontFamily>
-            <!-- Driver tables: names, in the case they were registered in, and the figures on the same
-                 row, in one face. Barlow Semi Condensed (bundled) at medium weight: open counters and
-                 a tall x-height read cleanly from across the desk, where Bahnschrift's semibold cut
-                 looked heavy and its regular cut faint. -->
+            <FontFamily x:Key="Theme.FontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiCondensed, Segoe UI</FontFamily>
+            <FontFamily x:Key="Theme.LabelFontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiBold SemiCondensed, Segoe UI Semibold</FontFamily>
+            <FontFamily x:Key="Theme.NumericFontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiBold SemiCondensed, Segoe UI Semibold</FontFamily>
             <FontFamily x:Key="Theme.NameFontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiCondensed, Segoe UI</FontFamily>
             <FontFamily x:Key="Theme.TableNumericFontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiCondensed, Segoe UI</FontFamily>
-            <FontFamily x:Key="Theme.DataFontFamily">Bahnschrift SemiCondensed, Bahnschrift, Consolas</FontFamily>
-            <!-- Just for the big gear numeral — the most condensed/heaviest cut available, so the
-                 single most-glanced-at character on the whole overlay is also the boldest. -->
-            <FontFamily x:Key="Theme.GearFontFamily">Bahnschrift SemiBold Condensed, Bahnschrift Condensed, Impact</FontFamily>
+            <FontFamily x:Key="Theme.DataFontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiCondensed, Segoe UI</FontFamily>
+            <!-- The big gear numeral: the same face at its heaviest cut. -->
+            <FontFamily x:Key="Theme.GearFontFamily">/OpenOverlay;component/Assets/Fonts/#Barlow Semi Condensed, Bahnschrift SemiBold Condensed, Impact</FontFamily>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

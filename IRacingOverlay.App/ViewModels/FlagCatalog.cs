@@ -66,19 +66,19 @@ public sealed record FlagDefinition(
 
 public static class FlagCatalog
 {
-    private const string FlagGreen = "#1FAA59";
-    private const string FlagYellow = "#F7C600";
+    private const string FlagGreen = "#3DD68C";
+    private const string FlagYellow = "#F5A524";
     private const string FlagRed = "#E03131";
     private const string FlagBlue = "#1C64D9";
     private const string FlagOrange = "#FF7A1A";
-    private const string FlagWhite = "#F2F5F8";
+    private const string FlagWhite = "#F2F4F7";
     private const string FlagBlack = "#0B0D10";
     private const string Board = "#1B2129";
 
-    private const string AccentGreen = "#34D399";
+    private const string AccentGreen = "#3DD68C";
     private const string AccentRed = "#F04438";
     private const string AccentBlue = "#3D8BFF";
-    private const string AccentNeutral = "#C4CCD4";
+    private const string AccentNeutral = "#B4BCC8";
 
     /// <summary>In priority order: when flags compete for a group or for the widget's space, the
     /// earlier one wins, and the widget lists them in this order.</summary>

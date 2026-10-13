@@ -116,6 +116,8 @@ public sealed class LayoutEditorModel
 
     public void SetHideOutsideCar(string type, bool hide) => ChangeWidget(type, widget => widget.HideOutsideCar = hide);
 
+    public void SetShowHeader(string type, bool show) => ChangeWidget(type, widget => widget.ShowHeader = show);
+
     public void SetLocked(string type, bool locked) => ChangeWidget(type, widget => widget.Locked = locked);
 
     public void SetVisible(string type, bool visible) => ChangeWidget(type, widget => widget.Visible = visible);

@@ -275,6 +275,7 @@ public partial class LayoutEditorWindow : Window
         [
             new SettingsGroup(Loc.T("editor.placement"), Loc.T("editor.placement.hint"))
                 .With(
+                [
                     new SliderSetting(
                         Loc.T("placement.opacity"),
                         null,
@@ -283,11 +284,19 @@ public partial class LayoutEditorWindow : Window
                         1,
                         0.01,
                         value => ApplySetting(() => _model.SetOpacity(type, value))),
+                    .. item.Descriptor.HasHeader
+                        ? [new ToggleSetting(
+                            Loc.T("placement.showHeader"),
+                            Loc.T("placement.showHeader.hint"),
+                            widget.ShowsHeader,
+                            value => ApplySetting(() => _model.SetShowHeader(type, value)))]
+                        : Array.Empty<SettingItem>(),
                     new ToggleSetting(
                         Loc.T("placement.hideOutsideCar"),
                         Loc.T("placement.hideOutsideCar.hint"),
                         widget.HideOutsideCar,
-                        value => ApplySetting(() => _model.SetHideOutsideCar(type, value)))),
+                        value => ApplySetting(() => _model.SetHideOutsideCar(type, value))),
+                ]),
             .. WidgetSettings.For(type, item.SettingsContext(() => ApplySetting(() => _model.SetConfig(type, item.ReadConfig())))),
         ];
 
@@ -341,7 +350,7 @@ public partial class LayoutEditorWindow : Window
     }
 
     private static string SettingsBasis(LayoutWidget widget) =>
-        string.Create(CultureInfo.InvariantCulture, $"{widget.Config.ToJsonString()}|{widget.Opacity:R}|{widget.HideOutsideCar}");
+        string.Create(CultureInfo.InvariantCulture, $"{widget.Config.ToJsonString()}|{widget.Opacity:R}|{widget.ShowsHeader}|{widget.HideOutsideCar}");
 
     private EditorWidgetItem? SelectedItem => _items.FirstOrDefault(item => item.Type == _selected);
 

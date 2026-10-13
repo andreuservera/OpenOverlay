@@ -131,6 +131,9 @@ public partial class WidgetPreview : UserControl
             case nameof(WidgetSlot.Opacity):
                 ApplyOpacity();
                 break;
+            case nameof(WidgetSlot.ShowHeader):
+                ApplyHeader();
+                break;
         }
     }
 
@@ -201,6 +204,7 @@ public partial class WidgetPreview : UserControl
         Backdrop.Visibility = _panel is null ? Visibility.Collapsed : Visibility.Visible;
         ApplyScale();
         ApplyOpacity();
+        ApplyHeader();
         Refresh();
     }
 
@@ -215,6 +219,8 @@ public partial class WidgetPreview : UserControl
     /// is to answer "what will this look like while I'm racing", and that is the locked state. Applied
     /// the way the window applies it: to the background only.</summary>
     private void ApplyOpacity() => BackgroundOpacity.SetValue(Stage, _slot?.Opacity ?? 1.0);
+
+    private void ApplyHeader() => WidgetFrame.SetShowHeader(Stage, _slot?.ShowHeader ?? WidgetHeaderStore.Default);
 
     /// <summary>Pushes the mock state into whatever panel is on the stage. Cheap enough to call on
     /// every option change: it is one pass over at most a couple of dozen rows, against a visual

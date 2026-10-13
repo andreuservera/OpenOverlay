@@ -112,8 +112,8 @@ public sealed class FuelCalculatorOptions : INotifyPropertyChanged
         set => SetField(ref _showRefuel, value);
     }
 
-    /// <summary>Stacked tall and narrow (headline on top, cells two to a row) instead of the default
-    /// wide strip.</summary>
+    /// <summary>Stacked tall and narrow instead of the old wide strip. Kept so saved settings and
+    /// layouts still read; the panel has a single arrangement now.</summary>
     public bool Vertical
     {
         get => _vertical;
@@ -123,6 +123,9 @@ public sealed class FuelCalculatorOptions : INotifyPropertyChanged
     /// <summary>True when at least one of the four per-lap usage figures is on — the row's shared
     /// header/label strip is pointless when they're all off.</summary>
     public bool ShowAnyUsage => ShowLastLap || ShowAverage || ShowMinimum || ShowMaximum;
+
+    /// <summary>True when the footer (to finish, refuel) has anything to show, so its rule goes too.</summary>
+    public bool ShowAnyFooter => ShowFuelToFinish || ShowRefuel;
 
     /// <summary>The usage cells left to right (or top to bottom). Assigning keeps only usage cells,
     /// once each, and appends any missing in their default place.</summary>
@@ -257,6 +260,11 @@ public sealed class FuelCalculatorOptions : INotifyPropertyChanged
         if (propertyName is nameof(ShowLastLap) or nameof(ShowAverage) or nameof(ShowMinimum) or nameof(ShowMaximum))
         {
             OnPropertyChanged(nameof(ShowAnyUsage));
+        }
+
+        if (propertyName is nameof(ShowFuelToFinish) or nameof(ShowRefuel))
+        {
+            OnPropertyChanged(nameof(ShowAnyFooter));
         }
     }
 
