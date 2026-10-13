@@ -69,6 +69,7 @@ public sealed partial class ControlPanelViewModel
                 Y = y - monitor.Top,
                 Scale = slot.Scale,
                 Opacity = slot.Opacity,
+                ShowHeader = slot.ShowHeader,
                 Config = codecs[slot.Key].Read(),
             });
         }

@@ -2,7 +2,9 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization">
     <UserControl.Resources>
         <Style x:Key="PedalPercent" TargetType="TextBlock" BasedOn="{StaticResource DataCell}">
             <Setter Property="FontFamily" Value="{DynamicResource Theme.NumericFontFamily}"/>
@@ -25,14 +27,15 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Style="{StaticResource OverlayPanel}" Padding="12,10">
+    <ov:WidgetFrame Padding="12,10" Title="{loc:T widget.PedalTrace.name}">
         <!-- The blocks are placed by the code-behind, in the order and with the visibility the
              options give; the trace takes whatever width is left. -->
         <Grid x:Name="Strip">
-            <!-- Gear: the number the eye goes to first, in the accent colour. -->
+            <!-- Gear: the number the eye goes to first — big and white; the accent is kept for
+                 what is active or selected. -->
             <TextBlock x:Name="GearBlock" Text="–" MinWidth="34" TextAlignment="Center" VerticalAlignment="Center"
                        FontFamily="{DynamicResource Theme.NumericFontFamily}" FontSize="52" FontWeight="Bold"
-                       Foreground="{StaticResource State.Accent}"/>
+                       Foreground="{StaticResource Text.Primary}"/>
 
             <!-- Speed: a fixed width, so the strip doesn't shift as the digits change. -->
             <StackPanel x:Name="SpeedBlock" Width="66" VerticalAlignment="Center">
@@ -101,5 +104,5 @@
                 </Border>
             </Grid>
         </Grid>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

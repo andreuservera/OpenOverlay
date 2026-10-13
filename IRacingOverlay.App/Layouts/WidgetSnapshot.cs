@@ -13,7 +13,8 @@ public sealed record WidgetSnapshot(
     WidgetScale Scale,
     double Opacity,
     bool HideOutsideCar,
-    JsonObject Config);
+    JsonObject Config,
+    bool? ShowHeader = null);
 
 /// <summary>The layout currently open and the snapshot to restore when it closes. Persisted so the
 /// restore still works after the app is restarted with the layout open.</summary>

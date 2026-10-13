@@ -16,7 +16,7 @@ namespace IRacingOverlay.App.Widgets;
 public sealed class CarBrandIcon : FrameworkElement
 {
     private static readonly ConcurrentDictionary<string, LogoShape?> LogoCache = new();
-    private static readonly Brush FallbackInk = Frozen(Color.FromRgb(0xC4, 0xCC, 0xD4));
+    private static readonly Brush FallbackInk = Frozen(Color.FromRgb(0xB4, 0xBC, 0xC8));
     private static readonly Regex PathData = new(@"\sd=""([^""]+)""", RegexOptions.CultureInvariant);
     private static readonly Regex ScaleData = new(@"\sdata-scale=""([0-9.]+)""", RegexOptions.CultureInvariant);
 

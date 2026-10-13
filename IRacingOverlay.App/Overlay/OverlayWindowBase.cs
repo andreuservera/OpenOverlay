@@ -29,6 +29,7 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
     private bool _constrainWhenShown;
     private ScalablePanel? _scaler;
     private double _widgetOpacity;
+    private bool _showHeader;
 
     protected OverlayWindowBase(string widgetName, double defaultLeft = 100, double defaultTop = 100)
     {
@@ -51,6 +52,8 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
         SizeToContent = SizeToContent.WidthAndHeight;
 
         _widgetOpacity = WidgetOpacityStore.Get(_widgetName);
+        _showHeader = WidgetHeaderStore.Get(_widgetName);
+        WidgetFrame.SetShowHeader(this, _showHeader);
 
         WindowStartupLocation = WindowStartupLocation.Manual;
         var saved = WidgetLayoutStore.Get(_widgetName);
@@ -118,6 +121,25 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
             _widgetOpacity = clamped;
             WidgetOpacityStore.Save(_widgetName, clamped);
             ApplyOpacity();
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Whether the widget's frame shows its header strip (name and live dot). Reaches the
+    /// panel through the inherited <see cref="WidgetFrame.ShowHeaderProperty"/>.</summary>
+    public bool ShowHeader
+    {
+        get => _showHeader;
+        set
+        {
+            if (_showHeader == value)
+            {
+                return;
+            }
+
+            _showHeader = value;
+            WidgetHeaderStore.Save(_widgetName, value);
+            WidgetFrame.SetShowHeader(this, value);
             OnPropertyChanged();
         }
     }

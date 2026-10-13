@@ -66,6 +66,7 @@ public static class LayoutFile
                 widget.Locked,
                 Math.Clamp(Finite(widget.Opacity, WidgetOpacityStore.Default), 0, 1),
                 widget.HideOutsideCar,
+                widget.ShowsHeader,
                 WithoutSensitive(widget.Config, SensitiveFieldsOf(widget.Type, codecs)))).ToList());
 
         return JsonSerializer.Serialize(file, JsonOptions);
@@ -254,6 +255,7 @@ public static class LayoutFile
             Locked = OptionalBool(entry, "locked", $"whether {what} is locked") ?? false,
             Opacity = opacity,
             HideOutsideCar = OptionalBool(entry, "hideOutsideCar", $"whether {what} hides outside the car") ?? false,
+            ShowHeader = OptionalBool(entry, "showHeader", $"whether {what} shows its header") ?? WidgetHeaderStore.DefaultFor(type),
             Config = WithoutSensitive(config, sensitive),
             // Its sensitive fields are empty whatever the file had: they need filling in again.
             RequiresConfiguration = sensitive.Count > 0,
@@ -351,5 +353,6 @@ public static class LayoutFile
         bool Locked,
         double Opacity,
         bool HideOutsideCar,
+        bool ShowHeader,
         JsonObject Config);
 }

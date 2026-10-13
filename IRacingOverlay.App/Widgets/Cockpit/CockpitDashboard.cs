@@ -45,10 +45,10 @@ public sealed class CockpitDashboard : FrameworkElement
     // Space the label takes at the top of a card.
     private const double LabelBand = 12;
 
-    private const string ValueColor = "#F2F5F8";
-    private const string LabelColor = "#8E99A5";
-    private const string TrackColor = "#232931";
-    private const string NeutralGauge = "#C4CCD4";
+    private const string ValueColor = "#F2F4F7";
+    private const string LabelColor = "#8B95A3";
+    private const string TrackColor = "#1B2029";
+    private const string NeutralGauge = "#B4BCC8";
     private const string RadarColor = "#F5A524";
     private const string ScreenFill = "#F5050607";
     private const string ScreenEdge = "#5A626C";
@@ -61,7 +61,7 @@ public sealed class CockpitDashboard : FrameworkElement
     private const double ItalicSkewDegrees = -12;
 
     // 5 green, 5 yellow, 4 red; every lamp red at the shift point.
-    private static readonly string[] LampColors = ["#34D399", "#FFD24D", "#F04438"];
+    private static readonly string[] LampColors = ["#3DD68C", "#FFD24D", "#F04438"];
     private const string ShiftPointColor = "#F04438";
 
     private static readonly ConcurrentDictionary<string, Brush> BrushCache = new();
@@ -183,10 +183,12 @@ public sealed class CockpitDashboard : FrameworkElement
     /// <summary>How far the opacity setting has faded the background, 0 to 1.</summary>
     private double Fade => PanelBackground.Opacity;
 
-    private Typeface ValueFace => _valueFace ??= new Typeface(ValueFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    // The weights are asked for explicitly: Barlow comes as one family in several weights, so a
+    // Normal request would land on its lightest bundled cut. Figures in Bold, labels in SemiBold;
+    // a family that is already a heavy cut (the Bahnschrift fallbacks) simply keeps its own.
+    private Typeface ValueFace => _valueFace ??= new Typeface(ValueFont, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
 
-    // The label family is already a semibold, semi-condensed cut.
-    private Typeface LabelFace => _labelFace ??= new Typeface(LabelFont, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+    private Typeface LabelFace => _labelFace ??= new Typeface(LabelFont, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
 
     private double PixelsPerDip => VisualTreeHelper.GetDpi(this).PixelsPerDip;
 
@@ -347,8 +349,8 @@ public sealed class CockpitDashboard : FrameworkElement
 
     private static string ToneColor(CockpitTone tone) => tone switch
     {
-        CockpitTone.Positive => "#34D399",
-        CockpitTone.Negative => "#FF6B6B",
+        CockpitTone.Positive => "#3DD68C",
+        CockpitTone.Negative => "#F26D6D",
         CockpitTone.Warning => "#F5A524",
         CockpitTone.Critical => "#F04438",
         _ => ValueColor,

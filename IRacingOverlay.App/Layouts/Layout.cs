@@ -44,6 +44,14 @@ public sealed class LayoutWidget
 
     public double Opacity { get; set; } = WidgetOpacityStore.Default;
 
+    /// <summary>Whether its frame shows the header strip; null for the widget's own default (layouts
+    /// saved before the switch existed). Ignored by widgets that have none.</summary>
+    public bool? ShowHeader { get; set; }
+
+    /// <summary><see cref="ShowHeader"/>, or the widget's default when it was never set.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ShowsHeader => ShowHeader ?? WidgetHeaderStore.DefaultFor(Type);
+
     public bool HideOutsideCar { get; set; }
 
     /// <summary>The widget's own options, in the shape its <c>IWidgetConfigCodec</c> reads and writes.</summary>
@@ -64,6 +72,7 @@ public sealed class LayoutWidget
         Visible = Visible,
         Locked = Locked,
         Opacity = Opacity,
+        ShowHeader = ShowHeader,
         HideOutsideCar = HideOutsideCar,
         Config = (JsonObject)Config.DeepClone(),
         RequiresConfiguration = RequiresConfiguration,

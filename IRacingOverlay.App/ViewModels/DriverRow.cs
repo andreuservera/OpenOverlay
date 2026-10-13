@@ -96,7 +96,7 @@ public abstract class DriverRow
 
     public string TireCompoundLetter => TireCompound?.Letter ?? "";
 
-    public string TireCompoundColor => TireCompound?.Color ?? "#8E99A5";
+    public string TireCompoundColor => TireCompound?.Color ?? "#8B95A3";
 
     /// <summary>The car's make, or the placeholder for one the app doesn't know.</summary>
     public CarBrand? CarBrand { get; init; }
@@ -150,13 +150,13 @@ public abstract class DriverRow
 
     // Purple is reserved for the fastest lap of each class — the one lap time worth colouring.
     // Every other best lap is just secondary data.
-    public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#C4CCD4";
+    public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#B4BCC8";
 
     // Broadcast convention: green when the lap just completed is the driver's personal best, purple
     // when that personal best is also the fastest lap of their class.
     public string LastLapForeground => !IsLastLapPersonalBest
-        ? "#C4CCD4"
-        : IsSessionFastestLap ? "#B58CFF" : "#34D399";
+        ? "#B4BCC8"
+        : IsSessionFastestLap ? "#B58CFF" : "#3DD68C";
 
     private bool IsLastLapPersonalBest =>
         LastLapTime > 0 && BestLapTime > 0 && Math.Abs(LastLapTime - BestLapTime) < 0.0005;
@@ -194,8 +194,8 @@ public abstract class DriverRow
     public int IRatingTrend => HasIRatingDelta ? Math.Sign(RoundedIRatingDelta) : 0;
 
     public string IRatingDeltaForeground => !HasIRatingDelta
-        ? "#8E99A5"
-        : RoundedIRatingDelta > 0 ? "#34D399" : "#FF6B6B";
+        ? "#8B95A3"
+        : RoundedIRatingDelta > 0 ? "#3DD68C" : "#F26D6D";
 
     // Rounded before the zero test, so a swing of 0.4 shows a dash rather than "+0".
     private double RoundedIRatingDelta => Math.Round(IRatingDelta);
@@ -223,14 +223,8 @@ public abstract class DriverRow
     /// <summary>+1 gained, -1 lost, 0 unchanged — picks the arrow, as <see cref="IRatingTrend"/> does.</summary>
     public int PlacesGainedTrend => Math.Sign(PlacesGained);
 
-    /// <summary>The leader of the race — or of the class, in multiclass — gets the accent colour on
-    /// their position number. Marking them there rather than with another row background keeps the
-    /// table calm while still calling them out. Row states (player, pits, class) are drawn by the
-    /// row template in Themes/DriverTable.xaml.</summary>
-    public string PositionForeground => RankInOwnRace == 1 ? "#FFD24D" : "#F2F5F8";
-
     /// <summary>The gap is the number a driver reads the table for, so it gets primary ink.</summary>
-    public virtual string GapForeground => "#F2F5F8";
+    public virtual string GapForeground => "#F2F4F7";
 
     /// <summary>
     /// Abbreviates from the front once a name is too long for the driver column: "Maria Garcia

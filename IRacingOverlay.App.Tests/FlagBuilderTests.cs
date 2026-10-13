@@ -263,6 +263,6 @@ public class FlagBuilderTests
         var furled = Assert.Single(Shown(Furled));
 
         Assert.Equal("#0B0D10", furled.BackgroundColor);
-        Assert.Equal("#F2F5F8", furled.ForegroundColor);
+        Assert.Equal("#F2F4F7", furled.ForegroundColor);
     }
 }

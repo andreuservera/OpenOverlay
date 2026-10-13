@@ -28,7 +28,7 @@ public sealed class WidgetSettingsTests
     [Theory]
     [InlineData(WidgetCatalog.Standings, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
     [InlineData(WidgetCatalog.Relative, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
-    [InlineData(WidgetCatalog.FuelCalculator, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
+    [InlineData(WidgetCatalog.FuelCalculator, new[] { "CONTENT", "BEHAVIOR" })]
     [InlineData(WidgetCatalog.Flag, new[] { "CONTENT", "APPEARANCE", "BEHAVIOR" })]
     [InlineData(WidgetCatalog.Cockpit, new[] { "CONTENT" })]
     [InlineData(WidgetCatalog.PedalTrace, new[] { "CONTENT" })]

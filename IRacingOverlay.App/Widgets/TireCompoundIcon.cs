@@ -28,7 +28,7 @@ public sealed class TireCompoundIcon : FrameworkElement
 
     public static readonly DependencyProperty InkProperty = DependencyProperty.Register(
         nameof(Ink), typeof(string), typeof(TireCompoundIcon),
-        new FrameworkPropertyMetadata("#C4CCD4", FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata("#B4BCC8", FrameworkPropertyMetadataOptions.AffectsRender));
 
     public string Letter
     {

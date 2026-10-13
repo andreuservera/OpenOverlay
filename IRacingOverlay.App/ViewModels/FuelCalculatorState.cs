@@ -90,13 +90,16 @@ public sealed class FuelCalculatorState
     /// <summary>The number of <see cref="FuelDeltaDisplay"/> alone, so the panel can set the unit
     /// smaller beside it.</summary>
     public string FuelDeltaValueDisplay => CanProjectToFinish
-        ? $"{(FuelDeltaLiters >= 0 ? "+" : "-")}{Format(Math.Abs(FuelDeltaLiters), "0.0")}"
+        ? $"{(FuelDeltaLiters >= 0 ? "+" : "\u2212")}{Format(Math.Abs(FuelDeltaLiters), "0.0")}"
         : "—";
 
     /// <summary>Unit after <see cref="FuelDeltaValueDisplay"/>; empty when there's no number.</summary>
     public string FuelDeltaUnitDisplay => CanProjectToFinish ? VolumeUnit : "";
 
     public string FuelToFinishDisplay => CanProjectToFinish ? $"{Format(FuelToFinishLiters, "0.0")} {VolumeUnit}" : "—";
+
+    /// <summary>The number of <see cref="FuelToFinishDisplay"/> alone, so the panel can set the unit.</summary>
+    public string FuelToFinishValueDisplay => CanProjectToFinish ? Format(FuelToFinishLiters, "0.0") : "—";
 
     public string RefuelDisplay => WithUnit(RefuelValueDisplay, RefuelUnitDisplay);
 

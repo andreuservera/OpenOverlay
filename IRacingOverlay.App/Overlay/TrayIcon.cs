@@ -167,10 +167,10 @@ internal sealed class TrayIcon : IDisposable
 
     private static Drawing.Color DotColor(TrayStatus status) => status switch
     {
-        TrayStatus.Running => Drawing.Color.FromArgb(0x34, 0xD3, 0x99),
+        TrayStatus.Running => Drawing.Color.FromArgb(0x3D, 0xD6, 0x8C),
         TrayStatus.OverlaysHidden => Drawing.Color.FromArgb(0xF5, 0xA5, 0x24),
         TrayStatus.Error => Drawing.Color.FromArgb(0xF0, 0x44, 0x38),
-        _ => Drawing.Color.FromArgb(0x8E, 0x99, 0xA5),
+        _ => Drawing.Color.FromArgb(0x8B, 0x95, 0xA3),
     };
 
     [DllImport("user32.dll")]

@@ -716,6 +716,7 @@ public sealed partial class ControlPanelViewModel
             Type = type,
             Scale = slot.Scale,
             Opacity = slot.Opacity,
+            ShowHeader = slot.ShowHeader,
             HideOutsideCar = slot.HideOutsideCar,
             Config = CreateConfigCodecs()[type].Read(),
         };

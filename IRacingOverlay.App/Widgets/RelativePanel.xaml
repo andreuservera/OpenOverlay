@@ -3,11 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
              xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay">
     <!-- Same columns, cell styles and row template as StandingsPanel, from the shared
          Themes/DriverTable.xaml. The two tables differ only in what their GAP column means and in
          which rows the builder hands them. -->
-    <Border Style="{StaticResource OverlayPanel}" Padding="10,8">
+    <ov:WidgetFrame Padding="10,8" Title="{loc:T widget.Relative.name}">
         <DockPanel>
             <!-- The session information itself: kept here, collapsed, until TableInfoBands moves each
                  element into the slot the options give it. -->
@@ -175,5 +176,5 @@
                 </ItemsControl>
             </Grid>
         </DockPanel>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

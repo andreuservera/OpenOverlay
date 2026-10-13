@@ -21,7 +21,4 @@ public sealed class StandingsRow : DriverRow
             : double.IsNaN(GapToLeaderSeconds)
                 ? "—"
                 : $"+{GapToLeaderSeconds.ToString("0.0", CultureInfo.InvariantCulture)}";
-
-    // "Leader" takes the same accent as the leader's position number.
-    public override string GapForeground => RankInOwnRace == 1 ? "#FFD24D" : base.GapForeground;
 }

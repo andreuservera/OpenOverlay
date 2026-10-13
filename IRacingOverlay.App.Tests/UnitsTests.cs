@@ -52,7 +52,7 @@ public class UnitsTests
 
         // 5.5 L = 1.453 gal → 1.5 gal, not the 6 L (1.59 gal) the metric rounding would give.
         Assert.Equal("1.5 gal", shortBy.RefuelDisplay);
-        Assert.Equal("-1.5 gal", shortBy.FuelDeltaDisplay);
+        Assert.Equal("\u22121.5 gal", shortBy.FuelDeltaDisplay);
         Assert.Equal("gal", shortBy.VolumeUnit);
     }
 

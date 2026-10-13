@@ -59,8 +59,8 @@ public sealed class TireCornerInfo
 
     // Three bands: plenty, getting thin, change them.
     private string WearColor(double fraction) => !HasWearData
-        ? "#8E99A5"
-        : fraction > 0.6 ? "#34D399" : fraction > 0.3 ? "#F5A524" : "#F04438";
+        ? "#8B95A3"
+        : fraction > 0.6 ? "#3DD68C" : fraction > 0.3 ? "#F5A524" : "#F04438";
 
     private double WearFill(double fraction) => HasWearData ? Math.Clamp(fraction, 0, 1) : 0;
 }

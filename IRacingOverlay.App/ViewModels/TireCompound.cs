@@ -8,7 +8,7 @@ namespace IRacingOverlay.App.ViewModels;
 /// </summary>
 public sealed record TireCompound(string Letter, string Color, string Name)
 {
-    private const string Neutral = "#C4CCD4";
+    private const string Neutral = "#B4BCC8";
 
     /// <summary>
     /// Names a CarIdxTireCompound index from the session's compound table. The table describes the
@@ -34,12 +34,12 @@ public sealed record TireCompound(string Letter, string Color, string Name)
         var key = trimmed.ToLowerInvariant();
         return key switch
         {
-            _ when key.Contains("inter") => new("I", "#34D399", trimmed),
+            _ when key.Contains("inter") => new("I", "#3DD68C", trimmed),
             _ when key.Contains("wet") || key.Contains("rain") => new("W", "#3D8BFF", trimmed),
             _ when key.Contains("soft") => new("S", "#F04438", trimmed),
             _ when key.Contains("med") => new("M", "#FFD24D", trimmed),
-            _ when key.Contains("hard") => new("H", "#F2F5F8", trimmed),
-            _ when key.Contains("dry") => new("D", "#F2F5F8", trimmed),
+            _ when key.Contains("hard") => new("H", "#F2F4F7", trimmed),
+            _ when key.Contains("dry") => new("D", "#F2F4F7", trimmed),
             _ => new(trimmed.Length > 0 ? char.ToUpperInvariant(trimmed[0]).ToString() : "?", Neutral, trimmed),
         };
     }

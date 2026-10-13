@@ -92,7 +92,8 @@ public partial class TrackMapPanel : UserControl
     // the frame's border) — the theme decides that radius, from square to well rounded.
     private void OnMapAreaSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        var radius = Math.Max(0, Frame.CornerRadius.TopLeft - Frame.BorderThickness.Left - Frame.Padding.Top);
+        var corner = TryFindResource("Theme.PanelCornerRadius") is CornerRadius panel ? panel.TopLeft : 8;
+        var radius = Math.Max(0, corner - 1 - Frame.Padding.Top);
         var clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
         clip.Freeze();
         MapArea.Clip = clip;

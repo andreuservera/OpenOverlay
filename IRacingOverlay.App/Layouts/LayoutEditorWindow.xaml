@@ -95,7 +95,8 @@
 
                     <!-- The widget itself, at its size level, with its own opacity. -->
                     <ContentPresenter Content="{Binding Panel}"
-                                              ov:BackgroundOpacity.Value="{Binding BackgroundOpacity}">
+                                              ov:BackgroundOpacity.Value="{Binding BackgroundOpacity}"
+                                              ov:WidgetFrame.ShowHeader="{Binding ShowHeader}">
                         <ContentPresenter.LayoutTransform>
                             <ScaleTransform ScaleX="{Binding Factor}" ScaleY="{Binding Factor}"/>
                         </ContentPresenter.LayoutTransform>
@@ -293,7 +294,7 @@
                               MouseLeftButtonDown="OnSurfaceMouseDown" PreviewMouseDown="OnSurfacePreviewMouseDown"
                               PreviewKeyDown="OnSurfaceKeyDown"
                               Focusable="True" FocusVisualStyle="{x:Null}">
-                            <cp:PreviewBackdrop/>
+                            <cp:PreviewBackdrop x:Name="Backdrop"/>
                             <Rectangle x:Name="GridLines" IsHitTestVisible="False"/>
                             <ItemsControl x:Name="Items" ItemTemplate="{StaticResource Ed.ItemTemplate}">
                                 <ItemsControl.ItemsPanel>

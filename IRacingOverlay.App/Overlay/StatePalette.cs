@@ -9,24 +9,25 @@ namespace IRacingOverlay.App.Overlay;
 /// </summary>
 internal static class StatePalette
 {
-    public static readonly Brush Positive = Frozen(0x34, 0xD3, 0x99);
-    public static readonly Brush Negative = Frozen(0xFF, 0x6B, 0x6B);
+    public static readonly Brush Positive = Frozen(0x3D, 0xD6, 0x8C);
+    public static readonly Brush Negative = Frozen(0xF2, 0x6D, 0x6D);
     public static readonly Brush Warning = Frozen(0xF5, 0xA5, 0x24);
     public static readonly Brush Critical = Frozen(0xF0, 0x44, 0x38);
     public static readonly Brush Accent = Frozen(0xFF, 0xD2, 0x4D);
     public static readonly Brush Info = Frozen(0x6C, 0xB8, 0xFF);
 
-    public static readonly Brush TextPrimary = Frozen(0xF2, 0xF5, 0xF8);
-    public static readonly Brush TextMuted = Frozen(0x8E, 0x99, 0xA5);
+    public static readonly Brush TextPrimary = Frozen(0xF2, 0xF4, 0xF7);
+    public static readonly Brush TextSecondary = Frozen(0xB4, 0xBC, 0xC8);
+    public static readonly Brush TextMuted = Frozen(0x8B, 0x95, 0xA3);
 
     /// <summary>For text sitting on a saturated fill (car-number chips, map badges).</summary>
     public static readonly Brush TextOnAccent = Frozen(0x0A, 0x0C, 0x0F);
 
     /// <summary>Unfilled half of a gauge track, and the "off" state of an indicator segment.</summary>
-    public static readonly Brush TrackEmpty = Frozen(0x23, 0x29, 0x31);
+    public static readonly Brush TrackEmpty = Frozen(0x1B, 0x20, 0x29);
 
-    public static readonly Color PositiveColor = Color.FromRgb(0x34, 0xD3, 0x99);
-    public static readonly Color NegativeColor = Color.FromRgb(0xFF, 0x6B, 0x6B);
+    public static readonly Color PositiveColor = Color.FromRgb(0x3D, 0xD6, 0x8C);
+    public static readonly Color NegativeColor = Color.FromRgb(0xF2, 0x6D, 0x6D);
 
     /// <summary>"This is you" — same as State.SelfColor, the player's row in the tables.</summary>
     public static readonly Color SelfColor = Color.FromRgb(0x4C, 0x9A, 0xFF);

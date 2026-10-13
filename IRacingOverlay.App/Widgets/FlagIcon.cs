@@ -17,7 +17,7 @@ public sealed class FlagIcon : FrameworkElement
     private static readonly Brush DimLamp = Frozen(Color.FromRgb(0x3A, 0x1A, 0x1A));
     private static readonly Brush[] MixedBands =
     [
-        BrushOf("#1FAA59"), BrushOf("#F7C600"), BrushOf("#F2F5F8"), BrushOf("#E03131"),
+        BrushOf("#3DD68C"), BrushOf("#F5A524"), BrushOf("#F2F4F7"), BrushOf("#E03131"),
     ];
 
     public static readonly DependencyProperty FlagProperty = DependencyProperty.Register(

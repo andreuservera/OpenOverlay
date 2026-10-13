@@ -30,7 +30,7 @@
                 <ScaleTransform x:Name="FrameScale" ScaleX="1" ScaleY="1"/>
             </Border.LayoutTransform>
             <Grid x:Name="Surface" ClipToBounds="True">
-                <cp:PreviewBackdrop/>
+                <cp:PreviewBackdrop x:Name="Backdrop"/>
                 <ItemsControl x:Name="Items">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -47,7 +47,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <ContentPresenter Content="{Binding Panel}"
-                                              ov:BackgroundOpacity.Value="{Binding BackgroundOpacity}">
+                                              ov:BackgroundOpacity.Value="{Binding BackgroundOpacity}"
+                                              ov:WidgetFrame.ShowHeader="{Binding ShowHeader}">
                                 <ContentPresenter.LayoutTransform>
                                     <ScaleTransform ScaleX="{Binding Factor}" ScaleY="{Binding Factor}"/>
                                 </ContentPresenter.LayoutTransform>

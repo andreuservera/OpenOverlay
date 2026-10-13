@@ -1061,20 +1061,18 @@
       different widgets feel like one product, and it means a new option type only has to supply its
       control — never its own idea of what a settings row looks like.
     -->
+    <!-- Label and control side by side; in a column too narrow for both (the layout editor's), the
+         control drops under the label instead of squeezing it (ControlPanel/SettingRowPanel.cs). -->
     <ControlTemplate x:Key="Cp.SettingRow" TargetType="ContentControl">
-        <Grid Margin="0,10,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
+        <cp:SettingRowPanel Margin="0,10,0,10">
+            <StackPanel>
                 <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}"
                            Foreground="{StaticResource Cp.Text}" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding Hint}" Style="{StaticResource Cp.Hint}"
                            Visibility="{Binding Hint, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
             </StackPanel>
-            <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
-        </Grid>
+            <ContentPresenter/>
+        </cp:SettingRowPanel>
     </ControlTemplate>
 
     <!-- Stacked variant: the control is a grid of chips, which needs the full width. -->

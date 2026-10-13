@@ -2,7 +2,9 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:IRacingOverlay.App.ViewModels"
-             x:Name="Root">
+             x:Name="Root"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization">
     <UserControl.Resources>
         <!-- One corner: the tire drawn head-on — taller than it is wide, sidewalls
              bulging slightly, shaded dark at the top and bottom where the tread curves away — with
@@ -127,7 +129,7 @@
             </Grid>
         </DataTemplate>
     </UserControl.Resources>
-    <Border Style="{StaticResource OverlayPanel}" Padding="12,9">
+    <ov:WidgetFrame Padding="12,9" Title="{loc:T widget.TireInfo.name}">
         <StackPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -145,5 +147,5 @@
                 <ContentControl x:Name="RRCorner" Grid.Row="1" Grid.Column="1" Margin="6,3,2,3" ContentTemplate="{StaticResource CornerTemplate}" Focusable="False"/>
             </Grid>
         </StackPanel>
-    </Border>
+    </ov:WidgetFrame>
 </UserControl>

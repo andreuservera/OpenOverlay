@@ -12,11 +12,18 @@ public sealed class RelativeRow : DriverRow
 
     // Formatted with InvariantCulture: this machine's locale uses a comma decimal separator, which
     // silently turned "+0.0" into "+0,0" in the live UI — a real display bug.
-    public override string GapDisplay => IsPlayer || double.IsNaN(GapSeconds)
-        ? "—"
-        : (GapSeconds <= 0
-            ? $"-{Math.Abs(GapSeconds).ToString("0.0", CultureInfo.InvariantCulture)}"
-            : $"+{GapSeconds.ToString("0.0", CultureInfo.InvariantCulture)}");
+    // The player's own row reads "0.0" (muted by the row template); cars ahead take the typographic
+    // minus (U+2212), which is as wide as the plus, so the column never shifts between the two.
+    public override string GapDisplay => IsPlayer
+        ? "0.0"
+        : double.IsNaN(GapSeconds)
+            ? "—"
+            : (GapSeconds <= 0
+                ? $"\u2212{Math.Abs(GapSeconds).ToString("0.0", CultureInfo.InvariantCulture)}"
+                : $"+{GapSeconds.ToString("0.0", CultureInfo.InvariantCulture)}");
+
+    /// <summary>Your own "0.0" is a reference point, not a reading: muted.</summary>
+    public override string GapForeground => IsPlayer ? "#8B95A3" : base.GapForeground;
 }
 
 /// <summary>

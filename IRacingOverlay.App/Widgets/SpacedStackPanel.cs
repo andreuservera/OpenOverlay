@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace IRacingOverlay.App.Widgets;
 
@@ -14,6 +15,20 @@ public sealed class SpacedStackPanel : Panel
     public static readonly DependencyProperty SpacingProperty = DependencyProperty.Register(
         nameof(Spacing), typeof(double), typeof(SpacedStackPanel),
         new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public static readonly DependencyProperty DividerBrushProperty = DependencyProperty.Register(
+        nameof(DividerBrush), typeof(Brush), typeof(SpacedStackPanel),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    /// <summary>When set, a 1px rule is drawn in the middle of every gap between visible children:
+    /// sections separated by lines rather than boxed in cards.</summary>
+    public Brush? DividerBrush
+    {
+        get => (Brush?)GetValue(DividerBrushProperty);
+        set => SetValue(DividerBrushProperty, value);
+    }
+
+    private readonly List<double> _gaps = [];
 
     public Orientation Orientation
     {
@@ -56,6 +71,7 @@ public sealed class SpacedStackPanel : Panel
     {
         double offset = 0;
         var visible = 0;
+        _gaps.Clear();
         foreach (UIElement child in InternalChildren)
         {
             if (child.Visibility == Visibility.Collapsed)
@@ -63,7 +79,12 @@ public sealed class SpacedStackPanel : Panel
                 continue;
             }
 
-            offset += visible++ > 0 ? Spacing : 0;
+            if (visible++ > 0)
+            {
+                _gaps.Add(offset + Spacing / 2);
+                offset += Spacing;
+            }
+
             var size = child.DesiredSize;
             if (Horizontal)
             {
@@ -78,5 +99,22 @@ public sealed class SpacedStackPanel : Panel
         }
 
         return finalSize;
+    }
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        base.OnRender(dc);
+        if (DividerBrush is not { } brush)
+        {
+            return;
+        }
+
+        foreach (var at in _gaps)
+        {
+            var line = Math.Floor(at);
+            dc.DrawRectangle(brush, null, Horizontal
+                ? new Rect(line, 0, 1, ActualHeight)
+                : new Rect(0, line, ActualWidth, 1));
+        }
     }
 }
