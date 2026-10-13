@@ -294,7 +294,7 @@
                               MouseLeftButtonDown="OnSurfaceMouseDown" PreviewMouseDown="OnSurfacePreviewMouseDown"
                               PreviewKeyDown="OnSurfaceKeyDown"
                               Focusable="True" FocusVisualStyle="{x:Null}">
-                            <cp:PreviewBackdrop/>
+                            <cp:PreviewBackdrop x:Name="Backdrop"/>
                             <Rectangle x:Name="GridLines" IsHitTestVisible="False"/>
                             <ItemsControl x:Name="Items" ItemTemplate="{StaticResource Ed.ItemTemplate}">
                                 <ItemsControl.ItemsPanel>

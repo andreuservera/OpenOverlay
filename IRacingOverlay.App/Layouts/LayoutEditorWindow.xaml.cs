@@ -67,6 +67,7 @@ public partial class LayoutEditorWindow : Window
         AutoSaveToggle.IsChecked = LayoutEditorAutoSaveStore.Get();
         _autoSave.Tick += (_, _) => AutoSaveNow();
         _model = Attach(new LayoutEditorModel(layout));
+        Backdrop.Photo = PreviewBackdrop.PhotoFor(layout.Id);
         Closing += OnClosing;
         Closed += (_, _) => _autoSave.Stop();
         Sync();

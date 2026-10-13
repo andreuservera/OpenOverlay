@@ -19,6 +19,19 @@ public partial class LayoutPreview : UserControl
         nameof(EmptyMessage), typeof(string), typeof(LayoutPreview),
         new PropertyMetadata(null, (d, e) => ((LayoutPreview)d).EmptyText.Text = (string)e.NewValue));
 
+    public static readonly DependencyProperty BackdropPhotoProperty = DependencyProperty.Register(
+        nameof(BackdropPhoto), typeof(string), typeof(LayoutPreview),
+        new PropertyMetadata(null, (d, _) => ((LayoutPreview)d).ApplyBackdropPhoto()));
+
+    /// <summary>The circuit photo behind the layout. Unset, each layout gets its own
+    /// (<see cref="PreviewBackdrop.PhotoFor"/>); set for a picture that is rebuilt as a new layout
+    /// every time, like Home's, which would otherwise change photo on every refresh.</summary>
+    public string? BackdropPhoto
+    {
+        get => (string?)GetValue(BackdropPhotoProperty);
+        set => SetValue(BackdropPhotoProperty, value);
+    }
+
     /// <summary>What the picture says when there is nothing in it.</summary>
     public string EmptyMessage
     {
@@ -42,8 +55,12 @@ public partial class LayoutPreview : UserControl
         set => SetValue(LayoutProperty, value);
     }
 
+    private void ApplyBackdropPhoto() =>
+        Backdrop.Photo = BackdropPhoto ?? (Layout is { } layout ? PreviewBackdrop.PhotoFor(layout.Id) : PreviewBackdrop.DefaultPhoto);
+
     private void Rebuild()
     {
+        ApplyBackdropPhoto();
         if (Layout is not { } layout)
         {
             // Dropped when the page closes, so no panel outlives it.

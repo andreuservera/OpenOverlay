@@ -201,6 +201,7 @@ public partial class WidgetPreview : UserControl
         }
 
         Stage.Content = _panel;
+        Backdrop.Photo = _slot?.Descriptor.PreviewPhoto ?? PreviewBackdrop.DefaultPhoto;
         Backdrop.Visibility = _panel is null ? Visibility.Collapsed : Visibility.Visible;
         ApplyScale();
         ApplyOpacity();

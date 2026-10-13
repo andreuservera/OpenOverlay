@@ -588,7 +588,7 @@
                     <DockPanel Visibility="{Binding IsHomePage, Converter={StaticResource Cp.BoolToVis}}">
                         <TextBlock DockPanel.Dock="Bottom" Text="{Binding HomeScreenCaption}" Style="{StaticResource Cp.Hint}"
                                    HorizontalAlignment="Center" Margin="0,0,0,18"/>
-                        <cp:LayoutPreview Layout="{Binding HomeScreen}"
+                        <cp:LayoutPreview Layout="{Binding HomeScreen}" BackdropPhoto="singapur.jpg"
                                           EmptyMessage="{loc:T home.preview.empty}"/>
                     </DockPanel>
                 </Grid>

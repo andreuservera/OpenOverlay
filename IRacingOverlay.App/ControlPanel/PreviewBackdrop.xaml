@@ -4,7 +4,8 @@
              IsHitTestVisible="False"
              ClipToBounds="True">
     <!--
-      The stage a widget is previewed on: Spa, graded down until it is scenery.
+      The stage a widget is previewed on: a circuit photograph (one per widget), graded down until it
+      is scenery.
 
       The grading is the whole job here. The source is a bright, high-contrast photograph with a
       white sky and a saturated red-and-yellow kerb across the bottom — dropped in as-is it would win
@@ -36,37 +37,25 @@
               that the kerb and the grass still read as a race track, not enough for either to
               compete with the overlay's own palette.
 
-              Viewbox trims to the horizon band first: it drops the empty top third of sky and the
-              nearest, loudest half of the kerb, keeping the treeline, the grandstands and the track
-              surface. Cropping here rather than leaving it to UniformToFill alone is what makes the
-              result look the same whether this pane ends up tall and narrow or short and wide.
+              For spa2 the Viewbox trims to the horizon band first: it drops the empty top third of
+              sky and the nearest, loudest half of the kerb, keeping the treeline, the grandstands and
+              the track surface. The other photos are already framed on their subject and are shown
+              whole (see PreviewBackdrop.Photo).
             -->
             <Rectangle>
                 <Rectangle.Fill>
-                    <ImageBrush Stretch="UniformToFill" AlignmentY="Center"
-                                Viewbox="0,0.30,1,0.56" ViewboxUnits="RelativeToBoundingBox">
-                        <ImageBrush.ImageSource>
-                            <FormatConvertedBitmap DestinationFormat="Gray8">
-                                <FormatConvertedBitmap.Source>
-                                    <!-- Decoded well under native size: a 17px blur is about to throw
-                                         that detail away regardless, and this halves both the decode
-                                         cost and the working set it leaves behind. -->
-                                    <BitmapImage UriSource="/Assets/spa2.jpg" DecodePixelWidth="1280"/>
-                                </FormatConvertedBitmap.Source>
-                            </FormatConvertedBitmap>
-                        </ImageBrush.ImageSource>
-                    </ImageBrush>
+                    <!-- Photo set from code (see PreviewBackdrop.Photo): a grayscale copy, decoded well
+                         under native size — a 17px blur is about to throw that detail away regardless,
+                         and this halves both the decode cost and the working set it leaves behind. -->
+                    <ImageBrush x:Name="GrayPhoto" Stretch="UniformToFill" AlignmentY="Center"
+                                ViewboxUnits="RelativeToBoundingBox"/>
                 </Rectangle.Fill>
             </Rectangle>
 
             <Rectangle Opacity="0.34">
                 <Rectangle.Fill>
-                    <ImageBrush Stretch="UniformToFill" AlignmentY="Center"
-                                Viewbox="0,0.30,1,0.56" ViewboxUnits="RelativeToBoundingBox">
-                        <ImageBrush.ImageSource>
-                            <BitmapImage UriSource="/Assets/spa2.jpg" DecodePixelWidth="1280"/>
-                        </ImageBrush.ImageSource>
-                    </ImageBrush>
+                    <ImageBrush x:Name="ColorPhoto" Stretch="UniformToFill" AlignmentY="Center"
+                                ViewboxUnits="RelativeToBoundingBox"/>
                 </Rectangle.Fill>
             </Rectangle>
         </Grid>
