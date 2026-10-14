@@ -271,7 +271,7 @@
   "preset.Streamer.name": "Streamer",
   "preset.Streamer.description": "Lo que siguen los espectadores: el orden de carrera, el mapa, banderas, incidentes y las condiciones.",
   "home.onScreenNow": "En pantalla ahora",
-  "home.screenSummary": "{0} · {1}×{2} · {3} en pantalla",
+  "home.screenSummary": "{0} · {1}×{2} · {3} widgets",
   "home.rightNow": "AHORA MISMO",
   "home.onScreen": "En pantalla",
   "home.countOf": "{0} de {1}",

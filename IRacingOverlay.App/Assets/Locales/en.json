@@ -271,7 +271,7 @@
   "preset.Streamer.name": "Streamer",
   "preset.Streamer.description": "What viewers follow: the running order, the map, flags, incidents and the conditions.",
   "home.onScreenNow": "On screen now",
-  "home.screenSummary": "{0} · {1}×{2} · {3} on screen",
+  "home.screenSummary": "{0} · {1}×{2} · {3} widgets",
   "home.rightNow": "RIGHT NOW",
   "home.onScreen": "On screen",
   "home.countOf": "{0} of {1}",
