@@ -2,10 +2,10 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.12.0] - 2026-10-12
+### [0.12.0] - 2026-10-15
 
 #### Added
-- Control Panel in your language: pick one in Settings › General › Language, or leave it on Automatic to follow Windows. More languages can be added with a single file.   ← sustituye la línea con la errata
+- OpenOverlay in your language, widgets included: English, Spanish, French, German, Italian and Brazilian Portuguese. Pick one in Settings › General › Language, or leave it on Automatic to follow Windows. More languages can be added with a single file.
 - Redesigned Control Panel: a Home page with your session and what's on screen, search for any setting, a sidebar that folds to icons, adjustable interface size and a reset to defaults for each widget.
 - Setup assistant: pick your monitor and a preset (Essential, Complete or Streamer) and your widgets are placed for you. It opens on first run and from Home.
 
