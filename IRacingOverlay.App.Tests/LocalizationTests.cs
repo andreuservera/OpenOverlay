@@ -106,12 +106,15 @@ public partial class LocalizationTests
     [Theory]
     [InlineData("auto", "es-ES", "es")]
     [InlineData("auto", "es-MX", "es")]
-    [InlineData("auto", "fr-FR", "en")]
+    [InlineData("auto", "fr-FR", "fr")]
+    [InlineData("auto", "de-AT", "de")]
+    [InlineData("auto", "pt-BR", "pt")]
+    [InlineData("auto", "ja-JP", "en")]
     [InlineData("auto", "en-US", "en")]
     [InlineData("es", "en-US", "es")]
     [InlineData("en", "es-ES", "en")]
     [InlineData("xx", "es-ES", "es")]
-    [InlineData(null, "de-DE", "en")]
+    [InlineData(null, "ko-KR", "en")]
     public void Resolve_PicksTheChoice_ThenWindows_ThenEnglish(string? preference, string culture, string expected) =>
         Assert.Equal(expected, Loc.Resolve(preference, CultureInfo.GetCultureInfo(culture)));
 

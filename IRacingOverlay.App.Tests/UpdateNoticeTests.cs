@@ -63,7 +63,7 @@ public sealed class UpdateNoticeTests
         Assert.Empty(notice.Items);
 
         var summaryOnly = UpdateNotice.For("0.5.0", Entry());
-        Assert.Equal("Released 1 Oct 2026. The details are in What's New.", summaryOnly.Subtitle);
+        Assert.Equal("Released 1 Oct 2026. The details are in What's new.", summaryOnly.Subtitle);
         Assert.Empty(summaryOnly.Items);
     }
 }

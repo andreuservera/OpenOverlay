@@ -32,7 +32,7 @@ public sealed partial class ControlPanelViewModel
 
     private Layout? _homeScreen;
 
-    /// <summary>What is on screen now, drawn like a layout on the monitor most of it is on, for Home's
+    /// <summary>What is on screen now (or waiting for the car to be), drawn like a layout on the monitor most of it is on, for Home's
     /// side panel; null on any other page.</summary>
     public Layout? HomeScreen => IsHomePage ? _homeScreen : null;
 
@@ -46,9 +46,12 @@ public sealed partial class ControlPanelViewModel
             return;
         }
 
+        // Widgets waiting for the car (auto-hide outside iRacing, or hidden by the shortcut) are drawn
+        // too, where they will appear: a layout of auto-hiding widgets opened from the desktop would
+        // otherwise leave the picture empty.
         var scale = PixelsPerDip();
         var placed = _slots.Values
-            .Where(slot => slot.State == WidgetState.OnScreen && slot.SavedPosition is not null)
+            .Where(slot => slot.State is WidgetState.OnScreen or WidgetState.Waiting && slot.SavedPosition is not null)
             .Select(slot => (Slot: slot, X: slot.SavedPosition!.Value.Left * scale, Y: slot.SavedPosition!.Value.Top * scale))
             .ToList();
         bool On(DisplayMonitor monitor, double x, double y) =>
