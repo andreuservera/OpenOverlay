@@ -39,7 +39,17 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
-          awk '/^###?[ \t]+\[?v?[0-9]+\.[0-9]+\.[0-9]+/ { n++; next } n == 1 && !/^[ \t]*---+[ \t]*$/' CHANGELOG.md > release-notes.md
+          # Notes cover every entry since the last published tag, so versions that were never released
+          # on their own still reach the release page (later entries keep their heading).
+          prev=$(git ls-remote --tags --refs origin 'v*' | sed 's#.*refs/tags/v##' | grep -vxF "$version" | sort -V | tail -n 1 || true)
+          awk -v prev="$prev" '
+            /^###?[ \t]+\[?v?[0-9]+\.[0-9]+\.[0-9]+/ {
+              match($0, /[0-9]+\.[0-9]+\.[0-9]+/)
+              if (++n > 1 && (prev == "" || substr($0, RSTART, RLENGTH) == prev)) exit
+              if (n > 1) print
+              next
+            }
+            n >= 1 && !/^[ \t]*---+[ \t]*$/' CHANGELOG.md > release-notes.md
 
       - name: Run tests
         run: dotnet test --configuration Release
