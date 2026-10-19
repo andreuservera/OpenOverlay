@@ -59,7 +59,8 @@ public class FlagBuilderTests
 
     [Theory]
     [InlineData("Race", 0, false)] // just after the start: nobody can be a lap up yet
-    [InlineData("Race", 1, true)]
+    [InlineData("Race", 1, false)] // a lap iRacing counted at a rallycross start, then took back
+    [InlineData("Race", 2, true)]
     [InlineData("Practice", 0, true)] // a faster car can come up behind on an out-lap
     public void BlueFlag_IgnoredOnTheOpeningLapOfARace(string sessionType, int lapsCompleted, bool shown)
     {

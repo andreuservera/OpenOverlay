@@ -74,14 +74,16 @@ internal static class FlagBuilder
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Testing", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Nobody can be a lap up on the player before they have completed one, yet iRacing raises the
-    /// blue flag for a second or two just after the start: seen in two rallycross races, right after
-    /// crossing the line on lap 1. Only in a race; in practice a faster car can come up behind at any
-    /// time.
+    /// Nobody can be a lap up on the player this early, yet iRacing raises the blue flag for a second
+    /// or two just after the start: seen in rallycross races, right after crossing the line on lap 1.
+    /// Lap 2 is covered too because LapCompleted can't be trusted there: at Charlotte rallycross long
+    /// the grid sits just past the line and the field runs backwards first, so iRacing counts a lap
+    /// ~18 s in, raises blue, and takes the lap back 5 s later. Being lapped on lap 2 would take a
+    /// car twice as fast. Only in a race; in practice a faster car can come up behind at any time.
     /// </summary>
     private static bool OnTheOpeningLapOfARace(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
         telemetry.HasVariable(TelemetryVarNames.LapCompleted) &&
-        telemetry.GetInt(TelemetryVarNames.LapCompleted) < 1 &&
+        telemetry.GetInt(TelemetryVarNames.LapCompleted) < 2 &&
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
 
     public static List<ActiveFlag> Decode(uint raw)

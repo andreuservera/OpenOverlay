@@ -63,14 +63,21 @@ internal static class CountryFlags
     private static readonly Dictionary<(string Key, int Width, int Height), List<WeakReference<UIElement>>> Waiters = [];
     private static readonly Lazy<BlockingCollection<(string Key, int Width, int Height)>> Worker = new(StartWorker);
 
-    /// <summary>The flag for a flair name, as its resource name; null for no flair ("-none-") or a
-    /// country there's no flag for. "Global" has a flag of its own, a globe.</summary>
+    /// <summary>The flag for a flair name, as its resource name; null for no flair ("-none-", which
+    /// the pace car has too). "Global" has a flag of its own, a globe, which also stands in for a
+    /// flair the set has no flag for yet (territories such as "South Georgia &amp; South Sandwich
+    /// Islands"), so no driver's cell is left blank.</summary>
     internal static string? KeyOf(string? flairName) =>
         string.IsNullOrWhiteSpace(flairName) ? null : KeyCache.GetOrAdd(flairName, static name =>
         {
             var key = Normalize(name);
+            if (key == "none")
+            {
+                return null;
+            }
+
             key = Aliases.GetValueOrDefault(key, key);
-            return Resources.Value.GetValueOrDefault(key);
+            return Resources.Value.GetValueOrDefault(key) ?? Resources.Value.GetValueOrDefault("global");
         });
 
     /// <summary>Lower case letters only, accents dropped: "Côte d'Ivoire" and "Cote_d'Ivoire" meet

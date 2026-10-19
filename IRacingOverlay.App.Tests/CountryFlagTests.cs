@@ -15,12 +15,14 @@ public class CountryFlagTests
     [InlineData("Côte d'Ivoire", "Côte_d'Ivoire")]
     [InlineData("Czechia", "Czech_Republic")]
     [InlineData("Global", "Global")] // iRacing's flair for no country (FlairID 2)
+    // No flag of its own in the set yet: the globe stands in rather than a blank cell.
+    [InlineData("South Georgia & South Sandwich Islands", "Global")]
+    [InlineData("England", "Global")]
     public void KeyOf_FindsTheFlag(string flair, string file) =>
         Assert.Equal($"OpenOverlay.Flags.Flag_{file}.svg", CountryFlags.KeyOf(flair));
 
     [Theory]
-    [InlineData("-none-")]
-    [InlineData("England")] // no flag of its own in the set
+    [InlineData("-none-")] // no flair picked; the pace car has it too
     [InlineData("")]
     [InlineData(null)]
     public void KeyOf_IsNullWithNoFlagToShow(string? flair) =>
