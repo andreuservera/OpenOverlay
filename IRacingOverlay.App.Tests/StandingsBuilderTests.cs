@@ -842,6 +842,72 @@ public class StandingsBuilderTests
         Assert.Equal([0, 2, 1], rows.Select(r => r.CarIdx));
     }
 
+    /// <summary>A race after qualifying, before the green: four cars on the grid, car 3 a late entry
+    /// with no grid slot. Cars 0 and 2 are still in the garage (CarIdxLap -1).</summary>
+    private static (TelemetrySnapshot Snapshot, IracingSessionInfo Session) DriversGettingIn(int sessionState, int[] laps, float[] pcts, int[] official)
+    {
+        var builder = RaceVars(cars: 5);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetInt("SessionState", sessionState);
+            w.SetIntArray("CarIdxPosition", official);
+            w.SetIntArray("CarIdxLap", laps);
+            w.SetIntArray("CarIdxLapCompleted", laps.Select(l => l < 0 ? -1 : 0).ToArray());
+            w.SetFloatArray("CarIdxLapDistPct", pcts);
+        });
+        var session = RaceSession(
+            new DriverEntry { CarIdx = 0, UserName = "Pole", CarNumber = "1", CarClassID = 1 },
+            new DriverEntry { CarIdx = 1, UserName = "Fourth", CarNumber = "2", CarClassID = 1 },
+            new DriverEntry { CarIdx = 2, UserName = "Second", CarNumber = "3", CarClassID = 1 },
+            new DriverEntry { CarIdx = 3, UserName = "Late", CarNumber = "4", CarClassID = 1 },
+            new DriverEntry { CarIdx = 4, UserName = "Third", CarNumber = "5", CarClassID = 1 });
+        session.QualifyResultsInfo = new QualifyResultsInfoSection
+        {
+            Results =
+            [
+                new QualifyResult { Position = 0, ClassPosition = 0, CarIdx = 0 },
+                new QualifyResult { Position = 1, ClassPosition = 1, CarIdx = 2 },
+                new QualifyResult { Position = 2, ClassPosition = 2, CarIdx = 4 },
+                new QualifyResult { Position = 3, ClassPosition = 3, CarIdx = 1 },
+                new QualifyResult { Position = 4, ClassPosition = 4, CarIdx = 7 }, // never joined
+            ],
+        };
+        return (snapshot, session);
+    }
+
+    [Fact]
+    public void BuildStandings_BeforeTheGreen_ListsTheWholeGridWhileDriversGetIn()
+    {
+        // The player (1) is out, gridded fourth; the cars gridded first and second aren't yet. The
+        // late entry (3) isn't out either, so it isn't listed.
+        var (snapshot, session) = DriversGettingIn(
+            sessionState: 1, laps: [-1, 0, -1, -1, 0], pcts: [-1f, 0.95f, -1f, -1f, 0.96f], official: [0, 0, 0, 0, 0]);
+        session.DriverInfo!.DriverCarIdx = 1;
+        PreGreenGrid? reported = null;
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker(), onPreGreenGrid: g => reported = g);
+
+        Assert.Equal([0, 2, 4, 1], rows.Select(r => r.CarIdx));
+        Assert.Equal(4, rows.Single(r => r.IsPlayer).Position);
+        Assert.Equal("—", rows[0].LapDisplay);
+        Assert.Equal(new PreGreenGrid(Gridded: 5, InRoster: 4, InTheWorld: 2), reported);
+        Assert.Equal(1, reported!.Value.MissingFromRoster);
+    }
+
+    [Fact]
+    public void BuildStandings_AfterTheGreen_AGriddedCarThatNeverCameOutDropsOut()
+    {
+        var (snapshot, session) = DriversGettingIn(
+            sessionState: 4, laps: [1, 1, -1, 1, 1], pcts: [0.05f, 0.02f, -1f, 0.01f, 0.04f], official: [1, 3, 0, 4, 2]);
+        PreGreenGrid? reported = null;
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker(), onPreGreenGrid: g => reported = g);
+
+        Assert.Equal([0, 4, 1, 3], rows.Select(r => r.CarIdx));
+        Assert.Null(reported);
+    }
+
     [Fact]
     public void BuildStandings_LiveStateUpdatesBetweenCrossings()
     {

@@ -13,6 +13,13 @@ internal sealed record OpeningLapLapped(
     bool LapCountDoubted,
     IReadOnlyList<(int CarIdx, TrackPosition Where)> Cars);
 
+/// <summary>The qualifying grid before the green, for the log: how many cars it has, how many of
+/// them are in the session's roster (only those can be listed), and how many are already in the world.</summary>
+internal readonly record struct PreGreenGrid(int Gridded, int InRoster, int InTheWorld)
+{
+    public int MissingFromRoster => Gridded - InRoster;
+}
+
 /// <summary>
 /// Turns a raw TelemetrySnapshot + session info into the row lists the Relative/Standings widgets bind to.
 /// </summary>
@@ -375,12 +382,15 @@ internal static class StandingsBuilder
     ///
     /// Practice and Qualifying rank by fastest lap instead (<see cref="BuildFastestLapStandings"/>).
     /// </summary>
+    /// <param name="onPreGreenGrid">Told, for the log, how much of the qualifying grid is in the
+    /// roster and out on track, on every build before the green.</param>
     public static List<StandingsRow> BuildStandings(
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
         SessionBestLapTracker? bestLapTracker = null,
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
-        LineCrossingTracker? crossings = null)
+        LineCrossingTracker? crossings = null,
+        Action<PreGreenGrid>? onPreGreenGrid = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -461,12 +471,32 @@ internal static class StandingsBuilder
             crossings?.HeldPosition(carIdx) is { } held ? held
             : positions is not null && carIdx < positions.Length && positions[carIdx] > 0 ? positions[carIdx] : 0;
 
+        // Before the green there is no official order yet (CarIdxPosition is 0 for everyone), and
+        // laps mean nothing: through the pace laps CarIdxLapCompleted flips between -1 and 0 each
+        // time a car crosses the line. Seen live: the polesitter shown P2 on the grid, and the order
+        // reshuffling through formation. The grid is the order until the race is on.
+        var preGreen = IsBeforeTheGreen(telemetry);
+        if (preGreen && grid.Count > 0 && onPreGreenGrid is not null)
+        {
+            onPreGreenGrid(CountPreGreenGrid(grid, racing, currentLaps, lapDistPct));
+        }
+
         var eligible = new List<DriverEntry>();
         foreach (var driver in racing)
         {
             var isPlayer = driver.CarIdx == playerCarIdx;
             var lap = driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : -1;
             var hasOfficialPosition = OfficialPositionOf(driver.CarIdx) > 0;
+
+            // The whole grid from the moment the race session opens, each car in its slot, rather
+            // than filling in car by car as drivers get in: counting only the cars already out put
+            // a driver gridded eighth in fourth while the four ahead were still in the garage. A car
+            // that never comes out drops out at the green, as it always did.
+            if (preGreen && grid.ContainsKey(driver.CarIdx))
+            {
+                eligible.Add(driver);
+                continue;
+            }
 
             if (!isPlayer && lap < 0)
             {
@@ -493,12 +523,6 @@ internal static class StandingsBuilder
         double LastCrossedAt(DriverEntry driver) => crossings?.LastCrossing(driver.CarIdx)?.Time ?? double.MaxValue;
 
         int GridSlotOf(DriverEntry driver) => grid.TryGetValue(driver.CarIdx, out var slot) ? slot.Position : int.MaxValue;
-
-        // Before the green there is no official order yet (CarIdxPosition is 0 for everyone), and
-        // laps mean nothing: through the pace laps CarIdxLapCompleted flips between -1 and 0 each
-        // time a car crosses the line. Seen live: the polesitter shown P2 on the grid, and the order
-        // reshuffling through formation. The grid is the order until the race is on.
-        var preGreen = IsBeforeTheGreen(telemetry);
 
         // Official order first. Ties only arise without it, and are settled the way the official
         // order is: laps completed, then who completed the latest of them first, then the grid.
@@ -653,6 +677,33 @@ internal static class StandingsBuilder
         }
 
         return ranks;
+    }
+
+    /// <summary>How much of the qualifying grid can be listed before the green: in the session's
+    /// roster at all, and of those, in the world (CarIdxLap not -1).</summary>
+    private static PreGreenGrid CountPreGreenGrid(
+        Dictionary<int, (int Position, int ClassPosition)> grid,
+        IReadOnlyList<DriverEntry> racing,
+        int[] laps,
+        float[] lapDistPct)
+    {
+        var inRoster = 0;
+        var inTheWorld = 0;
+        foreach (var driver in racing)
+        {
+            if (!grid.ContainsKey(driver.CarIdx))
+            {
+                continue;
+            }
+
+            inRoster++;
+            if (TrackPosition.Read(laps, lapDistPct, driver.CarIdx) is not null)
+            {
+                inTheWorld++;
+            }
+        }
+
+        return new PreGreenGrid(grid.Count, inRoster, inTheWorld);
     }
 
     /// <summary>The player's laps, by iRacing's CarIdxLap, on which a whole field lapped at once is

@@ -684,7 +684,8 @@ public partial class MainWindow : Window
             var standingsMark = PerfProbe.Begin();
             if (_standingsGuard.TryRun(
                     () => StandingsBuilder.BuildStandings(
-                        telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings),
+                        telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings,
+                        _logPreGreenGrid ??= LogPreGreenGrid),
                     out var standings))
             {
                 _latestStandings = standings;
@@ -833,6 +834,28 @@ public partial class MainWindow : Window
                 ["player"] = FormatTrackPosition(lapped.Player),
                 ["cars"] = string.Join(' ', lapped.Cars.Select(c => $"{c.CarIdx.ToString(CultureInfo.InvariantCulture)}:{FormatTrackPosition(c.Where)}")),
             });
+
+    // Logged as it changes, while drivers get in before the green, to confirm live that every car
+    // on the qualifying grid is in the roster from the start, so Standings can list it.
+    private PreGreenGrid? _lastPreGreenGrid;
+    private Action<PreGreenGrid>? _logPreGreenGrid; // one delegate, not one per tick
+
+    private void LogPreGreenGrid(PreGreenGrid grid)
+    {
+        if (grid == _lastPreGreenGrid)
+        {
+            return;
+        }
+
+        _lastPreGreenGrid = grid;
+        AppLog.Activity("Standings", "Pre-green grid", new Dictionary<string, string>
+        {
+            ["gridded"] = grid.Gridded.ToString(CultureInfo.InvariantCulture),
+            ["inRoster"] = grid.InRoster.ToString(CultureInfo.InvariantCulture),
+            ["missingFromRoster"] = grid.MissingFromRoster.ToString(CultureInfo.InvariantCulture),
+            ["inTheWorld"] = grid.InTheWorld.ToString(CultureInfo.InvariantCulture),
+        });
+    }
 
     /// <summary>Lap and fraction, e.g. "2+0.713".</summary>
     private static string FormatTrackPosition(TrackPosition where) =>
@@ -1205,6 +1228,7 @@ public partial class MainWindow : Window
             _estTimeProfile = new();
             _penaltyTracker = new();
             _flagPresenter = new();
+            _lastPreGreenGrid = null;
             _latestStandings = [];
         }
 
