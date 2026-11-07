@@ -737,7 +737,8 @@ public partial class MainWindow : Window
             WidgetCatalog.Relative,
             Relative,
             () => StandingsBuilder.BuildRelative(
-                telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops, _estTimeProfile),
+                telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops, _estTimeProfile,
+                LogOpeningLapLapped),
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);
@@ -774,7 +775,7 @@ public partial class MainWindow : Window
         Feed(
             WidgetCatalog.Flag,
             Flags,
-            () => _flagPresenter.Present(FlagBuilder.Decode(telemetry, session), _vm.FlagOptions, TimeSpan.FromMilliseconds(Environment.TickCount64)),
+            () => _flagPresenter.Present(FlagBuilder.Decode(telemetry, session, LogOpeningLapBlue), _vm.FlagOptions, TimeSpan.FromMilliseconds(Environment.TickCount64)),
             (widget, flags) => widget.UpdateState(flags),
             (dashboard, flags) => dashboard.UpdateFlag(flags));
 
@@ -806,6 +807,36 @@ public partial class MainWindow : Window
             _statusGuard.Run(UpdateDiagnostics);
         }
     }
+
+    // Opening-lap blue checks, logged so a live start shows whether they guessed right. Info entries
+    // are collapsed as duplicates for a minute, so a check that holds for several ticks is one line.
+    private static void LogOpeningLapBlue(OpeningLapBlue check) =>
+        AppLog.Info(
+            "Flags",
+            check.Reason == OpeningLapBlueReason.Unconfirmed ? "Opening-lap blue flag hidden" : "Opening-lap blue flag shown",
+            new Dictionary<string, string>
+            {
+                ["reason"] = check.Reason.ToString(),
+                ["lapCompleted"] = check.LapCompleted.ToString(CultureInfo.InvariantCulture),
+                ["player"] = check.Player is { } where ? FormatTrackPosition(where) : "-",
+                ["byCarIdx"] = check.ByCarIdx?.ToString(CultureInfo.InvariantCulture) ?? "-",
+            });
+
+    private static void LogOpeningLapLapped(OpeningLapLapped lapped) =>
+        AppLog.Info(
+            "Relative",
+            lapped.LapCountDoubted ? "Opening-lap lapped cars ignored" : "Opening-lap lapped cars shown",
+            new Dictionary<string, string>
+            {
+                ["lapped"] = lapped.Lapped.ToString(CultureInfo.InvariantCulture),
+                ["onTrack"] = lapped.OnTrack.ToString(CultureInfo.InvariantCulture),
+                ["player"] = FormatTrackPosition(lapped.Player),
+                ["cars"] = string.Join(' ', lapped.Cars.Select(c => $"{c.CarIdx.ToString(CultureInfo.InvariantCulture)}:{FormatTrackPosition(c.Where)}")),
+            });
+
+    /// <summary>Lap and fraction, e.g. "2+0.713".</summary>
+    private static string FormatTrackPosition(TrackPosition where) =>
+        string.Create(CultureInfo.InvariantCulture, $"{where.Lap}+{where.LapDistPct:0.000}");
 
     /// <summary>
     /// Whether the player is actually at the wheel right now — the single question "hide when I'm

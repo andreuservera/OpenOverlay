@@ -58,11 +58,11 @@ public class FlagBuilderTests
     }
 
     [Theory]
-    [InlineData("Race", 0, false)] // just after the start: nobody can be a lap up yet
+    [InlineData("Race", 0, false)] // just after the start, with no car positions to confirm it
     [InlineData("Race", 1, false)] // a lap iRacing counted at a rallycross start, then took back
     [InlineData("Race", 2, true)]
     [InlineData("Practice", 0, true)] // a faster car can come up behind on an out-lap
-    public void BlueFlag_IgnoredOnTheOpeningLapOfARace(string sessionType, int lapsCompleted, bool shown)
+    public void BlueFlag_UnconfirmedOnTheOpeningLapsOfARace(string sessionType, int lapsCompleted, bool shown)
     {
         var builder = new SyntheticMemoryBuilder();
         builder.AddVar("SessionFlags", IrsdkVarType.BitField);
@@ -80,6 +80,96 @@ public class FlagBuilderTests
         };
 
         Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.Blue));
+    }
+
+    /// <summary>Player (car 0) with LapCompleted 1 and the blue flag out in a race; three cars, each
+    /// at a race distance (lap + fraction) and in a class with an estimated lap time.</summary>
+    private static (IRacingOverlay.Sdk.TelemetrySnapshot Snapshot, IRacingOverlay.Sdk.IracingSessionInfo Session) BlueOnTheOpeningLaps(
+        (int Lap, float Pct, int ClassId, double EstLap)[] cars,
+        bool[]? onPitRoad = null)
+    {
+        var builder = new SyntheticMemoryBuilder();
+        builder.AddVar("SessionFlags", IrsdkVarType.BitField);
+        builder.AddVar("SessionNum", IrsdkVarType.Int);
+        builder.AddVar("LapCompleted", IrsdkVarType.Int);
+        builder.AddVar("CarIdxLap", IrsdkVarType.Int, count: cars.Length);
+        builder.AddVar("CarIdxLapDistPct", IrsdkVarType.Float, count: cars.Length);
+        builder.AddVar("CarIdxOnPitRoad", IrsdkVarType.Bool, count: cars.Length);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetBitField("SessionFlags", Blue | Green);
+            w.SetInt("SessionNum", 0);
+            w.SetInt("LapCompleted", 1);
+            w.SetIntArray("CarIdxLap", cars.Select(c => c.Lap).ToArray());
+            w.SetFloatArray("CarIdxLapDistPct", cars.Select(c => c.Pct).ToArray());
+            w.SetBoolArray("CarIdxOnPitRoad", onPitRoad ?? new bool[cars.Length]);
+        });
+        var session = new IRacingOverlay.Sdk.IracingSessionInfo
+        {
+            SessionInfo = new IRacingOverlay.Sdk.SessionInfoSection { Sessions = [new IRacingOverlay.Sdk.SessionEntry { SessionNum = 0, SessionType = "Race" }] },
+            DriverInfo = new IRacingOverlay.Sdk.DriverInfoSection
+            {
+                DriverCarIdx = 0,
+                Drivers = cars.Select((c, i) => new IRacingOverlay.Sdk.DriverEntry
+                {
+                    CarIdx = i,
+                    CarClassID = c.ClassId,
+                    CarClassEstLapTime = c.EstLap,
+                }).ToList(),
+            },
+        };
+        return (snapshot, session);
+    }
+
+    [Fact]
+    public void BlueFlag_OnTheOpeningLaps_HiddenWhenNothingOnTrackAccountsForIt()
+    {
+        // Rallycross start: the field bunched up behind the player, all on the same lap.
+        var (snapshot, session) = BlueOnTheOpeningLaps([(1, 0.02f, 1, 50), (0, 0.99f, 1, 50), (0, 0.97f, 1, 50)]);
+        OpeningLapBlue? reported = null;
+
+        var flags = FlagBuilder.Decode(snapshot, session, check => reported = check);
+
+        Assert.DoesNotContain(flags, f => f.Kind == FlagKind.Blue);
+        Assert.Equal(OpeningLapBlueReason.Unconfirmed, reported?.Reason);
+    }
+
+    [Fact]
+    public void BlueFlag_OnTheOpeningLaps_ShownWhenACarIsLappingThePlayer()
+    {
+        // Towed on lap 1: the player rejoins at 1.3 laps, the leader is coming through on 2.25.
+        var (snapshot, session) = BlueOnTheOpeningLaps([(1, 0.30f, 1, 50), (2, 0.25f, 1, 50), (1, 0.10f, 1, 50)]);
+        OpeningLapBlue? reported = null;
+
+        var flags = FlagBuilder.Decode(snapshot, session, check => reported = check);
+
+        Assert.Contains(flags, f => f.Kind == FlagKind.Blue);
+        Assert.Equal(OpeningLapBlueReason.Lapping, reported?.Reason);
+        Assert.Equal(1, reported?.ByCarIdx);
+    }
+
+    [Theory]
+    [InlineData(2, 40, false, true)]   // a faster class 2 s behind on the same lap
+    [InlineData(2, 50, false, false)]  // the player's own class
+    [InlineData(1, 60, false, false)]  // a slower class
+    [InlineData(2, 40, true, false)]   // a faster class, but in the pit lane
+    public void BlueFlag_OnTheOpeningLaps_ShownForAFasterClassCloseBehind(int classId, double estLap, bool inPitLane, bool shown)
+    {
+        // Car 1 is 0.04 of a lap behind the player: 2 s at the player's 50 s lap.
+        var (snapshot, session) = BlueOnTheOpeningLaps(
+            [(1, 0.50f, 1, 50), (1, 0.46f, classId, estLap), (1, 0.10f, 1, 50)],
+            [false, inPitLane, false]);
+
+        Assert.Equal(shown, FlagBuilder.Decode(snapshot, session).Any(f => f.Kind == FlagKind.Blue));
+    }
+
+    [Fact]
+    public void BlueFlag_OnTheOpeningLaps_FasterClassFarBehindDoesNotAccountForIt()
+    {
+        // 0.2 of a lap behind: 10 s.
+        var (snapshot, session) = BlueOnTheOpeningLaps([(1, 0.50f, 1, 50), (1, 0.30f, 2, 40), (1, 0.10f, 1, 50)]);
+
+        Assert.DoesNotContain(FlagBuilder.Decode(snapshot, session), f => f.Kind == FlagKind.Blue);
     }
 
     [Theory]

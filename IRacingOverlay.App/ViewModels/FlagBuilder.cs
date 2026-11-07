@@ -5,6 +5,21 @@ namespace IRacingOverlay.App.ViewModels;
 /// <summary>The driver-directed penalties a timing table shows on a car's row, each its own bit.</summary>
 internal readonly record struct CarPenalties(bool Black, bool Meatball, bool Furled = false);
 
+/// <summary>Why a blue flag out on the opening laps of a race was shown, or that it wasn't.</summary>
+internal enum OpeningLapBlueReason
+{
+    /// <summary>Nothing on track accounts for it: hidden.</summary>
+    Unconfirmed,
+    /// <summary>A car is half a lap or more up on the player in race distance.</summary>
+    Lapping,
+    /// <summary>A car of a faster class is close behind on the road.</summary>
+    FasterClassBehind,
+}
+
+/// <summary>What was decided about a blue flag on the opening laps, for the log: the player's
+/// LapCompleted and track position, and the car that accounts for the flag, if any.</summary>
+internal readonly record struct OpeningLapBlue(OpeningLapBlueReason Reason, int LapCompleted, TrackPosition? Player, int? ByCarIdx);
+
 /// <summary>
 /// Decodes iRacing's SessionFlags bitfield (irsdk_Flags) into every flag currently out. Pure
 /// decoding: which of them are shown, and how, is <see cref="FlagPresenter"/>'s job. Bit values
@@ -45,7 +60,12 @@ internal static class FlagBuilder
         StartGo = 0x80000000,
     }
 
-    public static List<ActiveFlag> Decode(TelemetrySnapshot telemetry, IracingSessionInfo? session = null)
+    /// <param name="onOpeningLapBlue">Told what was decided each time the blue flag is out on the
+    /// opening laps of a race, for the log.</param>
+    public static List<ActiveFlag> Decode(
+        TelemetrySnapshot telemetry,
+        IracingSessionInfo? session = null,
+        Action<OpeningLapBlue>? onOpeningLapBlue = null)
     {
         if (!telemetry.HasVariable(TelemetryVarNames.SessionFlags))
         {
@@ -53,9 +73,14 @@ internal static class FlagBuilder
         }
 
         var raw = ReadFlagsBits(telemetry);
-        if (OnTheOpeningLapOfARace(telemetry, session))
+        if ((raw & (uint)IrsdkFlags.Blue) != 0 && OnTheOpeningLapsOfARace(telemetry, session))
         {
-            raw &= ~(uint)IrsdkFlags.Blue;
+            var check = CheckOpeningLapBlue(telemetry, session);
+            onOpeningLapBlue?.Invoke(check);
+            if (check.Reason == OpeningLapBlueReason.Unconfirmed)
+            {
+                raw &= ~(uint)IrsdkFlags.Blue;
+            }
         }
 
         if (InATestDrive(telemetry, session))
@@ -74,17 +99,79 @@ internal static class FlagBuilder
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Testing", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Nobody can be a lap up on the player this early, yet iRacing raises the blue flag for a second
-    /// or two just after the start: seen in rallycross races, right after crossing the line on lap 1.
-    /// Lap 2 is covered too because LapCompleted can't be trusted there: at Charlotte rallycross long
-    /// the grid sits just past the line and the field runs backwards first, so iRacing counts a lap
-    /// ~18 s in, raises blue, and takes the lap back 5 s later. Being lapped on lap 2 would take a
-    /// car twice as fast. Only in a race; in practice a faster car can come up behind at any time.
+    /// iRacing raises the blue flag for a second or two just after the start when nobody is coming
+    /// through: seen in rallycross races, right after crossing the line on lap 1. Lap 2 is covered too
+    /// because LapCompleted can't be trusted there: at Charlotte rallycross long the grid sits just
+    /// past the line and the field runs backwards first, so iRacing counts a lap ~18 s in, raises
+    /// blue, and takes the lap back 5 s later. Only in a race; in practice a faster car can come up
+    /// behind at any time.
+    ///
+    /// The flag isn't dropped on these laps, only checked (<see cref="CheckOpeningLapBlue"/>): a
+    /// player towed or stuck on lap 1 is lapped for real on lap 2, and a faster class can come
+    /// through at any time.
     /// </summary>
-    private static bool OnTheOpeningLapOfARace(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+    private static bool OnTheOpeningLapsOfARace(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
         telemetry.HasVariable(TelemetryVarNames.LapCompleted) &&
         telemetry.GetInt(TelemetryVarNames.LapCompleted) < 2 &&
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>How close behind on the road a car of a faster class has to be to account for a
+    /// blue flag. The road distance is priced at the player's estimated lap, so it is rough.</summary>
+    private const double FasterClassBehindWithinSeconds = 3;
+
+    /// <summary>
+    /// Whether the cars on track account for a blue flag on the opening laps: one is half a lap or
+    /// more up on the player in race distance (lapping them), or one of a faster class is close
+    /// behind on the road (iRacing waves blue for a faster class on the same lap too). With no
+    /// positions to read it is left unconfirmed, as before the check existed.
+    /// </summary>
+    internal static OpeningLapBlue CheckOpeningLapBlue(TelemetrySnapshot telemetry, IracingSessionInfo? session)
+    {
+        var lapCompleted = telemetry.GetInt(TelemetryVarNames.LapCompleted);
+        if (session?.DriverInfo is not { } driverInfo ||
+            !telemetry.HasVariable(TelemetryVarNames.CarIdxLap) ||
+            !telemetry.HasVariable(TelemetryVarNames.CarIdxLapDistPct))
+        {
+            return new(OpeningLapBlueReason.Unconfirmed, lapCompleted, null, null);
+        }
+
+        var laps = telemetry.GetIntArray(TelemetryVarNames.CarIdxLap);
+        var lapDistPct = telemetry.GetFloatArray(TelemetryVarNames.CarIdxLapDistPct);
+        var onPitRoad = telemetry.HasVariable(TelemetryVarNames.CarIdxOnPitRoad)
+            ? telemetry.GetBoolArray(TelemetryVarNames.CarIdxOnPitRoad)
+            : null;
+        var playerCarIdx = driverInfo.DriverCarIdx;
+        var player = driverInfo.Drivers.FirstOrDefault(d => d.CarIdx == playerCarIdx);
+        if (player is null || TrackPosition.Read(laps, lapDistPct, playerCarIdx) is not { } mine)
+        {
+            return new(OpeningLapBlueReason.Unconfirmed, lapCompleted, null, null);
+        }
+
+        foreach (var driver in driverInfo.Drivers)
+        {
+            if (driver.CarIdx == playerCarIdx || driver.IsPaceCar || driver.IsGhost ||
+                TrackPosition.Read(laps, lapDistPct, driver.CarIdx) is not { } theirs)
+            {
+                continue;
+            }
+
+            if (mine.RaceGapTo(theirs) > 0.5)
+            {
+                return new(OpeningLapBlueReason.Lapping, lapCompleted, mine, driver.CarIdx);
+            }
+
+            var fasterClass = driver.CarClassID != player.CarClassID &&
+                driver.CarClassEstLapTime > 0 && driver.CarClassEstLapTime < player.CarClassEstLapTime;
+            var inPitLane = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx];
+            var secondsBehind = -mine.OnTrackGapTo(theirs) * player.CarClassEstLapTime;
+            if (fasterClass && !inPitLane && secondsBehind is > 0 and <= FasterClassBehindWithinSeconds)
+            {
+                return new(OpeningLapBlueReason.FasterClassBehind, lapCompleted, mine, driver.CarIdx);
+            }
+        }
+
+        return new(OpeningLapBlueReason.Unconfirmed, lapCompleted, mine, null);
+    }
 
     public static List<ActiveFlag> Decode(uint raw)
     {

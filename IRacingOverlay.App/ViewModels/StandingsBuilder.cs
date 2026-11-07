@@ -3,6 +3,16 @@ using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
 
+/// <summary>Cars read as lapped by the player on the opening laps of a race, for the log: how many
+/// of the cars on track, whether that was taken for a fault in the player's own lap count (and the
+/// lap relations dropped), and where everyone was.</summary>
+internal sealed record OpeningLapLapped(
+    TrackPosition Player,
+    int Lapped,
+    int OnTrack,
+    bool LapCountDoubted,
+    IReadOnlyList<(int CarIdx, TrackPosition Where)> Cars);
+
 /// <summary>
 /// Turns a raw TelemetrySnapshot + session info into the row lists the Relative/Standings widgets bind to.
 /// </summary>
@@ -35,13 +45,16 @@ internal static class StandingsBuilder
     ///
     /// Always includes the player, even alone with no one else on track.
     /// </summary>
+    /// <param name="onOpeningLapLapped">Told, for the log, whenever cars read as lapped by the player
+    /// on the opening laps of a race (see <see cref="OpeningLapsToCheck"/>).</param>
     public static List<object> BuildRelative(
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
         int maxEachSide = DriverTableOptions.DefaultRelativeFocusSize,
         IReadOnlyList<StandingsRow>? standings = null,
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
-        EstTimeProfile? estTimeProfile = null)
+        EstTimeProfile? estTimeProfile = null,
+        Action<OpeningLapLapped>? onOpeningLapLapped = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -203,13 +216,21 @@ internal static class StandingsBuilder
             return playerLapTime > 0 ? -mine.OnTrackGapTo(theirs) * playerLapTime : double.NaN;
         }
 
+        var openingLapLapped = isRace && playerOnTrack is { } playerPosition
+            ? CheckOpeningLapLapped(listed, playerCarIdx, playerPosition, carIdxLap, carIdxLapDistPct)
+            : null;
+        if (openingLapLapped is { } lappedEarly)
+        {
+            onOpeningLapLapped?.Invoke(lappedEarly);
+        }
+
         // Race distance, never the folded gap: half a lap is where the fold flips, so a car more than
         // half a lap up in the race sits behind the player on the road only because it is about to lap
         // them, and a lapped car just up the road is the one the player is about to lap. Only in a
         // race; in practice and qualifying lap counts are just time on track.
         LapRelation LapRelationOf(TrackPosition theirs, double gapSeconds)
         {
-            if (!isRace || playerOnTrack is not { } mine)
+            if (!isRace || openingLapLapped?.LapCountDoubted == true || playerOnTrack is not { } mine)
             {
                 return LapRelation.SameLap;
             }
@@ -632,6 +653,73 @@ internal static class StandingsBuilder
         }
 
         return ranks;
+    }
+
+    /// <summary>The player's laps, by iRacing's CarIdxLap, on which a whole field lapped at once is
+    /// taken for a fault in the player's own lap count. Lap 1 and 2 plus one more, since the fault
+    /// itself is a lap counted too many.</summary>
+    internal const int OpeningLapsToCheck = 3;
+
+    /// <summary>
+    /// On the opening laps of a race, the cars that read as lapped by the player; null when there are
+    /// none or the player is past those laps. Every other car on track at once (two or more) can't be
+    /// real that early — the player would be a lap up on the car in second — so it is taken for
+    /// iRacing counting the player a lap too many, as happens at some rallycross starts: the whole
+    /// Relative turned blue for an instant. Then nobody is marked lapped or lapping. A car or two
+    /// lapped for real (towed, stuck) still is, and a player towed on lap 1 still sees in red the
+    /// cars lapping them, because those aren't read as lapped at all.
+    /// </summary>
+    private static OpeningLapLapped? CheckOpeningLapLapped(
+        IReadOnlyList<DriverEntry> listed,
+        int playerCarIdx,
+        TrackPosition player,
+        int[] laps,
+        float[] lapDistPct)
+    {
+        if (player.Lap > OpeningLapsToCheck)
+        {
+            return null;
+        }
+
+        var onTrack = 0;
+        var lapped = 0;
+        foreach (var driver in listed)
+        {
+            if (OthersPosition(driver) is not { } theirs)
+            {
+                continue;
+            }
+
+            onTrack++;
+            if (player.RaceGapTo(theirs) < -0.5)
+            {
+                lapped++;
+            }
+        }
+
+        if (lapped == 0)
+        {
+            return null;
+        }
+
+        // Rare enough to spell out every car for the log.
+        var cars = new List<(int CarIdx, TrackPosition Where)>(onTrack);
+        foreach (var driver in listed)
+        {
+            if (OthersPosition(driver) is { } theirs)
+            {
+                cars.Add((driver.CarIdx, theirs));
+            }
+        }
+
+        return new OpeningLapLapped(player, lapped, onTrack, LapCountDoubted: onTrack >= 2 && lapped == onTrack, cars);
+
+        // Not placed, or not out on track yet: Relative doesn't list it either.
+        TrackPosition? OthersPosition(DriverEntry driver) =>
+            driver.CarIdx != playerCarIdx && TrackPosition.Read(laps, lapDistPct, driver.CarIdx) is { } theirs &&
+            (theirs.Lap > 0 || theirs.LapDistPct > 0)
+                ? theirs
+                : null;
     }
 
     /// <summary>Green flag to chequered: the stretch where cars are actually racing for position.

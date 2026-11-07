@@ -2267,6 +2267,77 @@ public class StandingsBuilderTests
         Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
     }
 
+    private static TelemetrySnapshot RaceAt(int[] laps, float[] pcts) =>
+        TestSnapshotFactory.Build(FieldVars(laps.Length), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", laps);
+            w.SetFloatArray("CarIdxLapDistPct", pcts);
+            w.SetFloatArray("CarIdxLastLapTime", laps.Select(_ => 50f).ToArray());
+        });
+
+    [Fact]
+    public void BuildRelative_OpeningLap_WholeFieldLappedAtOnce_IsTakenForAMiscountedLap()
+    {
+        // Rallycross start: iRacing counts the player (0) a lap too many, so the cars bunched up
+        // around them all read a lap down. Nobody is marked: it was the whole Relative in blue.
+        var snapshot = RaceAt([2, 0, 1, 1], [0.05f, 0.98f, 0.10f, 0.02f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
+        Assert.True(reported?.LapCountDoubted);
+        Assert.Equal((3, 3), (reported!.Lapped, reported.OnTrack));
+        Assert.Equal(3, reported.Cars.Count);
+    }
+
+    [Fact]
+    public void BuildRelative_OpeningLaps_ACarLappedForRealIsStillMarked()
+    {
+        // Lap 2: car 3 was towed on lap 1 and sits at 0.6 laps; the others are racing the player.
+        var snapshot = RaceAt([2, 2, 2, 0], [0.70f, 0.65f, 0.60f, 0.60f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapped, relative[3]);
+        Assert.Equal(LapRelation.SameLap, relative[1]);
+        Assert.False(reported?.LapCountDoubted);
+    }
+
+    [Fact]
+    public void BuildRelative_OpeningLaps_PlayerTowedOnLapOne_StillSeesTheCarsLappingThem()
+    {
+        // The player (0) rejoins at 1.3 laps; the leaders are on lap 2 and 3, car 3 is another
+        // straggler just ahead on the road.
+        var snapshot = RaceAt([1, 2, 3, 1], [0.30f, 0.90f, 0.20f, 0.50f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapping, relative[1]); // 2.9: 1.6 laps up
+        Assert.Equal(LapRelation.Lapping, relative[2]);
+        Assert.Equal(LapRelation.SameLap, relative[3]); // 2.1: 0.8 up, but...
+        Assert.Null(reported); // nobody reads as lapped by the player
+    }
+
+    [Fact]
+    public void BuildRelative_PastTheOpeningLaps_WholeFieldLappedIsMarked()
+    {
+        // A small field the player has lapped entirely by lap 9.
+        var snapshot = RaceAt([9, 8, 8], [0.50f, 0.40f, 0.20f]);
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(3, 0), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapped, relative[1]);
+        Assert.Equal(LapRelation.Lapped, relative[2]);
+    }
+
     private static List<StandingsRow> MakeRows(bool isMultiClass, params (int carIdx, bool isPlayer, int classId, string className, int position)[] specs) =>
     specs.Select(s => new StandingsRow
         {
