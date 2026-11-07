@@ -344,22 +344,19 @@ internal static class StandingsBuilder
             return rows.Cast<object>().ToList();
         }
 
-        var window = new List<object>();
-        var start = Math.Max(0, playerIndex - maxEachSide);
-        var end = Math.Min(rows.Count, playerIndex + maxEachSide + 1);
-        for (var i = start; i < end; i++)
-        {
-            window.Add(rows[i]);
-        }
-
+        // The player's row is always the middle one, so the eye finds it in the same spot without
+        // looking: a side short of cars is filled with reserved slots on that side. Filling only at
+        // the bottom pushed the player up the table whenever few cars were ahead.
+        //
         // Cars drift in and out of the window constantly as they lap or get lapped, and a table that
         // shrinks and grows with them resizes the widget mid-corner. Holding the configured number
-        // of slots keeps the height fixed — but only up to what the session could ever fill, so a
-        // solo practice stays a single row instead of a column of blanks.
-        var slots = Math.Min(maxEachSide * 2 + 1, listed.Count);
-        while (window.Count < slots)
+        // of slots each side keeps the height fixed — but only up to what the session could ever
+        // fill on one side, so a solo practice stays a single row instead of a column of blanks.
+        var eachSide = Math.Min(maxEachSide, listed.Count - 1);
+        var window = new List<object>(eachSide * 2 + 1);
+        for (var i = playerIndex - eachSide; i <= playerIndex + eachSide; i++)
         {
-            window.Add(new RelativePlaceholderRow());
+            window.Add(i >= 0 && i < rows.Count ? rows[i] : new RelativePlaceholderRow());
         }
 
         return window;

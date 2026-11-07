@@ -2122,12 +2122,37 @@ public class StandingsBuilderTests
         Assert.Equal(9, rows.Count);
         Assert.Equal(3, rows.OfType<RelativeRow>().Count());
         Assert.Equal(6, rows.OfType<RelativePlaceholderRow>().Count());
+        Assert.True(Assert.IsType<RelativeRow>(rows[4]).IsPlayer); // still the middle row
+    }
+
+    [Fact]
+    public void BuildRelative_FewCarsAhead_PlayerStaysInTheMiddleRow()
+    {
+        // One car ahead of the player (1), three behind, three slots each side: the two empty slots
+        // go above, not below, so the player's row doesn't move up the table.
+        var snapshot = TestSnapshotFactory.Build(FieldVars(5), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 10, 10, 10, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.60f, 0.55f, 0.50f, 0.45f, 0.40f]);
+            w.SetFloatArray("CarIdxLastLapTime", [95f, 95f, 95f, 95f, 95f]);
+        });
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(5, 1), maxEachSide: 3);
+
+        Assert.Equal(7, rows.Count);
+        Assert.IsType<RelativePlaceholderRow>(rows[0]);
+        Assert.IsType<RelativePlaceholderRow>(rows[1]);
+        Assert.Equal(0, Assert.IsType<RelativeRow>(rows[2]).CarIdx);
+        Assert.True(Assert.IsType<RelativeRow>(rows[3]).IsPlayer);
+        Assert.Equal([2, 3, 4], rows.Skip(4).Cast<RelativeRow>().Select(r => r.CarIdx));
     }
 
     [Fact]
     public void BuildRelative_SessionSmallerThanTheWindow_IsNotPaddedPastItsRoster()
     {
-        // Asking for 10 each side in a two-car session must not produce a column of blanks.
+        // Asking for 10 each side in a two-car session must not produce a column of blanks: one
+        // slot each side, the player in the middle.
         var snapshot = TestSnapshotFactory.Build(FieldVars(9), w =>
         {
             w.SetInt("SessionNum", 0);
@@ -2139,8 +2164,10 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(2, 0), maxEachSide: 10);
 
-        Assert.Equal(2, rows.Count);
-        Assert.Empty(rows.OfType<RelativePlaceholderRow>());
+        Assert.Equal(3, rows.Count);
+        Assert.IsType<RelativePlaceholderRow>(rows[0]);
+        Assert.True(Assert.IsType<RelativeRow>(rows[1]).IsPlayer);
+        Assert.Equal(1, Assert.IsType<RelativeRow>(rows[2]).CarIdx);
     }
 
     [Fact]
