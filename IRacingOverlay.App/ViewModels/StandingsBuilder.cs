@@ -3,6 +3,23 @@ using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.App.ViewModels;
 
+/// <summary>Cars read as lapped by the player on the opening laps of a race, for the log: how many
+/// of the cars on track, whether that was taken for a fault in the player's own lap count (and the
+/// lap relations dropped), and where everyone was.</summary>
+internal sealed record OpeningLapLapped(
+    TrackPosition Player,
+    int Lapped,
+    int OnTrack,
+    bool LapCountDoubted,
+    IReadOnlyList<(int CarIdx, TrackPosition Where)> Cars);
+
+/// <summary>The qualifying grid before the green, for the log: how many cars it has, how many of
+/// them are in the session's roster (only those can be listed), and how many are already in the world.</summary>
+internal readonly record struct PreGreenGrid(int Gridded, int InRoster, int InTheWorld)
+{
+    public int MissingFromRoster => Gridded - InRoster;
+}
+
 /// <summary>
 /// Turns a raw TelemetrySnapshot + session info into the row lists the Relative/Standings widgets bind to.
 /// </summary>
@@ -35,13 +52,16 @@ internal static class StandingsBuilder
     ///
     /// Always includes the player, even alone with no one else on track.
     /// </summary>
+    /// <param name="onOpeningLapLapped">Told, for the log, whenever cars read as lapped by the player
+    /// on the opening laps of a race (see <see cref="OpeningLapsToCheck"/>).</param>
     public static List<object> BuildRelative(
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
         int maxEachSide = DriverTableOptions.DefaultRelativeFocusSize,
         IReadOnlyList<StandingsRow>? standings = null,
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
-        EstTimeProfile? estTimeProfile = null)
+        EstTimeProfile? estTimeProfile = null,
+        Action<OpeningLapLapped>? onOpeningLapLapped = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -203,13 +223,21 @@ internal static class StandingsBuilder
             return playerLapTime > 0 ? -mine.OnTrackGapTo(theirs) * playerLapTime : double.NaN;
         }
 
+        var openingLapLapped = isRace && playerOnTrack is { } playerPosition
+            ? CheckOpeningLapLapped(listed, playerCarIdx, playerPosition, carIdxLap, carIdxLapDistPct)
+            : null;
+        if (openingLapLapped is { } lappedEarly)
+        {
+            onOpeningLapLapped?.Invoke(lappedEarly);
+        }
+
         // Race distance, never the folded gap: half a lap is where the fold flips, so a car more than
         // half a lap up in the race sits behind the player on the road only because it is about to lap
         // them, and a lapped car just up the road is the one the player is about to lap. Only in a
         // race; in practice and qualifying lap counts are just time on track.
         LapRelation LapRelationOf(TrackPosition theirs, double gapSeconds)
         {
-            if (!isRace || playerOnTrack is not { } mine)
+            if (!isRace || openingLapLapped?.LapCountDoubted == true || playerOnTrack is not { } mine)
             {
                 return LapRelation.SameLap;
             }
@@ -316,22 +344,19 @@ internal static class StandingsBuilder
             return rows.Cast<object>().ToList();
         }
 
-        var window = new List<object>();
-        var start = Math.Max(0, playerIndex - maxEachSide);
-        var end = Math.Min(rows.Count, playerIndex + maxEachSide + 1);
-        for (var i = start; i < end; i++)
-        {
-            window.Add(rows[i]);
-        }
-
+        // The player's row is always the middle one, so the eye finds it in the same spot without
+        // looking: a side short of cars is filled with reserved slots on that side. Filling only at
+        // the bottom pushed the player up the table whenever few cars were ahead.
+        //
         // Cars drift in and out of the window constantly as they lap or get lapped, and a table that
         // shrinks and grows with them resizes the widget mid-corner. Holding the configured number
-        // of slots keeps the height fixed — but only up to what the session could ever fill, so a
-        // solo practice stays a single row instead of a column of blanks.
-        var slots = Math.Min(maxEachSide * 2 + 1, listed.Count);
-        while (window.Count < slots)
+        // of slots each side keeps the height fixed — but only up to what the session could ever
+        // fill on one side, so a solo practice stays a single row instead of a column of blanks.
+        var eachSide = Math.Min(maxEachSide, listed.Count - 1);
+        var window = new List<object>(eachSide * 2 + 1);
+        for (var i = playerIndex - eachSide; i <= playerIndex + eachSide; i++)
         {
-            window.Add(new RelativePlaceholderRow());
+            window.Add(i >= 0 && i < rows.Count ? rows[i] : new RelativePlaceholderRow());
         }
 
         return window;
@@ -354,12 +379,15 @@ internal static class StandingsBuilder
     ///
     /// Practice and Qualifying rank by fastest lap instead (<see cref="BuildFastestLapStandings"/>).
     /// </summary>
+    /// <param name="onPreGreenGrid">Told, for the log, how much of the qualifying grid is in the
+    /// roster and out on track, on every build before the green.</param>
     public static List<StandingsRow> BuildStandings(
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
         SessionBestLapTracker? bestLapTracker = null,
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
-        LineCrossingTracker? crossings = null)
+        LineCrossingTracker? crossings = null,
+        Action<PreGreenGrid>? onPreGreenGrid = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -440,12 +468,32 @@ internal static class StandingsBuilder
             crossings?.HeldPosition(carIdx) is { } held ? held
             : positions is not null && carIdx < positions.Length && positions[carIdx] > 0 ? positions[carIdx] : 0;
 
+        // Before the green there is no official order yet (CarIdxPosition is 0 for everyone), and
+        // laps mean nothing: through the pace laps CarIdxLapCompleted flips between -1 and 0 each
+        // time a car crosses the line. Seen live: the polesitter shown P2 on the grid, and the order
+        // reshuffling through formation. The grid is the order until the race is on.
+        var preGreen = IsBeforeTheGreen(telemetry);
+        if (preGreen && grid.Count > 0 && onPreGreenGrid is not null)
+        {
+            onPreGreenGrid(CountPreGreenGrid(grid, racing, currentLaps, lapDistPct));
+        }
+
         var eligible = new List<DriverEntry>();
         foreach (var driver in racing)
         {
             var isPlayer = driver.CarIdx == playerCarIdx;
             var lap = driver.CarIdx < currentLaps.Length ? currentLaps[driver.CarIdx] : -1;
             var hasOfficialPosition = OfficialPositionOf(driver.CarIdx) > 0;
+
+            // The whole grid from the moment the race session opens, each car in its slot, rather
+            // than filling in car by car as drivers get in: counting only the cars already out put
+            // a driver gridded eighth in fourth while the four ahead were still in the garage. A car
+            // that never comes out drops out at the green, as it always did.
+            if (preGreen && grid.ContainsKey(driver.CarIdx))
+            {
+                eligible.Add(driver);
+                continue;
+            }
 
             if (!isPlayer && lap < 0)
             {
@@ -472,12 +520,6 @@ internal static class StandingsBuilder
         double LastCrossedAt(DriverEntry driver) => crossings?.LastCrossing(driver.CarIdx)?.Time ?? double.MaxValue;
 
         int GridSlotOf(DriverEntry driver) => grid.TryGetValue(driver.CarIdx, out var slot) ? slot.Position : int.MaxValue;
-
-        // Before the green there is no official order yet (CarIdxPosition is 0 for everyone), and
-        // laps mean nothing: through the pace laps CarIdxLapCompleted flips between -1 and 0 each
-        // time a car crosses the line. Seen live: the polesitter shown P2 on the grid, and the order
-        // reshuffling through formation. The grid is the order until the race is on.
-        var preGreen = IsBeforeTheGreen(telemetry);
 
         // Official order first. Ties only arise without it, and are settled the way the official
         // order is: laps completed, then who completed the latest of them first, then the grid.
@@ -632,6 +674,100 @@ internal static class StandingsBuilder
         }
 
         return ranks;
+    }
+
+    /// <summary>How much of the qualifying grid can be listed before the green: in the session's
+    /// roster at all, and of those, in the world (CarIdxLap not -1).</summary>
+    private static PreGreenGrid CountPreGreenGrid(
+        Dictionary<int, (int Position, int ClassPosition)> grid,
+        IReadOnlyList<DriverEntry> racing,
+        int[] laps,
+        float[] lapDistPct)
+    {
+        var inRoster = 0;
+        var inTheWorld = 0;
+        foreach (var driver in racing)
+        {
+            if (!grid.ContainsKey(driver.CarIdx))
+            {
+                continue;
+            }
+
+            inRoster++;
+            if (TrackPosition.Read(laps, lapDistPct, driver.CarIdx) is not null)
+            {
+                inTheWorld++;
+            }
+        }
+
+        return new PreGreenGrid(grid.Count, inRoster, inTheWorld);
+    }
+
+    /// <summary>The player's laps, by iRacing's CarIdxLap, on which a whole field lapped at once is
+    /// taken for a fault in the player's own lap count. Lap 1 and 2 plus one more, since the fault
+    /// itself is a lap counted too many.</summary>
+    internal const int OpeningLapsToCheck = 3;
+
+    /// <summary>
+    /// On the opening laps of a race, the cars that read as lapped by the player; null when there are
+    /// none or the player is past those laps. Every other car on track at once (two or more) can't be
+    /// real that early — the player would be a lap up on the car in second — so it is taken for
+    /// iRacing counting the player a lap too many, as happens at some rallycross starts: the whole
+    /// Relative turned blue for an instant. Then nobody is marked lapped or lapping. A car or two
+    /// lapped for real (towed, stuck) still is, and a player towed on lap 1 still sees in red the
+    /// cars lapping them, because those aren't read as lapped at all.
+    /// </summary>
+    private static OpeningLapLapped? CheckOpeningLapLapped(
+        IReadOnlyList<DriverEntry> listed,
+        int playerCarIdx,
+        TrackPosition player,
+        int[] laps,
+        float[] lapDistPct)
+    {
+        if (player.Lap > OpeningLapsToCheck)
+        {
+            return null;
+        }
+
+        var onTrack = 0;
+        var lapped = 0;
+        foreach (var driver in listed)
+        {
+            if (OthersPosition(driver) is not { } theirs)
+            {
+                continue;
+            }
+
+            onTrack++;
+            if (player.RaceGapTo(theirs) < -0.5)
+            {
+                lapped++;
+            }
+        }
+
+        if (lapped == 0)
+        {
+            return null;
+        }
+
+        // Rare enough to spell out every car for the log.
+        var cars = new List<(int CarIdx, TrackPosition Where)>(onTrack);
+        foreach (var driver in listed)
+        {
+            if (OthersPosition(driver) is { } theirs)
+            {
+                cars.Add((driver.CarIdx, theirs));
+            }
+        }
+
+        return new OpeningLapLapped(player, lapped, onTrack, LapCountDoubted: onTrack >= 2 && lapped == onTrack, cars);
+
+        // Not placed, or not out on track yet: Relative doesn't list it either.
+        TrackPosition? OthersPosition(DriverEntry driver) =>
+            driver.CarIdx != playerCarIdx && TrackPosition.Read(laps, lapDistPct, driver.CarIdx) is { } theirs &&
+            (theirs.Lap > 0 || theirs.LapDistPct > 0)
+                ? theirs
+                : null;
     }
 
     /// <summary>Green flag to chequered: the stretch where cars are actually racing for position.

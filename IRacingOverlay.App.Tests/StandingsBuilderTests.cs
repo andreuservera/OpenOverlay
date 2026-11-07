@@ -842,6 +842,72 @@ public class StandingsBuilderTests
         Assert.Equal([0, 2, 1], rows.Select(r => r.CarIdx));
     }
 
+    /// <summary>A race after qualifying, before the green: four cars on the grid, car 3 a late entry
+    /// with no grid slot. Cars 0 and 2 are still in the garage (CarIdxLap -1).</summary>
+    private static (TelemetrySnapshot Snapshot, IracingSessionInfo Session) DriversGettingIn(int sessionState, int[] laps, float[] pcts, int[] official)
+    {
+        var builder = RaceVars(cars: 5);
+        var snapshot = TestSnapshotFactory.Build(builder, w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetInt("SessionState", sessionState);
+            w.SetIntArray("CarIdxPosition", official);
+            w.SetIntArray("CarIdxLap", laps);
+            w.SetIntArray("CarIdxLapCompleted", laps.Select(l => l < 0 ? -1 : 0).ToArray());
+            w.SetFloatArray("CarIdxLapDistPct", pcts);
+        });
+        var session = RaceSession(
+            new DriverEntry { CarIdx = 0, UserName = "Pole", CarNumber = "1", CarClassID = 1 },
+            new DriverEntry { CarIdx = 1, UserName = "Fourth", CarNumber = "2", CarClassID = 1 },
+            new DriverEntry { CarIdx = 2, UserName = "Second", CarNumber = "3", CarClassID = 1 },
+            new DriverEntry { CarIdx = 3, UserName = "Late", CarNumber = "4", CarClassID = 1 },
+            new DriverEntry { CarIdx = 4, UserName = "Third", CarNumber = "5", CarClassID = 1 });
+        session.QualifyResultsInfo = new QualifyResultsInfoSection
+        {
+            Results =
+            [
+                new QualifyResult { Position = 0, ClassPosition = 0, CarIdx = 0 },
+                new QualifyResult { Position = 1, ClassPosition = 1, CarIdx = 2 },
+                new QualifyResult { Position = 2, ClassPosition = 2, CarIdx = 4 },
+                new QualifyResult { Position = 3, ClassPosition = 3, CarIdx = 1 },
+                new QualifyResult { Position = 4, ClassPosition = 4, CarIdx = 7 }, // never joined
+            ],
+        };
+        return (snapshot, session);
+    }
+
+    [Fact]
+    public void BuildStandings_BeforeTheGreen_ListsTheWholeGridWhileDriversGetIn()
+    {
+        // The player (1) is out, gridded fourth; the cars gridded first and second aren't yet. The
+        // late entry (3) isn't out either, so it isn't listed.
+        var (snapshot, session) = DriversGettingIn(
+            sessionState: 1, laps: [-1, 0, -1, -1, 0], pcts: [-1f, 0.95f, -1f, -1f, 0.96f], official: [0, 0, 0, 0, 0]);
+        session.DriverInfo!.DriverCarIdx = 1;
+        PreGreenGrid? reported = null;
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker(), onPreGreenGrid: g => reported = g);
+
+        Assert.Equal([0, 2, 4, 1], rows.Select(r => r.CarIdx));
+        Assert.Equal(4, rows.Single(r => r.IsPlayer).Position);
+        Assert.Equal("—", rows[0].LapDisplay);
+        Assert.Equal(new PreGreenGrid(Gridded: 5, InRoster: 4, InTheWorld: 2), reported);
+        Assert.Equal(1, reported!.Value.MissingFromRoster);
+    }
+
+    [Fact]
+    public void BuildStandings_AfterTheGreen_AGriddedCarThatNeverCameOutDropsOut()
+    {
+        var (snapshot, session) = DriversGettingIn(
+            sessionState: 4, laps: [1, 1, -1, 1, 1], pcts: [0.05f, 0.02f, -1f, 0.01f, 0.04f], official: [1, 3, 0, 4, 2]);
+        PreGreenGrid? reported = null;
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker(), onPreGreenGrid: g => reported = g);
+
+        Assert.Equal([0, 4, 1, 3], rows.Select(r => r.CarIdx));
+        Assert.Null(reported);
+    }
+
     [Fact]
     public void BuildStandings_LiveStateUpdatesBetweenCrossings()
     {
@@ -2056,12 +2122,37 @@ public class StandingsBuilderTests
         Assert.Equal(9, rows.Count);
         Assert.Equal(3, rows.OfType<RelativeRow>().Count());
         Assert.Equal(6, rows.OfType<RelativePlaceholderRow>().Count());
+        Assert.True(Assert.IsType<RelativeRow>(rows[4]).IsPlayer); // still the middle row
+    }
+
+    [Fact]
+    public void BuildRelative_FewCarsAhead_PlayerStaysInTheMiddleRow()
+    {
+        // One car ahead of the player (1), three behind, three slots each side: the two empty slots
+        // go above, not below, so the player's row doesn't move up the table.
+        var snapshot = TestSnapshotFactory.Build(FieldVars(5), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10, 10, 10, 10, 10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.60f, 0.55f, 0.50f, 0.45f, 0.40f]);
+            w.SetFloatArray("CarIdxLastLapTime", [95f, 95f, 95f, 95f, 95f]);
+        });
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(5, 1), maxEachSide: 3);
+
+        Assert.Equal(7, rows.Count);
+        Assert.IsType<RelativePlaceholderRow>(rows[0]);
+        Assert.IsType<RelativePlaceholderRow>(rows[1]);
+        Assert.Equal(0, Assert.IsType<RelativeRow>(rows[2]).CarIdx);
+        Assert.True(Assert.IsType<RelativeRow>(rows[3]).IsPlayer);
+        Assert.Equal([2, 3, 4], rows.Skip(4).Cast<RelativeRow>().Select(r => r.CarIdx));
     }
 
     [Fact]
     public void BuildRelative_SessionSmallerThanTheWindow_IsNotPaddedPastItsRoster()
     {
-        // Asking for 10 each side in a two-car session must not produce a column of blanks.
+        // Asking for 10 each side in a two-car session must not produce a column of blanks: one
+        // slot each side, the player in the middle.
         var snapshot = TestSnapshotFactory.Build(FieldVars(9), w =>
         {
             w.SetInt("SessionNum", 0);
@@ -2073,8 +2164,10 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(2, 0), maxEachSide: 10);
 
-        Assert.Equal(2, rows.Count);
-        Assert.Empty(rows.OfType<RelativePlaceholderRow>());
+        Assert.Equal(3, rows.Count);
+        Assert.IsType<RelativePlaceholderRow>(rows[0]);
+        Assert.True(Assert.IsType<RelativeRow>(rows[1]).IsPlayer);
+        Assert.Equal(1, Assert.IsType<RelativeRow>(rows[2]).CarIdx);
     }
 
     [Fact]
@@ -2265,6 +2358,77 @@ public class StandingsBuilderTests
         var relative = StandingsBuilder.BuildRelative(LappingTraffic(), session, maxEachSide: 4).OfType<RelativeRow>();
 
         Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
+    }
+
+    private static TelemetrySnapshot RaceAt(int[] laps, float[] pcts) =>
+        TestSnapshotFactory.Build(FieldVars(laps.Length), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", laps);
+            w.SetFloatArray("CarIdxLapDistPct", pcts);
+            w.SetFloatArray("CarIdxLastLapTime", laps.Select(_ => 50f).ToArray());
+        });
+
+    [Fact]
+    public void BuildRelative_OpeningLap_WholeFieldLappedAtOnce_IsTakenForAMiscountedLap()
+    {
+        // Rallycross start: iRacing counts the player (0) a lap too many, so the cars bunched up
+        // around them all read a lap down. Nobody is marked: it was the whole Relative in blue.
+        var snapshot = RaceAt([2, 0, 1, 1], [0.05f, 0.98f, 0.10f, 0.02f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
+        Assert.True(reported?.LapCountDoubted);
+        Assert.Equal((3, 3), (reported!.Lapped, reported.OnTrack));
+        Assert.Equal(3, reported.Cars.Count);
+    }
+
+    [Fact]
+    public void BuildRelative_OpeningLaps_ACarLappedForRealIsStillMarked()
+    {
+        // Lap 2: car 3 was towed on lap 1 and sits at 0.6 laps; the others are racing the player.
+        var snapshot = RaceAt([2, 2, 2, 0], [0.70f, 0.65f, 0.60f, 0.60f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapped, relative[3]);
+        Assert.Equal(LapRelation.SameLap, relative[1]);
+        Assert.False(reported?.LapCountDoubted);
+    }
+
+    [Fact]
+    public void BuildRelative_OpeningLaps_PlayerTowedOnLapOne_StillSeesTheCarsLappingThem()
+    {
+        // The player (0) rejoins at 1.3 laps; the leaders are on lap 2 and 3, car 3 is another
+        // straggler just ahead on the road.
+        var snapshot = RaceAt([1, 2, 3, 1], [0.30f, 0.90f, 0.20f, 0.50f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapping, relative[1]); // 2.9: 1.6 laps up
+        Assert.Equal(LapRelation.Lapping, relative[2]);
+        Assert.Equal(LapRelation.SameLap, relative[3]); // 2.1: 0.8 up, but...
+        Assert.Null(reported); // nobody reads as lapped by the player
+    }
+
+    [Fact]
+    public void BuildRelative_PastTheOpeningLaps_WholeFieldLappedIsMarked()
+    {
+        // A small field the player has lapped entirely by lap 9.
+        var snapshot = RaceAt([9, 8, 8], [0.50f, 0.40f, 0.20f]);
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(3, 0), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapped, relative[1]);
+        Assert.Equal(LapRelation.Lapped, relative[2]);
     }
 
     private static List<StandingsRow> MakeRows(bool isMultiClass, params (int carIdx, bool isPlayer, int classId, string className, int position)[] specs) =>

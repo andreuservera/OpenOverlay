@@ -2,6 +2,18 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.13.0] - 2026-11-07
+
+#### Changed
+- Relative: your row is always the middle one, however many cars are ahead or behind, so your eyes find it in the same place. In small sessions, empty rows hold the space on the short side.
+
+#### Fixed
+- Standings: at the start of a race after qualifying, the whole grid shows in qualifying order straight away, instead of filling in as drivers get in their cars with the wrong positions meanwhile.
+- Flags: on the opening laps the blue flag now shows when you are really being lapped, for example after a tow on lap 1, or when a faster class comes through; the stray one at rallycross starts stays hidden.
+- Relative: at some rallycross starts, every driver no longer turns blue for an instant.
+- Relative and Standings: drivers from a country or territory without a flag of its own show the globe instead of an empty cell.
+
+
 ### [0.12.0] - 2026-10-15
 
 #### Added
