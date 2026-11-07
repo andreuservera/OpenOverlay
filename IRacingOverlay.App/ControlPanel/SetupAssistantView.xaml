@@ -24,8 +24,11 @@
         </Border.Effect>
         <StackPanel>
             <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="13"
-                        Margin="0,-6,-10,0" ToolTip="{loc:T setup.closeEsc}" Command="{Binding CancelCommand}"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}"
+                        Margin="0,-6,-10,0" ToolTip="{loc:T setup.closeEsc}" Command="{Binding CancelCommand}"
+                        AutomationProperties.Name="{loc:T setup.closeEsc}">
+                    <Path Style="{StaticResource Cp.CloseGlyph}" Width="11" Height="11"/>
+                </Button>
                 <TextBlock Text="{Binding StepLabel}" Style="{StaticResource Cp.Eyebrow}" VerticalAlignment="Center"/>
             </DockPanel>
 

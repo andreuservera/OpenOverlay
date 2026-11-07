@@ -1192,6 +1192,11 @@ public sealed class InfoBarSetting : SettingItem
         OnPropertyChanged(nameof(Chips));
     }
 
+    /// <summary>Puts a chip in the first slot with nothing in it, top row first; with every slot
+    /// taken, beside what is already bottom right.</summary>
+    public void Place(InfoChip chip) =>
+        Move(chip, Top.Concat(Bottom).FirstOrDefault(slot => slot.Chips.Count == 0)?.Slot ?? TableSlot.BottomRight);
+
     private void Arrange()
     {
         Available.Clear();

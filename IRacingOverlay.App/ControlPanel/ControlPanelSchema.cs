@@ -84,7 +84,7 @@ public sealed partial class ControlPanelViewModel
                 LayoutsPageKey => LayoutsPage(),
                 GeneralPageKey => GeneralPage(),
                 HotkeysPageKey => HotkeyGroups(),
-                DiagnosticsPageKey => [DiagnosticsGroup()],
+                DiagnosticsPageKey => [DiagnosticsGroup(), .. ProblemsGroup()],
                 HelpPageKey => HelpPage(),
                 _ => [],
             };
@@ -486,6 +486,42 @@ public sealed partial class ControlPanelViewModel
                         Directory.CreateDirectory(AppLog.LogDirectory);
                         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppLog.LogDirectory}\"") { UseShellExecute = true });
                     }));
+    }
+
+    // The problems shown, newest first; the report and the log have every one.
+    private const int ProblemsShown = 8;
+
+    /// <summary>The warnings and errors this run, so the counts above can be read without exporting
+    /// a report: each in the log's own (English) words, how often, when last, and the ref that finds
+    /// it in the log file. Nothing when the run is clean.</summary>
+    private static IEnumerable<SettingsGroup> ProblemsGroup()
+    {
+        var problems = AppLog.Problems()
+            .Where(problem => problem.Level >= LogLevel.Warning)
+            .OrderByDescending(problem => problem.LastUtc)
+            .Take(ProblemsShown)
+            .ToList();
+        if (problems.Count == 0)
+        {
+            yield break;
+        }
+
+        var group = new SettingsGroup(Loc.T("diagnostics.problems"), Loc.T("diagnostics.problems.hint"));
+        foreach (var problem in problems)
+        {
+            var detail = Loc.F("diagnostics.problem.detail", problem.Count, problem.LastUtc.ToLocalTime().ToString("T", CultureInfo.CurrentCulture));
+            if (problem.LastRef is { } reference)
+            {
+                detail += $" · ref {reference}";
+            }
+
+            group.Items.Add(new InfoSetting(
+                $"{problem.Source}: {problem.Message}",
+                detail,
+                Loc.T(problem.Level >= LogLevel.Error ? "diagnostics.level.error" : "diagnostics.level.warning")));
+        }
+
+        yield return group;
     }
 
     private static void ShowInExplorer(string path) =>

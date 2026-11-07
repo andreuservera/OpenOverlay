@@ -201,6 +201,46 @@
         </Style.Triggers>
     </Style>
 
+    <!-- ===== Keyboard focus =====
+         An amber ring a few pixels outside the control, in place of WPF's dotted rectangle: it only
+         shows for keyboard focus, so pointer users never see it. -->
+    <Style x:Key="Cp.FocusRing">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border Margin="-3" CornerRadius="8" BorderBrush="{StaticResource Cp.Accent}" BorderThickness="2"
+                            SnapsToDevicePixels="True"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The same ring for the round-ended controls: switches and chips. -->
+    <Style x:Key="Cp.FocusRingPill">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border Margin="-3" CornerRadius="16" BorderBrush="{StaticResource Cp.Accent}" BorderThickness="2"
+                            SnapsToDevicePixels="True"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A close / remove cross, drawn rather than typed: a "✕" glyph changes weight and size with
+         the font, and never lines up with the icons around it. Takes its colour from the button. -->
+    <Style x:Key="Cp.CloseGlyph" TargetType="Path">
+        <Setter Property="Data" Value="M6,6 L18,18 M18,6 L6,18"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="Height" Value="10"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="StrokeThickness" Value="1.7"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ButtonBase}}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
     <!-- ===== Buttons ===== -->
     <Style x:Key="Cp.Button" TargetType="ButtonBase">
         <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
@@ -210,6 +250,7 @@
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Height" Value="32"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ButtonBase">
@@ -366,7 +407,7 @@
         <Setter Property="Width" Value="26"/>
         <Setter Property="Height" Value="26"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ButtonBase">
@@ -395,7 +436,7 @@
         <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
         <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ButtonBase">
@@ -420,7 +461,7 @@
         <Setter Property="Width" Value="38"/>
         <Setter Property="Height" Value="22"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRingPill}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -428,7 +469,9 @@
                     <Grid Background="Transparent">
                         <Border x:Name="Track" CornerRadius="11" Background="{StaticResource Cp.Field}"
                                 BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"/>
-                        <Border x:Name="Knob" Width="16" Height="16" CornerRadius="8" Background="#6C7681"
+                        <!-- Off, the knob is the part that has to be seen: light enough to read as a
+                             control on the rail's near-black, not as a grey smudge. -->
+                        <Border x:Name="Knob" Width="16" Height="16" CornerRadius="8" Background="#7D8794"
                                 HorizontalAlignment="Left" Margin="3,0,0,0">
                             <Border.RenderTransform>
                                 <TranslateTransform x:Name="KnobShift" X="0"/>
@@ -470,7 +513,7 @@
                                 <Condition Property="IsMouseOver" Value="True"/>
                                 <Condition Property="IsChecked" Value="False"/>
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="Knob" Property="Background" Value="#8B959F"/>
+                            <Setter TargetName="Knob" Property="Background" Value="#9AA3AF"/>
                         </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -490,7 +533,7 @@
         <Setter Property="Padding" Value="11,0"/>
         <Setter Property="Margin" Value="0,0,6,6"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRingPill}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -524,7 +567,7 @@
         <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
         <Setter Property="Height" Value="24"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRingPill}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -571,6 +614,7 @@
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Foreground" Value="{StaticResource Cp.TextMuted}"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -676,6 +720,7 @@
         <Setter Property="Height" Value="32"/>
         <Setter Property="MinWidth" Value="150"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="ItemContainerStyle" Value="{StaticResource Cp.ComboBoxItem}"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -791,7 +836,7 @@
         <!-- Click anywhere on the track jumps there: for a value judged by eye, making the user
              drag from wherever the thumb happens to be is pure friction. -->
         <Setter Property="IsMoveToPointEnabled" Value="True"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRingPill}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -834,6 +879,7 @@
     </Style>
 
     <Style x:Key="Cp.NavItem" TargetType="ListBoxItem">
+        <Setter Property="AutomationProperties.Name" Value="{Binding Title}"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Margin" Value="8,1,8,1"/>
@@ -916,7 +962,7 @@
             <Ellipse x:Name="Dot" Grid.Column="2" Style="{StaticResource Cp.StateDot}" DataContext="{Binding Widget}" Margin="0,0,12,0"/>
 
             <CheckBox x:Name="Switch" Grid.Column="3" Style="{StaticResource Cp.Switch}"
-                      IsChecked="{Binding Widget.IsEnabled, Mode=TwoWay}"
+                      IsChecked="{Binding Widget.IsEnabled, Mode=TwoWay}" AutomationProperties.Name="{Binding Title}"
                       ToolTip="{loc:T cp.showThisWidgetOn}"
                       Visibility="{Binding IsWidget, Converter={StaticResource Cp.BoolToVis}}"/>
         </Grid>
@@ -943,7 +989,7 @@
          whole row is the button; the chevron at its end points down open and right folded. -->
     <Style x:Key="Cp.SectionHeader" TargetType="ToggleButton">
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -1094,8 +1140,9 @@
         <Setter Property="Width" Value="32"/>
         <Setter Property="Height" Value="32"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="ToolTip" Value="{loc:T cp.moreActions}"/>
+        <Setter Property="AutomationProperties.Name" Value="{loc:T cp.moreActions}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -1132,7 +1179,7 @@
         <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -1256,13 +1303,16 @@
     <DataTemplate x:Key="Cp.InfoChipOnTable" DataType="{x:Type cp:InfoChip}">
         <Border Height="26" CornerRadius="13" Margin="0,0,4,4" Padding="10,0,4,0" Cursor="SizeAll"
                 Background="{StaticResource Cp.AccentWash}" BorderBrush="#66FFD24D" BorderThickness="1"
-                ToolTip="{Binding Description}">
+                ToolTip="{Binding Description}" Focusable="True" FocusVisualStyle="{StaticResource Cp.FocusRingPill}"
+                cp:InfoBarDrag.IsChip="True" AutomationProperties.Name="{Binding Label}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource Theme.FontFamily}"
                            FontSize="{StaticResource Cp.Size.Small}" FontWeight="SemiBold"
                            Foreground="{StaticResource Cp.Accent}" VerticalAlignment="Center"/>
-                <Button Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="10" Width="18" Height="18"
-                        Margin="4,0,0,0" ToolTip="{loc:T cp.hideIt}" cp:InfoBarDrag.Removes="True"/>
+                <Button Style="{StaticResource Cp.StepButton}" Width="18" Height="18" Focusable="False"
+                        Margin="4,0,0,0" ToolTip="{loc:T cp.hideIt}" cp:InfoBarDrag.Removes="True">
+                    <Path Style="{StaticResource Cp.CloseGlyph}" Width="8" Height="8"/>
+                </Button>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -1270,7 +1320,8 @@
     <DataTemplate x:Key="Cp.InfoChipInTray" DataType="{x:Type cp:InfoChip}">
         <Border Height="26" CornerRadius="13" Margin="0,0,6,6" Padding="10,0" Cursor="SizeAll"
                 Background="{StaticResource Cp.SurfaceAlt}" BorderBrush="{StaticResource Cp.BorderStrong}" BorderThickness="1"
-                ToolTip="{Binding Description}">
+                ToolTip="{Binding Description}" Focusable="True" FocusVisualStyle="{StaticResource Cp.FocusRingPill}"
+                cp:InfoBarDrag.IsChip="True" AutomationProperties.Name="{Binding Label}">
             <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource Theme.FontFamily}"
                        FontSize="{StaticResource Cp.Size.Small}" FontWeight="SemiBold"
                        Foreground="{StaticResource Cp.TextSoft}" VerticalAlignment="Center"/>
@@ -1311,7 +1362,7 @@
     </ItemsPanelTemplate>
 
     <DataTemplate DataType="{x:Type cp:InfoBarSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingStack}">
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingStack}">
             <Border cp:InfoBarDrag.IsEnabled="True" Background="Transparent">
                 <StackPanel>
                     <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
@@ -1367,7 +1418,7 @@
          A monitor or a preset as a selectable card: the radio dot and the accent edge both say which
          is picked. -->
     <DataTemplate x:Key="Cp.SetupChoiceTemplate" DataType="{x:Type cp:SetupChoice}">
-        <Button Cursor="Hand" Focusable="False" Margin="0,0,0,8" HorizontalContentAlignment="Stretch"
+        <Button Cursor="Hand" FocusVisualStyle="{StaticResource Cp.FocusRing}" Margin="0,0,0,8" HorizontalContentAlignment="Stretch"
                 Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                 CommandParameter="{Binding}">
             <Button.Template>
@@ -1417,7 +1468,7 @@
     <!-- ===== Search results =====
          What was found, where it lives, and what it does: the whole row opens it. -->
     <DataTemplate x:Key="Cp.SearchResultTemplate" DataType="{x:Type cp:SearchResult}">
-        <Button Command="{Binding OpenCommand}" Cursor="Hand" Focusable="False" Margin="0,0,0,6"
+        <Button Command="{Binding OpenCommand}" Cursor="Hand" FocusVisualStyle="{StaticResource Cp.FocusRing}" Margin="0,0,0,6"
                 HorizontalContentAlignment="Stretch">
             <Button.Template>
                 <ControlTemplate TargetType="Button">
@@ -1462,26 +1513,26 @@
          deriving from SettingItem, one DataTemplate here. Nothing else changes, in any widget. -->
 
     <DataTemplate DataType="{x:Type cp:ToggleSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
-            <CheckBox Style="{StaticResource Cp.Switch}" IsChecked="{Binding Value, Mode=TwoWay}"/>
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
+            <CheckBox Style="{StaticResource Cp.Switch}" IsChecked="{Binding Value, Mode=TwoWay}" AutomationProperties.Name="{Binding Label}"/>
         </ContentControl>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:ChoiceSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
-            <ComboBox Style="{StaticResource Cp.ComboBox}" ItemsSource="{Binding Options}"
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
+            <ComboBox Style="{StaticResource Cp.ComboBox}" ItemsSource="{Binding Options}" AutomationProperties.Name="{Binding Label}"
                       SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"/>
         </ContentControl>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:NumberSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
             <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}"
                     BorderThickness="1" CornerRadius="6" Height="32" SnapsToDevicePixels="True">
                 <StackPanel Orientation="Horizontal">
                     <Button Content="−" Style="{StaticResource Cp.StepButton}" Margin="1,0,0,0"
                             Command="{Binding DecrementCommand}"/>
-                    <TextBox Style="{StaticResource Cp.TextBox}" Width="44" TextAlignment="Center"
+                    <TextBox Style="{StaticResource Cp.TextBox}" Width="44" TextAlignment="Center" AutomationProperties.Name="{Binding Label}"
                              Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                     <TextBlock Text="{Binding Unit}" Style="{StaticResource Cp.Mono}" VerticalAlignment="Center"
                                Margin="0,0,4,0" Visibility="{Binding Unit, Converter={StaticResource Cp.EmptyToCollapsed}}"/>
@@ -1493,18 +1544,18 @@
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:SegmentedSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
-            <ListBox Style="{StaticResource Cp.Segmented}" ItemsSource="{Binding Options}"
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
+            <ListBox Style="{StaticResource Cp.Segmented}" ItemsSource="{Binding Options}" AutomationProperties.Name="{Binding Label}"
                      SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"/>
         </ContentControl>
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:SliderSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <Button x:Name="StepDown" Style="{StaticResource Cp.StepButton}" Content="−" Margin="0,0,4,0"
                         Command="{Binding StepDownCommand}" ToolTip="{loc:T cp.oneStepDown}" Visibility="Collapsed"/>
-                <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center"
+                <Slider Style="{StaticResource Cp.Slider}" Width="170" VerticalAlignment="Center" AutomationProperties.Name="{Binding Label}"
                         Minimum="{Binding Minimum}" Maximum="{Binding Maximum}"
                         SmallChange="{Binding Step}" LargeChange="{Binding Step}"
                         TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
@@ -1516,7 +1567,7 @@
                 <Border Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
                         CornerRadius="6" Height="30" Width="64" Margin="10,0,0,0" Padding="8,0" SnapsToDevicePixels="True"
                         ToolTip="{loc:T cp.typeAValueAnd}">
-                    <TextBox Style="{StaticResource Cp.TextBox}" TextAlignment="Right" cp:CommitOnEnter.IsEnabled="True"
+                    <TextBox Style="{StaticResource Cp.TextBox}" TextAlignment="Right" cp:CommitOnEnter.IsEnabled="True" AutomationProperties.Name="{Binding Label}"
                              Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                 </Border>
             </StackPanel>
@@ -1530,7 +1581,7 @@
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:ActionSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
             <Button x:Name="Action" Style="{StaticResource Cp.Button}" Content="{Binding ButtonText}"
                     Command="{Binding InvokeCommand}" IsEnabled="{Binding IsEnabled}"/>
         </ContentControl>
@@ -1542,7 +1593,7 @@
     </DataTemplate>
 
     <DataTemplate DataType="{x:Type cp:InfoSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingRow}">
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingRow}">
             <TextBlock Text="{Binding Value}" Style="{StaticResource Cp.Mono}" FontSize="{StaticResource Cp.Size.Body}"
                        Foreground="{StaticResource Cp.Text}" TextAlignment="Right" TextWrapping="Wrap"
                        MaxWidth="230" VerticalAlignment="Center"/>
@@ -1579,7 +1630,7 @@
     <!-- The row a release collapses to: the whole row is the toggle. -->
     <Style x:Key="Cp.ReleaseHeader" TargetType="ToggleButton">
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -1681,7 +1732,7 @@
                            Visibility="{Binding HasError, Converter={StaticResource Cp.BoolToVis}}"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <cp:HotkeyRecorder MinWidth="150" ToolTip="{loc:T cp.clickThenPressThe}">
+                <cp:HotkeyRecorder MinWidth="150" ToolTip="{loc:T cp.clickThenPressThe}" AutomationProperties.Name="{Binding Label}">
                     <cp:HotkeyRecorder.Style>
                         <Style TargetType="cp:HotkeyRecorder" BasedOn="{StaticResource Cp.Button}">
                             <Setter Property="Template">
@@ -1722,9 +1773,12 @@
                 </cp:HotkeyRecorder>
                 <!-- Clear and the switch only mean something once there is a key: until then they keep
                      their room (so every row's field lines up) but aren't there. -->
-                <Button x:Name="ClearButton" Style="{StaticResource Cp.Button}" Content="✕" Padding="0" Width="32" Margin="6,0,0,0"
-                        ToolTip="{loc:T cp.clearThisShortcut}" Command="{Binding ClearCommand}"/>
-                <CheckBox x:Name="EnabledSwitch" Style="{StaticResource Cp.Switch}" IsChecked="{Binding Enabled, Mode=TwoWay}" Margin="14,0,0,0"
+                <Button x:Name="ClearButton" Style="{StaticResource Cp.Button}" Padding="0" Width="32" Margin="6,0,0,0"
+                        AutomationProperties.Name="{loc:T cp.clearThisShortcut}"
+                        ToolTip="{loc:T cp.clearThisShortcut}" Command="{Binding ClearCommand}">
+                    <Path Style="{StaticResource Cp.CloseGlyph}" Width="10" Height="10"/>
+                </Button>
+                <CheckBox x:Name="EnabledSwitch" Style="{StaticResource Cp.Switch}" IsChecked="{Binding Enabled, Mode=TwoWay}" AutomationProperties.Name="{Binding Label}" Margin="14,0,0,0"
                           VerticalAlignment="Center" ToolTip="{loc:T cp.enableOrDisableThis}"/>
             </StackPanel>
         </Grid>
@@ -1736,27 +1790,45 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- A row of an option list (table columns, cockpit items, flag types): a line, not a box. The
+         card it sits in is already the container; boxing every row inside it again was three
+         outlines deep for a list of switches. Hairlines keep the rows countable; the hover band
+         bleeds into the card's padding so it frames the row rather than its text. -->
+    <Style x:Key="Cp.ListRow" TargetType="Border">
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Margin" Value="-8,0"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Cp.Border}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Cp.Hover}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- Elements that are only switched on and off (flag types, weather readouts): the driver-table
          column rows without the grip, since their order is the widget's own. A hint, where there is
          one, is the row's tooltip. -->
     <DataTemplate DataType="{x:Type cp:ChipGroupSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingStack}">
+        <!-- Extra room above each group: consecutive groups (Flags) separate by space, not by lines. -->
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingStack}" Margin="0,8,0,6">
             <ItemsControl ItemsSource="{Binding Chips}" Focusable="False">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
-                                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1"
-                                ToolTip="{Binding Hint}">
+                        <Border Style="{StaticResource Cp.ListRow}" ToolTip="{Binding Hint}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}" Margin="14,0,8,0"
+                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cp.Body}" Margin="0,0,8,0"
                                            Foreground="{StaticResource Cp.Text}" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"/>
-                                <CheckBox Grid.Column="1" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
-                                          IsChecked="{Binding Value, Mode=TwoWay}"/>
+                                <CheckBox Grid.Column="1" Style="{StaticResource Cp.Switch}"
+                                          IsChecked="{Binding Value, Mode=TwoWay}" AutomationProperties.Name="{Binding Label}"/>
                             </Grid>
                         </Border>
                     </DataTemplate>
@@ -1770,8 +1842,10 @@
          carries a small chip for its delta, which travels with it. -->
     <!-- One entry of a reorderable list: grip, name, companion chip, switch. -->
     <DataTemplate x:Key="Cp.ReorderRow" DataType="{x:Type cp:ReorderListItem}">
-        <Border x:Name="Row" Height="36" Margin="0,0,0,4" CornerRadius="6" SnapsToDevicePixels="True"
-                Background="{StaticResource Cp.Field}" BorderBrush="{StaticResource Cp.Border}" BorderThickness="1">
+        <!-- Focusable so the keyboard can reorder it too (ReorderListDrag): Tab or a click selects the
+             row, Alt+Up / Alt+Down moves it, Space shows or hides it. -->
+        <Border x:Name="Row" Style="{StaticResource Cp.ListRow}" Focusable="True" FocusVisualStyle="{x:Null}"
+                cp:ReorderListDrag.IsRow="True" AutomationProperties.Name="{Binding Label}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -1779,10 +1853,13 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Border x:Name="Handle" cp:ReorderListDrag.IsHandle="True" Width="32" Background="Transparent" Cursor="SizeNS"
-                        ToolTip="{loc:T cp.dragToReorder}">
-                    <!-- Six dots, the usual "this can be dragged" grip. -->
-                    <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border x:Name="FocusFrame" Grid.ColumnSpan="4" Margin="-8,1" CornerRadius="5" BorderThickness="1.5"
+                        BorderBrush="{StaticResource Cp.Accent}" Visibility="Collapsed" IsHitTestVisible="False"/>
+                <Border x:Name="Handle" cp:ReorderListDrag.IsHandle="True" Width="24" Margin="0,0,4,0" Background="Transparent"
+                        Cursor="SizeNS" ToolTip="{loc:T cp.dragToReorder}">
+                    <!-- Six dots, the usual "this can be dragged" grip; dim until the row is pointed at. -->
+                    <Path x:Name="Grip" Fill="{StaticResource Cp.TextFaint}" Opacity="0.6"
+                          HorizontalAlignment="Left" VerticalAlignment="Center">
                         <Path.Data>
                             <GeometryGroup>
                                 <EllipseGeometry Center="1.5,1.5" RadiusX="1.5" RadiusY="1.5"/>
@@ -1800,8 +1877,8 @@
                 <ToggleButton x:Name="CompanionChip" Grid.Column="2" Style="{StaticResource Cp.CompanionChip}" Margin="0,0,10,0"
                               Content="{Binding Companion.Label}" IsChecked="{Binding Companion.Value, Mode=TwoWay}"
                               ToolTip="{loc:T cp.theEstimatedIratingGain}"/>
-                <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}" Margin="0,0,8,0"
-                          IsChecked="{Binding Visible.Value, Mode=TwoWay}"/>
+                <CheckBox Grid.Column="3" Style="{StaticResource Cp.Switch}"
+                          IsChecked="{Binding Visible.Value, Mode=TwoWay}" AutomationProperties.Name="{Binding Label}"/>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
@@ -1817,28 +1894,61 @@
             </DataTrigger>
             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
                 <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.TextMuted}"/>
+                <Setter TargetName="Grip" Property="Opacity" Value="1"/>
+            </Trigger>
+            <Trigger SourceName="Row" Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="FocusFrame" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="Grip" Property="Opacity" Value="1"/>
             </Trigger>
             <DataTrigger Binding="{Binding IsDragging}" Value="True">
                 <Setter TargetName="Row" Property="Background" Value="{StaticResource Cp.Hover}"/>
-                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Cp.Accent}"/>
+                <Setter TargetName="FocusFrame" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Grip" Property="Fill" Value="{StaticResource Cp.Accent}"/>
+                <Setter TargetName="Grip" Property="Opacity" Value="1"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
-    <Style x:Key="Cp.ListLink" TargetType="Button" BasedOn="{StaticResource Cp.TextButton}">
+    <!-- Small actions over a list or a section (Show all, Hide all, Reset order, Reset): ghost
+         buttons, outlined at rest so they read as something to press rather than as more labels,
+         filled under the pointer. The negative left margin keeps the first one's text on the
+         column's left edge. -->
+    <Style x:Key="Cp.ListLink" TargetType="Button">
         <Setter Property="FontFamily" Value="{DynamicResource Theme.FontFamily}"/>
         <Setter Property="FontSize" Value="{StaticResource Cp.Size.Small}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Foreground" Value="{StaticResource Cp.TextSoft}"/>
-        <Setter Property="Padding" Value="0,2"/>
-        <Setter Property="Margin" Value="0,0,14,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Cp.FocusRing}"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Chrome" Background="Transparent" BorderBrush="{StaticResource Cp.Border}"
+                            BorderThickness="1" CornerRadius="5" Padding="8,0" SnapsToDevicePixels="True">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Selected}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{StaticResource Cp.BorderStrong}"/>
+                            <Setter Property="Foreground" Value="{StaticResource Cp.Text}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{StaticResource Cp.Pressed}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- A list whose entries are shown, hidden and ordered (table columns, cockpit modules): the shown
          ones on top, in the widget's order, dragged by the grip; the hidden ones apart below, so the
          order above reads as exactly what the widget shows. All / None / Reset order above both. -->
     <DataTemplate DataType="{x:Type cp:ReorderListSetting}">
-        <ContentControl Template="{StaticResource Cp.SettingStack}">
+        <ContentControl Focusable="False" Template="{StaticResource Cp.SettingStack}">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                     <Button Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.showAll}" Command="{Binding ShowAllCommand}"/>
@@ -1847,10 +1957,34 @@
                             Visibility="{Binding CanResetOrder, Converter={StaticResource Cp.BoolToVis}}"
                             ToolTip="{loc:T cp.backToTheOrder}"/>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding VisibleItems}" cp:ReorderListDrag.IsEnabled="True" Focusable="False"
+                <ItemsControl ItemsSource="{Binding VisibleItems}" cp:ReorderListDrag.IsEnabled="True" cp:ReorderListDrag.HandlesKeys="True" Focusable="False"
                               ItemTemplate="{StaticResource Cp.ReorderRow}"/>
                 <TextBlock x:Name="HiddenTitle" Text="{loc:T cp.hidden}" Style="{StaticResource Cp.Eyebrow}" Margin="0,10,0,6"/>
-                <ItemsControl ItemsSource="{Binding HiddenItems}" Focusable="False" ItemTemplate="{StaticResource Cp.ReorderRow}"/>
+                <!-- The hidden ones as chips that wrap: there is nothing to order or read on them
+                     but their names, so a row each made the list twice as long as what it shows.
+                     Pressing one (or Space on it) shows it, and it joins the end of the order above. -->
+                <ItemsControl ItemsSource="{Binding HiddenItems}" Focusable="False" cp:ReorderListDrag.HandlesKeys="True">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type cp:ReorderListItem}">
+                            <ToggleButton Style="{StaticResource Cp.Chip}" IsChecked="{Binding Visible.Value, Mode=TwoWay}"
+                                          cp:ReorderListDrag.IsRow="True" AutomationProperties.Name="{Binding Label}"
+                                          ToolTip="{loc:T cp.showIt}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="M12,5 V19 M5,12 H19" Width="9" Height="9" Stretch="Uniform" Margin="0,0,6,0"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ToggleButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </ContentControl>
         <DataTemplate.Triggers>
@@ -1863,14 +1997,15 @@
     <!-- A settings group: eyebrow caption, optional one-line rationale, then its rows. The caption
          folds the rows away (and remembers it); a group with no rows has nothing to fold. -->
     <DataTemplate DataType="{x:Type cp:SettingsGroup}">
-        <Border Style="{StaticResource Cp.Card}">
+        <Border x:Name="Card" Style="{StaticResource Cp.Card}">
             <StackPanel>
                 <ToggleButton x:Name="Header" Style="{StaticResource Cp.SectionHeader}" Margin="-8,6,-8,0"
+                              AutomationProperties.Name="{Binding Title}"
                               IsChecked="{Binding IsCollapsed, Mode=TwoWay}">
                     <DockPanel>
                         <Path x:Name="Chevron" DockPanel.Dock="Right" Style="{StaticResource Cp.SectionChevron}"/>
                         <!-- Only while something in the section differs from how it came. -->
-                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.reset}" Margin="16,0,6,0"
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Cp.ListLink}" Content="{loc:T cp.reset}" Margin="16,0,8,0"
                                 VerticalAlignment="Center" Command="{Binding ResetCommand}"
                                 ToolTip="{loc:T cp.putThisSectionBack}"
                                 Visibility="{Binding HasModified, Converter={StaticResource Cp.BoolToVis}}"/>
@@ -1885,7 +2020,7 @@
                 </ToggleButton>
                 <!-- Each row sits on a band that lights when a search result leads to it; the band
                      bleeds into the card's padding so the light frames the row, not its text. -->
-                <ItemsControl x:Name="Rows" ItemsSource="{Binding Items}">
+                <ItemsControl x:Name="Rows" ItemsSource="{Binding Items}" Focusable="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border x:Name="Band" Margin="-10,0" Padding="10,0" CornerRadius="6"
@@ -1915,9 +2050,14 @@
                     </Setter.Value>
                 </Setter>
             </DataTrigger>
+            <!-- No rows: it is a heading over the cards below (What's new in 0.12.0, released…),
+                 so it drops the card and lines up with the cards' edge. -->
             <DataTrigger Binding="{Binding IsCollapsible}" Value="False">
                 <Setter TargetName="Chevron" Property="Visibility" Value="Collapsed"/>
                 <Setter TargetName="Header" Property="IsHitTestVisible" Value="False"/>
+                <Setter TargetName="Card" Property="Background" Value="Transparent"/>
+                <Setter TargetName="Card" Property="BorderBrush" Value="Transparent"/>
+                <Setter TargetName="Card" Property="Padding" Value="0,0,0,4"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>

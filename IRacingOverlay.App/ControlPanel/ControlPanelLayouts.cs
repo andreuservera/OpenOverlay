@@ -122,6 +122,16 @@ public sealed partial class ControlPanelViewModel
     public ICommand GoToLayoutsCommand => _goToLayouts ??= new RelayCommand(() =>
         Selected = NavItems.FirstOrDefault(item => item.Key == LayoutsPageKey));
 
+    private ICommand? _createLayout;
+
+    /// <summary>The toolbar's button while there are no layouts: Layouts, with the new-layout dialog
+    /// already over it, rather than a page to find the Create button on.</summary>
+    public ICommand CreateLayoutCommand => _createLayout ??= new RelayCommand(() =>
+    {
+        GoToLayoutsCommand.Execute(null);
+        CreateLayout();
+    });
+
     private void RefreshLayoutChoices()
     {
         _layoutChoices = null;
@@ -276,9 +286,13 @@ public sealed partial class ControlPanelViewModel
     /// <summary>Whether the second-monitor dashboard can be opened. Off while it is redesigned.</summary>
     internal const bool DashboardAvailable = false;
 
-    private IEnumerable<SettingsGroup> DashboardGroups()
+    // Left out entirely while it is redesigned: a section of live dropdowns for a dashboard that
+    // can't be opened only got in the way of the layouts above it. (When it is back, add it to
+    // nav.layouts.blurb again.)
+    private IEnumerable<SettingsGroup> DashboardGroups() => DashboardAvailable ? DashboardSection() : [];
+
+    private IEnumerable<SettingsGroup> DashboardSection()
     {
-        // Switched off until the dashboard is redesigned: the button stays, greyed, and says why.
         var button = new ActionSetting(
             Loc.T("layouts.secondMonitorDashboard"),
             DashboardAvailable ? null : Loc.T("layouts.dashboardComingSoon"),

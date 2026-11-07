@@ -155,8 +155,9 @@
                                       ItemsSource="{Binding LayoutChoices}" DisplayMemberPath="Name"
                                       SelectedItem="{Binding ToolbarLayout, Mode=TwoWay}"
                                       ToolTip="{loc:T main.pickALayoutWhile}"/>
-                            <Button Width="24" Height="24" Margin="6,0,0,0" Cursor="Hand" Focusable="False"
-                                    Command="{Binding ToggleLayoutCommand}" ToolTip="{Binding LayoutToggleTip}">
+                            <Button Width="24" Height="24" Margin="6,0,0,0" Cursor="Hand" FocusVisualStyle="{StaticResource Cp.FocusRing}"
+                                    Command="{Binding ToggleLayoutCommand}" ToolTip="{Binding LayoutToggleTip}"
+                                    AutomationProperties.Name="{Binding LayoutToggleTip}">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
                                         <Border x:Name="Disc" CornerRadius="4" Background="{StaticResource Cp.Field}"
@@ -188,8 +189,10 @@
                             </Button>
                         </StackPanel>
                     </Border>
+                    <!-- With no layouts, the picker's place says what to do and does it: Layouts
+                         opens with the new-layout dialog over it. -->
                     <Button Style="{StaticResource Cp.Button}" Content="{loc:T main.noLayoutsYet}"
-                            Command="{Binding GoToLayoutsCommand}"
+                            Command="{Binding CreateLayoutCommand}"
                             Visibility="{Binding HasLayouts, Converter={StaticResource Cp.NotBoolToVis}}"
                             ToolTip="{loc:T main.createALayoutOn}"/>
 
@@ -232,11 +235,13 @@
                     <StackPanel DockPanel.Dock="Top" Margin="0,14,0,2"
                                 Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.BoolToVis}}">
                         <Button Style="{StaticResource Cp.StepButton}" Width="32" Height="32" HorizontalAlignment="Center"
-                                Command="{Binding ToggleRailCommand}" ToolTip="{loc:T main.showTheSidebarS}">
+                                Command="{Binding ToggleRailCommand}" ToolTip="{loc:T main.showTheSidebarS}"
+                                AutomationProperties.Name="{loc:T main.showTheSidebarS}">
                             <Path Data="{StaticResource Cp.Icon.Sidebar}" Style="{StaticResource Cp.RailToggleIcon}"/>
                         </Button>
                         <Button Style="{StaticResource Cp.StepButton}" Width="32" Height="32" HorizontalAlignment="Center"
-                                Margin="0,4,0,0" Click="RailSearch_Click" ToolTip="{loc:T main.searchSettings}">
+                                Margin="0,4,0,0" Click="RailSearch_Click" ToolTip="{loc:T main.searchSettings}"
+                                AutomationProperties.Name="{loc:T main.searchSettings}">
                             <Path Data="{StaticResource Cp.Icon.Search}" Style="{StaticResource Cp.RailToggleIcon}"/>
                         </Button>
                     </StackPanel>
@@ -244,7 +249,8 @@
                     <DockPanel DockPanel.Dock="Top" Margin="14,14,10,2"
                                Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}">
                     <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Width="30" Height="32" Margin="6,0,0,0"
-                            Command="{Binding ToggleRailCommand}" ToolTip="{loc:T main.foldTheSidebarTo}">
+                            Command="{Binding ToggleRailCommand}" ToolTip="{loc:T main.foldTheSidebarTo}"
+                            AutomationProperties.Name="{loc:T main.foldTheSidebarTo}">
                         <Path Data="{StaticResource Cp.Icon.Sidebar}" Style="{StaticResource Cp.RailToggleIcon}"/>
                     </Button>
                     <Border Height="32" CornerRadius="7"
@@ -256,16 +262,20 @@
                                   Stroke="{StaticResource Cp.TextFaint}" StrokeThickness="1.8"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                             <TextBox x:Name="SearchBox" Style="{StaticResource Cp.TextBox}" Margin="32,0,30,0"
+                                     AutomationProperties.Name="{loc:T main.searchSettings}"
                                      FontFamily="{DynamicResource Theme.FontFamily}"
                                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                 <TextBox.InputBindings>
                                     <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}"/>
                                 </TextBox.InputBindings>
                             </TextBox>
-                            <Button Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="11" Width="22" Height="22"
+                            <Button Style="{StaticResource Cp.StepButton}" Width="22" Height="22"
                                     HorizontalAlignment="Right" Margin="0,0,5,0" ToolTip="{loc:T main.clearTheSearchEsc}"
+                                    AutomationProperties.Name="{loc:T main.clearTheSearchEsc}"
                                     Command="{Binding ClearSearchCommand}"
-                                    Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}"/>
+                                    Visibility="{Binding IsSearching, Converter={StaticResource Cp.BoolToVis}}">
+                                <Path Style="{StaticResource Cp.CloseGlyph}" Width="9" Height="9"/>
+                            </Button>
                             <TextBlock Text="{loc:T main.searchSettings}" IsHitTestVisible="False" Margin="33,0,0,0"
                                        VerticalAlignment="Center" Foreground="{StaticResource Cp.TextFaint}"
                                        FontSize="{StaticResource Cp.Size.Body}">
@@ -288,7 +298,8 @@
                          what's new, the changelog and the version. Lit like a rail entry while open. -->
                     <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Cp.Border}" BorderThickness="0,1,0,0"
                             Padding="8,6">
-                        <Button Command="{Binding ShowHelpCommand}" Cursor="Hand" Focusable="False"
+                        <Button Command="{Binding ShowHelpCommand}" Cursor="Hand" FocusVisualStyle="{StaticResource Cp.FocusRing}"
+                                AutomationProperties.Name="{loc:T main.help}"
                                 HorizontalContentAlignment="Stretch" ToolTip="{loc:T main.whatSNewThe}">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
@@ -314,10 +325,9 @@
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
+                            <!-- No version here: it is in the status bar's corner, the one place a bug
+                                 report looks for it, and saying it twice made neither the place. -->
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding VersionLabel}" Style="{StaticResource Cp.Mono}"
-                                           FontSize="{StaticResource Cp.Size.Micro}" VerticalAlignment="Center"
-                                           Visibility="{Binding IsRailCollapsed, Converter={StaticResource Cp.NotBoolToVis}}"/>
                                 <Path Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"
                                       Data="M12,3 A9,9 0 1 0 12.01,3 Z M12,11 V16.5 M12,7.5 V7.51" StrokeThickness="1.7"
                                       StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
@@ -419,13 +429,16 @@
                             <TextBlock Text="{loc:T main.showOnScreen}" Style="{StaticResource Cp.Body}"
                                        Foreground="{StaticResource Cp.Text}" Margin="0,0,10,0"
                                        ToolTip="{Binding SelectedWidget.StateLabel}"/>
-                            <CheckBox Style="{StaticResource Cp.Switch}"
+                            <CheckBox Style="{StaticResource Cp.Switch}" AutomationProperties.Name="{loc:T main.showOnScreen}"
                                       IsChecked="{Binding SelectedWidget.IsEnabled, Mode=TwoWay}"
                                       ToolTip="{Binding SelectedWidget.StateLabel}"/>
                             <!-- Less common actions on the widget as a whole. -->
                             <Grid Margin="14,0,0,0">
+                                <!-- Named for what is in it: "More actions" hid the reset and the copy to a
+                                     layout behind three dots nobody had a reason to open. -->
                                 <ToggleButton x:Name="WidgetMenuButton" Style="{StaticResource Cp.MenuButton}"
-                                              IsChecked="{Binding IsWidgetMenuOpen, Mode=TwoWay}"/>
+                                              IsChecked="{Binding IsWidgetMenuOpen, Mode=TwoWay}"
+                                              ToolTip="{loc:T main.widgetMenu}" AutomationProperties.Name="{loc:T main.widgetMenu}"/>
                                 <Popup IsOpen="{Binding IsWidgetMenuOpen, Mode=TwoWay}" StaysOpen="False"
                                        PlacementTarget="{Binding ElementName=WidgetMenuButton}" Placement="Bottom"
                                        AllowsTransparency="True" PopupAnimation="Fade">
@@ -482,7 +495,7 @@
                     </ScrollViewer>
                     <ScrollViewer x:Name="SettingsScroller" VerticalScrollBarVisibility="Auto" Padding="24,14,18,24" Focusable="False"
                                   Visibility="{Binding IsSearching, Converter={StaticResource Cp.NotBoolToVis}}">
-                        <ItemsControl ItemsSource="{Binding Selected.Settings}"/>
+                        <ItemsControl ItemsSource="{Binding Selected.Settings}" Focusable="False"/>
                     </ScrollViewer>
 
                     <!-- What a big change just did, with Undo while it lasts. -->
@@ -494,8 +507,11 @@
                             <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.6" Color="#000000"/>
                         </Border.Effect>
                         <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}" Content="✕" FontSize="11"
-                                    Margin="4,0,0,0" ToolTip="{loc:T main.dismiss}" Command="{Binding DismissToastCommand}"/>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Cp.StepButton}"
+                                    Margin="4,0,0,0" ToolTip="{loc:T main.dismiss}" Command="{Binding DismissToastCommand}"
+                                    AutomationProperties.Name="{loc:T main.dismiss}">
+                                <Path Style="{StaticResource Cp.CloseGlyph}" Width="9" Height="9"/>
+                            </Button>
                             <Button DockPanel.Dock="Right" Style="{StaticResource Cp.Button}" Content="{loc:T main.undo}" Height="28" Margin="12,0,0,0"
                                     Command="{Binding Toast.UndoCommand}"
                                     Visibility="{Binding Toast.CanUndo, Converter={StaticResource Cp.BoolToVis}}"/>
@@ -588,8 +604,16 @@
                     <DockPanel Visibility="{Binding IsHomePage, Converter={StaticResource Cp.BoolToVis}}">
                         <TextBlock DockPanel.Dock="Bottom" Text="{Binding HomeScreenCaption}" Style="{StaticResource Cp.Hint}"
                                    HorizontalAlignment="Center" Margin="0,0,0,18"/>
-                        <cp:LayoutPreview Layout="{Binding HomeScreen}" BackdropPhoto="singapur.jpg"
-                                          EmptyMessage="{loc:T home.preview.empty}"/>
+                        <Grid>
+                            <cp:LayoutPreview Layout="{Binding HomeScreen}" BackdropPhoto="singapur.jpg"
+                                              EmptyMessage="{loc:T home.preview.empty}"/>
+                            <!-- Nothing switched on: the way to fill the screen, under the line that
+                                 says it is empty. -->
+                            <Button Style="{StaticResource Cp.PrimaryButton}" Content="{loc:T home.preset}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,76,0,0"
+                                    Command="{Binding RunSetupCommand}"
+                                    Visibility="{Binding ShowsHomeSetupPrompt, Converter={StaticResource Cp.BoolToVis}}"/>
+                        </Grid>
                     </DockPanel>
                 </Grid>
             </DockPanel>

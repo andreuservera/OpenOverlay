@@ -1409,12 +1409,16 @@ public partial class MainWindow : Window
             PreviewColumn.MinWidth = 0;
             PreviewColumn.Width = new GridLength(0);
             ConfigColumn.Width = new GridLength(1, GridUnitType.Star);
+            // Capped for line length, and kept on the left like a widget page's settings: centred,
+            // the page header jumped sideways every time the rail went from a widget to a page.
             ConfigPane.MaxWidth = 840;
+            ConfigPane.HorizontalAlignment = HorizontalAlignment.Left;
         }
         else if (_paneWidths is { } widths)
         {
             _paneWidths = null;
             ConfigPane.ClearValue(MaxWidthProperty);
+            ConfigPane.ClearValue(HorizontalAlignmentProperty);
             ConfigColumn.Width = widths.Config;
             PreviewColumn.MinWidth = 340;
             PreviewColumn.Width = widths.Preview;

@@ -100,12 +100,14 @@ internal sealed class UpdateService : IDisposable
                     Interlocked.Increment(ref _failures);
                     if (attempt >= RetryDelays.Length)
                     {
-                        Set(UpdateState.Failed, "update.failedNextLaunch", e.Message);
+                        // What failed, in the exception's words, is in the log entry the ref points to; the
+                        // status line says only what it means and what happens next.
+                        Set(UpdateState.Failed, "update.failedNextLaunch");
                         _lastErrorRef = AppLog.Warn("Updates", "Update check failed; giving up until next launch", e)?.Ref ?? _lastErrorRef;
                         return;
                     }
 
-                    Set(UpdateState.Failed, "update.failedRetry", e.Message, RetryDelays[attempt].TotalMinutes);
+                    Set(UpdateState.Failed, "update.failedRetry", RetryDelays[attempt].TotalMinutes);
                     _lastErrorRef = AppLog.Warn("Updates", "Update check failed; will retry", e)?.Ref ?? _lastErrorRef;
                     await Task.Delay(RetryDelays[attempt], token);
                 }
@@ -118,7 +120,7 @@ internal sealed class UpdateService : IDisposable
         catch (Exception e)
         {
             Interlocked.Increment(ref _failures);
-            Set(UpdateState.Failed, e.Message);
+            Set(UpdateState.Failed, "update.stopped");
             _lastErrorRef = AppLog.Error("Updates", "Update service stopped", e)?.Ref ?? _lastErrorRef;
         }
     }
