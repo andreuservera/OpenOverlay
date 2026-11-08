@@ -350,9 +350,9 @@ internal static class StandingsBuilder
         //
         // Cars drift in and out of the window constantly as they lap or get lapped, and a table that
         // shrinks and grows with them resizes the widget mid-corner. Holding the configured number
-        // of slots each side keeps the height fixed — but only up to what the session could ever
-        // fill on one side, so a solo practice stays a single row instead of a column of blanks.
-        var eachSide = Math.Min(maxEachSide, listed.Count - 1);
+        // of slots each side keeps the height fixed, whatever the session: alone on track or in a
+        // small field the widget keeps the size it was laid out at, with the empty slots reserved.
+        var eachSide = maxEachSide;
         var window = new List<object>(eachSide * 2 + 1);
         for (var i = playerIndex - eachSide; i <= playerIndex + eachSide; i++)
         {
