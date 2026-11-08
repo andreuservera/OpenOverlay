@@ -134,25 +134,29 @@
     <SolidColorBrush x:Key="Badge.NeutralEdge" Color="#66B4BCC8"/>
     <SolidColorBrush x:Key="Badge.WarningFill" Color="#2EF5A524"/>
     <SolidColorBrush x:Key="Badge.WarningEdge" Color="#D9F5A524"/>
-    <!-- 15 high on a driver-table row (3 px off the cell top and bottom): the height the flag tag
-         and the last-pit lap tab read at, so the row's tags line up. -->
+    <!-- 18 high on a driver-table row (2 px off the cell top and bottom): the height of the last-pit
+         chip and the flag tag, so the row's tags line up. At least as wide as the flag tag too, so the
+         two tags next to the name are one size; a longer word ("STAND") still grows it. -->
+    <sys:Double x:Key="Size.RowTagWidth">29</sys:Double>
     <Style x:Key="StatusBadge" TargetType="Border">
+        <Setter Property="MinWidth" Value="{StaticResource Size.RowTagWidth}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="{StaticResource Badge.NeutralEdge}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="Padding" Value="4,0"/>
-        <Setter Property="Margin" Value="6,3,0,3"/>
+        <Setter Property="Margin" Value="6,2,0,2"/>
         <Setter Property="VerticalAlignment" Value="Stretch"/>
     </Style>
     <Style x:Key="StatusBadgeText" TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{StaticResource Type.Micro}"/>
-        <Setter Property="LineHeight" Value="{StaticResource Line.Micro}"/>
+        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
         <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
         <Setter Property="FontFamily" Value="{DynamicResource Theme.LabelFontFamily}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
 
     <!-- ===== Radii ===== -->

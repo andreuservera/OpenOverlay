@@ -212,7 +212,7 @@
                         </Border>
                         <!-- One penalty flag slot, same footprint in every state: black, furled black or
                              meatball, or the two most serious side by side. -->
-                        <w:PenaltyFlagTag DockPanel.Dock="Right" Width="24" Height="15" Margin="6,0,0,0" VerticalAlignment="Center"
+                        <w:PenaltyFlagTag DockPanel.Dock="Right" Width="{StaticResource Size.RowTagWidth}" Height="18" Margin="6,0,0,0" VerticalAlignment="Center"
                                           Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                         <!-- Two pixels over the body size on the same line box: mixed-case names need
