@@ -105,33 +105,40 @@
 
     <!-- ===== Driver-table rows =====
          Rows sit straight on the panel and are told apart by a 1px rule between them, not by bands.
-         State is carried by a fill only where it matters: your row and a car in the pits. -->
+         State is carried by a fill only where it matters: your row, and a car out in the garage. -->
     <SolidColorBrush x:Key="Row.Base" Color="#00000000"/>
     <SolidColorBrush x:Key="Row.Placeholder" Color="#00000000"/>
-    <!-- The one row you must find without reading: surface-alt at 92 %, with your position in the
-         accent and your name in bold. Never a hue on the band: every colour is some class's colour. -->
-    <SolidColorBrush x:Key="Row.Player" Color="#EB1B2029"/>
-    <SolidColorBrush x:Key="Row.PlayerOutline" Color="#00000000"/>
+    <!-- The one row you must find without reading: the app's amber as a highlighter band, framed in a
+         1px amber outline, with your position in the full accent. A class only ever shows as the 3px
+         bar on the row's edge, never as a fill or an outline, so this can't read as a class. -->
+    <SolidColorBrush x:Key="Row.Player" Color="#33FFD24D"/>
+    <SolidColorBrush x:Key="Row.PlayerOutline" Color="#A6FFD24D"/>
     <!-- Markers that point at you outside the tables (track map). -->
     <SolidColorBrush x:Key="Row.PlayerMarker" Color="#F2F4F7"/>
     <SolidColorBrush x:Key="Row.PlayerInk" Color="#F2F4F7"/>
-    <!-- In the pits: a warm band, a PIT badge, and the row's content recedes (see the row template). -->
-    <SolidColorBrush x:Key="Row.Pit" Color="#1FF5A524"/>
-    <sys:Double x:Key="Row.PitOpacity">0.7</sys:Double>
+    <!-- In the pits: no fill, a neutral PIT tag, and the row's content recedes. Not racing anyone
+         this instant, so it steps back instead of competing with your amber row. -->
+    <sys:Double x:Key="Row.PitOpacity">0.55</sys:Double>
+    <!-- In the garage (retired, parked, disconnected): a darker cell and content barely there, so the
+         row reads as empty — the car is listed, but it isn't in the race right now. -->
+    <SolidColorBrush x:Key="Row.Garage" Color="#80000000"/>
+    <sys:Double x:Key="Row.GarageOpacity">0.32</sys:Double>
     <!-- Relative: lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
     <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Row.LappingInk" Color="#F26D6D"/>
 
     <!-- ===== Status badges =====
-         Short live states (PIT) as a tinted, outlined amber tag. The last-pit chip wears the same
-         fill and edge so the two read as one family. -->
+         Short live states (PIT) as a quiet outlined tag in neutral ink: a state, not an alert, and
+         nothing warm that could be confused with your amber row. The last-pit chip keeps the tinted
+         orange: it is a figure to read, and only shows in its own column. -->
+    <SolidColorBrush x:Key="Badge.NeutralEdge" Color="#66B4BCC8"/>
     <SolidColorBrush x:Key="Badge.WarningFill" Color="#2EF5A524"/>
     <SolidColorBrush x:Key="Badge.WarningEdge" Color="#D9F5A524"/>
     <!-- 15 high on a driver-table row (3 px off the cell top and bottom): the height the flag tag
          and the last-pit lap tab read at, so the row's tags line up. -->
     <Style x:Key="StatusBadge" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource Badge.WarningFill}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Badge.WarningEdge}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Badge.NeutralEdge}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="Padding" Value="4,0"/>
@@ -144,7 +151,7 @@
         <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
         <Setter Property="FontFamily" Value="{DynamicResource Theme.LabelFontFamily}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{StaticResource State.Warning}"/>
+        <Setter Property="Foreground" Value="{StaticResource Text.Secondary}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 

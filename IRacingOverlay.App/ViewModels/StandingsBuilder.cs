@@ -381,13 +381,16 @@ internal static class StandingsBuilder
     /// </summary>
     /// <param name="onPreGreenGrid">Told, for the log, how much of the qualifying grid is in the
     /// roster and out on track, on every build before the green.</param>
+    /// <param name="inGarage">Cars out of the session for now (<see cref="GarageTracker"/>): their
+    /// rows stay, marked as absent.</param>
     public static List<StandingsRow> BuildStandings(
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
         SessionBestLapTracker? bestLapTracker = null,
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
         LineCrossingTracker? crossings = null,
-        Action<PreGreenGrid>? onPreGreenGrid = null)
+        Action<PreGreenGrid>? onPreGreenGrid = null,
+        IReadOnlySet<int>? inGarage = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -451,7 +454,8 @@ internal static class StandingsBuilder
                 driverInfo, LapCountOf, laps, onPitRoad, penaltiesOf, compoundOf, playerCarIdx, isMultiClass,
                 bestLapTracker ?? new SessionBestLapTracker(),
                 CurrentSession.Number(telemetry, session),
-                lastPitStops);
+                lastPitStops,
+                inGarage);
         }
 
         var racing = Racing(driverInfo);
@@ -607,6 +611,7 @@ internal static class StandingsBuilder
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 IsGhost = driver.IsGhost,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                InGarage = inGarage?.Contains(driver.CarIdx) == true,
                 HasBlackFlag = penalties.Black,
                 HasFurledFlag = penalties.Furled,
                 HasMeatballFlag = penalties.Meatball,
@@ -1217,7 +1222,8 @@ internal static class StandingsBuilder
         bool isMultiClass,
         SessionBestLapTracker bestLapTracker,
         int sessionNum,
-        IReadOnlyDictionary<int, PitStop>? lastPitStops)
+        IReadOnlyDictionary<int, PitStop>? lastPitStops,
+        IReadOnlySet<int>? inGarage)
     {
         var drivers = Racing(driverInfo);
         var ghost = GhostPlayer(driverInfo);
@@ -1275,6 +1281,7 @@ internal static class StandingsBuilder
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 IsGhost = driver.IsGhost,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
+                InGarage = inGarage?.Contains(driver.CarIdx) == true,
                 HasBlackFlag = penalties.Black,
                 HasFurledFlag = penalties.Furled,
                 HasMeatballFlag = penalties.Meatball,

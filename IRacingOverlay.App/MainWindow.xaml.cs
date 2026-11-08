@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _dashboardGuard;
     private readonly ComponentGuard _standingsGuard;
     private readonly ComponentGuard _pitStopGuard;
+    private readonly ComponentGuard _garageGuard;
     private readonly ComponentGuard _lineCrossingGuard;
     private readonly ComponentGuard _estTimeProfileGuard;
     private readonly ComponentGuard _penaltyGuard;
@@ -239,6 +240,7 @@ public partial class MainWindow : Window
     private readonly IncidentReportLatch _incidentReports = new();
     private SessionBestLapTracker _sessionBestLapTracker = new();
     private PitStopTracker _pitStopTracker = new();
+    private GarageTracker _garageTracker = new();
     private LineCrossingTracker _lineCrossings = new();
     private EstTimeProfile _estTimeProfile = new();
     private PenaltyFlagTracker _penaltyTracker = new();
@@ -299,6 +301,7 @@ public partial class MainWindow : Window
         _dashboardGuard = _health.CreateGuard("Dashboard", _ => RecoverDashboard());
         _standingsGuard = _health.CreateGuard("Standings model", _ => _sessionBestLapTracker = new());
         _pitStopGuard = _health.CreateGuard("Pit stop tracker", _ => _pitStopTracker = new());
+        _garageGuard = _health.CreateGuard("Garage tracker", _ => _garageTracker = new());
         _lineCrossingGuard = _health.CreateGuard("Line crossing timing", _ => _lineCrossings = new());
         _estTimeProfileGuard = _health.CreateGuard("Relative time curve", _ => _estTimeProfile = new());
         _penaltyGuard = _health.CreateGuard("Penalty flag log", _ => _penaltyTracker = new());
@@ -652,6 +655,8 @@ public partial class MainWindow : Window
         var trackersMark = PerfProbe.Begin();
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        // Every tick too: leaving the world is timed, and a car only counts as gone after a while.
+        _garageGuard.Run(() => _garageTracker.Update(telemetry, session), GuardStage.Build);
         // Every tick too: a crossing is timed from the ticks either side of the line, and the time
         // curve is learned from wherever the cars are each tick.
         _lineCrossingGuard.Run(() => _lineCrossings.Update(telemetry, session), GuardStage.Build);
@@ -685,7 +690,7 @@ public partial class MainWindow : Window
             if (_standingsGuard.TryRun(
                     () => StandingsBuilder.BuildStandings(
                         telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings,
-                        _logPreGreenGrid ??= LogPreGreenGrid),
+                        _logPreGreenGrid ??= LogPreGreenGrid, _garageTracker.InGarage),
                     out var standings))
             {
                 _latestStandings = standings;
@@ -1224,6 +1229,7 @@ public partial class MainWindow : Window
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();
+            _garageTracker = new();
             _lineCrossings = new();
             _estTimeProfile = new();
             _penaltyTracker = new();

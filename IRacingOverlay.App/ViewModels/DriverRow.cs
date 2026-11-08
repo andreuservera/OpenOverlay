@@ -50,6 +50,10 @@ public abstract class DriverRow
     /// no iRating swing, and not counted in its class's size or strength.</summary>
     public bool IsGhost { get; init; }
     public required bool OnPitRoad { get; init; }
+
+    /// <summary>Out of the session for now: parked in the garage, retired or disconnected (see
+    /// GarageTracker). Only Standings sets this; Relative leaves out every car not on track.</summary>
+    public bool InGarage { get; init; }
     public bool HasBlackFlag { get; init; }
     /// <summary>The furled black flag: a warning, or a slow-down penalty to serve on track.</summary>
     public bool HasFurledFlag { get; init; }

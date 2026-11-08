@@ -107,8 +107,7 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <!-- Last pit stop: the PIT tag's tinted amber and orange edge, so the two read as one family,
-         split into lap | time segments. -->
+    <!-- Last pit stop: a tinted orange chip with an orange edge, split into lap | time segments. -->
     <Style x:Key="PitStopChip" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource Badge.WarningFill}"/>
         <Setter Property="BorderBrush" Value="{StaticResource Badge.WarningEdge}"/>
@@ -302,16 +301,25 @@
                                Foreground="{Binding GapForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowGap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 </Grid>
+                <!-- Your row's amber outline, on top so the class bar can't cut into it. -->
+                <Border x:Name="Frame" BorderThickness="1" IsHitTestVisible="False"/>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
             <DataTrigger Binding="{Binding IsMultiClass, Mode=OneTime}" Value="True">
                 <Setter TargetName="EdgeBar" Property="Background" Value="{Binding ClassColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
             </DataTrigger>
-            <!-- In the pits: not racing anyone this instant, so the whole row steps back. -->
+            <!-- In the pits: not racing anyone this instant, so the whole row steps back. No fill: the
+                 neutral PIT tag says why, and nothing warm competes with your amber row. -->
             <DataTrigger Binding="{Binding OnPitRoad, Mode=OneTime}" Value="True">
-                <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Pit}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+            </DataTrigger>
+            <!-- In the garage: a darker cell with its content, class bar included, barely there — the
+                 car is listed but not in the race. -->
+            <DataTrigger Binding="{Binding InGarage, Mode=OneTime}" Value="True">
+                <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Garage}"/>
+                <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
+                <Setter TargetName="EdgeBar" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
             </DataTrigger>
             <!-- Lap traffic, in iRacing's colours as ink on the name and gap only — never a fill that
                  could read as a class: blue a lap or more down, red a lap or more up. Always at full
@@ -329,14 +337,16 @@
                 <Setter TargetName="GapText" Property="Foreground" Value="{StaticResource Row.LappingInk}"/>
             </DataTrigger>
             <!-- Declared after the others so it wins: the player's row is always full strength, even
-                 in the pits. The one place the accent appears in a table: your position. A lighter
-                 band and a bold name, never a hue on the band, so it can't be mistaken for a class.
-                 The class bar stays in multiclass. -->
+                 in the pits or the garage. The one row in the table in amber: a highlighter band in
+                 the app's accent, framed in a 1px amber outline, with your position in the full
+                 accent. The class bar stays in multiclass. -->
             <DataTrigger Binding="{Binding IsPlayer, Mode=OneTime}" Value="True">
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Player}"/>
+                <Setter TargetName="Frame" Property="BorderBrush" Value="{StaticResource Row.PlayerOutline}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="1"/>
+                <Setter TargetName="EdgeBar" Property="Opacity" Value="1"/>
                 <Setter TargetName="PositionText" Property="Foreground" Value="{StaticResource State.Accent}"/>
-                <Setter TargetName="NameText" Property="FontWeight" Value="Bold"/>
+                <Setter TargetName="NameText" Property="FontWeight" Value="SemiBold"/>
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.PlayerInk}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding IRatingTrend, Mode=OneTime}" Value="-1">
