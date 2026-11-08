@@ -159,7 +159,7 @@
                         <ColumnDefinition Width="{Binding Options.FastestLapMarkWidth, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                     </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="15"
+                    <Grid x:Name="FastestMark" Grid.Column="15"
                           Visibility="{Binding Options.ShowFastestLapMark, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                         <Border Style="{StaticResource FastestLapBadge}"
                                 Visibility="{Binding IsSessionFastestLap, Mode=OneTime, Converter={StaticResource BoolToVis}}">
@@ -179,32 +179,32 @@
 
                     <!-- Places since the start: the iRating badge's arrow and figure, without the plate —
                          the arrow carries the colour, the figure stays in plain ink. -->
-                    <StackPanel Grid.Column="{Binding Options.Columns.PlacesGained, RelativeSource={RelativeSource AncestorType=UserControl}}" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,6,0"
+                    <StackPanel x:Name="PlacesCell" Grid.Column="{Binding Options.Columns.PlacesGained, RelativeSource={RelativeSource AncestorType=UserControl}}" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,6,0"
                                 Visibility="{Binding Options.ShowPlacesGained, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Path x:Name="PlacesArrow" Style="{StaticResource TrendArrow}" Data="{StaticResource Geometry.ArrowUp}" Fill="{StaticResource State.Positive}"/>
                         <TextBlock Text="{Binding PlacesGainedDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"/>
                     </StackPanel>
 
                     <!-- The car number as plain text, "#17", in muted ink: an identifier, not data. -->
-                    <TextBlock Grid.Column="{Binding Options.Columns.CarNumber, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    <TextBlock x:Name="CarNumberText" Grid.Column="{Binding Options.Columns.CarNumber, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                Text="{Binding CarNumberDisplay, Mode=OneTime, StringFormat=#{0}}" Style="{StaticResource ChipText}"
                                FontSize="{StaticResource Type.Label}" LineHeight="{StaticResource Line.Label}" Foreground="{StaticResource Text.Muted}"
                                Visibility="{Binding Options.ShowCarNumber, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- The make: its logo in the secondary ink, or a monogram where the logo can't be
                          read. Cars of no make the app knows (spec and dirt cars) get iRacing's emblem. -->
-                    <w:CarBrandIcon Grid.Column="{Binding Options.Columns.CarBrand, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="24" Height="16" HorizontalAlignment="Center" Margin="0,0,4,0"
+                    <w:CarBrandIcon x:Name="BrandCell" Grid.Column="{Binding Options.Columns.CarBrand, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="24" Height="16" HorizontalAlignment="Center" Margin="0,0,4,0"
                                     Logo="{Binding CarBrandLogo, Mode=OneTime}" Monogram="{Binding CarBrandMonogram, Mode=OneTime}"
                                     Visibility="{Binding Options.ShowCarBrand, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- The driver's flag, from their iRacing flair. Blank for no flair, "Global", or a
                          country there's no flag for. -->
-                    <w:CountryFlagIcon Grid.Column="{Binding Options.Columns.CountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="22" Height="15" HorizontalAlignment="Center" Margin="0,0,4,0"
+                    <w:CountryFlagIcon x:Name="CountryCell" Grid.Column="{Binding Options.Columns.CountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="22" Height="15" HorizontalAlignment="Center" Margin="0,0,4,0"
                                        Country="{Binding FlairName, Mode=OneTime}"
                                        Visibility="{Binding Options.ShowCountryFlag, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
                     <!-- Status badges take their room out of the name, never out of another column. -->
-                    <DockPanel Grid.Column="{Binding Options.Columns.Driver, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,8,0"
+                    <DockPanel x:Name="DriverCell" Grid.Column="{Binding Options.Columns.Driver, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,8,0"
                                Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
                                 Visibility="{Binding OnPitRoad, Mode=OneTime, Converter={StaticResource BoolToVis}}">
@@ -224,7 +224,7 @@
 
                     <!-- Independent of the PIT badge: appears after the first completed stop and
                          stays, so both can show at once while the car is back in the lane. -->
-                    <Grid Grid.Column="{Binding Options.Columns.LastPitStop, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    <Grid x:Name="LastPitCell" Grid.Column="{Binding Options.Columns.LastPitStop, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           Visibility="{Binding Options.ShowLastPitStop, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <Border Style="{StaticResource PitStopChip}"
                                 Visibility="{Binding HasLastPitStop, Mode=OneTime, Converter={StaticResource BoolToVis}}">
@@ -245,7 +245,7 @@
 
                     <!-- The tyre: dark rubber, the compound's broadcast colour as a sidewall stripe and
                          its letter in the middle. Blank when the sim doesn't say. -->
-                    <Grid Grid.Column="{Binding Options.Columns.TireCompound, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="17" Height="17" HorizontalAlignment="Center" Margin="0,0,4,0"
+                    <Grid x:Name="TireCell" Grid.Column="{Binding Options.Columns.TireCompound, RelativeSource={RelativeSource AncestorType=UserControl}}" Width="17" Height="17" HorizontalAlignment="Center" Margin="0,0,4,0"
                           Visibility="{Binding Options.ShowTireCompound, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <w:TireCompoundIcon Letter="{Binding TireCompoundLetter, Mode=OneTime}" Ink="{Binding TireCompoundColor, Mode=OneTime}"
                                             Visibility="{Binding HasTireCompound, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
@@ -278,7 +278,7 @@
 
                     <!-- A thin 1px outline, no fill: the licence colour on the edge and the text still says
                          R/D/C/B/A at a glance without out-shouting the driver's name next to it. -->
-                    <Border Grid.Column="{Binding Options.Columns.License, RelativeSource={RelativeSource AncestorType=UserControl}}" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}" BorderThickness="1"
+                    <Border x:Name="LicenseCell" Grid.Column="{Binding Options.Columns.License, RelativeSource={RelativeSource AncestorType=UserControl}}" CornerRadius="{StaticResource Radius.Chip}" Margin="{StaticResource ChipInset}" BorderThickness="1"
                             BorderBrush="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.7}"
                             Visibility="{Binding Options.ShowLicense, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                         <TextBlock Text="{Binding LicStringDisplay, Mode=OneTime}" Style="{StaticResource ChipText}"
@@ -286,14 +286,14 @@
                                    Foreground="{Binding LicenseColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
                     </Border>
 
-                    <TextBlock Grid.Column="{Binding Options.Columns.Lap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding LapDisplay, Mode=OneTime}" Style="{StaticResource MetaCell}"
+                    <TextBlock x:Name="LapText" Grid.Column="{Binding Options.Columns.Lap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding LapDisplay, Mode=OneTime}" Style="{StaticResource PrimaryCell}"
                                Visibility="{Binding Options.ShowLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="{Binding Options.Columns.BestLap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding BestLapDisplay, Mode=OneTime}" Style="{StaticResource NumCell}"
+                    <TextBlock x:Name="BestLapText" Grid.Column="{Binding Options.Columns.BestLap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding BestLapDisplay, Mode=OneTime}" Style="{StaticResource NumCell}"
                                Foreground="{Binding BestLapForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowBestLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
-                    <TextBlock Grid.Column="{Binding Options.Columns.LastLap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding LastLapDisplay, Mode=OneTime}" Style="{StaticResource NumCell}"
+                    <TextBlock x:Name="LastLapText" Grid.Column="{Binding Options.Columns.LastLap, RelativeSource={RelativeSource AncestorType=UserControl}}" Text="{Binding LastLapDisplay, Mode=OneTime}" Style="{StaticResource NumCell}"
                                Foreground="{Binding LastLapForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"
                                Visibility="{Binding Options.ShowLastLap, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
 
@@ -309,14 +309,34 @@
             <DataTrigger Binding="{Binding IsMultiClass, Mode=OneTime}" Value="True">
                 <Setter TargetName="EdgeBar" Property="Background" Value="{Binding ClassColor, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
             </DataTrigger>
-            <!-- In the pits: not racing anyone this instant, so the whole row steps back. No fill: the
-                 neutral PIT tag says why, and nothing warm competes with your amber row. -->
-            <DataTrigger Binding="{Binding OnPitRoad, Mode=OneTime}" Value="True">
-                <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
-            </DataTrigger>
+            <!-- In the pits: not racing anyone this instant, so the row steps back — everything but the
+                 timing (LAP, BEST, LAST, GAP), which stays at full strength to be read at a glance. No
+                 fill: the neutral PIT tag says why, and nothing warm competes with your amber row.
+                 Not on your own row, which is always full strength. -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding OnPitRoad, Mode=OneTime}" Value="True"/>
+                    <Condition Binding="{Binding IsPlayer, Mode=OneTime}" Value="False"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="FastestMark" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="PositionText" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="PlacesCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="CarNumberText" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="BrandCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="CountryCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="DriverCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="LastPitCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="TireCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="RatingBadge" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+                <Setter TargetName="LicenseCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
+            </MultiDataTrigger>
             <!-- In the garage: a darker cell with its content, class bar included, barely there — the
-                 car is listed but not in the race. -->
+                 car is listed but not in the race. Its timing goes back to the quieter greys: nothing
+                 on an absent row should read as live data. -->
             <DataTrigger Binding="{Binding InGarage, Mode=OneTime}" Value="True">
+                <Setter TargetName="LapText" Property="Foreground" Value="{StaticResource Text.Muted}"/>
+                <Setter TargetName="BestLapText" Property="Foreground" Value="{StaticResource Text.Secondary}"/>
+                <Setter TargetName="LastLapText" Property="Foreground" Value="{StaticResource Text.Secondary}"/>
                 <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Garage}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
                 <Setter TargetName="EdgeBar" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>

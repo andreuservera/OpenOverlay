@@ -153,13 +153,13 @@ public abstract class DriverRow
     public string BestLapDisplay => FormatLapTime(BestLapTime);
 
     // Purple is reserved for the fastest lap of each class — the one lap time worth colouring.
-    // Every other best lap is just secondary data.
-    public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#B4BCC8";
+    // Every other best lap is in the primary ink, like the gap.
+    public string BestLapForeground => IsSessionFastestLap ? "#B58CFF" : "#F2F4F7";
 
     // Broadcast convention: green when the lap just completed is the driver's personal best, purple
     // when that personal best is also the fastest lap of their class.
     public string LastLapForeground => !IsLastLapPersonalBest
-        ? "#B4BCC8"
+        ? "#F2F4F7"
         : IsSessionFastestLap ? "#B58CFF" : "#3DD68C";
 
     private bool IsLastLapPersonalBest =>

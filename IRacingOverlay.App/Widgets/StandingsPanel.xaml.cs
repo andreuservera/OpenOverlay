@@ -50,7 +50,7 @@ public partial class StandingsPanel : UserControl
             new Dictionary<TableInfoElement, FrameworkElement>
             {
                 [TableInfoElement.SessionType] = SessionTypeText,
-                [TableInfoElement.Sof] = SofText,
+                [TableInfoElement.Sof] = SofField,
                 [TableInfoElement.SessionLaps] = SessionLapsField,
                 [TableInfoElement.SessionTime] = SessionTimeField,
                 [TableInfoElement.BrakeBias] = BrakeBiasField,
@@ -64,7 +64,15 @@ public partial class StandingsPanel : UserControl
 
     public void SetRows(IReadOnlyList<object> rows) => RowSlot.Sync(Rows, rows, "Standings");
 
-    public void SetSof(double sof) => SofText.Text = FormatSof(sof);
+    public void SetSof(double sof) => ShowSof(SofField, SofText, sof);
+
+    /// <summary>The figure alone ("2.9k") next to its SOF label; the whole field hidden when the
+    /// session has no strength to show. Shared with RelativePanel.</summary>
+    internal static void ShowSof(FrameworkElement field, TextBlock figure, double sof)
+    {
+        figure.Text = SofFormat.Value(sof);
+        field.Visibility = figure.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <summary>See <see cref="SofFormat.Format"/>.</summary>
     internal static string FormatSof(double sof) => SofFormat.Format(sof);

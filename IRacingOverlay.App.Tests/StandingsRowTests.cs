@@ -53,10 +53,10 @@ public class StandingsRowTests
     }
 
     [Theory]
-    [InlineData(91.2, 90.5, false, "#B4BCC8")] // slower than their best: plain
+    [InlineData(91.2, 90.5, false, "#F2F4F7")] // slower than their best: plain
     [InlineData(90.5, 90.5, false, "#3DD68C")] // personal best: green
     [InlineData(90.5, 90.5, true, "#B58CFF")]  // personal best that is also the session's fastest: purple
-    [InlineData(0, 0, false, "#B4BCC8")]       // no lap yet
+    [InlineData(0, 0, false, "#F2F4F7")]       // no lap yet
     public void LastLapForeground_MarksPersonalAndSessionBests(double last, double best, bool fastest, string expected)
     {
         Assert.Equal(expected, Row(lastLap: last, bestLap: best, sessionFastest: fastest).LastLapForeground);
