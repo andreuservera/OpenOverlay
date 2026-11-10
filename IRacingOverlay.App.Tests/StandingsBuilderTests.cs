@@ -2405,6 +2405,33 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildRelative_RallycrossStart_CarsStillOnTheGridAreNotLapped()
+    {
+        // Logged live at Phoenix rallycross (2026-11-09): the player (2) has just crossed onto lap 1.
+        // Car 1 is still on the off-track grid, which iRacing reads at ~0.5 of lap 0; car 4 is about
+        // to cross; car 5 has crossed but still reads lap 0.
+        var snapshot = RaceAt([1, 0, 1, 1, 0, 0], [0.010f, 0.505f, 0.040f, 0.002f, 0.999f, 0.008f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(6, 2), maxEachSide: 5, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
+        Assert.Null(reported);
+    }
+
+    [Fact]
+    public void BuildRelative_CarThatNeverLeftTheGrid_IsLappedOnceThePlayerIsALapUp()
+    {
+        var snapshot = RaceAt([2, 0], [0.30f, 0.505f]);
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(2, 0), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapped, relative[1]);
+    }
+
+    [Fact]
     public void BuildRelative_OpeningLaps_ACarLappedForRealIsStillMarked()
     {
         // Lap 2: car 3 was towed on lap 1 and sits at 0.6 laps; the others are racing the player.
