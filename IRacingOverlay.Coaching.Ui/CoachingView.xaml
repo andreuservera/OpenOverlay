@@ -397,9 +397,9 @@
                         <!-- Best against typical, and what keeps going wrong here -->
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="3*"/>
                                 <ColumnDefinition Width="24"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
                                 <Grid Margin="0,0,0,4">
@@ -424,7 +424,7 @@
                                                     <ColumnDefinition Width="80"/>
                                                     <ColumnDefinition Width="70"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cell}"/>
+                                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cell}" TextTrimming="None" TextWrapping="Wrap"/>
                                                 <TextBlock Grid.Column="1" Text="{Binding Best}" Style="{StaticResource NumCell}" Foreground="{DynamicResource Cp.Text}"/>
                                                 <TextBlock Grid.Column="2" Text="{Binding Typical}" Style="{StaticResource NumCell}" Foreground="{DynamicResource Cp.Text}"/>
                                                 <TextBlock Grid.Column="3" Text="{Binding Difference}" Style="{StaticResource NumCell}" Margin="0"/>
