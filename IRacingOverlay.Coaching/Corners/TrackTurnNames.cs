@@ -11,7 +11,8 @@ namespace IRacingOverlay.Coaching.Corners;
 /// A detected corner is often a complex the track calls two turns (Eau Rouge and Raidillon) or part
 /// of one long named turn. It takes the names of the turns whose middle lies inside its window, in
 /// lap order ("Eau Rouge and Raidillon"); failing that, the turn its apex is in; failing that, the
-/// turn it overlaps most. A name typed into the saved corner map always wins.
+/// turn it overlaps most. Corners that end up with the same name are numbered in lap order
+/// ("Degner 1", "Degner 2"). A name typed into the saved corner map always wins.
 /// </summary>
 public sealed class TrackTurnNames
 {
@@ -71,6 +72,18 @@ public sealed class TrackTurnNames
             var name = NameFor(c.StartM / length, c.ApexM / length, c.EndM / length, turns);
             return name is null ? c : c with { Label = name, LabelIsLookedUp = true };
         }).ToList();
+
+        // One long named turn detected as several corners (Degner, Spoon, Les Fagnes): number the
+        // parts in lap order, so "Degner 1" and "Degner 2" can be told apart when spoken.
+        foreach (var group in corners.Where(c => c.LabelIsLookedUp).GroupBy(c => c.Label).Where(g => g.Count() > 1).ToList())
+        {
+            var part = 1;
+            foreach (var c in group.ToList())
+            {
+                corners[corners.IndexOf(c)] = c with { Label = $"{c.Label} {part++}" };
+            }
+        }
+
         return new CornerMap(map.TrackLengthMetres, corners, map.LapsUsed);
     }
 

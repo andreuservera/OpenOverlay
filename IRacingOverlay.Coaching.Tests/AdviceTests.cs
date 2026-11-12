@@ -182,8 +182,10 @@ public class AdviceTests
         var last = new CornerAdvice(new Corner("T10", 6500, 6700, 6800), 0.2, [], 0) { Index = 9, CornerCount = 10 };
         Assert.Equal("The last corner again", DebriefText.SpokenCorner(last, again: true));
 
-        var named = last with { Corner = last.Corner with { Label = "Bus Stop" } };
-        Assert.Equal("Bus Stop", DebriefText.SpokenCorner(named));
+        var named = last with { Corner = last.Corner with { Label = "Pouhon" } };
+        Assert.Equal("Pouhon", DebriefText.SpokenCorner(named));
+        Assert.Equal("The hairpin", DebriefText.SpokenCorner(last with { Corner = last.Corner with { Label = "Hairpin" } }));
+        Assert.Equal("The last curve", DebriefText.SpokenCorner(last with { Corner = last.Corner with { Label = "Last Curve" } }));
     }
 
     [Theory]

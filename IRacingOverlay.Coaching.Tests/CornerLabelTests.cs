@@ -78,6 +78,17 @@ public sealed class CornerLabelTests : IDisposable
     }
 
     [Fact]
+    public void PartsOfOneLongNamedTurnAreNumbered()
+    {
+        var map = new CornerMap(1000, [new Corner("T1", 100, 150, 200), new Corner("T2", 300, 350, 400), new Corner("T3", 600, 650, 700)]);
+        var turns = new List<NamedTurn> { new("Degner", 0.08, 0.45), new("Hairpin", 0.6, 0.7) };
+
+        var named = TrackTurnNames.Apply(map, turns).Corners.Select(c => c.Label);
+
+        Assert.Equal(["Degner 1", "Degner 2", "Hairpin"], named);
+    }
+
+    [Fact]
     public void LookedUpNamesAreNotWrittenIntoTheSavedMap()
     {
         var store = new CornerMapStore(_dir);

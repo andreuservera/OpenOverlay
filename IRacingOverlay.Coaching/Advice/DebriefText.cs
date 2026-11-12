@@ -92,7 +92,7 @@ public static class DebriefText
         var a = again ? " again" : "";
         if (!string.IsNullOrWhiteSpace(c.Corner.Label))
         {
-            return c.Corner.Label! + a;
+            return WithArticle(c.Corner.Label!.Trim()) + a;
         }
 
         var turn = c.Corner.Name.Length > 1 && c.Corner.Name[0] == 'T' && c.Corner.Name[1..].All(char.IsDigit)
@@ -109,6 +109,19 @@ public static class DebriefText
         }
 
         return Describe(c.Best) is { } kind ? $"{turn}{a}, the {kind}" : turn + a;
+    }
+
+    // Names that are descriptions rather than proper names read better with "the" in front.
+    private static readonly HashSet<string> GenericFirstWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Hairpin", "Chicane", "First", "Second", "Third", "Last", "Final", "Snake", "Esses", "Kink",
+        "Carousel", "Corkscrew", "Anti-Banked", "Bus", "Bridge", "Banking", "Bowl", "Dip",
+    };
+
+    internal static string WithArticle(string name)
+    {
+        var first = name.Split(' ', 2)[0];
+        return GenericFirstWords.Contains(first) ? "The " + name.ToLowerInvariant() : name;
     }
 
     /// <summary>"hairpin", "slow right", "fast left"…; null when nothing is known.</summary>
