@@ -69,4 +69,21 @@ public class CornerDetectorTests
         var start = track.PieceStart(piece);
         Assert.InRange(metre, start, start + (int)track.Pieces[piece].Length);
     }
+
+    [Fact]
+    public void ACornerNotReachedAtFullThrottleStartsAtItsMainBrakingNotAtItsLastDab()
+    {
+        // Casio after 130R: partial throttle since the 130R lift at 100 m, a lift at 230 m, the main
+        // stop 250–400 m, off the brake, then a dab for the second part at 440–450 m, apex at 470 m.
+        var lap = new LapTrace(600);
+        for (var m = 0; m < 600; m++)
+        {
+            lap.Throttle[m] = m < 100 ? 1f : m < 230 ? 0.7f : 0f;
+            lap.Brake[m] = m is >= 250 and < 400 ? 0.8f : m is >= 440 and < 450 ? 0.2f : 0f;
+        }
+
+        var start = CornerDetector.EntryStart(lap, 100, 470, new CornerDetectionOptions());
+
+        Assert.InRange(start, 215, 250); // the lift into the braking, not 130R and not the dab
+    }
 }

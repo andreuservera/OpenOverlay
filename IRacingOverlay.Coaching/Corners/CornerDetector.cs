@@ -35,6 +35,10 @@ public sealed record CornerDetectionOptions
     /// at its braking, at most this far back over the lift before it, metres.</summary>
     public int MaxLiftBeforeBrakeMetres { get; init; } = 100;
 
+    /// <summary>Brake applications closer than this, with no full throttle between, are one braking
+    /// zone, metres.</summary>
+    public int BrakeGapMetres { get; init; } = 150;
+
     /// <summary>Brake above this is braking.</summary>
     public float BrakeOn { get; init; } = 0.05f;
 
@@ -291,7 +295,9 @@ public static class CornerDetector
     /// after the previous bend (130R into the Casio chicane): the braking for this corner, plus the
     /// lift just before it, rather than everything since the last flat-out point.
     /// </summary>
-    private static int EntryStart(LapTrace lap, int from, int apex, CornerDetectionOptions o)
+    private const float LiftedThrottle = 0.2f;
+
+    internal static int EntryStart(LapTrace lap, int from, int apex, CornerDetectionOptions o)
     {
         // The braking run that leads into the apex.
         var b = apex;
@@ -305,19 +311,53 @@ public static class CornerDetector
             return from; // lifted only: keep the whole lift
         }
 
-        while (b > from && lap.Brake[b - 1] > o.BrakeOn)
+        b = BrakeRunStart(lap, from, b, o);
+
+        // A chicane is often braked twice (the main stop, then a dab for the second part), and a
+        // light brake can flicker under the threshold: join earlier brake applications that are
+        // close, with no full throttle between, so the corner starts at the main stop.
+        while (true)
         {
-            b--;
+            var j = b - 1;
+            while (j > from && j > b - o.BrakeGapMetres && lap.Brake[j] <= o.BrakeOn && !IsFlatOut(lap, j, o))
+            {
+                j--;
+            }
+
+            if (j < from || lap.Brake[j] <= o.BrakeOn)
+            {
+                break;
+            }
+
+            b = BrakeRunStart(lap, from, j, o);
         }
 
         // Then back over the lift before it, while the throttle was coming off (going forward).
         var limit = Math.Max(from, b - o.MaxLiftBeforeBrakeMetres);
-        while (b > limit && lap.Throttle[b - 1] >= lap.Throttle[b] - 0.02f && lap.Brake[b - 1] <= o.BrakeOn)
+        // Coasting first (off the throttle), then the throttle being rolled off before that.
+        while (b > limit && lap.Throttle[b - 1] < LiftedThrottle && lap.Brake[b - 1] <= o.BrakeOn)
         {
             b--;
         }
 
-        return b;
+        while (b > limit && lap.Throttle[b - 1] > lap.Throttle[b] + 0.01f && lap.Brake[b - 1] <= o.BrakeOn)
+        {
+            b--;
+        }
+
+        // A little lead, so laps that brake a few metres earlier than the agreed start still have
+        // their brake point inside the window.
+        return Math.Max(from, b - 10);
+    }
+
+    private static int BrakeRunStart(LapTrace lap, int from, int i, CornerDetectionOptions o)
+    {
+        while (i > from && lap.Brake[i - 1] > o.BrakeOn)
+        {
+            i--;
+        }
+
+        return i;
     }
 
     private static bool IsFlatOut(LapTrace lap, int i, CornerDetectionOptions o) =>
