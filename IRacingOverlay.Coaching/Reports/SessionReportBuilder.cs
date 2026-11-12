@@ -75,9 +75,10 @@ public static class SessionReportBuilder
         var corners = new List<CornerReport>();
         if (session.CornerMap is { } map)
         {
+            var grip = GripEnvelope.Learn(reference.Where(a => a.Lap.Trace is not null).Select(a => a.Lap.Trace!));
             for (var i = 0; i < map.Corners.Count; i++)
             {
-                corners.Add(BuildCorner(map.Corners[i], reference, best, bestLap, o));
+                corners.Add(BuildCorner(map.Corners[i], reference, best, bestLap, o, grip));
             }
         }
         else
@@ -178,7 +179,7 @@ public static class SessionReportBuilder
         && f.Laps >= o.RecurringMinLaps
         && f.Laps >= Math.Ceiling(o.RecurringShare * f.OutOf - 1e-9);
 
-    private static CornerReport BuildCorner(Corner corner, IReadOnlyList<LapAnalysis> reference, IReadOnlyDictionary<string, CornerPass> bests, RecordedLap? bestLap, SessionReportOptions o)
+    private static CornerReport BuildCorner(Corner corner, IReadOnlyList<LapAnalysis> reference, IReadOnlyDictionary<string, CornerPass> bests, RecordedLap? bestLap, SessionReportOptions o, GripEnvelope? grip = null)
     {
         var passes = new List<(CornerPass Pass, LapAnalysis Lap)>();
         foreach (var a in reference)
@@ -272,7 +273,91 @@ public static class SessionReportBuilder
             Findings = tallies,
             BestTrace = bestEntry is { } be ? Trace(be.Item1, be.Item2.Lap, corner, o.TraceStepMetres) : null,
             TypicalTrace = typicalPass is { } t ? Trace(t.Item1, t.Item2.Lap, corner, o.TraceStepMetres) : null,
+            LossByPhase = PhaseLosses(compared.Select(c => (c.Pass, c.Lap)).ToList(), bestEntry),
+            Grip = GripOf(grip, bestEntry, typicalPass),
+            TimeSpread = CornerStats.Spread(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass.ScoreTime).ToList()),
+            BrakePointSpreadM = CornerStats.Spread(passes.Where(x => x.Pass.IsClean && (x.Pass.BrakePointM ?? x.Pass.LiftPointM) is not null)
+                .Select(x => (double)(x.Pass.BrakePointM ?? x.Pass.LiftPointM)!.Value).ToList()),
+            DecidedBy = DecidedByText(CornerStats.DecidedBy(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass).ToList())),
         };
+    }
+
+    /// <summary>Median loss per phase over the compared passes; empty without a best pass trace.</summary>
+    private static List<PhaseLossRow> PhaseLosses(List<(CornerPass Pass, LapAnalysis Lap)> compared, (CornerPass, LapAnalysis)? bestEntry)
+    {
+        if (bestEntry is not { } be || be.Item2.Lap.Trace is not { } bestTrace || compared.Count == 0)
+        {
+            return [];
+        }
+
+        var splits = compared.Where(c => c.Lap.Lap.Trace is not null)
+            .Select(c => LossBreakdown.Split(c.Lap.Lap.Trace!, bestTrace, be.Item1)).ToList();
+        if (splits.Count == 0)
+        {
+            return [];
+        }
+
+        return Enum.GetValues<CornerPhase>()
+            .Select(ph => new PhaseLossRow { Phase = PhaseName(ph), Seconds = Math.Round(Median(splits.Select(s => s[ph]).ToList()), 3) })
+            .ToList();
+    }
+
+    internal static string PhaseName(CornerPhase phase) => phase switch
+    {
+        CornerPhase.Approach => "Approach",
+        CornerPhase.Braking => "Braking",
+        CornerPhase.Rotation => "Turn-in to throttle",
+        CornerPhase.Traction => "Traction",
+        _ => "Straight after",
+    };
+
+    private static GripUse? GripOf(GripEnvelope? grip, (CornerPass, LapAnalysis)? best, (CornerPass, LapAnalysis)? typical)
+    {
+        if (grip is null)
+        {
+            return null;
+        }
+
+        (double? Braking, double? Cornering) Use(CornerPass p, LapTrace? t)
+        {
+            if (t is null)
+            {
+                return (null, null);
+            }
+
+            double? braking = p.BrakePointM is { } bp && p.BrakeReleaseM is { } br ? grip.Usage(t, bp, br) : null;
+            var from = p.BrakeReleaseM ?? p.MinSpeedAtM - 20;
+            var to = p.ThrottlePickupM is { } tp && tp > from ? tp : p.MinSpeedAtM + 20;
+            return (braking, grip.Usage(t, from, to));
+        }
+
+        var b = best is { } be ? Use(be.Item1, be.Item2.Lap.Trace) : (null, null);
+        var ty = typical is { } te ? Use(te.Item1, te.Item2.Lap.Trace) : (null, null);
+        return new GripUse
+        {
+            BestBraking = Round(b.Braking),
+            BestCornering = Round(b.Cornering),
+            TypicalBraking = Round(ty.Braking),
+            TypicalCornering = Round(ty.Cornering),
+        };
+
+        static double? Round(double? v) => v is { } x ? Math.Round(x, 3) : null;
+    }
+
+    private static string? DecidedByText((string Measure, double R)? d)
+    {
+        if (d is not { } x)
+        {
+            return null;
+        }
+
+        // r is against time: negative means more of it, less time.
+        var way = x.Measure switch
+        {
+            "brake point" or "lift point" or "throttle pick-up" => x.R > 0 ? "earlier was quicker" : "later was quicker",
+            _ => x.R < 0 ? "higher was quicker" : "lower was quicker",
+        };
+        return $"{SessionSummaryText.Capital(x.Measure)}: {way}";
     }
 
     private static PassRow Row(CornerPass p, double? loss, bool isBest, IReadOnlyList<CornerFinding> findings) => new()

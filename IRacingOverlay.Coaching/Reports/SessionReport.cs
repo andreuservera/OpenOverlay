@@ -156,6 +156,44 @@ public sealed record CornerReport
 
     /// <summary>Speed and pedals through the corner on the typical pass.</summary>
     public CornerTrace? TypicalTrace { get; init; }
+
+    /// <summary>Where a normal lap loses its time here: the median loss against the best pass in
+    /// each phase (approach, braking, rotation, traction, straight), seconds.</summary>
+    public List<PhaseLossRow> LossByPhase { get; init; } = [];
+
+    /// <summary>Share of the car's grip used under braking and from release to throttle, 0–1, on the
+    /// best and on the typical pass; null when it can't be told.</summary>
+    public GripUse? Grip { get; init; }
+
+    /// <summary>How much the corner's time varies between clean passes (standard deviation), seconds.</summary>
+    public double? TimeSpread { get; init; }
+
+    /// <summary>How much the brake (or lift) point moves between clean passes (standard deviation), metres.</summary>
+    public double? BrakePointSpreadM { get; init; }
+
+    /// <summary>The measurement that best explains the time here across the passes, in words
+    /// ("Minimum speed: higher was quicker"); null when nothing stands out.</summary>
+    public string? DecidedBy { get; init; }
+}
+
+/// <summary>Median time lost in one phase of a corner, seconds.</summary>
+public sealed record PhaseLossRow
+{
+    public required string Phase { get; init; }
+
+    public double Seconds { get; init; }
+}
+
+/// <summary>Share of the car's grip used in a corner (see <c>GripEnvelope</c>), 0–1.</summary>
+public sealed record GripUse
+{
+    public double? BestBraking { get; init; }
+
+    public double? BestCornering { get; init; }
+
+    public double? TypicalBraking { get; init; }
+
+    public double? TypicalCornering { get; init; }
 }
 
 /// <summary>One lap's pass through a corner.</summary>
