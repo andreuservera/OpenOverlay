@@ -30,6 +30,8 @@
   "nav.section.SETTINGS": "AJUSTES",
   "nav.home.title": "Inicio",
   "nav.home.blurb": "Qué hay en pantalla, qué requiere atención y lo que más usas.",
+  "nav.coaching.title": "Coaching",
+  "nav.coaching.blurb": "Tus sesiones con el coach: mejor vuelta, vuelta teórica, los errores que repites y cada curva en detalle.",
   "nav.layouts.title": "Layouts",
   "nav.layouts.blurb": "Disposiciones guardadas de tus widgets y el dashboard para el segundo monitor.",
   "nav.general.title": "General",

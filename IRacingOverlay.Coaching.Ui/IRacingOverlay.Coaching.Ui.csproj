@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The app's Coaching page: the sessions coached so far and their post-session analysis. Coaching
+    owned, like IRacingOverlay.Coaching: the app only adds the page to its rail and hosts
+    CoachingView; everything the page shows and does lives here. It takes the control panel's look
+    from the window it is hosted in (Cp.* resources, looked up dynamically), so it needs nothing
+    from the app's assembly.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF projects leave System.IO out of the implicit usings. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IRacingOverlay.Coaching\IRacingOverlay.Coaching.csproj" />
+  </ItemGroup>
+
+</Project>

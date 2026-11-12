@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IRacingOverlay.Sdk\IRacingOverlay.Sdk.csproj" />
+    <!-- The Coaching page (post-session analysis). Coaching-owned: the app only lists the page in
+         its rail and hosts its view (see CoachingPageKey and MainWindow.xaml). -->
+    <ProjectReference Include="..\IRacingOverlay.Coaching.Ui\IRacingOverlay.Coaching.Ui.csproj" />
   </ItemGroup>
 
   <ItemGroup>
