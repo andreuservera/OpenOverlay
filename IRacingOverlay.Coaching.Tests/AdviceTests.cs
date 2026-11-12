@@ -185,6 +185,7 @@ public class AdviceTests
         var named = last with { Corner = last.Corner with { Label = "Pouhon" } };
         Assert.Equal("Pouhon", DebriefText.SpokenCorner(named));
         Assert.Equal("The hairpin", DebriefText.SpokenCorner(last with { Corner = last.Corner with { Label = "Hairpin" } }));
+        Assert.Equal("Snake 2", DebriefText.SpokenCorner(last with { Corner = last.Corner with { Label = "Snake 2" } }));
         Assert.Equal("The last curve", DebriefText.SpokenCorner(last with { Corner = last.Corner with { Label = "Last Curve" } }));
     }
 

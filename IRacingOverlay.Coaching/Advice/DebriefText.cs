@@ -120,6 +120,12 @@ public static class DebriefText
 
     internal static string WithArticle(string name)
     {
+        // A numbered part ("Snake 2") is already a name.
+        if (char.IsDigit(name[^1]))
+        {
+            return name;
+        }
+
         var first = name.Split(' ', 2)[0];
         return GenericFirstWords.Contains(first) ? "The " + name.ToLowerInvariant() : name;
     }
