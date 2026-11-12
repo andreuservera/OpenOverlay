@@ -43,8 +43,48 @@ public static partial class SessionSummaryText
             lines.Add($"A normal lap loses the most at {costliest.Name}: {Seconds(costliest.MedianLoss!.Value)} against your best pass.");
         }
 
+        if (WhereTheTimeGoes(r) is { } where)
+        {
+            lines.Add(where);
+        }
+
         return lines;
     }
+
+    /// <summary>
+    /// Which phase of the corners a normal lap loses its time in, over the whole lap: "Most of it
+    /// goes under braking (0.42 s a lap), then on the straights after the corners (0.30 s)."
+    /// Null when there is nothing to split.
+    /// </summary>
+    public static string? WhereTheTimeGoes(SessionReport r)
+    {
+        var totals = r.Corners.SelectMany(c => c.LossByPhase)
+            .GroupBy(p => p.Phase)
+            .Select(g => (Phase: g.Key, Seconds: g.Sum(p => Math.Max(0, p.Seconds))))
+            .Where(x => x.Seconds >= 0.01)
+            .OrderByDescending(x => x.Seconds)
+            .ToList();
+        if (totals.Count == 0)
+        {
+            return null;
+        }
+
+        var first = $"Most of it goes {PhaseWhere(totals[0].Phase)} ({Seconds(totals[0].Seconds)} a lap)";
+        return totals.Count > 1
+            ? $"{first}, then {PhaseWhere(totals[1].Phase)} ({Seconds(totals[1].Seconds)})."
+            : first + ".";
+    }
+
+    /// <summary>A phase name as a place in the corner: "under braking", "on the straights after the corners".</summary>
+    public static string PhaseWhere(string phase) => phase switch
+    {
+        "Approach" => "before the braking zones",
+        "Braking" => "under braking",
+        "Turn-in to throttle" => "between brake release and the throttle",
+        "Traction" => "putting the power down",
+        "Straight after" => "on the straights after the corners",
+        _ => phase.ToLowerInvariant(),
+    };
 
     /// <summary>What went wrong, as a sentence: "You braked about 12 m early on 6 of 9 laps, losing about 0.12 s each time."</summary>
     public static string Problem(FindingTally f) =>
@@ -62,6 +102,14 @@ public static partial class SessionSummaryText
         "LowMinimumSpeed" => $"were about {Kmh(amount)} slower at the apex",
         "LateThrottle" => $"got back on the throttle about {M(amount)} late",
         "SlowExit" => $"came out about {Kmh(amount)} slower",
+        "LiftedInFlatCorner" => "lifted in a corner you can take flat",
+        "LiftedTooEarly" => $"lifted about {M(amount)} early",
+        "LiftTooDeep" => $"lifted further than needed ({Pct(amount)} more)",
+        "LiftTooLong" => $"stayed off full throttle about {M(amount)} too long",
+        "UnneededBrake" => "braked where a lift was enough",
+        "Coasting" => $"coasted for about {M(amount)}",
+        "ThrottleHesitation" => "had to come off the throttle again on the exit",
+        "Understeer" => $"had the car push ({Pct(amount)} more steering for the same grip)",
         _ => Words(kind),
     };
 

@@ -324,6 +324,56 @@
                             <ui:CornerTraceChart Best="{Binding BestTrace}" Typical="{Binding TypicalTrace}" ApexM="{Binding Report.ApexM}" Height="260" Margin="0,0,0,12"/>
                         </StackPanel>
 
+                        <!-- Where the time goes, phase by phase, and what the passes say about this corner -->
+                        <Grid Margin="0,0,0,14" Visibility="{Binding HasPhases, Converter={StaticResource BoolToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="WHERE A NORMAL LAP LOSES TIME HERE" Style="{StaticResource Caption}"/>
+                                <ItemsControl ItemsSource="{Binding Phases}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="ui:PhaseItem">
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="150"/>
+                                                    <ColumnDefinition Width="60"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Phase}" Style="{StaticResource Cell}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Seconds}" Style="{StaticResource NumCell}" Foreground="{DynamicResource Cp.Text}"/>
+                                                <Border Grid.Column="2" Height="8" HorizontalAlignment="Left" VerticalAlignment="Center" CornerRadius="2"
+                                                        Width="{Binding BarWidth}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#6CB4FF"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsGain}" Value="True">
+                                                                    <Setter Property="Background" Value="#3DD68C"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Visibility="{Binding HasInsights, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="WHAT THE PASSES SAY" Style="{StaticResource Caption}"/>
+                                <ItemsControl ItemsSource="{Binding Insights}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" FontSize="13" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap" Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
+
                         <!-- Best against typical, and what keeps going wrong here -->
                         <Grid>
                             <Grid.ColumnDefinitions>

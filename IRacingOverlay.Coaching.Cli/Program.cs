@@ -525,6 +525,19 @@ static void PrintSummary(SessionReport report)
         Console.WriteLine("  " + note);
     }
 
+    if (report.Corners.Any(c => c.LossByPhase.Count > 0))
+    {
+        Console.WriteLine("  Where a normal lap loses time, per corner (s; approach / braking / turn-in to throttle / traction / straight), grip used best/typical, spread:");
+        foreach (var c in report.Corners.Where(c => c.LossByPhase.Count > 0))
+        {
+            var phases = string.Join(" / ", c.LossByPhase.Select(p => p.Seconds.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture)));
+            static string Pct(double? v) => v is { } x ? $"{x * 100:0}%" : "-";
+            var grip = c.Grip is { } g ? $"brake {Pct(g.BestBraking)}/{Pct(g.TypicalBraking)}, corner {Pct(g.BestCornering)}/{Pct(g.TypicalCornering)}" : "";
+            var spread = c.TimeSpread is { } ts ? $"±{ts:0.00} s" + (c.BrakePointSpreadM is { } b ? $", brake ±{b:0} m" : "") : "";
+            Console.WriteLine($"    {c.Name,-18} {phases}   {grip}   {spread}   {c.DecidedBy}");
+        }
+    }
+
     if (report.Mistakes.Count > 0)
     {
         Console.WriteLine("  Recurring mistakes, costliest first:");

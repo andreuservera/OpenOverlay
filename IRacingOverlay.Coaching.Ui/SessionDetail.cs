@@ -199,7 +199,55 @@ public sealed class CornerDetail
             SessionSummaryText.Capital(f.Advice),
             $"main issue on {f.Laps} of {f.OutOf} laps, about {Format.Seconds(f.TypicalLoss)} each")).ToList();
         Passes = c.Passes.Select(p => new PassItem(p)).ToList();
+
+        var maxPhase = c.LossByPhase.Select(p => Math.Abs(p.Seconds)).DefaultIfEmpty(0).Max();
+        Phases = c.LossByPhase.Select(p => new PhaseItem(
+            p.Phase,
+            (p.Seconds >= 0 ? "+" : "−") + Math.Abs(p.Seconds).ToString("0.00", Format.Culture),
+            maxPhase > 0 ? Math.Max(1, PhaseBarWidth * Math.Abs(p.Seconds) / maxPhase) : 0,
+            p.Seconds < 0)).ToList();
+
+        var insights = new List<string>();
+        if (c.DecidedBy is { } d)
+        {
+            insights.Add($"What decides the time here: {d.ToLowerInvariant()}.");
+        }
+
+        if (c.Grip is { } g)
+        {
+            string Pct(double? v) => v is { } x ? $"{Math.Round(x * 100):0}%" : "—";
+            if (g.BestBraking is not null || g.TypicalBraking is not null)
+            {
+                insights.Add($"Grip used under braking: {Pct(g.BestBraking)} on the best pass, {Pct(g.TypicalBraking)} on a typical one.");
+            }
+
+            if (g.BestCornering is not null || g.TypicalCornering is not null)
+            {
+                insights.Add($"Grip used from brake release to the throttle: {Pct(g.BestCornering)} on the best pass, {Pct(g.TypicalCornering)} on a typical one.");
+            }
+        }
+
+        if (c.TimeSpread is { } ts)
+        {
+            var bp = c.BrakePointSpreadM is { } bps ? $", brake point ±{bps.ToString("0", Format.Culture)} m" : "";
+            insights.Add($"Consistency: ±{ts.ToString("0.00", Format.Culture)} s between clean passes{bp}.");
+        }
+
+        Insights = insights;
     }
+
+    /// <summary>Widest phase bar, device-independent pixels.</summary>
+    private const double PhaseBarWidth = 140;
+
+    /// <summary>Where a normal lap loses its time here, phase by phase.</summary>
+    public IReadOnlyList<PhaseItem> Phases { get; }
+
+    public bool HasPhases => Phases.Count > 0;
+
+    /// <summary>Grip used, consistency and what decides the time, in sentences.</summary>
+    public IReadOnlyList<string> Insights { get; }
+
+    public bool HasInsights => Insights.Count > 0;
 
     public CornerReport Report { get; }
 
@@ -244,6 +292,8 @@ public sealed class CornerDetail
     private static CompareRow Row(string label, int? best, int? typical, Func<double, FormattableString> fmt) =>
         Row(label, (double?)best, (double?)typical, fmt);
 }
+
+public sealed record PhaseItem(string Phase, string Seconds, double BarWidth, bool IsGain);
 
 public sealed record CompareRow(string Label, string Best, string Typical, string Difference);
 
