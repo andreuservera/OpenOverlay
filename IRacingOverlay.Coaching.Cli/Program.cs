@@ -28,9 +28,19 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
-    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings] [--debrief] [--speak]");
-    Console.WriteLine("       coaching-analyze --live [--speak] [--store <dir>]");
+    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings] [--debrief] [--speak] [--voice <name>] [--list-voices]");
+    Console.WriteLine("       coaching-analyze --live [--speak] [--voice <name>] [--store <dir>]");
     return args.Length == 0 ? 1 : 0;
+}
+
+if (args[0] == "--list-voices")
+{
+    foreach (var (name, culture) in WindowsSpeech.InstalledVoices())
+    {
+        Console.WriteLine($"{name} ({culture})");
+    }
+
+    return 0;
 }
 
 var live = args[0] == "--live";
@@ -42,6 +52,7 @@ var perLap = false;
 var crossings = false;
 var debrief = false;
 var speak = false;
+string? voiceName = null;
 var storeDir = CornerMapStore.DefaultDirectory;
 for (var i = 1; i < args.Length; i++)
 {
@@ -71,12 +82,23 @@ for (var i = 1; i < args.Length; i++)
         case "--speak":
             speak = true;
             break;
+        case "--voice" when i + 1 < args.Length:
+            voiceName = args[++i];
+            speak = true;
+            break;
+        case "--list-voices":
+            foreach (var (name, culture) in WindowsSpeech.InstalledVoices())
+            {
+                Console.WriteLine($"{name} ({culture})");
+            }
+
+            return 0;
     }
 }
 
 if (live)
 {
-    return RunLive(storeDir, speak);
+    return RunLive(storeDir, speak, voiceName);
 }
 
 using var ibt = IbtFile.Open(path);
@@ -236,8 +258,10 @@ if (debrief || speak)
 
     if (speak && last is not null)
     {
-        using var voice = new WindowsSpeech();
-        voice.SayAndWait(DebriefText.Spoken(last));
+        using var voice = new WindowsSpeech(voice: voiceName);
+        var text = DebriefText.Spoken(last);
+        Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output: {text}");
+        voice.SayAndWait(text);
     }
 }
 
@@ -263,10 +287,15 @@ return 0;
 
 // Live: coach while driving. The session starts once iRacing says which track this is, and starts
 // again if the track changes. Everything runs on the connection's reader thread.
-static int RunLive(string storeDir, bool speak)
+static int RunLive(string storeDir, bool speak, string? voiceName)
 {
     var store = new CornerMapStore(storeDir);
-    using var voice = speak ? new WindowsSpeech() : null;
+    using var voice = speak ? new WindowsSpeech(voice: voiceName) : null;
+    if (voice is not null)
+    {
+        Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output.");
+    }
+
     using var connection = new IRacingConnection();
     CoachingSession? session = null;
     string? track = null;

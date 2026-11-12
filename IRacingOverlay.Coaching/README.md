@@ -45,6 +45,9 @@ dotnet run --project IRacingOverlay.Coaching.Cli -- --live --speak              
 `--live` connects to iRacing the same way the overlay does (its own connection, nothing in the app
 changes) and gives the debrief as you cross the line after each clean lap.
 
+Speech picks the first installed English voice unless `--voice "<name>"` names one;
+`--list-voices` shows what is installed. It plays on the Windows default audio output.
+
 Flags: `--relearn` agrees a new map instead of using the saved one, `--no-save` leaves saved maps
 alone, `--store <dir>` uses another folder for them, `--corners-per-lap` shows what each clean lap
 would give on its own, `--crossings` prints the raw channels around every line crossing.
