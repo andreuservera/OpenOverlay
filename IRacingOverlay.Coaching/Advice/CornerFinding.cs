@@ -26,6 +26,31 @@ public enum FindingKind
 
     /// <summary>Slower 100 m after the corner than the best pass.</summary>
     SlowExit,
+
+    /// <summary>Lifted in a corner the best pass took flat.</summary>
+    LiftedInFlatCorner,
+
+    /// <summary>Came off the throttle earlier than the best pass in a lift corner.</summary>
+    LiftedTooEarly,
+
+    /// <summary>Lifted further than the best pass (percentage points of throttle).</summary>
+    LiftTooDeep,
+
+    /// <summary>Stayed off full throttle longer than the best pass (metres).</summary>
+    LiftTooLong,
+
+    /// <summary>Braked in a corner the best pass took with a lift alone.</summary>
+    UnneededBrake,
+
+    /// <summary>Longer with neither pedal pressed than the best pass (metres).</summary>
+    Coasting,
+
+    /// <summary>Had to come back off the throttle on exit, where the best pass didn't.</summary>
+    ThrottleHesitation,
+
+    /// <summary>More steering than the best pass for the same cornering force: the car pushed
+    /// (percent more steering).</summary>
+    Understeer,
 }
 
 /// <summary>

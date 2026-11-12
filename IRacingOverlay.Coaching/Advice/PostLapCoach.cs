@@ -21,6 +21,9 @@ public sealed record CornerAdvice(Corner Corner, double LossSeconds, IReadOnlyLi
 
     public CornerFinding? Main => Findings.Count > 0 ? Findings[0] : null;
 
+    /// <summary>What kind of corner it is, from the best pass: decides which checks ran.</summary>
+    public CornerType Type => Best is { } b ? CornerTypes.Classify(b) : CornerType.BrakingFast;
+
     /// <summary>How much slower the car arrived than on the best pass, km/h (0 when not slower).
     /// That part of the loss was made in the corner before, not here.</summary>
     public double EntrySlowerKmh { get; init; }
