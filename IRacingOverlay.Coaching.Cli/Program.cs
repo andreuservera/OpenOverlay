@@ -292,7 +292,7 @@ if (session.CarChangedAfterLap is { } carChanged)
 }
 
 Console.WriteLine($"Best lap         {(session.BestLap is { } bl ? $"{Time(bl.LapTime)} (lap {bl.LapNumber})" : "-")}");
-Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (best run to the first corner + every corner's best clean pass + the best clean rest of each long straight, from any lap)");
+Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (best run to the first corner + every corner's best clean pass + the best clean rest of each long straight, from {(session.CarChangedAfterLap is { } cc ? $"laps after lap {cc}" : "any lap")})");
 
 if (debrief || speak)
 {
