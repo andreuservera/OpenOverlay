@@ -25,6 +25,9 @@ public sealed class LapTrace
         YawRate = new float[length];
         Gear = new sbyte[length];
         Abs = new bool[length];
+        OffTrack = new bool[length];
+        PitRoad = new bool[length];
+        Incidents = new short[length];
     }
 
     /// <summary>Grid points (metres); the track length rounded down.</summary>
@@ -53,6 +56,16 @@ public sealed class LapTrace
 
     public sbyte[] Gear { get; }
     public bool[] Abs { get; }
+
+    /// <summary>All four wheels off the track at this metre (PlayerTrackSurface = OffTrack).</summary>
+    public bool[] OffTrack { get; }
+
+    /// <summary>On pit road at this metre.</summary>
+    public bool[] PitRoad { get; }
+
+    /// <summary>Incident points gained since the lap started, as of this metre. iRacing adds them a
+    /// moment after the event, so a rise belongs to the stretch just before it.</summary>
+    public short[] Incidents { get; }
 
     /// <summary>GPS latitude per metre (degrees), when the source had it (.ibt only).</summary>
     public double[]? Latitude { get; set; }

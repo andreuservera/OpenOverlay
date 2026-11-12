@@ -20,6 +20,10 @@ public sealed record CornerAdvice(Corner Corner, double LossSeconds, IReadOnlyLi
     public int CornerCount { get; init; }
 
     public CornerFinding? Main => Findings.Count > 0 ? Findings[0] : null;
+
+    /// <summary>How much slower the car arrived than on the best pass, km/h (0 when not slower).
+    /// That part of the loss was made in the corner before, not here.</summary>
+    public double EntrySlowerKmh { get; init; }
 }
 
 /// <summary>What the coach says after a clean lap.</summary>
@@ -33,6 +37,10 @@ public sealed record LapDebrief(
     bool IsBestLap,
     IReadOnlyList<CornerAdvice> Corners)
 {
+    /// <summary>The best pass of every corner chained into one lap, clean corners of laps that
+    /// didn't count included; null until every corner has one.</summary>
+    public double? TheoreticalBestLapTime { get; init; }
+
     /// <summary>Time lost in the reported corners together.</summary>
     public double ReportedLossSeconds => Corners.Sum(c => c.LossSeconds);
 }
@@ -75,7 +83,10 @@ public sealed class PostLapCoach
     {
         var coach = new PostLapCoach(options);
         session.CornerMapChanged += _ => coach.Reset();
-        session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.BestPasses, session.BestLap?.LapTime ?? a.Lap.LapTime));
+        session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.BestPasses, session.BestLap?.LapTime ?? a.Lap.LapTime) with
+        {
+            TheoreticalBestLapTime = session.TheoreticalBestLapTime,
+        });
         return coach;
     }
 
@@ -90,12 +101,14 @@ public sealed class PostLapCoach
         foreach (var pass in lap.Passes)
         {
             var id = pass.Corner.Name;
-            if (!bestPasses.TryGetValue(id, out var best))
+            // A cut or an off isn't something to compare: there is no fair loss to talk about.
+            if (!pass.IsClean || !bestPasses.TryGetValue(id, out var best))
             {
                 continue;
             }
 
-            var loss = pass.SegmentTime - best.SegmentTime;
+            // Judged with the straight after the corner, where a slow exit costs its time.
+            var loss = pass.ScoreTime - best.ScoreTime;
             var findings = CornerDiagnoser.Diagnose(pass, best, _options.Diagnosis);
             var main = loss >= _options.MinLossSeconds && findings.Count > 0 ? findings[0].Kind : (FindingKind?)null;
             var history = _history.TryGetValue(id, out var h) ? h : _history[id] = new Queue<FindingKind?>();
@@ -113,6 +126,7 @@ public sealed class PostLapCoach
                     Best = best,
                     Index = lap.Passes.ToList().IndexOf(pass),
                     CornerCount = lap.Passes.Count,
+                    EntrySlowerKmh = Math.Max(0, (best.EntrySpeed - pass.EntrySpeed) * 3.6),
                 });
             }
         }

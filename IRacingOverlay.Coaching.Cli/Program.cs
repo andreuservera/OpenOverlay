@@ -190,7 +190,7 @@ if (perLap)
 }
 
 Console.WriteLine();
-Console.WriteLine("Time per corner on each clean lap (s); * = best pass");
+Console.WriteLine("Time per corner, to the next corner's start (s); * = best pass, x = not clean (off, incident, cut)");
 var header = new StringBuilder("  lap   lap time   ");
 foreach (var c in map.Corners)
 {
@@ -198,17 +198,28 @@ foreach (var c in map.Corners)
 }
 
 Console.WriteLine(header);
-foreach (var a in session.Analyses)
+foreach (var a in session.AllAnalyses)
 {
-    var line = new StringBuilder($"  {a.Lap.LapNumber,3}   {Time(a.Lap.LapTime),-9}  ");
+    var line = new StringBuilder($"  {a.Lap.LapNumber,3}   {Time(a.Lap.LapTime),-9}{(a.IsCleanLap ? ' ' : '!')} ");
     foreach (var c in map.Corners)
     {
         var pass = a.Passes.FirstOrDefault(p => p.Corner.Name == c.Name);
-        var isBest = pass is not null && ReferenceEquals(session.BestPasses[c.Name], pass);
-        line.Append((pass is null ? "-  " : $"{pass.SegmentTime:0.000}{(isBest ? "*" : " ")}").PadLeft(Width(c)));
+        var isBest = pass is not null && session.BestPasses.TryGetValue(c.Name, out var bc) && ReferenceEquals(bc, pass);
+        var mark = isBest ? "*" : pass is { IsClean: false } ? "x" : " ";
+        line.Append((pass is null ? "-  " : $"{pass.ScoreTime:0.000}{mark}").PadLeft(Width(c)));
     }
 
     Console.WriteLine(line);
+}
+
+var flawedPasses = session.AllAnalyses.SelectMany(a => a.Passes).Where(p => !p.IsClean).ToList();
+if (flawedPasses.Count > 0)
+{
+    Console.WriteLine("  ! = lap not counted; its clean corners still count. Corners not clean:");
+    foreach (var p in flawedPasses)
+    {
+        Console.WriteLine($"    lap {p.LapNumber,3} {p.Corner.DisplayName}: {p.Flaws}");
+    }
 }
 
 Console.WriteLine();
@@ -222,33 +233,42 @@ foreach (var c in map.Corners)
     }
 
     Console.WriteLine(
-        $"  {Short(c.DisplayName, 12),-12}  {b.LapNumber,3}  {b.SegmentTime,6:0.000}   {M(b.BrakePointM),8}  {b.PeakBrake * 100,3:0}%  {b.TrailBrakeM,3} m  {Kmh(b.MinSpeed),4:0} km/h {b.MinSpeedAtM,5} m  {M(b.ThrottlePickupM),8}     {Kmh(b.ExitSpeed),4:0}     {Kmh(b.ExitSpeedPlus100),4:0} km/h");
+        $"  {Short(c.DisplayName, 12),-12}  {b.LapNumber,3}  {b.ScoreTime,6:0.000}   {M(b.BrakePointM),8}  {b.PeakBrake * 100,3:0}%  {b.TrailBrakeM,3} m  {Kmh(b.MinSpeed),4:0} km/h {b.MinSpeedAtM,5} m  {M(b.ThrottlePickupM),8}     {Kmh(b.ExitSpeed),4:0}     {Kmh(b.ExitSpeedPlus100),4:0} km/h");
 }
 
 Console.WriteLine();
 Console.WriteLine($"Best lap         {(session.BestLap is { } bl ? $"{Time(bl.LapTime)} (lap {bl.LapNumber})" : "-")}");
-Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (best lap with every corner at its best pass)");
+Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (every corner's best clean pass, from any lap)");
 
 if (debrief || speak)
 {
     Console.WriteLine();
     Console.WriteLine("Post-lap debrief (each clean lap against the best passes up to it)");
     var coach = new PostLapCoach();
-    var bestSoFar = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
     var bestLapSoFar = double.MaxValue;
+    double? outsideSoFar = null;
     LapDebrief? last = null;
-    foreach (var a in session.Analyses)
+    var all = session.AllAnalyses;
+    for (var i = 0; i < all.Count; i++)
     {
-        foreach (var p in a.Passes)
+        var a = all[i];
+        if (a.OutsideCornersTime is { } o && (outsideSoFar is null || o < outsideSoFar))
         {
-            if (!bestSoFar.TryGetValue(p.Corner.Name, out var b) || p.SegmentTime < b.SegmentTime)
-            {
-                bestSoFar[p.Corner.Name] = p;
-            }
+            outsideSoFar = o;
         }
 
+        if (!a.IsCleanLap)
+        {
+            continue;
+        }
+
+        // Same rules as live: every clean corner up to this lap, from any lap.
+        var bestSoFar = BestPasses.Select(all.Take(i + 1).SelectMany(x => x.Passes));
         bestLapSoFar = Math.Min(bestLapSoFar, a.Lap.LapTime);
-        last = coach.Debrief(a, bestSoFar, bestLapSoFar);
+        last = coach.Debrief(a, bestSoFar, bestLapSoFar) with
+        {
+            TheoreticalBestLapTime = BestPasses.TheoreticalLapTime(map, bestSoFar, outsideSoFar),
+        };
         foreach (var l in DebriefText.Lines(last))
         {
             Console.WriteLine("  " + l);
@@ -328,6 +348,11 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
             // Say why a lap got no debrief when the driver might expect one.
             session.LapRecorded += lap =>
             {
+                if (session.CornerMap is not null)
+                {
+                    return; // FlawedLapAnalyzed says it, with how many corners still count.
+                }
+
                 if (lap.IsClean || (lap.Flaws & (LapFlaw.Partial | LapFlaw.PitRoad | LapFlaw.StartLap | LapFlaw.NotOnTrack | LapFlaw.NotRacing)) != 0)
                 {
                     return;
@@ -339,6 +364,18 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
                     Console.WriteLine($"Lap {lap.LapNumber} not counted: {why}.");
                     voice?.Say($"Lap not counted, {why}.");
                 }
+            };
+            session.FlawedLapAnalyzed += a =>
+            {
+                var why = a.Lap.Flaws.HasFlag(LapFlaw.OffTrack) ? "off track" : a.Lap.Flaws.HasFlag(LapFlaw.Incident) ? "incident" : null;
+                if (why is null)
+                {
+                    return; // pit or start laps: nothing the driver needs to hear
+                }
+
+                var kept = a.Passes.Count(p => p.IsClean);
+                Console.WriteLine($"Lap {a.Lap.LapNumber} not counted: {why}. {kept} of {a.Passes.Count} corners still count.");
+                voice?.Say($"Lap not counted, {why}. {kept} of {a.Passes.Count} corners still count.");
             };
             PostLapCoach.Attach(session, d =>
             {

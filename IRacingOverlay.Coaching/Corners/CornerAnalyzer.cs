@@ -15,6 +15,34 @@ public sealed record CornerPass
     /// <summary>Time from the corner window's start to its end, seconds.</summary>
     public required double SegmentTime { get; init; }
 
+    private readonly double? _scoreTime;
+
+    /// <summary>
+    /// What the corner is judged on: time from its start to where the next corner starts (the end of
+    /// the lap for the last one), seconds. It includes the straight after the corner, because that
+    /// is where a slow exit costs its time. Equal to <see cref="SegmentTime"/> when not measured.
+    /// </summary>
+    public double ScoreTime
+    {
+        get => _scoreTime ?? SegmentTime;
+        init => _scoreTime = value;
+    }
+
+    /// <summary>Where <see cref="ScoreTime"/> stops: the next corner's start, metres.</summary>
+    public int ScoreEndM { get; init; }
+
+    /// <summary>Distance the car actually travelled through the corner window (speed × time) over
+    /// the window's length along the track. Below the usual value for this corner means a shorter
+    /// path than the track allows: a cut.</summary>
+    public double PathRatio { get; init; } = 1;
+
+    /// <summary>Why this pass can't be a reference; <see cref="CornerPassFlaw.None"/> when it can.</summary>
+    public CornerPassFlaw Flaws { get; init; }
+
+    /// <summary>True when the pass is clean enough to be the best pass or count toward the
+    /// theoretical best.</summary>
+    public bool IsClean => Flaws == CornerPassFlaw.None;
+
     public required float EntrySpeed { get; init; }
 
     /// <summary>First point with the brake on.</summary>
@@ -68,7 +96,10 @@ public static class CornerAnalyzer
     private const float TurnInShareOfPeakSteering = 0.30f;
     private const int MaxEarlyBrakeSearchM = 200;
 
-    public static IReadOnlyList<CornerPass> Analyze(LapTrace lap, CornerMap map, int lapNumber)
+    /// <param name="lapFlaws">The lap's own flaws: on a race start or out lap
+    /// (<see cref="LapFlaw.StartLap"/>) the first corners are marked, since they are driven from
+    /// low speed, in traffic or on cold tyres.</param>
+    public static IReadOnlyList<CornerPass> Analyze(LapTrace lap, CornerMap map, int lapNumber, LapFlaw lapFlaws = LapFlaw.None)
     {
         var passes = new List<CornerPass>(map.Corners.Count);
         for (var i = 0; i < map.Corners.Count; i++)
@@ -80,7 +111,13 @@ public static class CornerAnalyzer
             }
 
             int? nextStart = i + 1 < map.Corners.Count ? map.Corners[i + 1].StartM : null;
-            passes.Add(Measure(lap, corner, lapNumber, nextStart));
+            var pass = Measure(lap, corner, lapNumber, nextStart);
+            if (lapFlaws.HasFlag(LapFlaw.StartLap) && i < CornerChecks.StartLapCorners)
+            {
+                pass = pass with { Flaws = pass.Flaws | CornerPassFlaw.StartLap };
+            }
+
+            passes.Add(pass);
         }
 
         return passes;
@@ -168,11 +205,17 @@ public static class CornerAnalyzer
         int? pickup = FirstIndex(pickupFrom, e, i => lap.Throttle[i] > ThrottleOn);
         int? full = pickup is { } p ? FirstIndex(p, e, i => lap.Throttle[i] >= FullThrottle) : null;
 
+        var scoreEnd = Math.Clamp(nextCornerStartM ?? lap.Length - 1, e, lap.Length - 1);
+
         return new CornerPass
         {
             Corner = c,
             LapNumber = lapNumber,
             SegmentTime = lap.Time[e] - lap.Time[s],
+            ScoreTime = lap.Time[scoreEnd] - lap.Time[s],
+            ScoreEndM = scoreEnd,
+            PathRatio = CornerChecks.PathRatio(lap, s, e),
+            Flaws = CornerChecks.Inspect(lap, s, scoreEnd),
             EntrySpeed = lap.Speed[s],
             BrakePointM = brakePoint,
             PeakBrake = peak,

@@ -298,6 +298,10 @@ public sealed class LapRecorder
             var nearest = t < 0.5f ? a : b;
             trace.Gear[m] = (sbyte)Math.Clamp(nearest.Gear, sbyte.MinValue, sbyte.MaxValue);
             trace.Abs[m] = nearest.AbsActive;
+            // Either side: an off lasting a single tick must not fall between two grid points.
+            trace.OffTrack[m] = a.TrackSurface == TrackSurface.OffTrack || b.TrackSurface == TrackSurface.OffTrack;
+            trace.PitRoad[m] = nearest.OnPitRoad;
+            trace.Incidents[m] = (short)Math.Clamp(b.IncidentCount - _incidentsAtStart, 0, short.MaxValue);
             if (hasGps)
             {
                 trace.Latitude![m] = Lerp(a.Latitude!.Value, b.Latitude!.Value, t);
