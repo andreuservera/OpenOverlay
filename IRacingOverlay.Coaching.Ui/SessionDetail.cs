@@ -211,15 +211,15 @@ public sealed class CornerDetail
 
         var maxPhase = c.LossByPhase.Select(p => Math.Abs(p.Seconds)).DefaultIfEmpty(0).Max();
         Phases = c.LossByPhase.Select(p => new PhaseItem(
-            p.Phase,
+            Phrases.Phase(p),
             (p.Seconds >= 0 ? "+" : "−") + Math.Abs(p.Seconds).ToString("0.00", Format.Culture),
             maxPhase > 0 ? Math.Max(1, PhaseBarWidth * Math.Abs(p.Seconds) / maxPhase) : 0,
             p.Seconds < 0)).ToList();
 
         var insights = new List<string>();
-        if (c.DecidedBy is { } d)
+        if (Phrases.DecidedBy(c) is { } d)
         {
-            insights.Add($"What decides the time here: {d.ToLowerInvariant()}.");
+            insights.Add(F("coaching.insight.decidedBy", d));
         }
 
         if (c.Grip is { } g)
@@ -227,19 +227,23 @@ public sealed class CornerDetail
             string Pct(double? v) => v is { } x ? $"{Math.Round(x * 100):0}%" : "—";
             if (g.BestBraking is not null || g.TypicalBraking is not null)
             {
-                insights.Add($"Grip used under braking: {Pct(g.BestBraking)} on the best pass, {Pct(g.TypicalBraking)} on a typical one.");
+                insights.Add(F("coaching.insight.gripBraking", Pct(g.BestBraking), Pct(g.TypicalBraking)));
             }
 
             if (g.BestCornering is not null || g.TypicalCornering is not null)
             {
-                insights.Add($"Grip used from brake release to the throttle: {Pct(g.BestCornering)} on the best pass, {Pct(g.TypicalCornering)} on a typical one.");
+                insights.Add(F("coaching.insight.gripCornering", Pct(g.BestCornering), Pct(g.TypicalCornering)));
             }
         }
 
         if (c.TimeSpread is { } ts)
         {
-            var bp = c.BrakePointSpreadM is { } bps ? $", brake point ±{bps.ToString("0", Format.Culture)} m" : "";
-            insights.Add($"Consistency: ±{ts.ToString("0.00", Format.Culture)} s between clean passes{bp}.");
+            var time = ts.ToString("0.00", Format.Culture);
+            insights.Add(c.BrakePointSpreadM is { } bps
+                ? F("coaching.insight.consistencyBrake", time, bps.ToString("0", Format.Culture))
+                : c.LiftPointSpreadM is { } lps
+                    ? F("coaching.insight.consistencyLift", time, lps.ToString("0", Format.Culture))
+                    : F("coaching.insight.consistency", time));
         }
 
         Insights = insights;

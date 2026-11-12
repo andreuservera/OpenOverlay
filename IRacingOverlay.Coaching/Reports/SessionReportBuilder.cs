@@ -251,6 +251,7 @@ public static class SessionReportBuilder
             bestLapLoss = Math.Max(0, blp.ScoreTime - best.ScoreTime);
         }
 
+        var decided = CornerStats.DecidedBy(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass).ToList());
         return new CornerReport
         {
             Id = corner.Name,
@@ -276,9 +277,14 @@ public static class SessionReportBuilder
             LossByPhase = PhaseLosses(compared.Select(c => (c.Pass, c.Lap)).ToList(), bestEntry),
             Grip = GripOf(grip, bestEntry, typicalPass),
             TimeSpread = CornerStats.Spread(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass.ScoreTime).ToList()),
-            BrakePointSpreadM = CornerStats.Spread(passes.Where(x => x.Pass.IsClean && (x.Pass.BrakePointM ?? x.Pass.LiftPointM) is not null)
-                .Select(x => (double)(x.Pass.BrakePointM ?? x.Pass.LiftPointM)!.Value).ToList()),
-            DecidedBy = DecidedByText(CornerStats.DecidedBy(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass).ToList())),
+            BrakePointSpreadM = type is CornerType.Flat or CornerType.Lift ? null
+                : CornerStats.Spread(passes.Where(x => x.Pass.IsClean && x.Pass.BrakePointM is not null).Select(x => (double)x.Pass.BrakePointM!.Value).ToList()),
+            LiftPointSpreadM = type is CornerType.Lift
+                ? CornerStats.Spread(passes.Where(x => x.Pass.IsClean && x.Pass.LiftPointM is not null && !x.Pass.LiftCarriedOver).Select(x => (double)x.Pass.LiftPointM!.Value).ToList())
+                : null,
+            DecidedBy = DecidedByText(decided),
+            DecidedByMeasure = decided is { } dm ? MeasureKey(dm.Measure) : null,
+            DecidedByBetter = decided is { } db ? Better(db.Measure, db.R) : null,
         };
     }
 
@@ -298,7 +304,7 @@ public static class SessionReportBuilder
         }
 
         return Enum.GetValues<CornerPhase>()
-            .Select(ph => new PhaseLossRow { Phase = PhaseName(ph), Seconds = Math.Round(Median(splits.Select(s => s[ph]).ToList()), 3) })
+            .Select(ph => new PhaseLossRow { Phase = PhaseName(ph), Key = ph.ToString(), Seconds = Math.Round(Median(splits.Select(s => s[ph]).ToList()), 3) })
             .ToList();
     }
 
@@ -310,6 +316,12 @@ public static class SessionReportBuilder
         CornerPhase.Traction => "Traction",
         _ => "Straight after",
     };
+
+    /// <summary>Braking grip is only measured on a brake at least this hard…</summary>
+    private const float MinGripBrake = 0.4f;
+
+    /// <summary>…and this long, metres.</summary>
+    private const int MinGripBrakeMetres = 20;
 
     private static GripUse? GripOf(GripEnvelope? grip, (CornerPass, LapAnalysis)? best, (CornerPass, LapAnalysis)? typical)
     {
@@ -325,7 +337,10 @@ public static class SessionReportBuilder
                 return (null, null);
             }
 
-            double? braking = p.BrakePointM is { } bp && p.BrakeReleaseM is { } br ? grip.Usage(t, bp, br) : null;
+            // Only real braking: a light or short brake isn't using the grip, so a share of it says nothing.
+            double? braking = p.BrakePointM is { } bp && p.BrakeReleaseM is { } br && p.PeakBrake >= MinGripBrake && p.BrakeLengthM >= MinGripBrakeMetres
+                ? grip.Usage(t, bp, br)
+                : null;
             var from = p.BrakeReleaseM ?? p.MinSpeedAtM - 20;
             var to = p.ThrottlePickupM is { } tp && tp > from ? tp : p.MinSpeedAtM + 20;
             return (braking, grip.Usage(t, from, to));
@@ -351,14 +366,30 @@ public static class SessionReportBuilder
             return null;
         }
 
-        // r is against time: negative means more of it, less time.
-        var way = x.Measure switch
+        return Better(x.Measure, x.R) switch
         {
-            "brake point" or "lift point" or "throttle pick-up" => x.R > 0 ? "earlier was quicker" : "later was quicker",
-            _ => x.R < 0 ? "higher was quicker" : "lower was quicker",
+            "later" when x.Measure == "throttle pick-up" => "Throttle pick-up: turning the car longer before the throttle was quicker",
+            var way => $"{SessionSummaryText.Capital(x.Measure)}: {way} was quicker",
         };
-        return $"{SessionSummaryText.Capital(x.Measure)}: {way}";
     }
+
+    /// <summary>Which way of a measurement went with the quicker passes; r is against time, so
+    /// negative means more of it, less time.</summary>
+    internal static string Better(string measure, double r) => measure switch
+    {
+        "brake point" or "lift point" or "throttle pick-up" => r > 0 ? "earlier" : "later",
+        _ => r < 0 ? "higher" : "lower",
+    };
+
+    internal static string MeasureKey(string measure) => measure switch
+    {
+        "brake point" => "brakePoint",
+        "lift point" => "liftPoint",
+        "minimum speed" => "minSpeed",
+        "throttle pick-up" => "throttlePickup",
+        "exit speed" => "exitSpeed",
+        _ => "entrySpeed",
+    };
 
     private static PassRow Row(CornerPass p, double? loss, bool isBest, IReadOnlyList<CornerFinding> findings) => new()
     {

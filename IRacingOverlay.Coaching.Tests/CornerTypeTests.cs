@@ -246,4 +246,27 @@ public class CornerTypeTests
         passes.AddRange(Enumerable.Range(6, 4).Select(l => dab with { LapNumber = l }));
         Assert.Equal(CornerType.Lift, CornerTypes.Consensus(passes, passes[^1]));
     }
+
+    [Fact]
+    public void ALiftCarriedOnFromTheCornerBeforeIsNotALiftPointOfThisOne()
+    {
+        var lap = new LapTrace(600);
+        for (var i = 0; i < lap.Length; i++)
+        {
+            lap.Speed[i] = 55;
+            lap.Time[i] = i / 55f;
+            // Partial throttle from the corner before (60 m) right through this one's piece (from 150 m).
+            lap.Throttle[i] = i is >= 60 and < 260 ? 0.6f : 1f;
+            lap.Steering[i] = i is >= 210 and <= 300 ? 0.05f : 0;
+        }
+
+        var p = CornerAnalyzer.Measure(lap, new Corner("Fagnes 2", 200, 250, 320), 1, pieceStartM: 150);
+        Assert.Equal(150, p.LiftPointM);
+        Assert.True(p.LiftCarriedOver);
+
+        // The best pass went back to full throttle and lifted at 230: no "lift 80 metres later".
+        var best = p with { LiftPointM = 230, LiftCarriedOver = false, LiftLengthM = 30, SegmentTime = 4 };
+        var pass = p with { SegmentTime = 4.2 };
+        Assert.DoesNotContain(CornerDiagnoser.Diagnose(pass, best), f => f.Kind is FindingKind.LiftedTooEarly or FindingKind.LiftTooLong);
+    }
 }

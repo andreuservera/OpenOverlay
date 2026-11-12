@@ -168,18 +168,33 @@ public sealed record CornerReport
     /// <summary>How much the corner's time varies between clean passes (standard deviation), seconds.</summary>
     public double? TimeSpread { get; init; }
 
-    /// <summary>How much the brake (or lift) point moves between clean passes (standard deviation), metres.</summary>
+    /// <summary>How much the brake point moves between clean passes (standard deviation), metres;
+    /// null in a corner that isn't braked (see <see cref="LiftPointSpreadM"/>).</summary>
     public double? BrakePointSpreadM { get; init; }
+
+    /// <summary>How much the lift point moves between clean passes, metres; only in a lift corner.</summary>
+    public double? LiftPointSpreadM { get; init; }
 
     /// <summary>The measurement that best explains the time here across the passes, in words
     /// ("Minimum speed: higher was quicker"); null when nothing stands out.</summary>
     public string? DecidedBy { get; init; }
+
+    /// <summary><see cref="DecidedBy"/> as data, for other languages: the measurement (brakePoint,
+    /// liftPoint, minSpeed, throttlePickup, exitSpeed, entrySpeed)…</summary>
+    public string? DecidedByMeasure { get; init; }
+
+    /// <summary>…and which way was quicker (earlier, later, higher, lower).</summary>
+    public string? DecidedByBetter { get; init; }
 }
 
 /// <summary>Median time lost in one phase of a corner, seconds.</summary>
 public sealed record PhaseLossRow
 {
+    /// <summary>The phase in English ("Turn-in to throttle").</summary>
     public required string Phase { get; init; }
+
+    /// <summary>The phase as data (Approach, Braking, Rotation, Traction, Straight); null in older reports.</summary>
+    public string? Key { get; init; }
 
     public double Seconds { get; init; }
 }

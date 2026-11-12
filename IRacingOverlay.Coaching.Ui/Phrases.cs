@@ -142,8 +142,52 @@ internal static class Phrases
             lines.Add(F("coaching.summary.costliest", costliest.Name, Seconds(costliest.MedianLoss!.Value)));
         }
 
+        if (WhereTheTimeGoes(r) is { } where)
+        {
+            lines.Add(where);
+        }
+
         return lines;
     }
+
+    /// <summary>As <see cref="SessionSummaryText.WhereTheTimeGoes"/>, in the app's language.</summary>
+    public static string? WhereTheTimeGoes(SessionReport r)
+    {
+        var totals = r.Corners.SelectMany(c => c.LossByPhase)
+            .GroupBy(PhaseKey)
+            .Select(g => (Key: g.Key, Seconds: g.Sum(p => Math.Max(0, p.Seconds))))
+            .Where(x => x.Seconds >= 0.01)
+            .OrderByDescending(x => x.Seconds)
+            .ToList();
+        if (totals.Count == 0)
+        {
+            return null;
+        }
+
+        return totals.Count > 1
+            ? F("coaching.summary.whereTwo", T($"coaching.where.{totals[0].Key}"), Seconds(totals[0].Seconds), T($"coaching.where.{totals[1].Key}"), Seconds(totals[1].Seconds))
+            : F("coaching.summary.whereOne", T($"coaching.where.{totals[0].Key}"), Seconds(totals[0].Seconds));
+    }
+
+    /// <summary>A phase's key (Approach, Braking, Rotation, Traction, Straight), also for older reports that only saved the English.</summary>
+    public static string PhaseKey(PhaseLossRow p) => p.Key ?? p.Phase switch
+    {
+        "Approach" => "Approach",
+        "Braking" => "Braking",
+        "Turn-in to throttle" => "Rotation",
+        "Traction" => "Traction",
+        _ => "Straight",
+    };
+
+    /// <summary>A phase's name: "Braking", "Turn-in to throttle".</summary>
+    public static string Phase(PhaseLossRow p) => TryT($"coaching.phase.{PhaseKey(p)}") ?? p.Phase;
+
+    /// <summary>What decides a corner's time, as a phrase ("a higher minimum speed was quicker");
+    /// the saved English for a report without the data.</summary>
+    public static string? DecidedBy(CornerReport c) =>
+        c.DecidedByMeasure is { } m && c.DecidedByBetter is { } b
+            ? TryT($"coaching.decided.{m}.{b}") ?? c.DecidedBy
+            : c.DecidedBy;
 
     /// <summary>The notes about the session as a whole (car damage, too few laps), worded from the report's data.</summary>
     public static IReadOnlyList<string> Notes(SessionReport r)
