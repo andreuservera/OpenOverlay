@@ -316,6 +316,8 @@ public partial class MainWindow : Window
         _vm.DashboardToggleRequested += ToggleDashboard;
         _vm.TableHeaderChanged += PushTableHeader;
 
+        // The coach only listens while live coaching is switched on in its page.
+        IRacingOverlay.Coaching.Ui.LiveCoaching.Attach(_connection);
         _connection.Fault += OnConnectionFault;
         _connection.TelemetryUpdated += (_, snapshot) => _incidentReports.Observe(snapshot);
         _connection.TelemetryUpdated += (_, _) => PostCriticalTick();
@@ -429,6 +431,8 @@ public partial class MainWindow : Window
             ShutdownGuard.Step("tray icon");
             _tray?.Dispose();
             _tray = null;
+            ShutdownGuard.Step("live coaching");
+            IRacingOverlay.Coaching.Ui.LiveCoaching.Detach();
             ShutdownGuard.Step("iRacing connection");
             _connection.Stop();
             ShutdownGuard.Step("widgets");

@@ -112,6 +112,31 @@
                     <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}"/>
                     <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"
                                Text="{loc:T coaching.sessions.hint}"/>
+                    <!-- Live coaching: off by default, and when off nothing of the coach runs with iRacing. -->
+                    <Border Margin="0,12,0,0" Padding="10,8" CornerRadius="6" Background="{DynamicResource Cp.Surface}"
+                            BorderBrush="{DynamicResource Cp.Border}" BorderThickness="1">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{loc:T coaching.live.title}" Style="{DynamicResource Cp.Body}" Foreground="{DynamicResource Cp.Text}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                <CheckBox Grid.Column="1" Style="{DynamicResource Cp.Switch}" IsChecked="{Binding LiveEnabled, Mode=TwoWay}"/>
+                            </Grid>
+                            <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0" TextWrapping="Wrap" Text="{loc:T coaching.live.hint}"/>
+                            <Grid Margin="0,8,0,0" Visibility="{Binding LiveEnabled, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{loc:T coaching.live.speak}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.TextSoft}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                <CheckBox Grid.Column="1" Style="{DynamicResource Cp.Switch}" IsChecked="{Binding SpeakDebrief, Mode=TwoWay}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                     <!-- The main action on a row of its own, the two small ones split the row under it:
                          the same two rows in every language, however long the words. -->
                     <Grid Margin="0,12,0,8">
