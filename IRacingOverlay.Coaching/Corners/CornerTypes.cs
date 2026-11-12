@@ -35,11 +35,10 @@ public static class CornerTypes
     /// <summary>Throttle at or above this through the whole corner is flat.</summary>
     public const float FlatThrottle = 0.95f;
 
-    /// <summary>Apex speed under this is a slow corner, m/s (110 km/h)…</summary>
+    /// <summary>Apex speed under this is a slow corner, m/s (110 km/h). One speed for every corner,
+    /// so two corners taken at the same speed always get the same type; it suits GT3 and Cup cars
+    /// and will want tuning for slower and faster cars.</summary>
     public const float SlowApexSpeed = 110 / 3.6f;
-
-    /// <summary>…as is losing more than this share of the entry speed.</summary>
-    public const float SlowSpeedShare = 0.55f;
 
     public static CornerType Classify(CornerPass p)
     {
@@ -55,9 +54,25 @@ public static class CornerTypes
             return p.LiftPointM is null || p.MinThrottle >= FlatThrottle ? CornerType.Flat : CornerType.Lift;
         }
 
-        return p.MinSpeed < SlowApexSpeed || p.MinSpeed < SlowSpeedShare * p.EntrySpeed
-            ? CornerType.Slow
-            : CornerType.BrakingFast;
+        return p.MinSpeed < SlowApexSpeed ? CornerType.Slow : CornerType.BrakingFast;
+    }
+
+    /// <summary>
+    /// The type of a corner over many passes: the one most of its clean passes show, so it doesn't
+    /// flip from lap to lap with whichever pass is the best (a chicane that is sometimes taken as
+    /// one slow corner). On a tie, the best pass decides. Null without a clean pass.
+    /// </summary>
+    public static CornerType? Consensus(IEnumerable<CornerPass> passes, CornerPass? best = null)
+    {
+        var counts = passes.Where(p => p.IsClean).GroupBy(Classify).Select(g => (Type: g.Key, Count: g.Count())).ToList();
+        if (counts.Count == 0)
+        {
+            return best is null ? null : Classify(best);
+        }
+
+        var top = counts.Max(c => c.Count);
+        var leaders = counts.Where(c => c.Count == top).Select(c => c.Type).ToList();
+        return best is not null && leaders.Contains(Classify(best)) ? Classify(best) : leaders[0];
     }
 
     /// <summary>How the type reads in a table or debrief.</summary>

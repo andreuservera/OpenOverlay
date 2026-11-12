@@ -326,8 +326,9 @@ public static class CornerAnalyzer
         var pickupFrom = release is { } rel ? rel + 1 : s;
         if (release is null && lift is { } lf)
         {
-            pickupFrom = lf;
-            for (var i = lf; i <= minAt; i++)
+            // The lift may have begun in the corner before; the pick-up is still this corner's.
+            pickupFrom = Math.Max(lf, s);
+            for (var i = pickupFrom; i <= minAt; i++)
             {
                 if (lap.Throttle[i] < lap.Throttle[pickupFrom])
                 {

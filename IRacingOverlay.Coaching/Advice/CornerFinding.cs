@@ -63,4 +63,8 @@ public sealed record CornerFinding(FindingKind Kind, double Amount)
     /// <summary>For <see cref="FindingKind.InitialBrakeTooSoft"/>: the pressure was right but it took
     /// longer to build, so <see cref="Amount"/> is the extra metres of ramp.</summary>
     public bool IsRamp { get; init; }
+
+    /// <summary>For <see cref="FindingKind.Coasting"/>: the corner needs no braking, so the fix is
+    /// to keep some throttle on rather than to go straight from brake to throttle.</summary>
+    public bool NoBraking { get; init; }
 }

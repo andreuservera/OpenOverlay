@@ -179,4 +179,59 @@ public class CornerTypeTests
 
         Assert.Contains(DebriefText.Lines(d), l => l.StartsWith("  Blanchimont (lift): lost 0.20 s. Lift 20 metres later"));
     }
+
+    [Fact]
+    public void ACornerKeepsTheTypeMostOfItsPassesShow()
+    {
+        var chicane = Braking() with { SpeedDips = 2 };
+        var passes = new[] { chicane, chicane with { LapNumber = 2 }, Braking() with { LapNumber = 3, SegmentTime = 4.9 } };
+
+        // The best pass (lap 3) was taken as one slow corner, but the corner is a chicane.
+        Assert.Equal(CornerType.Complex, CornerTypes.Consensus(passes, passes[2]));
+        // A tie goes to the best pass.
+        Assert.Equal(CornerType.Slow, CornerTypes.Consensus(passes.Skip(1), passes[2]));
+    }
+
+    [Fact]
+    public void CoastingWithoutBrakingIsFixedWithThrottle()
+    {
+        var best = Braking() with { BrakePointM = null, PeakBrake = 0, BrakeLengthM = 0, SpeedDips = 2 };
+        var pass = best with { SegmentTime = 5.3, CoastingM = 35 };
+
+        var f = Assert.Single(CornerDiagnoser.Diagnose(pass, best), x => x.Kind == FindingKind.Coasting);
+
+        Assert.Equal("35 metres coasting, keep some throttle on through it", DebriefText.Advice(f));
+    }
+
+    [Fact]
+    public void ALiftThatBeganInTheCornerBeforeStillPicksUpInThisOne()
+    {
+        var lap = new LapTrace(600);
+        for (var i = 0; i < lap.Length; i++)
+        {
+            lap.Speed[i] = i is >= 220 and <= 300 ? 50 : 55;
+            lap.Time[i] = i / 52f;
+            // Partial throttle from the corner before (at 150 m) until 240 m, never back to full in between.
+            lap.Throttle[i] = i is >= 150 and < 240 ? 0.3f : 1f;
+            lap.Steering[i] = i is >= 210 and <= 300 ? 0.05f : 0;
+        }
+
+        var p = CornerAnalyzer.Measure(lap, new Corner("T2", 200, 260, 320), 1);
+
+        Assert.Equal(150, p.LiftPointM);
+        Assert.True(p.ThrottlePickupM >= 200);
+        Assert.Equal(240, p.FullThrottleM);
+    }
+
+    [Fact]
+    public void TheWrittenDebriefListsAtMostThreeFixesPerCorner()
+    {
+        var findings = new[] { FindingKind.BrakedTooEarly, FindingKind.InitialBrakeTooSoft, FindingKind.TooLittleTrailBrake, FindingKind.LowMinimumSpeed, FindingKind.LateThrottle }
+            .Select(k => new CornerFinding(k, 10)).ToList();
+        var d = new LapDebrief(3, 140, 0.4, false, [new CornerAdvice(C with { Label = "Pouhon" }, 0.3, findings, 0) { Best = Braking() }]);
+
+        var line = Assert.Single(DebriefText.Lines(d), l => l.Contains("Pouhon"));
+
+        Assert.Equal(2, line.Count(ch => ch == ';'));
+    }
 }

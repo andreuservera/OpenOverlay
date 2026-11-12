@@ -42,7 +42,9 @@ public static class CornerDiagnoser
 {
     private const double MsToKmh = 3.6;
 
-    public static IReadOnlyList<CornerFinding> Diagnose(CornerPass pass, CornerPass best, DiagnosisOptions? options = null)
+    /// <param name="type">The corner's type, normally agreed over all its passes
+    /// (<see cref="CornerTypes.Consensus"/>); taken from <paramref name="best"/> when null.</param>
+    public static IReadOnlyList<CornerFinding> Diagnose(CornerPass pass, CornerPass best, DiagnosisOptions? options = null, CornerType? type = null)
     {
         var o = options ?? new DiagnosisOptions();
         if (ReferenceEquals(pass, best))
@@ -50,9 +52,10 @@ public static class CornerDiagnoser
             return [];
         }
 
-        return CornerTypes.Classify(best) switch
+        return (type ?? CornerTypes.Classify(best)) switch
         {
-            CornerType.Flat or CornerType.Lift => DiagnoseLift(pass, best, o),
+            CornerType.Flat => DiagnoseLift(pass, best, o, flat: true),
+            CornerType.Lift => DiagnoseLift(pass, best, o, flat: false),
             CornerType.Complex => ExitFirst(DiagnoseBraking(pass, best, o, slow: true)),
             CornerType.Slow => DiagnoseBraking(pass, best, o, slow: true),
             _ => DiagnoseBraking(pass, best, o, slow: false),
@@ -63,17 +66,16 @@ public static class CornerDiagnoser
     /// Flat and lift corners are about commitment: braking where a lift was enough, lifting where
     /// flat was possible, lifting too early, too deep or for too long.
     /// </summary>
-    private static List<CornerFinding> DiagnoseLift(CornerPass pass, CornerPass best, DiagnosisOptions o)
+    private static List<CornerFinding> DiagnoseLift(CornerPass pass, CornerPass best, DiagnosisOptions o, bool flat)
     {
         var findings = new List<CornerFinding>();
-        var bestType = CornerTypes.Classify(best);
         var passBraked = pass.BrakePointM is not null && pass.PeakBrake >= CornerTypes.DabPeakBrake;
         if (passBraked && (best.BrakePointM is null || best.PeakBrake < CornerTypes.DabPeakBrake))
         {
             findings.Add(new CornerFinding(FindingKind.UnneededBrake, pass.PeakBrake * 100));
         }
 
-        if (bestType == CornerType.Flat)
+        if (flat)
         {
             if (pass.LiftPointM is not null && pass.MinThrottle < CornerTypes.FlatThrottle - 0.05f)
             {
@@ -171,7 +173,7 @@ public static class CornerDiagnoser
         // Rotation: coasting between the pedals, and a car that pushed instead of turning.
         if (pass.CoastingM - best.CoastingM >= o.CoastingMetres && pass.CoastingM >= 15)
         {
-            findings.Add(new CornerFinding(FindingKind.Coasting, pass.CoastingM));
+            findings.Add(new CornerFinding(FindingKind.Coasting, pass.CoastingM) { NoBraking = best.BrakePointM is null });
         }
 
         if (apexSlower && pass.SteerPerLatAccel is { } sg && best.SteerPerLatAccel is { } bsg && bsg > 0 && sg / bsg - 1 >= o.UndersteerShare)
