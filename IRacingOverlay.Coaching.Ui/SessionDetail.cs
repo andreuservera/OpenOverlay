@@ -122,9 +122,9 @@ public sealed class MistakeItem(int rank, RecurringMistake m)
 
     public string Corner { get; } = m.CornerName;
 
-    public string Problem { get; } = Phrases.Problem(m.Kind, m.TypicalAmount, m.IsRamp, m.Laps, m.OutOf, m.TypicalLoss, m.Problem);
+    public string Problem { get; } = Phrases.Problem(m.Kind, m.TypicalAmount, m.IsRamp, m.Laps, m.OutOf, m.TypicalLoss, m.Problem, m.NoBraking);
 
-    public string Advice { get; } = Phrases.Advice(m.Kind, m.TypicalAmount, m.IsRamp, m.Advice) + ".";
+    public string Advice { get; } = Phrases.Advice(m.Kind, m.TypicalAmount, m.IsRamp, m.Advice, m.NoBraking) + ".";
 
     public string Cost { get; } = F("coaching.mistakes.cost", Phrases.Seconds(m.TypicalLoss), m.Laps, m.OutOf);
 }
@@ -147,7 +147,7 @@ public sealed class CornerItem
         LossBar = c.MedianLoss is { } ml && maxLoss > 0 ? Math.Max(2, BarWidth * ml / maxLoss) : 0;
         BestLapLoss = c.BestLapLoss is { } bll ? $"+{bll.ToString("0.00", Format.Culture)}" : "—";
         var main = c.Findings.FirstOrDefault();
-        MainFinding = main is null ? "" : $"{Phrases.Advice(main.Kind, main.TypicalAmount, main.IsRamp, main.Advice)} ({main.Laps}/{main.OutOf})";
+        MainFinding = main is null ? "" : $"{Phrases.Advice(main.Kind, main.TypicalAmount, main.IsRamp, main.Advice, main.NoBraking)} ({main.Laps}/{main.OutOf})";
     }
 
     public CornerReport Report { get; }
@@ -205,7 +205,7 @@ public sealed class CornerDetail
         ];
 
         Findings = c.Findings.Select(f => new FindingItem(
-            Phrases.Advice(f.Kind, f.TypicalAmount, f.IsRamp, f.Advice),
+            Phrases.Advice(f.Kind, f.TypicalAmount, f.IsRamp, f.Advice, f.NoBraking),
             F("coaching.corner.findingDetail", f.Laps, f.OutOf, Phrases.Seconds(f.TypicalLoss)))).ToList();
         Passes = c.Passes.Select(p => new PassItem(p)).ToList();
     }
@@ -276,7 +276,7 @@ public sealed class PassItem(PassRow p)
     public string Findings { get; } = !p.Clean
         ? F("coaching.pass.notClean", Phrases.Flaws(p.Flaws))
         : string.Join("; ", p.Issues.Count == p.Findings.Count && p.Issues.Count > 0
-            ? p.Issues.Select((i, n) => Phrases.Advice(i.Kind, i.Amount, i.IsRamp, p.Findings[n]))
+            ? p.Issues.Select((i, n) => Phrases.Advice(i.Kind, i.Amount, i.IsRamp, p.Findings[n], i.NoBraking))
             : p.Findings.Select(SessionSummaryText.Capital));
 
     public bool IsBest { get; } = p.IsBest;

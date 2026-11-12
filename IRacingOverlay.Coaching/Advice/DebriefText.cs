@@ -15,6 +15,10 @@ public static class DebriefText
     /// <summary>Arriving this much slower than the best pass is worth pointing out, km/h.</summary>
     private const double InheritedEntryKmh = 3;
 
+    /// <summary>Fixes listed per corner in the written debrief: the causes first, the rest is noise
+    /// to someone who just drove the lap.</summary>
+    private const int MaxWrittenFixes = 3;
+
     /// <summary>One instruction for a finding, phrased as what to do next lap.</summary>
     public static string Advice(CornerFinding f) => f.Kind switch
     {
@@ -27,6 +31,15 @@ public static class DebriefText
         FindingKind.LowMinimumSpeed => $"carry {Kmh(f.Amount)} more through the apex",
         FindingKind.LateThrottle => $"back on the throttle {M(f.Amount)} earlier",
         FindingKind.SlowExit => $"exit {Kmh(f.Amount)} slower than your best, get on the power cleaner",
+        FindingKind.LiftedInFlatCorner => "it's flat, keep your foot in",
+        FindingKind.LiftedTooEarly => $"lift {M(f.Amount)} later",
+        FindingKind.LiftTooDeep => "lift less, a part lift is enough",
+        FindingKind.LiftTooLong => $"back to full throttle {M(f.Amount)} sooner",
+        FindingKind.UnneededBrake => "no need to brake, a lift is enough",
+        FindingKind.Coasting when f.NoBraking => $"{M(f.Amount)} coasting, keep some throttle on through it",
+        FindingKind.Coasting => $"{M(f.Amount)} coasting, go straight from brake to throttle",
+        FindingKind.ThrottleHesitation => "smoother on the throttle, you had to lift again on exit",
+        FindingKind.Understeer => "the car pushed, release the brake more gently so it turns",
         _ => f.Kind.ToString(),
     };
 
@@ -38,9 +51,9 @@ public static class DebriefText
         {
             var what = c.Findings.Count == 0
                 ? "no single cause; compare the traces"
-                : string.Join("; ", c.Findings.Select(Advice));
+                : string.Join("; ", c.Findings.Take(MaxWrittenFixes).Select(Advice));
             var habit = c.RepeatCount > 0 ? $" (same as {c.RepeatCount} recent lap{(c.RepeatCount == 1 ? "" : "s")})" : "";
-            var kind = c.Corner.Label is null && Describe(c.Best) is { } k ? $" ({k})" : "";
+            var kind = c.Corner.Label is null && Describe(c.Best) is { } k ? $" ({k}, {CornerTypes.Label(c.Type)})" : $" ({CornerTypes.Label(c.Type)})";
             var entry = c.EntrySlowerKmh >= InheritedEntryKmh ? $" Came in {Kmh(c.EntrySlowerKmh)} slower from the corner before." : "";
             lines.Add($"  {c.Corner.DisplayName}{kind}: lost {c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.{entry}");
         }

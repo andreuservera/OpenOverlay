@@ -20,18 +20,18 @@ internal static class Phrases
     public static string Whole(double v) => Math.Round(v).ToString("0", Inv);
 
     /// <summary>What to do about a finding: "Brake 12 m later".</summary>
-    public static string Advice(string kind, double amount, bool isRamp, string? english)
+    public static string Advice(string kind, double amount, bool isRamp, string? english, bool noBraking = false)
     {
-        var text = MissingAmount(kind, amount, isRamp, english) ? null : TryT(Key("advice", kind, isRamp));
+        var text = MissingAmount(kind, amount, isRamp, english) ? null : TryT(Key("advice", kind, isRamp, noBraking));
         return text is null ? SessionSummaryText.Capital(english ?? kind) : string.Format(Inv, text, Whole(amount));
     }
 
-    public static string Advice(PassIssue i) => Advice(i.Kind, i.Amount, i.IsRamp, null);
+    public static string Advice(PassIssue i) => Advice(i.Kind, i.Amount, i.IsRamp, null, i.NoBraking);
 
     /// <summary>What went wrong, as a sentence with how often and what it cost.</summary>
-    public static string Problem(string kind, double amount, bool isRamp, int laps, int outOf, double loss, string? english)
+    public static string Problem(string kind, double amount, bool isRamp, int laps, int outOf, double loss, string? english, bool noBraking = false)
     {
-        var text = MissingAmount(kind, amount, isRamp, english) ? null : TryT(Key("problem", kind, isRamp));
+        var text = MissingAmount(kind, amount, isRamp, english) ? null : TryT(Key("problem", kind, isRamp, noBraking));
         return text is null ? english ?? kind : string.Format(Inv, text, Whole(amount), laps, outOf, Seconds(loss));
     }
 
@@ -39,8 +39,22 @@ internal static class Phrases
     private static bool MissingAmount(string kind, double amount, bool isRamp, string? english) =>
         english is not null && amount <= 0 && !(kind == "InitialBrakeTooSoft" && isRamp);
 
-    private static string Key(string what, string kind, bool isRamp) =>
-        kind == "InitialBrakeTooSoft" && isRamp ? $"coaching.{what}.{kind}.ramp" : $"coaching.{what}.{kind}";
+    private static string Key(string what, string kind, bool isRamp, bool noBraking) => kind switch
+    {
+        "InitialBrakeTooSoft" when isRamp => $"coaching.{what}.{kind}.ramp",
+        "Coasting" when noBraking => $"coaching.{what}.{kind}.noBraking",
+        _ => $"coaching.{what}.{kind}",
+    };
+
+    // How CornerTypes.Label reads in English, as saved in older reports' kinds ("slow right · lift").
+    private static readonly Dictionary<string, string> SavedTypes = new(StringComparer.Ordinal)
+    {
+        ["flat"] = "Flat",
+        ["lift"] = "Lift",
+        ["fast braking"] = "BrakingFast",
+        ["slow"] = "Slow",
+        ["complex"] = "Complex",
+    };
 
     // What DebriefText.Describe says for each kind, as saved in older reports.
     private static readonly Dictionary<string, string> SavedKinds = new(StringComparer.Ordinal)
@@ -58,16 +72,26 @@ internal static class Phrases
         ["fast right"] = "coaching.kind.fastRight",
     };
 
-    /// <summary>"slow right", "left hairpin"…, from the best pass's speed and which way it turns.</summary>
+    /// <summary>"slow right · lift", "left hairpin · slow"…: how the corner looks (the best pass's
+    /// speed and which way it turns) and what decides its time (its type).</summary>
     public static string? CornerKind(CornerReport c)
+    {
+        // Older reports saved neither the direction nor the type, only English words: word it from those.
+        var parts = c.Kind?.Split(" · ") ?? [];
+        var type = c.Type ?? (parts.Length > 1 && SavedTypes.TryGetValue(parts[^1], out var savedType) ? savedType : null);
+        var typeText = type is null ? null : TryT($"coaching.type.{type}") ?? type;
+        var look = Look(c, parts.Length > 0 ? parts[0] : null);
+        return look is null && typeText is null ? null : Format.Join(look, typeText);
+    }
+
+    private static string? Look(CornerReport c, string? saved)
     {
         if (c.Best is not { } best)
         {
             return null;
         }
 
-        // Reports from before the direction was saved: their English words name the kind, so word it from those.
-        if (c.Direction == 0 && c.Kind is { } saved && SavedKinds.TryGetValue(saved, out var key))
+        if (c.Direction == 0 && saved is not null && SavedKinds.TryGetValue(saved, out var key))
         {
             return T(key);
         }
