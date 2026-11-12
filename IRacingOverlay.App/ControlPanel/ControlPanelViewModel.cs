@@ -91,6 +91,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         NavItems.Add(NavItem.ForPage(
             CoachingPageKey, "nav.coaching.title", "nav.coaching.blurb",
             "M4,20 H20 M5,16 L9,11 L13,14 L19,7 M15,7 H19 V11", "#coaching"));
+        // Its texts are in the app's language files ("coaching." keys); the page follows the language.
+        IRacingOverlay.Coaching.Ui.CoachingText.Use(Loc.T, Loc.Current);
+        Loc.Changed += () => IRacingOverlay.Coaching.Ui.CoachingText.Changed(Loc.Current);
 
         foreach (var descriptor in WidgetCatalog.All)
         {

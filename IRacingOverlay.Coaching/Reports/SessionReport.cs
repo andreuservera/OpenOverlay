@@ -110,6 +110,14 @@ public sealed record CornerReport
     /// <summary>"slow right", "left hairpin"…; null when it can't tell.</summary>
     public string? Kind { get; init; }
 
+    /// <summary>Which way it turns on the best pass: +1 left, -1 right, 0 unknown (with the best
+    /// pass's minimum speed, what <see cref="Kind"/> is worded from).</summary>
+    public int Direction { get; init; }
+
+    /// <summary>What decides its time: a <see cref="Corners.CornerType"/> name (Flat, Lift, BrakingFast,
+    /// Slow, Complex); null when unknown.</summary>
+    public string? Type { get; init; }
+
     public int StartM { get; init; }
 
     public int ApexM { get; init; }
@@ -228,6 +236,17 @@ public sealed record PassRow
 
     /// <summary>What differed from the best pass, as advice, cause first.</summary>
     public List<string> Findings { get; init; } = [];
+
+    /// <summary>The same findings as data, for showing them in another language.</summary>
+    public List<PassIssue> Issues { get; init; } = [];
+}
+
+/// <summary>One finding of a pass: its kind (a <see cref="Advice.FindingKind"/> name), size in the
+/// kind's unit, and for a soft initial brake whether it was the ramp rather than the pressure.</summary>
+public sealed record PassIssue(string Kind, double Amount, bool IsRamp = false)
+{
+    /// <summary>For coasting: the corner needs no brake, so the fix is to keep some throttle on.</summary>
+    public bool NoBraking { get; init; }
 }
 
 /// <summary>How often one finding was the main thing wrong in a corner.</summary>
@@ -243,6 +262,12 @@ public sealed record FindingTally
 
     /// <summary>Median size, in the finding's unit (metres, km/h, % of pedal).</summary>
     public double TypicalAmount { get; init; }
+
+    /// <summary>For a soft initial brake: the pressure was slow to build rather than too low.</summary>
+    public bool IsRamp { get; init; }
+
+    /// <summary>For coasting: the corner needs no brake.</summary>
+    public bool NoBraking { get; init; }
 
     /// <summary>Median time lost on those laps, seconds.</summary>
     public double TypicalLoss { get; init; }
@@ -266,6 +291,13 @@ public sealed record RecurringMistake
     public int Laps { get; init; }
 
     public int OutOf { get; init; }
+
+    /// <summary>Median size, in the kind's unit.</summary>
+    public double TypicalAmount { get; init; }
+
+    public bool IsRamp { get; init; }
+
+    public bool NoBraking { get; init; }
 
     public double TypicalLoss { get; init; }
 
