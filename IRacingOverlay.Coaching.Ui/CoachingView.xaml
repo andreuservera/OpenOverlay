@@ -302,7 +302,7 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,14,0">
                                             <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Cp.Text}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Kind}" FontSize="12" Foreground="{DynamicResource Cp.TextFaint}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Kind}" FontSize="12" Foreground="{DynamicResource Cp.TextFaint}" TextWrapping="Wrap"/>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" MinWidth="80" Margin="0,0,14,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding BestTime}" Style="{StaticResource NumCell}" Margin="0"/>
