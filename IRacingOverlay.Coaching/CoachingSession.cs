@@ -35,6 +35,10 @@ public sealed record CoachingOptions
     /// <summary>Where corner maps are saved and loaded; null to neither load nor save.</summary>
     public CornerMapStore? Store { get; init; }
 
+    /// <summary>Real turn names for corners the saved map doesn't name (Lovely Track Data); null for
+    /// none. <see cref="TrackTurnNames.Default"/> uses the files shipped with the coach.</summary>
+    public TrackTurnNames? TurnNames { get; init; }
+
     /// <summary>False to ignore the saved map and agree a new one (it is still saved over).</summary>
     public bool LoadSavedMap { get; init; } = true;
 
@@ -70,6 +74,9 @@ public sealed class CoachingSession
         _recorder = new LapRecorder(_options.TrackLengthMetres);
         _recorder.LapCompleted += OnLapCompleted;
     }
+
+    /// <summary>Raised for every lap as it completes, clean or not, before it is measured.</summary>
+    public event Action<RecordedLap>? LapRecorded;
 
     /// <summary>Raised after each clean lap has been measured.</summary>
     public event Action<LapAnalysis>? LapAnalyzed;
@@ -139,6 +146,7 @@ public sealed class CoachingSession
 
     private void OnLapCompleted(RecordedLap lap)
     {
+        LapRecorded?.Invoke(lap);
         if (!lap.IsClean || lap.Trace is null)
         {
             return;
@@ -168,6 +176,11 @@ public sealed class CoachingSession
 
     private void SetMap(CornerMap map, CornerMapOrigin origin)
     {
+        if (_options.TurnNames is { } names && _options.TrackKey is { } key)
+        {
+            map = names.Apply(map, key);
+        }
+
         CornerMap = map;
         CornerMapOrigin = origin;
         _best.Clear();
@@ -195,7 +208,7 @@ public sealed class CoachingSession
             if (store.Load(key) is { } reloaded && reloaded.Corners.Count == CornerMap.Corners.Count && reloaded.Corners.Any(c => c.Label is not null))
             {
                 SetMap(new CornerMap(CornerMap.TrackLengthMetres,
-                    CornerMap.Corners.Zip(reloaded.Corners, (c, r) => c with { Label = r.Label }).ToList(),
+                    CornerMap.Corners.Zip(reloaded.Corners, (c, r) => c with { Label = r.Label, LabelIsLookedUp = false }).ToList(),
                     CornerMap.LapsUsed), CornerMapOrigin!.Value);
             }
         }

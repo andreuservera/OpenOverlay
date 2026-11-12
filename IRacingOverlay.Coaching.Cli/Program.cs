@@ -1,11 +1,15 @@
 using System.Globalization;
 using System.Text;
 using IRacingOverlay.Coaching;
+using IRacingOverlay.Coaching.Advice;
 using IRacingOverlay.Coaching.Corners;
 using IRacingOverlay.Coaching.Ibt;
 using IRacingOverlay.Coaching.Laps;
+using IRacingOverlay.Coaching.Speech;
+using IRacingOverlay.Sdk;
 
-// coaching-analyze <file.ibt> [--csv <dir>] [--relearn] [--no-save] [--store <dir>]
+// coaching-analyze <file.ibt> [--csv <dir>] [--relearn] [--no-save] [--store <dir>] [--debrief] [--speak]
+// coaching-analyze --live [--speak] [--store <dir>]
 //
 // Runs the Phase 0 coaching pipeline over an iRacing telemetry file and prints what it found: every
 // lap (with iRacing's own lap time beside ours, as a check), the corners, each clean lap's time per
@@ -14,22 +18,41 @@ using IRacingOverlay.Coaching.Laps;
 // Corners come from the saved map for the track when there is one (same T-numbers and names every
 // time). Otherwise they are agreed from up to five of the fastest clean laps and saved. --relearn
 // ignores the saved map and agrees a new one; --no-save leaves the saved maps untouched.
+//
+// --debrief prints the post-lap coaching each clean lap would have got (Phase 1), against the best
+// passes up to that lap; --speak also says the last one out loud. --live connects to iRacing and
+// gives that debrief after every clean lap while you drive, spoken with --speak.
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
-    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings]");
+    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings] [--debrief] [--speak] [--voice <name>] [--list-voices]");
+    Console.WriteLine("       coaching-analyze --live [--speak] [--voice <name>] [--store <dir>]");
     return args.Length == 0 ? 1 : 0;
 }
 
+if (args[0] == "--list-voices")
+{
+    foreach (var (name, culture) in WindowsSpeech.InstalledVoices())
+    {
+        Console.WriteLine($"{name} ({culture})");
+    }
+
+    return 0;
+}
+
+var live = args[0] == "--live";
 var path = args[0];
 string? csvDir = null;
 var relearn = false;
 var save = true;
 var perLap = false;
 var crossings = false;
+var debrief = false;
+var speak = false;
+string? voiceName = null;
 var storeDir = CornerMapStore.DefaultDirectory;
 for (var i = 1; i < args.Length; i++)
 {
@@ -53,7 +76,29 @@ for (var i = 1; i < args.Length; i++)
         case "--crossings":
             crossings = true;
             break;
+        case "--debrief":
+            debrief = true;
+            break;
+        case "--speak":
+            speak = true;
+            break;
+        case "--voice" when i + 1 < args.Length:
+            voiceName = args[++i];
+            speak = true;
+            break;
+        case "--list-voices":
+            foreach (var (name, culture) in WindowsSpeech.InstalledVoices())
+            {
+                Console.WriteLine($"{name} ({culture})");
+            }
+
+            return 0;
     }
+}
+
+if (live)
+{
+    return RunLive(storeDir, speak, voiceName);
 }
 
 using var ibt = IbtFile.Open(path);
@@ -79,7 +124,8 @@ var session = new CoachingSession(new CoachingOptions
 {
     TrackKey = trackKey,
     Store = trackKey is null ? null : store,
-    LoadSavedMap = !relearn, // --relearn: agree a new map (still saved over unless --no-save)
+    LoadSavedMap = !relearn,
+    TurnNames = TrackTurnNames.Default, // --relearn: agree a new map (still saved over unless --no-save)
     CornerMapLaps = int.MaxValue, // agree the map below, from the fastest laps of the whole file
 });
 foreach (var frame in ibt.Frames())
@@ -121,7 +167,7 @@ var origin = session.CornerMapOrigin switch
 Console.WriteLine($"Corners: {origin} (track {map.TrackLengthMetres} m)");
 if (trackKey is not null)
 {
-    Console.WriteLine($"  edit corner names in {store.PathFor(trackKey)}");
+    Console.WriteLine($"  names from Lovely Track Data (CC BY-NC-SA 4.0, lsr.gg); to override one, set its name in {store.PathFor(trackKey)}");
 }
 
 Console.WriteLine("  corner  start   apex    end     length  best min speed  name");
@@ -183,6 +229,43 @@ Console.WriteLine();
 Console.WriteLine($"Best lap         {(session.BestLap is { } bl ? $"{Time(bl.LapTime)} (lap {bl.LapNumber})" : "-")}");
 Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (best lap with every corner at its best pass)");
 
+if (debrief || speak)
+{
+    Console.WriteLine();
+    Console.WriteLine("Post-lap debrief (each clean lap against the best passes up to it)");
+    var coach = new PostLapCoach();
+    var bestSoFar = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
+    var bestLapSoFar = double.MaxValue;
+    LapDebrief? last = null;
+    foreach (var a in session.Analyses)
+    {
+        foreach (var p in a.Passes)
+        {
+            if (!bestSoFar.TryGetValue(p.Corner.Name, out var b) || p.SegmentTime < b.SegmentTime)
+            {
+                bestSoFar[p.Corner.Name] = p;
+            }
+        }
+
+        bestLapSoFar = Math.Min(bestLapSoFar, a.Lap.LapTime);
+        last = coach.Debrief(a, bestSoFar, bestLapSoFar);
+        foreach (var l in DebriefText.Lines(last))
+        {
+            Console.WriteLine("  " + l);
+        }
+
+        Console.WriteLine($"    spoken: \"{DebriefText.Spoken(last)}\"");
+    }
+
+    if (speak && last is not null)
+    {
+        using var voice = new WindowsSpeech(voice: voiceName);
+        var text = DebriefText.Spoken(last);
+        Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output: {text}");
+        voice.SayAndWait(text);
+    }
+}
+
 if (csvDir is not null)
 {
     Directory.CreateDirectory(csvDir);
@@ -202,6 +285,91 @@ if (csvDir is not null)
 }
 
 return 0;
+
+// Live: coach while driving. The session starts once iRacing says which track this is, and starts
+// again if the track changes. Everything runs on the connection's reader thread.
+static int RunLive(string storeDir, bool speak, string? voiceName)
+{
+    var store = new CornerMapStore(storeDir);
+    using var voice = speak ? new WindowsSpeech(voice: voiceName) : null;
+    if (voice is not null)
+    {
+        Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output.");
+    }
+
+    using var connection = new IRacingConnection();
+    CoachingSession? session = null;
+    string? track = null;
+    string? pendingTrack = null;
+    string? trackName = null;
+
+    connection.SessionInfoUpdated += (_, info) =>
+    {
+        trackName = info.WeekendInfo?.TrackDisplayName ?? info.WeekendInfo?.TrackName;
+        pendingTrack = info.WeekendInfo?.TrackName;
+    };
+    connection.Connected += (_, _) => Console.WriteLine("Connected to iRacing.");
+    connection.Disconnected += (_, _) => Console.WriteLine("Disconnected from iRacing.");
+    connection.TelemetryUpdated += (_, snapshot) =>
+    {
+        if (pendingTrack is { } t && t != track)
+        {
+            track = t;
+            session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = store, TurnNames = TrackTurnNames.Default });
+            session.CornerMapChanged += m =>
+            {
+                Console.WriteLine($"Corners for {t}: {m.Corners.Count} ({session.CornerMapOrigin})");
+                if (session.CornerMapOrigin == CornerMapOrigin.Consensus)
+                {
+                    voice?.Say("Corners learned.");
+                }
+            };
+
+            // Say why a lap got no debrief when the driver might expect one.
+            session.LapRecorded += lap =>
+            {
+                if (lap.IsClean || (lap.Flaws & (LapFlaw.Partial | LapFlaw.PitRoad | LapFlaw.StartLap | LapFlaw.NotOnTrack | LapFlaw.NotRacing)) != 0)
+                {
+                    return;
+                }
+
+                var why = lap.Flaws.HasFlag(LapFlaw.OffTrack) ? "off track" : lap.Flaws.HasFlag(LapFlaw.Incident) ? "incident" : null;
+                if (why is not null)
+                {
+                    Console.WriteLine($"Lap {lap.LapNumber} not counted: {why}.");
+                    voice?.Say($"Lap not counted, {why}.");
+                }
+            };
+            PostLapCoach.Attach(session, d =>
+            {
+                Console.WriteLine();
+                foreach (var l in DebriefText.Lines(d))
+                {
+                    Console.WriteLine(l);
+                }
+
+                voice?.Say(DebriefText.Spoken(d));
+            });
+            Console.WriteLine($"Coaching at {t}. Drive clean laps; the debrief comes as you cross the line.");
+            // So the driver knows the coach is listening without looking at the screen.
+            voice?.Say($"Coach ready, {trackName ?? t}.");
+        }
+
+        session?.Observe(snapshot);
+    };
+
+    using var stop = new ManualResetEventSlim();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        stop.Set();
+    };
+
+    Console.WriteLine("Waiting for iRacing... (Ctrl+C to stop)");
+    connection.Start();
+    stop.Wait();
+    return 0;
+}
 
 // Diagnostic: the raw channels around every line crossing, to compare where we put the line with
 // where iRacing's own lap timer restarts (LapCurrentLapTime).

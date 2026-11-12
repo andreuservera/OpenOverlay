@@ -14,9 +14,13 @@ public sealed record Corner(string Name, int StartM, int ApexM, int EndM)
 {
     public int LengthM => EndM - StartM;
 
-    /// <summary>The corner's real name (La Source, Eau Rouge…), when one has been set in the saved
-    /// track map; null otherwise.</summary>
+    /// <summary>The corner's real name (La Source, Eau Rouge…): typed into the saved track map, or
+    /// looked up in the track data; null when neither has one.</summary>
     public string? Label { get; init; }
+
+    /// <summary>True when <see cref="Label"/> came from the track data (<see cref="TrackTurnNames"/>)
+    /// rather than from the saved map, so it isn't written into the saved map as if typed there.</summary>
+    public bool LabelIsLookedUp { get; init; }
 
     /// <summary>What to show or say: the real name when known, else the T-number.</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(Label) ? Name : Label!;

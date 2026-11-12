@@ -1,8 +1,9 @@
 # IRacingOverlay.Coaching
 
-Corner-by-corner driving coach, Phase 0: the data foundation. It records laps, learns a track's
+Corner-by-corner driving coach. Phase 0 is the data foundation: it records laps, learns a track's
 corners, and measures every clean lap corner by corner against the session's best pass through each
-corner. It gives no advice yet and has no UI.
+corner. Phase 1 turns that into a post-lap debrief: the corners that cost the most time and what to
+change in each, written and spoken. There is no UI in the app yet; the command line tool runs it.
 
 It is a separate assembly on purpose. It only reads from `IRacingOverlay.Sdk` (the public
 `IrsdkParser`, `SessionInfoParser` and `TelemetrySnapshot`), and nothing in the app references it, so
@@ -21,6 +22,10 @@ it cannot change how the overlay behaves today.
 | `Corners/CornerMapStore` | Saves each track's map as JSON, so T-numbers stay the same every session and corners can be given real names. |
 | `Corners/CornerAnalyzer` | Per corner per lap: segment time, brake point, peak brake and ramp, trail-brake distance, minimum speed and where, throttle pick-up, full throttle, exit speed and speed 100 m later, ABS share, gear. |
 | `CoachingSession` | Ties it together: best pass per corner, loss to best per lap, theoretical best lap. |
+| `Advice/CornerDiagnoser` | Phase 1. One pass against the best pass through the same corner: braked early or late, softer or harder first hit, less trail brake, slower apex, later throttle, slower exit. Causes first, each with a size (metres, km/h, % of pedal) and a threshold so noise isn't reported. |
+| `Advice/PostLapCoach` | After each clean lap: the worst corners above a 0.05 s noise floor (3 at most), their findings, and whether the same mistake came up on recent laps. `PostLapCoach.Attach(session, onDebrief)` wires it to a session. |
+| `Advice/DebriefText` | The debrief in words: a full written version and a short spoken one (one fix per corner, two corners at most). All phrases in one place for later translation. |
+| `Speech/WindowsSpeech` | Offline text-to-speech with the voices built into Windows (System.Speech). No network, a few MB of memory; a new debrief cuts off the last. |
 
 ## Running it on your own laps
 
@@ -31,16 +36,33 @@ dotnet run --project IRacingOverlay.Coaching.Cli -- "$env:USERPROFILE\Documents\
 dotnet run --project IRacingOverlay.Coaching.Cli -- <file>.ibt --csv out   # also writes each clean lap's 1 m trace
 ```
 
+```powershell
+dotnet run --project IRacingOverlay.Coaching.Cli -- <file>.ibt --debrief          # Phase 1 debrief for every clean lap
+dotnet run --project IRacingOverlay.Coaching.Cli -- <file>.ibt --debrief --speak  # ...and say the last one
+dotnet run --project IRacingOverlay.Coaching.Cli -- --live --speak                # coach while you drive
+```
+
+`--live` connects to iRacing the same way the overlay does (its own connection, nothing in the app
+changes) and gives the debrief as you cross the line after each clean lap.
+
+Speech picks the first installed English voice unless `--voice "<name>"` names one;
+`--list-voices` shows what is installed. It plays on the Windows default audio output.
+
 Flags: `--relearn` agrees a new map instead of using the saved one, `--no-save` leaves saved maps
 alone, `--store <dir>` uses another folder for them, `--corners-per-lap` shows what each clean lap
 would give on its own, `--crossings` prints the raw channels around every line crossing.
 
 ## Corner ids and names
 
+Corners are named from **Lovely Track Data** (named turns for 134 iRacing layouts, shipped in
+`TrackData/iracing`; © Lovely Sim Racing, CC BY-NC-SA 4.0, see `TrackData/README.md`). A detected
+corner takes the names of the turns it covers ("Eau Rouge and Raidillon"). Where a track has no
+names, the debrief describes the corner instead ("Turn 5, the slow right").
+
 The first time a track is seen, corners are agreed from up to five clean laps (live) or the five
 fastest clean laps (CLI) and saved to
 `%LOCALAPPDATA%\IRacingOverlay\coaching\corners\<track>.json`. From then on that map is used as is,
-so T1 is always the same corner. Each corner has a `name` field, empty at first: write the real name
+so T1 is always the same corner. Each corner has a `name` field, empty at first: write a name
 (`"name": "La Source"`) and it is shown instead of the T-number in every table. Relearning a map keeps the
 names of corners whose apex is within 50 m of where it was. Corners whose apexes are less than 80 m
 apart (a chicane, Les Combes) are one corner.

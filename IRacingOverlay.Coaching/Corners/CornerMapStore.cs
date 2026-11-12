@@ -91,7 +91,7 @@ public sealed class CornerMapStore
             Corners = map.Corners.Select(c => new CornerEntry
             {
                 Id = c.Name,
-                Name = c.Label ?? previous?.Corners.FirstOrDefault(p => Math.Abs(p.ApexM - c.ApexM) <= CornerMapBuilder.ClusterRadiusMetres)?.Label,
+                Name = (c.LabelIsLookedUp ? null : c.Label) ?? previous?.Corners.FirstOrDefault(p => Math.Abs(p.ApexM - c.ApexM) <= CornerMapBuilder.ClusterRadiusMetres)?.Label,
                 StartM = c.StartM,
                 ApexM = c.ApexM,
                 EndM = c.EndM,
