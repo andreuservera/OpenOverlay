@@ -162,6 +162,10 @@ public sealed class CoachingSession
     /// <summary>Every measured lap, clean or with clean corners only, in order.</summary>
     public IReadOnlyList<LapAnalysis> AllAnalyses => _analyses;
 
+    /// <summary>The measured laps the bests come from: every one, or only those after the car
+    /// changed (<see cref="CarChangedAfterLap"/>).</summary>
+    public IReadOnlyList<LapAnalysis> ReferenceAnalyses => _analyses.Skip(_referenceStart).ToList();
+
     /// <summary>The corners, once a clean lap has been driven or a saved map loaded; null before.</summary>
     public CornerMap? CornerMap { get; private set; }
 

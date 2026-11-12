@@ -1,0 +1,524 @@
+<UserControl x:Class="IRacingOverlay.Coaching.Ui.CoachingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="clr-namespace:IRacingOverlay.Coaching.Ui"
+             Background="{DynamicResource Cp.Window}">
+    <!--
+      The Coaching page: coached sessions on the left, the one picked on the right, read top to
+      bottom in the order a driver wants it after a session: how fast (tiles), what keeps going wrong
+      (recurring mistakes), where (corners, one open in detail with its traces), and the laps.
+
+      Colours, text roles and buttons are the control panel's own (Cp.*), looked up dynamically from
+      the window that hosts the page, so it looks like the rest of the app without depending on it.
+    -->
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="Section" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource Cp.Surface}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Cp.Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16,12,16,14"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+        </Style>
+
+        <Style x:Key="Caption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource Cp.TextMuted}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="Cell" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource Cp.TextSoft}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,14,0"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+
+        <Style x:Key="NumCell" TargetType="TextBlock" BasedOn="{StaticResource Cell}">
+            <Setter Property="FontFamily" Value="{DynamicResource Theme.DataFontFamily}"/>
+            <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+
+        <Style x:Key="HeadCell" TargetType="TextBlock" BasedOn="{StaticResource Cell}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource Cp.TextFaint}"/>
+        </Style>
+
+        <Style x:Key="HeadNumCell" TargetType="TextBlock" BasedOn="{StaticResource HeadCell}">
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+
+        <!-- A list row: hover and selection like the rail, no focus rectangle. -->
+        <Style x:Key="Row" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Chrome" Background="Transparent" CornerRadius="7" Padding="10,7">
+                            <Grid>
+                                <Border x:Name="Marker" Width="3" Height="18" CornerRadius="2" HorizontalAlignment="Left"
+                                        Margin="-10,0,0,0" Background="{DynamicResource Cp.Accent}" Visibility="Collapsed"/>
+                                <ContentPresenter/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Cp.Hover}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Cp.Selected}"/>
+                                <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PlainList" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource Row}"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== Sessions ===== -->
+        <Border Grid.Column="0" Background="{DynamicResource Cp.Rail}" BorderBrush="{DynamicResource Cp.Border}" BorderThickness="0,0,1,0">
+            <DockPanel Margin="16,18,12,12">
+                <StackPanel DockPanel.Dock="Top">
+                    <TextBlock Text="Coaching" Style="{DynamicResource Cp.Display}"/>
+                    <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"
+                               Text="Sessions you drove with the coach on, newest first. Pick one for its post-session analysis."/>
+                    <WrapPanel Margin="0,12,0,8">
+                        <Button Content="Analyze .ibt file…" Style="{DynamicResource Cp.PrimaryButton}" Command="{Binding ImportIbtCommand}" Margin="0,0,8,6"
+                                ToolTip="Run the coach over an iRacing telemetry file and add it to the list."/>
+                        <Button Content="Refresh" Style="{DynamicResource Cp.Button}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"/>
+                        <Button Content="Folder" Style="{DynamicResource Cp.Button}" Command="{Binding OpenFolderCommand}" Margin="0,0,0,6"
+                                ToolTip="{Binding FolderPath}"/>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding Status}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.Warning}"
+                               Margin="0,0,0,8" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+
+                <StackPanel DockPanel.Dock="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}" Margin="0,8,0,0">
+                    <TextBlock Style="{DynamicResource Cp.Body}" Foreground="{DynamicResource Cp.Text}" Text="No coached sessions yet"/>
+                    <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,6,0,0"
+                               Text="Drive with the live coach on (coaching-analyze --live) and every lap is saved here, or analyze an .ibt telemetry file you already have."/>
+                </StackPanel>
+
+                <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Sessions}" SelectedItem="{Binding Selected}"
+                         Visibility="{Binding HasSessions, Converter={StaticResource BoolToVis}}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="ui:SessionItem">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Cp.Text}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding When}" FontSize="12" Foreground="{DynamicResource Cp.TextFaint}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding BestLap}" Style="{DynamicResource Cp.Mono}" Foreground="{DynamicResource Cp.Text}" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="{Binding Laps}" FontSize="12" Foreground="{DynamicResource Cp.TextFaint}" HorizontalAlignment="Right" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== The session ===== -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                      Visibility="{Binding HasDetail, Converter={StaticResource BoolToVis}}">
+            <StackPanel DataContext="{Binding Detail}" Margin="24,18,24,24" MaxWidth="1100" HorizontalAlignment="Stretch">
+
+                <!-- Header -->
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" Style="{DynamicResource Cp.Display}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Subtitle}" Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Delete session" Style="{DynamicResource Cp.Button}" VerticalAlignment="Top"
+                            Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                </Grid>
+
+                <!-- Tiles -->
+                <ItemsControl ItemsSource="{Binding Tiles}" Margin="0,0,0,12">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="ui:StatTile">
+                            <Border Style="{StaticResource Section}" Margin="0,0,10,0" Padding="14,10,14,12">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Label}" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding Value}" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource Cp.Text}"
+                                               FontFamily="{DynamicResource Theme.DataFontFamily}"/>
+                                    <TextBlock Text="{Binding Hint}" FontSize="12" Foreground="{DynamicResource Cp.TextMuted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Summary -->
+                <Border Style="{StaticResource Section}">
+                    <StackPanel>
+                        <TextBlock Text="SUMMARY" Style="{StaticResource Caption}"/>
+                        <ItemsControl ItemsSource="{Binding Headline}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="14" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap" Margin="0,2"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Notes}" Margin="0,6,0,0" Visibility="{Binding HasNotes, Converter={StaticResource BoolToVis}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="13" Foreground="{DynamicResource Cp.Warning}" TextWrapping="Wrap" Margin="0,2"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Recurring mistakes -->
+                <Border Style="{StaticResource Section}">
+                    <StackPanel>
+                        <TextBlock Text="WHAT TO WORK ON · MISTAKES YOU REPEATED" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding NoMistakesText}" FontSize="13" Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap"
+                                   Visibility="{Binding HasNoMistakes, Converter={StaticResource BoolToVis}}"/>
+                        <ItemsControl ItemsSource="{Binding Mistakes}" Visibility="{Binding HasMistakes, Converter={StaticResource BoolToVis}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="ui:MistakeItem">
+                                    <Grid Margin="0,6,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="30"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource Cp.AccentWash}" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Rank}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource Cp.Accent}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock FontSize="14" TextWrapping="Wrap">
+                                                <Run Text="{Binding Corner, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource Cp.Text}"/>
+                                                <Run Text="  "/>
+                                                <Run Text="{Binding Advice, Mode=OneWay}" Foreground="{DynamicResource Cp.Accent}"/>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Problem}" FontSize="13" Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding Cost}" Style="{DynamicResource Cp.Mono}" FontSize="12" Margin="12,2,0,0" VerticalAlignment="Top"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Corners -->
+                <Border Style="{StaticResource Section}" Visibility="{Binding HasCorners, Converter={StaticResource BoolToVis}}">
+                    <StackPanel Grid.IsSharedSizeScope="True">
+                        <TextBlock Text="CORNERS · PICK ONE FOR THE DETAIL" Style="{StaticResource Caption}"/>
+                        <Grid Margin="10,0,10,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" MinWidth="150"/>
+                                <ColumnDefinition SharedSizeGroup="cBest" Width="Auto"/>
+                                <ColumnDefinition SharedSizeGroup="cLoss" Width="Auto"/>
+                                <ColumnDefinition SharedSizeGroup="cBar" Width="Auto"/>
+                                <ColumnDefinition SharedSizeGroup="cBestLap" Width="Auto"/>
+                                <ColumnDefinition Width="2*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Corner" Style="{StaticResource HeadCell}"/>
+                            <TextBlock Grid.Column="1" Text="Best (s)" Style="{StaticResource HeadNumCell}" MinWidth="80"/>
+                            <TextBlock Grid.Column="2" Text="Normal lap loses" Style="{StaticResource HeadNumCell}" MinWidth="64"
+                                       ToolTip="Median time lost here against your best pass, over the clean laps."/>
+                            <TextBlock Grid.Column="3" Text="" Style="{StaticResource HeadCell}" MinWidth="96"/>
+                            <TextBlock Grid.Column="4" Text="Best lap loses" Style="{StaticResource HeadNumCell}" MinWidth="64"
+                                       ToolTip="What your best lap lost here against your best pass: where the theoretical best gains."/>
+                            <TextBlock Grid.Column="5" Text="Most common issue" Style="{StaticResource HeadCell}"/>
+                        </Grid>
+                        <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Corners}" SelectedItem="{Binding SelectedCorner}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="List_PreviewMouseWheel">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="ui:CornerItem">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MinWidth="150"/>
+                                            <ColumnDefinition SharedSizeGroup="cBest" Width="Auto"/>
+                                            <ColumnDefinition SharedSizeGroup="cLoss" Width="Auto"/>
+                                            <ColumnDefinition SharedSizeGroup="cBar" Width="Auto"/>
+                                            <ColumnDefinition SharedSizeGroup="cBestLap" Width="Auto"/>
+                                            <ColumnDefinition Width="2*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Cp.Text}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Kind}" FontSize="12" Foreground="{DynamicResource Cp.TextFaint}" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" MinWidth="80" Margin="0,0,14,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding BestTime}" Style="{StaticResource NumCell}" Margin="0"/>
+                                            <TextBlock Text="{Binding BestLap}" FontSize="11" Foreground="{DynamicResource Cp.TextFaint}" TextAlignment="Right"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" Text="{Binding TypicalLoss}" Style="{StaticResource NumCell}" MinWidth="64" Foreground="{DynamicResource Cp.Text}"/>
+                                        <Border Grid.Column="3" MinWidth="96" Margin="0,0,14,0" VerticalAlignment="Center">
+                                            <Border Height="8" CornerRadius="4" HorizontalAlignment="Left" Width="{Binding LossBar}" Background="{DynamicResource Cp.Warning}"/>
+                                        </Border>
+                                        <TextBlock Grid.Column="4" Text="{Binding BestLapLoss}" Style="{StaticResource NumCell}" MinWidth="64"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding MainFinding}" Style="{StaticResource Cell}" Margin="0" ToolTip="{Binding MainFinding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- The corner picked -->
+                <Border Style="{StaticResource Section}" Visibility="{Binding HasCorner, Converter={StaticResource BoolToVis}}">
+                    <StackPanel DataContext="{Binding Corner}">
+                        <TextBlock Text="{Binding Title}" Style="{DynamicResource Cp.Title}"/>
+                        <TextBlock Text="{Binding Subtitle}" Style="{DynamicResource Cp.Hint}" Margin="0,2,0,10"/>
+
+                        <!-- Traces -->
+                        <StackPanel Visibility="{Binding HasTrace, Converter={StaticResource BoolToVis}}">
+                            <WrapPanel Margin="0,0,0,6">
+                                <Border Width="18" Height="3" Background="#FFD24D" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding BestLegend}" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" Margin="0,0,16,0"/>
+                                <StackPanel Orientation="Horizontal" Visibility="{Binding HasTypical, Converter={StaticResource BoolToVis}}">
+                                    <Border Width="18" Height="3" Background="#6CB4FF" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding TypicalLegend}" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" Margin="0,0,16,0"/>
+                                </StackPanel>
+                                <Border Width="18" Height="2" Background="#3DD68C" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Throttle" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" Margin="0,0,16,0"/>
+                                <Border Width="18" Height="2" Background="#F26D6D" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Brake" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}"/>
+                            </WrapPanel>
+                            <ui:CornerTraceChart Best="{Binding BestTrace}" Typical="{Binding TypicalTrace}" ApexM="{Binding Report.ApexM}" Height="260" Margin="0,0,0,12"/>
+                        </StackPanel>
+
+                        <!-- Best against typical, and what keeps going wrong here -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="" Style="{StaticResource HeadCell}"/>
+                                    <TextBlock Grid.Column="1" Text="Best" Style="{StaticResource HeadNumCell}" Foreground="#FFD24D"/>
+                                    <TextBlock Grid.Column="2" Text="Typical" Style="{StaticResource HeadNumCell}" Foreground="#6CB4FF"/>
+                                    <TextBlock Grid.Column="3" Text="Diff" Style="{StaticResource HeadNumCell}" Margin="0"/>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Compare}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="ui:CompareRow">
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="70"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Label}" Style="{StaticResource Cell}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Best}" Style="{StaticResource NumCell}" Foreground="{DynamicResource Cp.Text}"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding Typical}" Style="{StaticResource NumCell}" Foreground="{DynamicResource Cp.Text}"/>
+                                                <TextBlock Grid.Column="3" Text="{Binding Difference}" Style="{StaticResource NumCell}" Margin="0"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="WHAT KEEPS GOING WRONG HERE" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="Nothing stood out: the passes that lost time didn't share one cause." FontSize="13"
+                                           Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasFindings}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ItemsControl ItemsSource="{Binding Findings}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="ui:FindingItem">
+                                            <StackPanel Margin="0,0,0,8">
+                                                <TextBlock Text="{Binding Advice}" FontSize="14" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource Cp.TextMuted}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Every pass -->
+                        <TextBlock Text="EVERY PASS" Style="{StaticResource Caption}" Margin="0,14,0,6"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="74"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Lap" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="1" Text="Time (s)" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="2" Text="Loss (s)" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="3" Text="Brake (m)" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="4" Text="Min km/h" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="5" Text="Throttle (m)" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="6" Text="Exit km/h" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="7" Text="Against the best pass" Style="{StaticResource HeadCell}"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Passes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="ui:PassItem">
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="44"/>
+                                            <ColumnDefinition Width="74"/>
+                                            <ColumnDefinition Width="74"/>
+                                            <ColumnDefinition Width="74"/>
+                                            <ColumnDefinition Width="74"/>
+                                            <ColumnDefinition Width="74"/>
+                                            <ColumnDefinition Width="74"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="LapText" Text="{Binding Lap}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Time}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock x:Name="LossText" Grid.Column="2" Text="{Binding Loss}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Brake}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding MinSpeed}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding Throttle}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock Grid.Column="6" Text="{Binding Exit}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock x:Name="FindingsText" Grid.Column="7" Text="{Binding Findings}" Style="{StaticResource Cell}" Margin="0" ToolTip="{Binding Findings}"/>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsBest}" Value="True">
+                                            <Setter TargetName="LossText" Property="Foreground" Value="#FFD24D"/>
+                                            <Setter TargetName="LapText" Property="Foreground" Value="#FFD24D"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsClean}" Value="False">
+                                            <Setter TargetName="FindingsText" Property="Foreground" Value="{DynamicResource Cp.TextFaint}"/>
+                                            <Setter TargetName="LossText" Property="Foreground" Value="{DynamicResource Cp.TextFaint}"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Laps -->
+                <Border Style="{StaticResource Section}">
+                    <StackPanel>
+                        <TextBlock Text="LAPS" Style="{StaticResource Caption}"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44"/>
+                                <ColumnDefinition Width="96"/>
+                                <ColumnDefinition Width="84"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Lap" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="1" Text="Time" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="2" Text="To best" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="3" Text="Lost in corners" Style="{StaticResource HeadNumCell}"
+                                       ToolTip="Time lost in the lap's clean corners against the best pass through each."/>
+                            <TextBlock Grid.Column="4" Text="Status" Style="{StaticResource HeadCell}"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Laps}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="ui:LapItem">
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="44"/>
+                                            <ColumnDefinition Width="96"/>
+                                            <ColumnDefinition Width="84"/>
+                                            <ColumnDefinition Width="110"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Lap}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock x:Name="TimeText" Grid.Column="1" Text="{Binding Time}" Style="{StaticResource NumCell}" Foreground="{DynamicResource Cp.Text}"/>
+                                        <TextBlock x:Name="DeltaText" Grid.Column="2" Text="{Binding Delta}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding CornerLoss}" Style="{StaticResource NumCell}"/>
+                                        <TextBlock x:Name="StatusText" Grid.Column="4" Text="{Binding Status}" Style="{StaticResource Cell}" Margin="0" ToolTip="{Binding Status}"/>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsBest}" Value="True">
+                                            <Setter TargetName="TimeText" Property="Foreground" Value="#FFD24D"/>
+                                            <Setter TargetName="DeltaText" Property="Foreground" Value="#FFD24D"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsClean}" Value="False">
+                                            <Setter TargetName="TimeText" Property="Foreground" Value="{DynamicResource Cp.TextFaint}"/>
+                                            <Setter TargetName="StatusText" Property="Foreground" Value="{DynamicResource Cp.Warning}"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Nothing picked (no sessions yet) -->
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460" Margin="24">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasDetail}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <TextBlock Text="Post-session analysis" Style="{DynamicResource Cp.Title}" HorizontalAlignment="Center"/>
+            <TextBlock Style="{DynamicResource Cp.Hint}" TextAlignment="Center" Margin="0,6,0,0"
+                       Text="After a session with the coach on, this shows your best lap, your theoretical best, the mistakes you kept making and every corner in detail, so you can read it after driving instead of while you drive."/>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:IRacingOverlay.App.Localization"
         xmlns:cp="clr-namespace:IRacingOverlay.App.ControlPanel"
+        xmlns:coaching="clr-namespace:IRacingOverlay.Coaching.Ui;assembly=IRacingOverlay.Coaching.Ui"
         Title="{loc:T main.openoverlayControlPanel}"
         Height="880" Width="1400" MinHeight="620" MinWidth="1080"
         Icon="Assets/icon.ico"
@@ -593,6 +594,28 @@
                     </DockPanel>
                 </Grid>
             </DockPanel>
+
+            <!-- ===== Coaching =====
+                 The coach's own page (IRacingOverlay.Coaching.Ui), over the settings and preview
+                 panes while it is open. Created when first opened, so it costs nothing until then. -->
+            <ContentControl Grid.Column="1" Grid.ColumnSpan="3" Focusable="False" Content="{Binding}"
+                            Visibility="{Binding IsCoachingPage, Converter={StaticResource Cp.BoolToVis}}">
+                <ContentControl.Style>
+                    <Style TargetType="ContentControl">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCoachingPage}" Value="True">
+                                <Setter Property="ContentTemplate">
+                                    <Setter.Value>
+                                        <DataTemplate>
+                                            <coaching:CoachingView/>
+                                        </DataTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
         </Grid>
 
         <!-- ===== Status bar =====
