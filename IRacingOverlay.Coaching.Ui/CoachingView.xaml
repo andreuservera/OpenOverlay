@@ -46,8 +46,12 @@
             <Setter Property="TextAlignment" Value="Right"/>
         </Style>
 
+        <!-- Headers wrap rather than cut off: some languages need two lines for them. -->
         <Style x:Key="HeadCell" TargetType="TextBlock" BasedOn="{StaticResource Cell}">
             <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextTrimming" Value="None"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
             <Setter Property="Foreground" Value="{DynamicResource Cp.TextFaint}"/>
         </Style>
 
@@ -108,13 +112,24 @@
                     <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}"/>
                     <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"
                                Text="{loc:T coaching.sessions.hint}"/>
-                    <WrapPanel Margin="0,12,0,8">
-                        <Button Content="{loc:T coaching.ibt.analyze}" Style="{DynamicResource Cp.PrimaryButton}" Command="{Binding ImportIbtCommand}" Margin="0,0,8,6"
+                    <!-- The main action on a row of its own, the two small ones split the row under it:
+                         the same two rows in every language, however long the words. -->
+                    <Grid Margin="0,12,0,8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.ColumnSpan="3" Content="{loc:T coaching.ibt.analyze}" Style="{DynamicResource Cp.PrimaryButton}" Command="{Binding ImportIbtCommand}" Margin="0,0,0,8"
                                 ToolTip="{loc:T coaching.ibt.analyze.tip}"/>
-                        <Button Content="{loc:T coaching.refresh}" Style="{DynamicResource Cp.Button}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"/>
-                        <Button Content="{loc:T coaching.folder}" Style="{DynamicResource Cp.Button}" Command="{Binding OpenFolderCommand}" Margin="0,0,0,6"
+                        <Button Grid.Row="1" Content="{loc:T coaching.refresh}" Style="{DynamicResource Cp.Button}" Command="{Binding RefreshCommand}"/>
+                        <Button Grid.Row="1" Grid.Column="2" Content="{loc:T coaching.folder}" Style="{DynamicResource Cp.Button}" Command="{Binding OpenFolderCommand}"
                                 ToolTip="{Binding FolderPath}"/>
-                    </WrapPanel>
+                    </Grid>
                     <TextBlock Text="{Binding Status}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.Warning}"
                                Margin="0,0,0,8" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>

@@ -38,6 +38,22 @@ internal static class Phrases
     private static string Key(string what, string kind, bool isRamp) =>
         kind == "InitialBrakeTooSoft" && isRamp ? $"coaching.{what}.{kind}.ramp" : $"coaching.{what}.{kind}";
 
+    // What DebriefText.Describe says for each kind, as saved in older reports.
+    private static readonly Dictionary<string, string> SavedKinds = new(StringComparer.Ordinal)
+    {
+        ["hairpin"] = "coaching.kind.hairpin",
+        ["left hairpin"] = "coaching.kind.hairpinLeft",
+        ["right hairpin"] = "coaching.kind.hairpinRight",
+        ["slow corner"] = "coaching.kind.slow",
+        ["fast corner"] = "coaching.kind.fast",
+        ["left-hander"] = "coaching.kind.left",
+        ["right-hander"] = "coaching.kind.right",
+        ["slow left"] = "coaching.kind.slowLeft",
+        ["slow right"] = "coaching.kind.slowRight",
+        ["fast left"] = "coaching.kind.fastLeft",
+        ["fast right"] = "coaching.kind.fastRight",
+    };
+
     /// <summary>"slow right", "left hairpin"…, from the best pass's speed and which way it turns.</summary>
     public static string? CornerKind(CornerReport c)
     {
@@ -46,10 +62,10 @@ internal static class Phrases
             return null;
         }
 
-        // Reports from before the direction was saved: keep their (English) words rather than lose the way it turns.
-        if (c.Direction == 0 && c.Kind is { } saved && (saved.Contains("left", StringComparison.Ordinal) || saved.Contains("right", StringComparison.Ordinal)))
+        // Reports from before the direction was saved: their English words name the kind, so word it from those.
+        if (c.Direction == 0 && c.Kind is { } saved && SavedKinds.TryGetValue(saved, out var key))
         {
-            return saved;
+            return T(key);
         }
 
         var way = c.Direction switch { > 0 => "Left", < 0 => "Right", _ => "" };
