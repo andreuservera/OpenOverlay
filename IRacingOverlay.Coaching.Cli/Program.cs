@@ -276,7 +276,7 @@ if (session.BestLap is { } bestLapForGain && session.AllAnalyses.FirstOrDefault(
 
 Console.WriteLine();
 Console.WriteLine("Best pass per corner");
-Console.WriteLine("  corner        lap  time     brake at  peak  trail  min speed @      throttle at  exit     +100 m");
+Console.WriteLine("  corner        type          lap  time     brake at  peak  trail  min speed @      throttle at  exit     +100 m");
 foreach (var c in map.Corners)
 {
     if (!session.BestPasses.TryGetValue(c.Name, out var b))
@@ -285,7 +285,7 @@ foreach (var c in map.Corners)
     }
 
     Console.WriteLine(
-        $"  {Short(c.DisplayName, 12),-12}  {b.LapNumber,3}  {b.ScoreTime,6:0.000}   {M(b.BrakePointM),8}  {b.PeakBrake * 100,3:0}%  {b.TrailBrakeM,3} m  {Kmh(b.MinSpeed),4:0} km/h {b.MinSpeedAtM,5} m  {M(b.ThrottlePickupM),8}     {Kmh(b.ExitSpeed),4:0}     {Kmh(b.ExitSpeedPlus100),4:0} km/h");
+        $"  {Short(c.DisplayName, 12),-12}  {(session.CornerTypeById.TryGetValue(c.Name, out var ct) ? CornerTypes.Label(ct) : "-"),-12}  {b.LapNumber,3}  {b.ScoreTime,6:0.000}   {M(b.BrakePointM),8}  {b.PeakBrake * 100,3:0}%  {b.TrailBrakeM,3} m  {Kmh(b.MinSpeed),4:0} km/h {b.MinSpeedAtM,5} m  {M(b.ThrottlePickupM),8}     {Kmh(b.ExitSpeed),4:0}     {Kmh(b.ExitSpeedPlus100),4:0} km/h");
 }
 
 Console.WriteLine();
@@ -324,7 +324,11 @@ if (debrief || speak)
         var bestSoFar = BestPasses.Select(passesSoFar);
         var bestLapSoFar = slice.Where(x => x.IsCleanLap).Min(x => x.Lap.LapTime);
         var outsideSoFar = slice.Select(x => x.OutsideCornersTime).Where(t => t is not null).Min();
-        last = coach.Debrief(a, bestSoFar, bestLapSoFar) with
+        var typesSoFar = passesSoFar.GroupBy(x => x.Corner.Name)
+            .Select(g => (g.Key, Type: CornerTypes.Consensus(g, bestSoFar.GetValueOrDefault(g.Key))))
+            .Where(x => x.Type is not null)
+            .ToDictionary(x => x.Key, x => x.Type!.Value);
+        last = coach.Debrief(a, bestSoFar, bestLapSoFar, typesSoFar) with
         {
             TheoreticalBestLapTime = BestPasses.TheoreticalLapTime(map, bestSoFar, outsideSoFar, BestPasses.RestOfStraight(passesSoFar)),
         };

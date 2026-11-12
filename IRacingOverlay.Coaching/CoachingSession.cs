@@ -175,6 +175,12 @@ public sealed class CoachingSession
     /// (see <see cref="Corners.BestPasses"/>).</summary>
     public IReadOnlyDictionary<string, CornerPass> BestPasses => _best;
 
+    /// <summary>Each corner's type, agreed over its clean passes (<see cref="CornerTypes.Consensus"/>),
+    /// by corner id: it decides which checks run and stays put from lap to lap.</summary>
+    public IReadOnlyDictionary<string, CornerType> CornerTypeById => _types;
+
+    private Dictionary<string, CornerType> _types = new(StringComparer.Ordinal);
+
     public RecordedLap? BestLap => _analyses.Skip(_referenceStart).Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)?.Lap;
 
     /// <summary>
@@ -348,6 +354,10 @@ public sealed class CoachingSession
         _best = Corners.BestPasses.Select(all);
         _bestRestOfStraight = Corners.BestPasses.RestOfStraight(all);
         _bestOutsideCorners = reference.Select(a => a.OutsideCornersTime).Where(t => t is not null).Min();
+        _types = all.GroupBy(p => p.Corner.Name, StringComparer.Ordinal)
+            .Select(g => (g.Key, Type: CornerTypes.Consensus(g, _best.GetValueOrDefault(g.Key))))
+            .Where(x => x.Type is not null)
+            .ToDictionary(x => x.Key, x => x.Type!.Value, StringComparer.Ordinal);
     }
 
     /// <summary>

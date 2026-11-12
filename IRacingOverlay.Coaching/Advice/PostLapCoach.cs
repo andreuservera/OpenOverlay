@@ -21,6 +21,15 @@ public sealed record CornerAdvice(Corner Corner, double LossSeconds, IReadOnlyLi
 
     public CornerFinding? Main => Findings.Count > 0 ? Findings[0] : null;
 
+    /// <summary>What kind of corner it is, from the best pass: decides which checks ran.</summary>
+    public CornerType Type
+    {
+        get => _type ?? (Best is { } b ? CornerTypes.Classify(b) : CornerType.BrakingFast);
+        init => _type = value;
+    }
+
+    private readonly CornerType? _type;
+
     /// <summary>How much slower the car arrived than on the best pass, km/h (0 when not slower).
     /// That part of the loss was made in the corner before, not here.</summary>
     public double EntrySlowerKmh { get; init; }
@@ -83,7 +92,7 @@ public sealed class PostLapCoach
     {
         var coach = new PostLapCoach(options);
         session.CornerMapChanged += _ => coach.Reset();
-        session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.BestPasses, session.BestLap?.LapTime ?? a.Lap.LapTime) with
+        session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.BestPasses, session.BestLap?.LapTime ?? a.Lap.LapTime, session.CornerTypeById) with
         {
             TheoreticalBestLapTime = session.TheoreticalBestLapTime,
         });
@@ -95,7 +104,9 @@ public sealed class PostLapCoach
     /// <param name="lap">The lap to debrief.</param>
     /// <param name="bestPasses">The best pass through each corner so far, by corner id, this lap included.</param>
     /// <param name="bestLapTime">The best lap time so far, this lap included.</param>
-    public LapDebrief Debrief(LapAnalysis lap, IReadOnlyDictionary<string, CornerPass> bestPasses, double bestLapTime)
+    /// <param name="types">Each corner's agreed type, by corner id (<see cref="CoachingSession.CornerTypeById"/>);
+    /// a corner missing from it takes its best pass's type.</param>
+    public LapDebrief Debrief(LapAnalysis lap, IReadOnlyDictionary<string, CornerPass> bestPasses, double bestLapTime, IReadOnlyDictionary<string, CornerType>? types = null)
     {
         var advice = new List<CornerAdvice>();
         foreach (var pass in lap.Passes)
@@ -109,7 +120,8 @@ public sealed class PostLapCoach
 
             // Judged with the straight after the corner, where a slow exit costs its time.
             var loss = pass.ScoreTime - best.ScoreTime;
-            var findings = CornerDiagnoser.Diagnose(pass, best, _options.Diagnosis);
+            CornerType? type = types is not null && types.TryGetValue(id, out var t) ? t : null;
+            var findings = CornerDiagnoser.Diagnose(pass, best, _options.Diagnosis, type);
             var main = loss >= _options.MinLossSeconds && findings.Count > 0 ? findings[0].Kind : (FindingKind?)null;
             var history = _history.TryGetValue(id, out var h) ? h : _history[id] = new Queue<FindingKind?>();
             var repeats = main is null ? 0 : history.Count(k => k == main);
@@ -127,6 +139,7 @@ public sealed class PostLapCoach
                     Index = lap.Passes.ToList().IndexOf(pass),
                     CornerCount = lap.Passes.Count,
                     EntrySlowerKmh = Math.Max(0, (best.EntrySpeed - pass.EntrySpeed) * 3.6),
+                    Type = type ?? CornerTypes.Classify(best),
                 });
             }
         }

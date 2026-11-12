@@ -107,6 +107,37 @@ public sealed record CornerPass
     /// <summary>Which way the corner turns, from the steering through it: +1 left, -1 right, 0 when
     /// it can't tell (a chicane steered both ways about equally).</summary>
     public int Direction { get; init; }
+
+    /// <summary>First point off full throttle (below 95%) on the way in; null when the throttle
+    /// never came off before the slowest point (a flat corner).</summary>
+    public int? LiftPointM { get; init; }
+
+    /// <summary>Metres from <see cref="LiftPointM"/> back to full throttle (or the window's end):
+    /// how long the car was off full throttle. 0 when flat.</summary>
+    public int LiftLengthM { get; init; }
+
+    /// <summary>Lowest throttle before the brake or the slowest point: how deep the lift went, 0–1.
+    /// 1 when flat; 0 for a full lift (and for every braking corner).</summary>
+    public float MinThrottle { get; init; } = 1;
+
+    /// <summary>Metres the brake was on, from the brake point to its release; 0 when no braking.</summary>
+    public int BrakeLengthM { get; init; }
+
+    /// <summary>The longest stretch with neither pedal really pressed (throttle under 10%, no
+    /// brake), metres: lost time in almost every corner.</summary>
+    public int CoastingM { get; init; }
+
+    /// <summary>How many times the throttle came back off by 20% or more between pick-up and full
+    /// throttle: the rear stepping out, or a line that ran out of road.</summary>
+    public int ThrottleLifts { get; init; }
+
+    /// <summary>How many separate slow points the window has (speed dropping, rising by a clear
+    /// margin, dropping again): 2 or more for a chicane or esses.</summary>
+    public int SpeedDips { get; init; } = 1;
+
+    /// <summary>Steering per lateral g around the slowest point, rad per m/s²; null when the car was
+    /// hardly cornering there. More than the best pass for the same grip means understeer.</summary>
+    public double? SteerPerLatAccel { get; init; }
 }
 
 /// <summary>Measures every corner of a <see cref="CornerMap"/> on a lap.</summary>
@@ -117,6 +148,10 @@ public static class CornerAnalyzer
     private const float FullThrottle = 0.95f;
     private const float TurnInShareOfPeakSteering = 0.30f;
     private const int MaxEarlyBrakeSearchM = 200;
+    private const float CoastThrottle = 0.10f;
+    private const float ThrottleLiftDrop = 0.20f;
+    private const int ApexBalanceM = 20;
+    private const float MinLatAccelForBalance = 3f;
 
     /// <summary>How much of the straight after a corner counts toward its score, metres. A slow exit
     /// costs most of its time in the first few hundred metres; further on, the straight is a
@@ -263,9 +298,88 @@ public static class CornerAnalyzer
 
         var direction = steerAbs > 0 && Math.Abs(steerSum) > 0.3 * steerAbs ? Math.Sign(steerSum) : 0;
 
+        // Lift: first throttle off on the way in, followed back like the brake when it was already off.
+        int? lift = FirstIndex(s, minAt, i => lap.Throttle[i] < FullThrottle);
+        if (lift == s)
+        {
+            var back = s;
+            while (back > Math.Max(0, s - MaxEarlyBrakeSearchM) && lap.Throttle[back - 1] < FullThrottle)
+            {
+                back--;
+            }
+
+            lift = back;
+        }
+
+        var liftEnd = brakePoint ?? minAt;
+        var minThrottle = 1f;
+        if (lift is { } l0)
+        {
+            for (var i = l0; i <= Math.Max(l0, liftEnd); i++)
+            {
+                minThrottle = Math.Min(minThrottle, lap.Throttle[i]);
+            }
+        }
+
+        // Pick-up is searched after the brake, or for a lift-only corner after the deepest point of
+        // the lift (the throttle is still on at the window's start, which isn't a pick-up).
         var pickupFrom = release is { } rel ? rel + 1 : s;
+        if (release is null && lift is { } lf)
+        {
+            // The lift may have begun in the corner before; the pick-up is still this corner's.
+            pickupFrom = Math.Max(lf, s);
+            for (var i = pickupFrom; i <= minAt; i++)
+            {
+                if (lap.Throttle[i] < lap.Throttle[pickupFrom])
+                {
+                    pickupFrom = i;
+                }
+            }
+        }
+
         int? pickup = FirstIndex(pickupFrom, e, i => lap.Throttle[i] > ThrottleOn);
         int? full = pickup is { } p ? FirstIndex(p, e, i => lap.Throttle[i] >= FullThrottle) : null;
+
+
+        var liftLength = lift is { } l1 ? Math.Max(0, (full ?? e) - l1) : 0;
+
+        int coastRun = 0, coastBest = 0;
+        for (var i = s; i <= e; i++)
+        {
+            coastRun = lap.Throttle[i] < CoastThrottle && lap.Brake[i] <= BrakeOn ? coastRun + 1 : 0;
+            coastBest = Math.Max(coastBest, coastRun);
+        }
+
+        var throttleLifts = 0;
+        if (pickup is { } p0)
+        {
+            var high = lap.Throttle[p0];
+            var dropped = false;
+            for (var i = p0; i <= (full ?? e); i++)
+            {
+                if (!dropped && lap.Throttle[i] < high - ThrottleLiftDrop)
+                {
+                    throttleLifts++;
+                    dropped = true;
+                    high = lap.Throttle[i];
+                }
+                else if (lap.Throttle[i] > high)
+                {
+                    high = lap.Throttle[i];
+                    dropped = false;
+                }
+            }
+        }
+
+        double steerSumApex = 0, latSumApex = 0;
+        for (var i = Math.Max(s, minAt - ApexBalanceM); i <= Math.Min(e, minAt + ApexBalanceM); i++)
+        {
+            steerSumApex += Math.Abs(lap.Steering[i]);
+            latSumApex += Math.Abs(lap.LatAccel[i]);
+        }
+
+        var apexSamples = Math.Min(e, minAt + ApexBalanceM) - Math.Max(s, minAt - ApexBalanceM) + 1;
+        double? steerPerG = latSumApex / apexSamples >= MinLatAccelForBalance ? steerSumApex / latSumApex : null;
 
         var pieceStart = Math.Clamp(pieceStartM ?? s, 0, s);
         var straightEnd = Math.Clamp(nextPieceStartM ?? nextCornerStartM ?? lap.Length - 1, e, lap.Length - 1);
@@ -300,7 +414,50 @@ public static class CornerAnalyzer
             AbsShare = brakeSamples > 0 ? (float)absSamples / brakeSamples : 0,
             GearAtApex = lap.Gear[minAt],
             Direction = direction,
+            LiftPointM = lift,
+            LiftLengthM = liftLength,
+            MinThrottle = lift is null ? 1 : minThrottle,
+            BrakeLengthM = brakePoint is { } b0 && release is { } r0 ? r0 - b0 + 1 : 0,
+            CoastingM = coastBest,
+            ThrottleLifts = throttleLifts,
+            SpeedDips = SpeedDips(lap, s, e),
+            SteerPerLatAccel = steerPerG,
         };
+    }
+
+    /// <summary>Separate slow points in the window: a dip only ends once speed has risen by 1 m/s
+    /// and 3% again, so noise and a short breath between two parts of one corner don't count.</summary>
+    private static int SpeedDips(LapTrace lap, int s, int e)
+    {
+        var dips = 0;
+        var falling = false;
+        var hi = lap.Speed[s];
+        var lo = lap.Speed[s];
+        for (var i = s + 1; i <= e; i++)
+        {
+            var v = lap.Speed[i];
+            if (!falling)
+            {
+                hi = Math.Max(hi, v);
+                if (hi - v >= Math.Max(1f, 0.03f * hi))
+                {
+                    falling = true;
+                    lo = v;
+                }
+            }
+            else
+            {
+                lo = Math.Min(lo, v);
+                if (v - lo >= Math.Max(1f, 0.03f * lo))
+                {
+                    dips++;
+                    falling = false;
+                    hi = v;
+                }
+            }
+        }
+
+        return Math.Max(1, falling ? dips + 1 : dips);
     }
 
     private static int? FirstIndex(int from, int to, Func<int, bool> test)

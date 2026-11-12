@@ -190,6 +190,7 @@ public static class SessionReportBuilder
         }
 
         bests.TryGetValue(corner.Name, out var best);
+        var type = CornerTypes.Consensus(passes.Select(x => x.Pass), best);
         var rows = new List<PassRow>();
         var compared = new List<(CornerPass Pass, LapAnalysis Lap, double Loss, IReadOnlyList<CornerFinding> Findings)>();
         foreach (var (p, a) in passes)
@@ -202,7 +203,7 @@ public static class SessionReportBuilder
                 loss = Math.Max(0, p.ScoreTime - best.ScoreTime);
                 if (!isBest)
                 {
-                    findings = CornerDiagnoser.Diagnose(p, best, o.Diagnosis);
+                    findings = CornerDiagnoser.Diagnose(p, best, o.Diagnosis, type);
                     compared.Add((p, a, loss.Value, findings));
                 }
             }
@@ -247,7 +248,8 @@ public static class SessionReportBuilder
         {
             Id = corner.Name,
             Name = corner.DisplayName,
-            Kind = DebriefText.Describe(best),
+            // "slow right · slow", "fast left · lift": how it looks and what decides its time.
+            Kind = best is null ? null : string.Join(" · ", new[] { DebriefText.Describe(best), type is { } ty ? CornerTypes.Label(ty) : null }.Where(k => k is not null)),
             StartM = corner.StartM,
             ApexM = corner.ApexM,
             EndM = corner.EndM,
