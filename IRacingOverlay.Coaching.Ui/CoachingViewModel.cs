@@ -36,6 +36,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         ImportIbtCommand = new RelayCommand(ImportIbt, () => !IsBusy);
         OpenFolderCommand = new RelayCommand(OpenFolder);
         DeleteCommand = new RelayCommand(DeleteSelected, () => Selected is not null && !IsBusy);
+        CoachingText.LanguageChanged += Reword;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -121,6 +122,31 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
 
     public void Refresh() => Load(Selected?.Report.Id);
 
+    /// <summary>The language changed: word the list and the open session again, keeping what is picked.</summary>
+    private void Reword()
+    {
+        var id = _selected?.Report.Id;
+        var corner = _detail?.SelectedCorner?.Report.Id;
+        _reloading = true;
+        try
+        {
+            var items = Sessions.Select(s => new SessionItem(s.Report)).ToList();
+            Sessions.Clear();
+            foreach (var item in items)
+            {
+                Sessions.Add(item);
+            }
+        }
+        finally
+        {
+            _reloading = false;
+        }
+
+        _selected = Sessions.FirstOrDefault(s => s.Report.Id == id);
+        Detail = _selected is null ? null : new SessionDetail(_selected.Report, corner);
+        OnPropertyChanged(nameof(Selected));
+    }
+
     private void Load(string? select)
     {
         IReadOnlyList<SessionReport> reports;
@@ -130,7 +156,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            Status = $"Couldn't read the sessions: {e.Message}";
+            Status = CoachingText.F("coaching.status.readFailed", e.Message);
             reports = [];
         }
 
@@ -169,8 +195,8 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         var telemetry = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "iRacing", "telemetry");
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Analyze an iRacing telemetry file",
-            Filter = "iRacing telemetry (*.ibt)|*.ibt",
+            Title = CoachingText.T("coaching.ibt.dialogTitle"),
+            Filter = CoachingText.T("coaching.ibt.filter") + " (*.ibt)|*.ibt",
             Multiselect = true,
             InitialDirectory = Directory.Exists(telemetry) ? telemetry : null,
         };
@@ -193,7 +219,9 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
             for (var i = 0; i < files.Count; i++)
             {
                 var file = files[i];
-                Status = files.Count > 1 ? $"Analyzing {Path.GetFileName(file)} ({i + 1} of {files.Count})…" : $"Analyzing {Path.GetFileName(file)}…";
+                Status = files.Count > 1
+                    ? CoachingText.F("coaching.status.analyzingOf", Path.GetFileName(file), i + 1, files.Count)
+                    : CoachingText.F("coaching.status.analyzing", Path.GetFileName(file));
                 try
                 {
                     var report = await Task.Run(() =>
@@ -223,7 +251,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
             IsBusy = false;
         }
 
-        Status = failed.Count == 0 ? "" : "Couldn't analyze " + string.Join(", ", failed);
+        Status = failed.Count == 0 ? "" : CoachingText.F("coaching.status.analyzeFailed", string.Join(", ", failed));
         _selected = null;
         Load(last);
     }
@@ -237,7 +265,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or Win32Exception or InvalidOperationException)
         {
-            Status = $"Couldn't open {_store.Directory}: {e.Message}";
+            Status = CoachingText.F("coaching.status.openFailed", _store.Directory, e.Message);
         }
     }
 
@@ -249,8 +277,8 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         }
 
         var answer = System.Windows.MessageBox.Show(
-            $"Delete the coaching session at {item.Title} ({item.When})? Its telemetry file, if any, is kept.",
-            "Delete session", System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question);
+            CoachingText.F("coaching.delete.question", item.Title, item.When),
+            CoachingText.T("coaching.delete.title"), System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Question);
         if (answer != System.Windows.MessageBoxResult.OK)
         {
             return;
@@ -262,7 +290,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            Status = $"Couldn't delete it: {e.Message}";
+            Status = CoachingText.F("coaching.status.deleteFailed", e.Message);
             return;
         }
 
@@ -281,11 +309,11 @@ public sealed class SessionItem
     public SessionItem(SessionReport report)
     {
         Report = report;
-        Title = report.TrackName ?? report.TrackKey ?? "Unknown track";
-        Subtitle = Format.Join(report.CarName, report.SessionType, report.Source == "ibt" ? "from .ibt" : "live coach");
-        When = report.StartedUtc == default ? "" : report.StartedUtc.ToLocalTime().ToString("ddd d MMM yyyy, HH:mm", Format.Culture);
-        BestLap = report.BestLapTime is { } b ? SessionSummaryText.LapTime(b) : "no clean lap";
-        Laps = $"{report.CleanLapCount}/{report.Laps.Count} clean";
+        Title = TrackOf(report);
+        Subtitle = Format.Join(report.CarName, report.SessionType, CoachingText.T(report.Source == "ibt" ? "coaching.source.ibt" : "coaching.source.live"));
+        When = report.StartedUtc == default ? "" : report.StartedUtc.ToLocalTime().ToString("g", CoachingText.Culture);
+        BestLap = report.BestLapTime is { } b ? SessionSummaryText.LapTime(b) : CoachingText.T("coaching.tile.bestLap.none");
+        Laps = CoachingText.F("coaching.session.cleanLaps", report.CleanLapCount, report.Laps.Count);
     }
 
     public SessionReport Report { get; }
@@ -295,6 +323,8 @@ public sealed class SessionItem
     public string Subtitle { get; }
 
     public string When { get; }
+
+    internal static string TrackOf(SessionReport r) => r.TrackName ?? r.TrackKey ?? CoachingText.T("coaching.session.unknownTrack");
 
     public string BestLap { get; }
 

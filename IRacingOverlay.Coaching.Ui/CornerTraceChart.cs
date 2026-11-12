@@ -92,13 +92,13 @@ public sealed class CornerTraceChart : FrameworkElement
         dc.DrawLine(pen, new Point(left, pedalTop), new Point(left + width, pedalTop));
         dc.DrawLine(pen, new Point(left, pedalTop + pedalHeight), new Point(left + width, pedalTop + pedalHeight));
         DrawText(dc, "km/h", new Point(left - 6, speedTop + speedHeight + 9), alignRight: true, middle: true);
-        DrawText(dc, "pedals", new Point(left - 6, pedalTop + pedalHeight / 2), alignRight: true, middle: true);
+        DrawText(dc, CoachingText.T("coaching.chart.pedals"), new Point(left - 6, pedalTop + pedalHeight / 2), alignRight: true, middle: true);
 
         if (ApexM >= startM && ApexM <= endM)
         {
             var dashed = new Pen(GridBrush, 1) { DashStyle = DashStyles.Dash };
             dc.DrawLine(dashed, new Point(X(ApexM), speedTop), new Point(X(ApexM), pedalTop + pedalHeight));
-            DrawText(dc, "apex", new Point(X(ApexM) + 4, speedTop + 2), alignRight: false, middle: false);
+            DrawText(dc, CoachingText.T("coaching.chart.apex"), new Point(X(ApexM) + 4, speedTop + 2), alignRight: false, middle: false);
         }
 
         // Distance labels at both ends and the middle.

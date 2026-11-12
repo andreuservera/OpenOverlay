@@ -138,6 +138,9 @@ public static class SessionReportBuilder
                 Kind = x.Finding.Kind,
                 Laps = x.Finding.Laps,
                 OutOf = x.Finding.OutOf,
+                TypicalAmount = x.Finding.TypicalAmount,
+                IsRamp = x.Finding.IsRamp,
+                NoBraking = x.Finding.NoBraking,
                 TypicalLoss = x.Finding.TypicalLoss,
                 TotalLoss = x.Finding.TotalLoss,
                 Problem = SessionSummaryText.Problem(x.Finding),
@@ -219,13 +222,16 @@ public static class SessionReportBuilder
             {
                 var amounts = g.Select(c => c.Findings[0].Amount).ToList();
                 var ramp = g.Count(c => c.Findings[0].IsRamp) * 2 > g.Count();
-                var typical = new CornerFinding(g.Key, Median(amounts)) { IsRamp = ramp };
+                var noBraking = g.Count(c => c.Findings[0].NoBraking) * 2 > g.Count();
+                var typical = new CornerFinding(g.Key, Median(amounts)) { IsRamp = ramp, NoBraking = noBraking };
                 return new FindingTally
                 {
                     Kind = g.Key.ToString(),
                     Laps = g.Count(),
                     OutOf = compared.Count,
                     TypicalAmount = typical.Amount,
+                    IsRamp = ramp,
+                    NoBraking = noBraking,
                     TypicalLoss = Median(g.Select(c => c.Loss).ToList()),
                     TotalLoss = g.Sum(c => c.Loss),
                     Advice = DebriefText.Advice(typical),
@@ -250,6 +256,8 @@ public static class SessionReportBuilder
             Name = corner.DisplayName,
             // "slow right · slow", "fast left · lift": how it looks and what decides its time.
             Kind = best is null ? null : string.Join(" · ", new[] { DebriefText.Describe(best), type is { } ty ? CornerTypes.Label(ty) : null }.Where(k => k is not null)),
+            Direction = best?.Direction ?? 0,
+            Type = type?.ToString(),
             StartM = corner.StartM,
             ApexM = corner.ApexM,
             EndM = corner.EndM,
@@ -285,6 +293,7 @@ public static class SessionReportBuilder
         ExitKmh = Math.Round(p.ExitSpeedPlus100 * MsToKmh, 1),
         Gear = p.GearAtApex,
         Findings = findings.Select(DebriefText.Advice).ToList(),
+        Issues = findings.Select(f => new PassIssue(f.Kind.ToString(), Math.Round(f.Amount, 1), f.IsRamp) { NoBraking = f.NoBraking }).ToList(),
     };
 
     /// <summary>The pass's piece of the lap (from a little before braking to the end of its
