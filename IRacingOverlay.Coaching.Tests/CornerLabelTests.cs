@@ -52,6 +52,41 @@ public sealed class CornerLabelTests : IDisposable
         Assert.Equal("La Source", store.Load("spa")!.Corners[0].Label);
     }
 
+    [Fact]
+    public void DetectedCornersTakeTheTrackDataNamesTheyCover()
+    {
+        // Spa, 6930 m: La Source 0.046–0.077, Eau Rouge 0.138–0.155, Raidillon 0.156–0.19.
+        var turns = TrackTurnNames.Default.For("spa 2024 up");
+        Assert.Contains(turns, t => t.Name == "La Source");
+
+        var map = new CornerMap(6930,
+        [
+            new Corner("T1", 256, 391, 468),                          // inside La Source
+            new Corner("T2", 900, 1150, 1330),                        // takes in Eau Rouge and Raidillon
+            new Corner("T3", 3191, 3263, 3349) { Label = "My name" }, // a typed name wins
+            new Corner("T4", 5900, 5950, 6000),                       // no named turn there
+        ]);
+
+        var named = TrackTurnNames.Default.Apply(map, "spa 2024 up").Corners;
+
+        Assert.Equal("La Source", named[0].Label);
+        Assert.True(named[0].LabelIsLookedUp);
+        Assert.Equal("Eau Rouge and Raidillon", named[1].Label);
+        Assert.Equal("My name", named[2].Label);
+        Assert.False(named[2].LabelIsLookedUp);
+        Assert.Null(named[3].Label);
+    }
+
+    [Fact]
+    public void LookedUpNamesAreNotWrittenIntoTheSavedMap()
+    {
+        var store = new CornerMapStore(_dir);
+        store.Save("spa", new CornerMap(6930, [new Corner("T1", 256, 391, 468) { Label = "La Source", LabelIsLookedUp = true }]));
+
+        Assert.Null(store.Load("spa")!.Corners[0].Label);
+        Assert.Empty(TrackTurnNames.Default.For("no such track"));
+    }
+
     private static List<RecordedLap> CleanLaps(TrackSimulator track, int count, IReadOnlyDictionary<int, double>? cornerSpeed = null)
     {
         var profile = track.SpeedProfile(cornerSpeed);

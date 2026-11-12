@@ -124,7 +124,8 @@ var session = new CoachingSession(new CoachingOptions
 {
     TrackKey = trackKey,
     Store = trackKey is null ? null : store,
-    LoadSavedMap = !relearn, // --relearn: agree a new map (still saved over unless --no-save)
+    LoadSavedMap = !relearn,
+    TurnNames = TrackTurnNames.Default, // --relearn: agree a new map (still saved over unless --no-save)
     CornerMapLaps = int.MaxValue, // agree the map below, from the fastest laps of the whole file
 });
 foreach (var frame in ibt.Frames())
@@ -166,7 +167,7 @@ var origin = session.CornerMapOrigin switch
 Console.WriteLine($"Corners: {origin} (track {map.TrackLengthMetres} m)");
 if (trackKey is not null)
 {
-    Console.WriteLine($"  edit corner names in {store.PathFor(trackKey)}");
+    Console.WriteLine($"  names from Lovely Track Data (CC BY-NC-SA 4.0, lsr.gg); to override one, set its name in {store.PathFor(trackKey)}");
 }
 
 Console.WriteLine("  corner  start   apex    end     length  best min speed  name");
@@ -309,7 +310,7 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
         if (pendingTrack is { } t && t != track)
         {
             track = t;
-            session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = store });
+            session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = store, TurnNames = TrackTurnNames.Default });
             session.CornerMapChanged += m => Console.WriteLine($"Corners for {t}: {m.Corners.Count} ({session.CornerMapOrigin})");
             PostLapCoach.Attach(session, d =>
             {

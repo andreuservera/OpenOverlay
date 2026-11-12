@@ -54,10 +54,15 @@ would give on its own, `--crossings` prints the raw channels around every line c
 
 ## Corner ids and names
 
+Corners are named from **Lovely Track Data** (named turns for 134 iRacing layouts, shipped in
+`TrackData/iracing`; © Lovely Sim Racing, CC BY-NC-SA 4.0, see `TrackData/README.md`). A detected
+corner takes the names of the turns it covers ("Eau Rouge and Raidillon"). Where a track has no
+names, the debrief describes the corner instead ("Turn 5, the slow right").
+
 The first time a track is seen, corners are agreed from up to five clean laps (live) or the five
 fastest clean laps (CLI) and saved to
 `%LOCALAPPDATA%\IRacingOverlay\coaching\corners\<track>.json`. From then on that map is used as is,
-so T1 is always the same corner. Each corner has a `name` field, empty at first: write the real name
+so T1 is always the same corner. Each corner has a `name` field, empty at first: write a name
 (`"name": "La Source"`) and it is shown instead of the T-number in every table. Relearning a map keeps the
 names of corners whose apex is within 50 m of where it was. Corners whose apexes are less than 80 m
 apart (a chicane, Les Combes) are one corner.

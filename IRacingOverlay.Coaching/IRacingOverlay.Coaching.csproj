@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Turn names from Lovely Track Data (CC BY-NC-SA 4.0, see TrackData/README.md). -->
+    <None Include="TrackData\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="TrackData" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="IRacingOverlay.Coaching.Tests" />
   </ItemGroup>
 
