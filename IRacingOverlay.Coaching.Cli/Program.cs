@@ -190,35 +190,84 @@ if (perLap)
 }
 
 Console.WriteLine();
-Console.WriteLine($"Time per corner, to the next corner's start or {CornerAnalyzer.MaxStraightMetres} m past its end (s); * = best pass, x = not clean (off, incident, cut, pit exit)");
-var header = new StringBuilder("  lap   lap time   ");
+Console.WriteLine($"Time per piece of the lap (s): the run to the first corner, each corner from {CornerAnalyzer.LeadInMetres} m before its braking to the next corner's piece or {CornerAnalyzer.MaxStraightMetres} m past its end, and the rest of a long straight (+str); * = best, x = not clean");
+var allPasses = session.AllAnalyses.SelectMany(a => a.Passes).ToList();
+var bestStraights = BestPasses.RestOfStraight(allPasses);
+var bestRunIn = session.AllAnalyses.Where(a => a.OutsideCornersTime is not null).MinBy(a => a.OutsideCornersTime);
+var straightAfter = map.Corners.Where(c => allPasses.Any(p => p.Corner.Name == c.Name && p.HasRestOfStraight)).Select(c => c.Name).ToHashSet();
+const int StrWidth = 10;
+var header = new StringBuilder("  lap   lap time     run-in");
 foreach (var c in map.Corners)
 {
     header.Append(c.DisplayName.PadLeft(Width(c)));
+    if (straightAfter.Contains(c.Name))
+    {
+        header.Append("+str".PadLeft(StrWidth));
+    }
 }
 
 Console.WriteLine(header);
 foreach (var a in session.AllAnalyses)
 {
     var line = new StringBuilder($"  {a.Lap.LapNumber,3}   {Time(a.Lap.LapTime),-9}{(a.IsCleanLap ? ' ' : '!')} ");
+    var runIn = a.Lap.Trace!.Time[Math.Clamp(CornerAnalyzer.PieceStart(map, 0), 0, a.Lap.Trace.Length - 1)];
+    var runInMark = a.OutsideCornersTime is null ? "x" : ReferenceEquals(a, bestRunIn) ? "*" : " ";
+    line.Append($"{runIn:0.000}{runInMark}".PadLeft(8));
     foreach (var c in map.Corners)
     {
         var pass = a.Passes.FirstOrDefault(p => p.Corner.Name == c.Name);
         var isBest = pass is not null && session.BestPasses.TryGetValue(c.Name, out var bc) && ReferenceEquals(bc, pass);
         var mark = isBest ? "*" : pass is { IsClean: false } ? "x" : " ";
         line.Append((pass is null ? "-  " : $"{pass.ScoreTime:0.000}{mark}").PadLeft(Width(c)));
+        if (straightAfter.Contains(c.Name))
+        {
+            var strMark = pass is null ? "" : !pass.RestOfStraightClean ? "x"
+                : bestStraights.TryGetValue(c.Name, out var bs) && pass.RestOfStraightTime == bs ? "*" : " ";
+            line.Append((pass is null ? "-  " : $"{pass.RestOfStraightTime:0.000}{strMark}").PadLeft(StrWidth));
+        }
     }
 
     Console.WriteLine(line);
 }
 
-var flawedPasses = session.AllAnalyses.SelectMany(a => a.Passes).Where(p => !p.IsClean).ToList();
-if (flawedPasses.Count > 0)
+var unclean = session.AllAnalyses.SelectMany(a => a.UncleanPieces().Select(u => (a.Lap.LapNumber, u.Piece, u.Flaws))).ToList();
+if (unclean.Count > 0)
 {
-    Console.WriteLine("  ! = lap not counted; its clean corners still count. Corners not clean:");
-    foreach (var p in flawedPasses)
+    Console.WriteLine("  ! = lap not counted; its clean pieces still count. Pieces not clean:");
+    foreach (var (lapNumber, piece, flaws) in unclean)
     {
-        Console.WriteLine($"    lap {p.LapNumber,3} {p.Corner.DisplayName}: {p.Flaws}");
+        Console.WriteLine($"    lap {lapNumber,3} {piece}: {flaws}");
+    }
+}
+
+// Where the theoretical best beats the best lap, piece by piece, and which lap each better piece came from.
+if (session.BestLap is { } bestLapForGain && session.AllAnalyses.FirstOrDefault(a => ReferenceEquals(a.Lap, bestLapForGain)) is { } bestLapAnalysis)
+{
+    var gains = new List<(string Piece, double Gain, int FromLap)>();
+    if (bestRunIn is not null && bestLapAnalysis.OutsideCornersTime is { } blRun)
+    {
+        gains.Add(("run-in", blRun - bestRunIn.OutsideCornersTime!.Value, bestRunIn.Lap.LapNumber));
+    }
+
+    foreach (var p in bestLapAnalysis.Passes)
+    {
+        if (session.BestPasses.TryGetValue(p.Corner.Name, out var b))
+        {
+            gains.Add((p.Corner.DisplayName, p.ScoreTime - b.ScoreTime, b.LapNumber));
+        }
+
+        if (p.HasRestOfStraight && bestStraights.TryGetValue(p.Corner.Name, out var bs))
+        {
+            var from = allPasses.First(x => x.Corner.Name == p.Corner.Name && x.RestOfStraightClean && x.RestOfStraightTime == bs).LapNumber;
+            gains.Add(($"straight after {p.Corner.DisplayName}", p.RestOfStraightTime - bs, from));
+        }
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Where the theoretical best gains on the best lap (lap {bestLapForGain.LapNumber}), largest first");
+    foreach (var (piece, gain, fromLap) in gains.Where(g => g.Gain > 0.0005).OrderByDescending(g => g.Gain).Take(10))
+    {
+        Console.WriteLine($"  {Short(piece, 34),-34} {gain,6:0.000} s  from lap {fromLap}");
     }
 }
 
@@ -375,8 +424,12 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
                 }
 
                 var kept = a.Passes.Count(p => p.IsClean);
-                Console.WriteLine($"Lap {a.Lap.LapNumber} not counted: {why}. {kept} of {a.Passes.Count} corners still count.");
-                voice?.Say($"Lap not counted, {why}. {kept} of {a.Passes.Count} corners still count.");
+                var where = a.UncleanPieces().Select(u => u.Piece).FirstOrDefault();
+                var said = kept == a.Passes.Count && where is not null
+                    ? $"Lap not counted, {why} on the {where}. All corners still count."
+                    : $"Lap not counted, {why}. {kept} of {a.Passes.Count} corners still count.";
+                Console.WriteLine($"Lap {a.Lap.LapNumber}: {said} Not clean: {string.Join(", ", a.UncleanPieces().Select(u => $"{u.Piece} ({u.Flaws})"))}");
+                voice?.Say(said);
             };
             PostLapCoach.Attach(session, d =>
             {

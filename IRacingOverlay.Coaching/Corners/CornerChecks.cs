@@ -105,23 +105,34 @@ public static class CornerChecks
         return flaws;
     }
 
-    /// <summary>True when nothing on the stretch voids it: no off-track, pit road or incident
-    /// (incidents counted up to <see cref="IncidentDelaySeconds"/> after it).</summary>
-    public static bool StretchIsClean(LapTrace lap, int fromM, int toM)
+    /// <summary>What voids a stretch of the lap: off-track, pit road or an incident (counted up to
+    /// <see cref="IncidentDelaySeconds"/> after it); none when it is clean.</summary>
+    public static CornerPassFlaw StretchFlaws(LapTrace lap, int fromM, int toM)
     {
         var last = lap.Length - 1;
         var from = Math.Clamp(fromM, 0, last);
         var to = Math.Clamp(toM, from, last);
+        var flaws = CornerPassFlaw.None;
         for (var i = from; i <= to; i++)
         {
-            if (lap.OffTrack[i] || lap.PitRoad[i])
+            if (lap.OffTrack[i])
             {
-                return false;
+                flaws |= CornerPassFlaw.OffTrack;
+            }
+
+            if (lap.PitRoad[i])
+            {
+                flaws |= CornerPassFlaw.PitRoad;
             }
         }
 
         var lateEnd = Math.Min(last, to + (int)Math.Ceiling(lap.Speed[to] * IncidentDelaySeconds));
-        return lap.Incidents[lateEnd] <= lap.Incidents[from];
+        if (lap.Incidents[lateEnd] > lap.Incidents[from])
+        {
+            flaws |= CornerPassFlaw.Incident;
+        }
+
+        return flaws;
     }
 
     /// <summary>An off between the approach to <paramref name="corner"/> and its slowest point:
@@ -219,26 +230,39 @@ public static class CornerChecks
     /// </summary>
     public static double? OutsideCornersTime(RecordedLap lap, CornerMap map)
     {
-        if (lap.Trace is not { } t || map.Corners.Count == 0 || lap.Flaws.HasFlag(LapFlaw.StartLap))
+        if (lap.Trace is not { } t || map.Corners.Count == 0 || RunInFlaws(lap, map) != CornerPassFlaw.None)
         {
             return null;
         }
 
-        var first = Math.Clamp(map.Corners[0].StartM, 0, t.Length - 1);
-        var lateEnd = Math.Min(t.Length - 1, first + (int)Math.Ceiling(t.Speed[first] * IncidentDelaySeconds));
-        for (var i = 0; i <= first; i++)
-        {
-            if (t.OffTrack[i] || t.PitRoad[i])
-            {
-                return null;
-            }
-        }
-
-        if (t.Incidents[lateEnd] > 0 || t.OffTrack[t.Length - 1] || t.PitRoad[t.Length - 1])
-        {
-            return null;
-        }
-
+        var first = Math.Clamp(CornerAnalyzer.PieceStart(map, 0), 0, t.Length - 1);
         return t.Time[first] + Math.Max(0, lap.LapTime - t.Time[t.Length - 1]);
+    }
+
+    /// <summary>What voids the run from the line to the first corner; none when it is clean.</summary>
+    public static CornerPassFlaw RunInFlaws(RecordedLap lap, CornerMap map)
+    {
+        if (lap.Trace is not { } t || map.Corners.Count == 0)
+        {
+            return CornerPassFlaw.None;
+        }
+
+        var flaws = StretchFlaws(t, 0, Math.Clamp(CornerAnalyzer.PieceStart(map, 0), 0, t.Length - 1));
+        if (lap.Flaws.HasFlag(LapFlaw.StartLap))
+        {
+            flaws |= CornerPassFlaw.StartLap;
+        }
+
+        if (t.OffTrack[t.Length - 1])
+        {
+            flaws |= CornerPassFlaw.OffTrack;
+        }
+
+        if (t.PitRoad[t.Length - 1])
+        {
+            flaws |= CornerPassFlaw.PitRoad;
+        }
+
+        return flaws;
     }
 }

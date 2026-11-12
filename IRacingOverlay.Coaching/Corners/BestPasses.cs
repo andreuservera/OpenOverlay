@@ -120,7 +120,9 @@ public static class BestPasses
         var best = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var p in passes)
         {
-            if (!p.RestOfStraightClean || p.Flaws.HasFlag(CornerPassFlaw.Shortcut))
+            // After a cut the car is faster onto the straight; before an off into the next corner
+            // the straight was likely gained by braking too late.
+            if (!p.RestOfStraightClean || (p.Flaws & (CornerPassFlaw.Shortcut | CornerPassFlaw.OffTrackNext)) != 0)
             {
                 continue;
             }

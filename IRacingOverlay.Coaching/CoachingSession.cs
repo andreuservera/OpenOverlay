@@ -16,8 +16,40 @@ public sealed record LapAnalysis(RecordedLap Lap, IReadOnlyList<CornerPass> Pass
     /// <summary>Time from the line to the first corner when that stretch was clean; null otherwise.</summary>
     public double? OutsideCornersTime { get; init; }
 
+    /// <summary>What voids the run from the line to the first corner; none when it was clean.</summary>
+    public CornerPassFlaw RunInFlaws { get; init; }
+
     /// <summary>True when the whole lap was clean, so it counts as a lap (best lap, debrief).</summary>
     public bool IsCleanLap => Lap.IsClean;
+
+    /// <summary>
+    /// Every piece of the lap that can't be used, in lap order, with why: the run to the first
+    /// corner, a corner, or the rest of a long straight after a corner. This is where an off or
+    /// incident that only touched a straight shows up.
+    /// </summary>
+    public IReadOnlyList<(string Piece, CornerPassFlaw Flaws)> UncleanPieces()
+    {
+        var pieces = new List<(string, CornerPassFlaw)>();
+        if (RunInFlaws != CornerPassFlaw.None && Passes.Count > 0)
+        {
+            pieces.Add(($"run to {Passes[0].Corner.DisplayName}", RunInFlaws));
+        }
+
+        foreach (var p in Passes)
+        {
+            if (!p.IsClean)
+            {
+                pieces.Add((p.Corner.DisplayName, p.Flaws));
+            }
+
+            if (!p.RestOfStraightClean)
+            {
+                pieces.Add(($"straight after {p.Corner.DisplayName}", p.RestOfStraightFlaws));
+            }
+        }
+
+        return pieces;
+    }
 }
 
 /// <summary>Where the current corner map came from.</summary>
@@ -287,6 +319,10 @@ public sealed class CoachingSession
             }
         }
 
-        _analyses.Add(new LapAnalysis(lap, passes, loss) { OutsideCornersTime = CornerChecks.OutsideCornersTime(lap, CornerMap!) });
+        _analyses.Add(new LapAnalysis(lap, passes, loss)
+        {
+            OutsideCornersTime = CornerChecks.OutsideCornersTime(lap, CornerMap!),
+            RunInFlaws = CornerChecks.RunInFlaws(lap, CornerMap!),
+        });
     }
 }

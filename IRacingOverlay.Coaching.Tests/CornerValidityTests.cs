@@ -125,7 +125,7 @@ public class CornerValidityTests
     }
 
     [Fact]
-    public void CornersAreScoredToTheNextCornerOrFourHundredMetresPastTheirEnd()
+    public void CornerPiecesStartBeforeTheBrakingAndTileTheLap()
     {
         var normal = Track.SpeedProfile();
         var session = Run(Track.Drive([normal, normal]));
@@ -135,13 +135,15 @@ public class CornerValidityTests
         for (var i = 0; i < a.Passes.Count; i++)
         {
             var p = a.Passes[i];
-            var straightEnd = i + 1 < map.Corners.Count ? map.Corners[i + 1].StartM : a.Lap.Trace!.Length - 1;
+            var straightEnd = i + 1 < map.Corners.Count ? CornerAnalyzer.PieceStart(map, i + 1) : a.Lap.Trace!.Length - 1;
+            Assert.Equal(CornerAnalyzer.PieceStart(map, i), p.ScoreStartM);
+            Assert.InRange(p.ScoreStartM, p.Corner.StartM - CornerAnalyzer.LeadInMetres, p.Corner.StartM);
             Assert.Equal(Math.Min(straightEnd, p.Corner.EndM + CornerAnalyzer.MaxStraightMetres), p.ScoreEndM);
             Assert.True(p.RestOfStraightClean);
             Assert.True(p.ScoreTime > p.SegmentTime);
         }
 
-        // Corner scores plus the run to the first corner make up the lap.
+        // The run to the first corner, the corner pieces and the rest of each straight make up the lap.
         Assert.Equal(a.Lap.LapTime, a.OutsideCornersTime!.Value + a.Passes.Sum(p => p.ScoreTime + p.RestOfStraightTime), 0.01);
         Assert.Equal(a.Lap.LapTime, session.TheoreticalBestLapTime!.Value, 0.01);
     }
@@ -281,5 +283,10 @@ public class CornerValidityTests
         Assert.True(p.IsClean);
         Assert.False(p.RestOfStraightClean);
         Assert.True(p.RestOfStraightTime > 0);
+
+        var analysis = new LapAnalysis(session.Analyses[0].Lap, CornerAnalyzer.Analyze(trace, map, 1), new Dictionary<string, double>());
+        var (piece, flaws) = Assert.Single(analysis.UncleanPieces());
+        Assert.Equal($"straight after {t3.DisplayName}", piece);
+        Assert.Equal(CornerPassFlaw.OffTrack, flaws);
     }
 }
