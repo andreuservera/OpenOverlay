@@ -138,6 +138,8 @@ public static class SessionReportBuilder
                 Kind = x.Finding.Kind,
                 Laps = x.Finding.Laps,
                 OutOf = x.Finding.OutOf,
+                TypicalAmount = x.Finding.TypicalAmount,
+                IsRamp = x.Finding.IsRamp,
                 TypicalLoss = x.Finding.TypicalLoss,
                 TotalLoss = x.Finding.TotalLoss,
                 Problem = SessionSummaryText.Problem(x.Finding),
@@ -225,6 +227,7 @@ public static class SessionReportBuilder
                     Laps = g.Count(),
                     OutOf = compared.Count,
                     TypicalAmount = typical.Amount,
+                    IsRamp = ramp,
                     TypicalLoss = Median(g.Select(c => c.Loss).ToList()),
                     TotalLoss = g.Sum(c => c.Loss),
                     Advice = DebriefText.Advice(typical),
@@ -248,6 +251,7 @@ public static class SessionReportBuilder
             Id = corner.Name,
             Name = corner.DisplayName,
             Kind = DebriefText.Describe(best),
+            Direction = best?.Direction ?? 0,
             StartM = corner.StartM,
             ApexM = corner.ApexM,
             EndM = corner.EndM,
@@ -283,6 +287,7 @@ public static class SessionReportBuilder
         ExitKmh = Math.Round(p.ExitSpeedPlus100 * MsToKmh, 1),
         Gear = p.GearAtApex,
         Findings = findings.Select(DebriefText.Advice).ToList(),
+        Issues = findings.Select(f => new PassIssue(f.Kind.ToString(), Math.Round(f.Amount, 1), f.IsRamp)).ToList(),
     };
 
     /// <summary>The pass's piece of the lap (from a little before braking to the end of its

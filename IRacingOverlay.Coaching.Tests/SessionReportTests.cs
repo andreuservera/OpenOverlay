@@ -57,6 +57,9 @@ public class SessionReportTests
         Assert.True(hairpin.Best!.IsBest);
         Assert.NotNull(hairpin.Typical);
         Assert.NotEmpty(hairpin.Typical!.Findings);
+        // Saved as data too, so the app can word them in its own language.
+        Assert.Equal(hairpin.Typical.Findings.Count, hairpin.Typical.Issues.Count);
+        Assert.NotEqual(0, hairpin.Direction);
         Assert.NotNull(hairpin.BestTrace);
         Assert.NotNull(hairpin.TypicalTrace);
         Assert.Equal(hairpin.BestTrace!.SpeedKmh.Length, hairpin.BestTrace.Brake.Length);
@@ -68,6 +71,7 @@ public class SessionReportTests
         Assert.Equal(5, lead.Laps);
         Assert.Equal(6, lead.OutOf);
         Assert.Contains("on 5 of 6 laps", lead.Problem);
+        Assert.True(lead.TypicalAmount > 0);
         Assert.DoesNotContain(report.Mistakes, m => m.CornerId == "T2");
 
         var headline = SessionSummaryText.Headline(report);

@@ -98,6 +98,13 @@ public partial class LocalizationTests
             .. WidgetPresets.All.SelectMany(preset => new[] { $"preset.{preset.Id}.name", $"preset.{preset.Id}.description" }),
             .. Enum.GetValues<WidgetCategory>().Select(category => $"nav.section.{WidgetCatalog.HeadingOf(category)}"),
             "nav.section.SETTINGS",
+            // The Coaching page words findings, flaws and corner kinds from their names.
+            .. Enum.GetValues<IRacingOverlay.Coaching.Advice.FindingKind>().SelectMany(kind => new[] { $"coaching.advice.{kind}", $"coaching.problem.{kind}" }),
+            "coaching.advice.InitialBrakeTooSoft.ramp",
+            "coaching.problem.InitialBrakeTooSoft.ramp",
+            .. Enum.GetValues<IRacingOverlay.Coaching.Laps.LapFlaw>().Where(flaw => flaw != 0).Select(flaw => $"coaching.flaw.{flaw}"),
+            .. Enum.GetValues<IRacingOverlay.Coaching.Corners.CornerPassFlaw>().Where(flaw => flaw != 0).Select(flaw => $"coaching.flaw.{flaw}"),
+            .. new[] { "hairpin", "hairpinLeft", "hairpinRight", "slow", "fast", "left", "right", "slowLeft", "slowRight", "fastLeft", "fastRight" }.Select(kind => $"coaching.kind.{kind}"),
         ];
 
         Assert.All(keys, key => Assert.True(English.ContainsKey(key), $"en.json lacks {key}"));
@@ -138,7 +145,10 @@ public partial class LocalizationTests
             var app = Path.Combine(directory.FullName, "IRacingOverlay.App");
             if (Directory.Exists(Path.Combine(app, "Localization")))
             {
-                return Directory.EnumerateFiles(app, "*.*", SearchOption.AllDirectories)
+                // The Coaching page's texts are in the app's language files too.
+                var coachingUi = Path.Combine(directory.FullName, "IRacingOverlay.Coaching.Ui");
+                return new[] { app, coachingUi }.Where(Directory.Exists)
+                    .SelectMany(folder => Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories))
                     .Where(file => (file.EndsWith(".cs", StringComparison.Ordinal) || file.EndsWith(".xaml", StringComparison.Ordinal))
                                    && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                                    && !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal));

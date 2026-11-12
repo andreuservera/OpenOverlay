@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="clr-namespace:IRacingOverlay.Coaching.Ui"
+             xmlns:loc="clr-namespace:IRacingOverlay.Coaching.Ui"
              Background="{DynamicResource Cp.Window}">
     <!--
       The Coaching page: coached sessions on the left, the one picked on the right, read top to
@@ -104,14 +105,14 @@
         <Border Grid.Column="0" Background="{DynamicResource Cp.Rail}" BorderBrush="{DynamicResource Cp.Border}" BorderThickness="0,0,1,0">
             <DockPanel Margin="16,18,12,12">
                 <StackPanel DockPanel.Dock="Top">
-                    <TextBlock Text="Coaching" Style="{DynamicResource Cp.Display}"/>
+                    <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}"/>
                     <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"
-                               Text="Sessions you drove with the coach on, newest first. Pick one for its post-session analysis."/>
+                               Text="{loc:T coaching.sessions.hint}"/>
                     <WrapPanel Margin="0,12,0,8">
-                        <Button Content="Analyze .ibt file…" Style="{DynamicResource Cp.PrimaryButton}" Command="{Binding ImportIbtCommand}" Margin="0,0,8,6"
-                                ToolTip="Run the coach over an iRacing telemetry file and add it to the list."/>
-                        <Button Content="Refresh" Style="{DynamicResource Cp.Button}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"/>
-                        <Button Content="Folder" Style="{DynamicResource Cp.Button}" Command="{Binding OpenFolderCommand}" Margin="0,0,0,6"
+                        <Button Content="{loc:T coaching.ibt.analyze}" Style="{DynamicResource Cp.PrimaryButton}" Command="{Binding ImportIbtCommand}" Margin="0,0,8,6"
+                                ToolTip="{loc:T coaching.ibt.analyze.tip}"/>
+                        <Button Content="{loc:T coaching.refresh}" Style="{DynamicResource Cp.Button}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"/>
+                        <Button Content="{loc:T coaching.folder}" Style="{DynamicResource Cp.Button}" Command="{Binding OpenFolderCommand}" Margin="0,0,0,6"
                                 ToolTip="{Binding FolderPath}"/>
                     </WrapPanel>
                     <TextBlock Text="{Binding Status}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.Warning}"
@@ -119,9 +120,13 @@
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}" Margin="0,8,0,0">
-                    <TextBlock Style="{DynamicResource Cp.Body}" Foreground="{DynamicResource Cp.Text}" Text="No coached sessions yet"/>
-                    <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,6,0,0"
-                               Text="Drive with the live coach on (coaching-analyze --live) and every lap is saved here, or analyze an .ibt telemetry file you already have."/>
+                    <TextBlock Style="{DynamicResource Cp.Body}" Foreground="{DynamicResource Cp.Text}" Text="{loc:T coaching.empty.title}"/>
+                    <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,6,0,0" Text="{loc:T coaching.empty.body}"/>
+                    <!-- A command to type: monospaced and without ligatures, so its double hyphens never turn into a dash. -->
+                    <Border Background="{DynamicResource Cp.Field}" CornerRadius="6" Padding="10,6" Margin="0,8,0,0" HorizontalAlignment="Left">
+                        <TextBlock Text="coaching-analyze --live --speak" FontFamily="Consolas" FontSize="13" Foreground="{DynamicResource Cp.Text}"
+                                   Typography.StandardLigatures="False" Typography.ContextualAlternates="False" Typography.DiscretionaryLigatures="False"/>
+                    </Border>
                 </StackPanel>
 
                 <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Sessions}" SelectedItem="{Binding Selected}"
@@ -164,7 +169,7 @@
                         <TextBlock Text="{Binding Title}" Style="{DynamicResource Cp.Display}" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Text="{Binding Subtitle}" Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"/>
                     </StackPanel>
-                    <Button Grid.Column="1" Content="Delete session" Style="{DynamicResource Cp.Button}" VerticalAlignment="Top"
+                    <Button Grid.Column="1" Content="{loc:T coaching.delete.title}" Style="{DynamicResource Cp.Button}" VerticalAlignment="Top"
                             Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                 </Grid>
 
@@ -192,7 +197,7 @@
                 <!-- Summary -->
                 <Border Style="{StaticResource Section}">
                     <StackPanel>
-                        <TextBlock Text="SUMMARY" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{loc:T coaching.summary.title}" Style="{StaticResource Caption}"/>
                         <ItemsControl ItemsSource="{Binding Headline}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -213,7 +218,7 @@
                 <!-- Recurring mistakes -->
                 <Border Style="{StaticResource Section}">
                     <StackPanel>
-                        <TextBlock Text="WHAT TO WORK ON · MISTAKES YOU REPEATED" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{loc:T coaching.mistakes.title}" Style="{StaticResource Caption}"/>
                         <TextBlock Text="{Binding NoMistakesText}" FontSize="13" Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap"
                                    Visibility="{Binding HasNoMistakes, Converter={StaticResource BoolToVis}}"/>
                         <ItemsControl ItemsSource="{Binding Mistakes}" Visibility="{Binding HasMistakes, Converter={StaticResource BoolToVis}}">
@@ -248,7 +253,7 @@
                 <!-- Corners -->
                 <Border Style="{StaticResource Section}" Visibility="{Binding HasCorners, Converter={StaticResource BoolToVis}}">
                     <StackPanel Grid.IsSharedSizeScope="True">
-                        <TextBlock Text="CORNERS · PICK ONE FOR THE DETAIL" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{loc:T coaching.corners.title}" Style="{StaticResource Caption}"/>
                         <Grid Margin="10,0,10,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" MinWidth="150"/>
@@ -258,14 +263,14 @@
                                 <ColumnDefinition SharedSizeGroup="cBestLap" Width="Auto"/>
                                 <ColumnDefinition Width="2*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Corner" Style="{StaticResource HeadCell}"/>
-                            <TextBlock Grid.Column="1" Text="Best (s)" Style="{StaticResource HeadNumCell}" MinWidth="80"/>
-                            <TextBlock Grid.Column="2" Text="Normal lap loses" Style="{StaticResource HeadNumCell}" MinWidth="64"
-                                       ToolTip="Median time lost here against your best pass, over the clean laps."/>
+                            <TextBlock Grid.Column="0" Text="{loc:T coaching.col.corner}" Style="{StaticResource HeadCell}"/>
+                            <TextBlock Grid.Column="1" Text="{loc:T coaching.col.best}" Style="{StaticResource HeadNumCell}" MinWidth="80"/>
+                            <TextBlock Grid.Column="2" Text="{loc:T coaching.col.normalLoss}" Style="{StaticResource HeadNumCell}" MinWidth="64"
+                                       ToolTip="{loc:T coaching.col.normalLoss.tip}"/>
                             <TextBlock Grid.Column="3" Text="" Style="{StaticResource HeadCell}" MinWidth="96"/>
-                            <TextBlock Grid.Column="4" Text="Best lap loses" Style="{StaticResource HeadNumCell}" MinWidth="64"
-                                       ToolTip="What your best lap lost here against your best pass: where the theoretical best gains."/>
-                            <TextBlock Grid.Column="5" Text="Most common issue" Style="{StaticResource HeadCell}"/>
+                            <TextBlock Grid.Column="4" Text="{loc:T coaching.col.bestLapLoss}" Style="{StaticResource HeadNumCell}" MinWidth="64"
+                                       ToolTip="{loc:T coaching.col.bestLapLoss.tip}"/>
+                            <TextBlock Grid.Column="5" Text="{loc:T coaching.col.commonIssue}" Style="{StaticResource HeadCell}"/>
                         </Grid>
                         <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Corners}" SelectedItem="{Binding SelectedCorner}"
                                  ScrollViewer.VerticalScrollBarVisibility="Disabled" PreviewMouseWheel="List_PreviewMouseWheel">
@@ -317,9 +322,9 @@
                                     <TextBlock Text="{Binding TypicalLegend}" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" Margin="0,0,16,0"/>
                                 </StackPanel>
                                 <Border Width="18" Height="2" Background="#3DD68C" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock Text="Throttle" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" Margin="0,0,16,0"/>
+                                <TextBlock Text="{loc:T coaching.chart.throttle}" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}" Margin="0,0,16,0"/>
                                 <Border Width="18" Height="2" Background="#F26D6D" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <TextBlock Text="Brake" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}"/>
+                                <TextBlock Text="{loc:T coaching.chart.brake}" FontSize="12" Foreground="{DynamicResource Cp.TextSoft}"/>
                             </WrapPanel>
                             <ui:CornerTraceChart Best="{Binding BestTrace}" Typical="{Binding TypicalTrace}" ApexM="{Binding Report.ApexM}" Height="260" Margin="0,0,0,12"/>
                         </StackPanel>
@@ -340,9 +345,9 @@
                                         <ColumnDefinition Width="70"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="" Style="{StaticResource HeadCell}"/>
-                                    <TextBlock Grid.Column="1" Text="Best" Style="{StaticResource HeadNumCell}" Foreground="#FFD24D"/>
-                                    <TextBlock Grid.Column="2" Text="Typical" Style="{StaticResource HeadNumCell}" Foreground="#6CB4FF"/>
-                                    <TextBlock Grid.Column="3" Text="Diff" Style="{StaticResource HeadNumCell}" Margin="0"/>
+                                    <TextBlock Grid.Column="1" Text="{loc:T coaching.compare.best}" Style="{StaticResource HeadNumCell}" Foreground="#FFD24D"/>
+                                    <TextBlock Grid.Column="2" Text="{loc:T coaching.compare.typical}" Style="{StaticResource HeadNumCell}" Foreground="#6CB4FF"/>
+                                    <TextBlock Grid.Column="3" Text="{loc:T coaching.compare.diff}" Style="{StaticResource HeadNumCell}" Margin="0"/>
                                 </Grid>
                                 <ItemsControl ItemsSource="{Binding Compare}">
                                     <ItemsControl.ItemTemplate>
@@ -364,8 +369,8 @@
                                 </ItemsControl>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="WHAT KEEPS GOING WRONG HERE" Style="{StaticResource Caption}"/>
-                                <TextBlock Text="Nothing stood out: the passes that lost time didn't share one cause." FontSize="13"
+                                <TextBlock Text="{loc:T coaching.corner.wrongHere}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{loc:T coaching.corner.nothing}" FontSize="13"
                                            Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
@@ -391,7 +396,7 @@
                         </Grid>
 
                         <!-- Every pass -->
-                        <TextBlock Text="EVERY PASS" Style="{StaticResource Caption}" Margin="0,14,0,6"/>
+                        <TextBlock Text="{loc:T coaching.passes.title}" Style="{StaticResource Caption}" Margin="0,14,0,6"/>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="44"/>
@@ -403,14 +408,14 @@
                                 <ColumnDefinition Width="74"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Lap" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="1" Text="Time (s)" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="2" Text="Loss (s)" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="3" Text="Brake (m)" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="4" Text="Min km/h" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="5" Text="Throttle (m)" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="6" Text="Exit km/h" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="7" Text="Against the best pass" Style="{StaticResource HeadCell}"/>
+                            <TextBlock Text="{loc:T coaching.col.lap}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="1" Text="{loc:T coaching.col.timeS}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="2" Text="{loc:T coaching.col.lossS}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="3" Text="{loc:T coaching.col.brakeM}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="4" Text="{loc:T coaching.col.minKmh}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="5" Text="{loc:T coaching.col.throttleM}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="6" Text="{loc:T coaching.col.exitKmh}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="7" Text="{loc:T coaching.col.vsBest}" Style="{StaticResource HeadCell}"/>
                         </Grid>
                         <ItemsControl ItemsSource="{Binding Passes}">
                             <ItemsControl.ItemTemplate>
@@ -454,7 +459,7 @@
                 <!-- Laps -->
                 <Border Style="{StaticResource Section}">
                     <StackPanel>
-                        <TextBlock Text="LAPS" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{loc:T coaching.laps.title}" Style="{StaticResource Caption}"/>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="44"/>
@@ -463,12 +468,12 @@
                                 <ColumnDefinition Width="110"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Lap" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="1" Text="Time" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="2" Text="To best" Style="{StaticResource HeadNumCell}"/>
-                            <TextBlock Grid.Column="3" Text="Lost in corners" Style="{StaticResource HeadNumCell}"
-                                       ToolTip="Time lost in the lap's clean corners against the best pass through each."/>
-                            <TextBlock Grid.Column="4" Text="Status" Style="{StaticResource HeadCell}"/>
+                            <TextBlock Text="{loc:T coaching.col.lap}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="1" Text="{loc:T coaching.col.time}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="2" Text="{loc:T coaching.col.toBest}" Style="{StaticResource HeadNumCell}"/>
+                            <TextBlock Grid.Column="3" Text="{loc:T coaching.col.cornerLoss}" Style="{StaticResource HeadNumCell}"
+                                       ToolTip="{loc:T coaching.col.cornerLoss.tip}"/>
+                            <TextBlock Grid.Column="4" Text="{loc:T coaching.col.status}" Style="{StaticResource HeadCell}"/>
                         </Grid>
                         <ItemsControl ItemsSource="{Binding Laps}">
                             <ItemsControl.ItemTemplate>
@@ -516,9 +521,9 @@
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
-            <TextBlock Text="Post-session analysis" Style="{DynamicResource Cp.Title}" HorizontalAlignment="Center"/>
+            <TextBlock Text="{loc:T coaching.placeholder.title}" Style="{DynamicResource Cp.Title}" HorizontalAlignment="Center"/>
             <TextBlock Style="{DynamicResource Cp.Hint}" TextAlignment="Center" Margin="0,6,0,0"
-                       Text="After a session with the coach on, this shows your best lap, your theoretical best, the mistakes you kept making and every corner in detail, so you can read it after driving instead of while you drive."/>
+                       Text="{loc:T coaching.placeholder.body}"/>
         </StackPanel>
     </Grid>
 </UserControl>
