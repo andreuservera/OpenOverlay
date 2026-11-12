@@ -31,6 +31,10 @@ public sealed record CornerDetectionOptions
     /// the corner before it.</summary>
     public int ExitGraceMetres { get; init; } = 60;
 
+    /// <summary>When the driver never got back to full throttle before a corner, its window starts
+    /// at its braking, at most this far back over the lift before it, metres.</summary>
+    public int MaxLiftBeforeBrakeMetres { get; init; } = 100;
+
     /// <summary>Brake above this is braking.</summary>
     public float BrakeOn { get; init; } = 0.05f;
 
@@ -142,6 +146,8 @@ public static class CornerDetector
             {
                 continue; // speed fell with the driver flat out: a hill, not a corner
             }
+
+            start = Math.Max(start, EntryStart(lap, start, apex, o));
 
             // Out of the corner = back on full throttle with the track no longer bending (a chicane's
             // second half is still the corner), but never past the next speed peak.
@@ -278,6 +284,40 @@ public static class CornerDetector
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Where the entry to this corner really begins when the driver never got back to full throttle
+    /// after the previous bend (130R into the Casio chicane): the braking for this corner, plus the
+    /// lift just before it, rather than everything since the last flat-out point.
+    /// </summary>
+    private static int EntryStart(LapTrace lap, int from, int apex, CornerDetectionOptions o)
+    {
+        // The braking run that leads into the apex.
+        var b = apex;
+        while (b > from && lap.Brake[b] <= o.BrakeOn)
+        {
+            b--;
+        }
+
+        if (lap.Brake[b] <= o.BrakeOn)
+        {
+            return from; // lifted only: keep the whole lift
+        }
+
+        while (b > from && lap.Brake[b - 1] > o.BrakeOn)
+        {
+            b--;
+        }
+
+        // Then back over the lift before it, while the throttle was coming off (going forward).
+        var limit = Math.Max(from, b - o.MaxLiftBeforeBrakeMetres);
+        while (b > limit && lap.Throttle[b - 1] >= lap.Throttle[b] - 0.02f && lap.Brake[b - 1] <= o.BrakeOn)
+        {
+            b--;
+        }
+
+        return b;
     }
 
     private static bool IsFlatOut(LapTrace lap, int i, CornerDetectionOptions o) =>

@@ -35,6 +35,9 @@ public sealed record CoachingOptions
     /// <summary>Where corner maps are saved and loaded; null to neither load nor save.</summary>
     public CornerMapStore? Store { get; init; }
 
+    /// <summary>False to ignore the saved map and agree a new one (it is still saved over).</summary>
+    public bool LoadSavedMap { get; init; } = true;
+
     /// <summary>Clean laps the map is agreed from before it is fixed and saved.</summary>
     public int CornerMapLaps { get; init; } = 5;
 }
@@ -143,7 +146,7 @@ public sealed class CoachingSession
 
         if (CornerMap is null)
         {
-            if (_options.Store is { } store && _options.TrackKey is { } key && store.Load(key, lap.Trace.Length) is { } saved)
+            if (_options.LoadSavedMap && _options.Store is { } store && _options.TrackKey is { } key && store.Load(key, lap.Trace.Length) is { } saved)
             {
                 SetMap(saved, Coaching.CornerMapOrigin.Saved);
             }

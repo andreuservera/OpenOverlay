@@ -78,8 +78,8 @@ var trackKey = weekend?.TrackName;
 var session = new CoachingSession(new CoachingOptions
 {
     TrackKey = trackKey,
-    // --relearn: don't load the saved map (it is still saved over unless --no-save).
-    Store = relearn || trackKey is null ? null : store,
+    Store = trackKey is null ? null : store,
+    LoadSavedMap = !relearn, // --relearn: agree a new map (still saved over unless --no-save)
     CornerMapLaps = int.MaxValue, // agree the map below, from the fastest laps of the whole file
 });
 foreach (var frame in ibt.Frames())
@@ -92,11 +92,8 @@ session.Flush();
 if (session.CornerMapOrigin != CornerMapOrigin.Saved && session.Analyses.Count > 0)
 {
     var fastest = session.Analyses.Select(a => a.Lap).OrderBy(l => l.LapTime).Take(5).ToList();
-    session.RebuildCornerMap(fastest, save: false);
-    if (save && trackKey is not null)
-    {
-        store.Save(trackKey, session.CornerMap!);
-    }
+    // Saving through the session also picks up names already typed into the saved file.
+    session.RebuildCornerMap(fastest, save: save);
 }
 
 Console.WriteLine("Laps (ours vs iRacing's LapLastLapTime)");
@@ -151,7 +148,7 @@ Console.WriteLine("Time per corner on each clean lap (s); * = best pass");
 var header = new StringBuilder("  lap   lap time   ");
 foreach (var c in map.Corners)
 {
-    header.Append($"{Short(c.DisplayName, 7),8}");
+    header.Append(c.DisplayName.PadLeft(Width(c)));
 }
 
 Console.WriteLine(header);
@@ -162,7 +159,7 @@ foreach (var a in session.Analyses)
     {
         var pass = a.Passes.FirstOrDefault(p => p.Corner.Name == c.Name);
         var isBest = pass is not null && ReferenceEquals(session.BestPasses[c.Name], pass);
-        line.Append(pass is null ? $"{"-",8}" : $"{pass.SegmentTime,7:0.000}{(isBest ? "*" : " ")}");
+        line.Append((pass is null ? "-  " : $"{pass.SegmentTime:0.000}{(isBest ? "*" : " ")}").PadLeft(Width(c)));
     }
 
     Console.WriteLine(line);
@@ -237,6 +234,8 @@ static void DumpCrossings(IbtFile ibt)
 static string Time(double seconds) => seconds <= 0 ? "-" : $"{(int)(seconds / 60)}:{seconds % 60:00.000}";
 
 static double Kmh(float metresPerSecond) => metresPerSecond * 3.6;
+
+static int Width(Corner c) => Math.Max(8, c.DisplayName.Length + 2);
 
 static string Short(string s, int max) => s.Length <= max ? s : s[..max];
 
