@@ -18,11 +18,11 @@ public static class DebriefText
         FindingKind.BrakedTooLate => $"brake {M(f.Amount)} earlier, you overshot it",
         FindingKind.InitialBrakeTooSoft when f.IsRamp => "hit the brake harder at first, it took too long to build",
         FindingKind.InitialBrakeTooSoft => $"brake harder at first, {Pct(f.Amount)} less pressure than your best",
-        FindingKind.InitialBrakeTooHard => $"less brake pressure, {Pct(f.Amount)} more than your best",
+        FindingKind.InitialBrakeTooHard => $"too much brake, {Pct(f.Amount)} more pressure than your best",
         FindingKind.TooLittleTrailBrake => $"carry the brake {M(f.Amount)} further into the turn",
         FindingKind.LowMinimumSpeed => $"carry {Kmh(f.Amount)} more through the apex",
         FindingKind.LateThrottle => $"back on the throttle {M(f.Amount)} earlier",
-        FindingKind.SlowExit => $"better exit, {Kmh(f.Amount)} slower onto the straight",
+        FindingKind.SlowExit => $"exit {Kmh(f.Amount)} slower than your best, get on the power cleaner",
         _ => f.Kind.ToString(),
     };
 
@@ -36,7 +36,7 @@ public static class DebriefText
                 ? "no single cause; compare the traces"
                 : string.Join("; ", c.Findings.Select(Advice));
             var habit = c.RepeatCount > 0 ? $" (same as {c.RepeatCount} recent lap{(c.RepeatCount == 1 ? "" : "s")})" : "";
-            lines.Add($"  {c.Corner.DisplayName}: -{c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.");
+            lines.Add($"  {c.Corner.DisplayName}: lost {c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.");
         }
 
         return lines;
@@ -53,8 +53,8 @@ public static class DebriefText
         foreach (var c in d.Corners.Where(c => c.Main is not null).Take(maxCorners))
         {
             var fix = Advice(c.Main!);
-            var habit = c.RepeatCount >= 2 ? " Again." : "";
-            parts.Add($"{SpokenCorner(c.Corner.DisplayName)}, {Tenths(c.LossSeconds)}: {fix}.{habit}");
+            var again = c.RepeatCount >= 2 ? " again" : "";
+            parts.Add($"{SpokenCorner(c.Corner.DisplayName)}{again}, {Tenths(c.LossSeconds)}: {fix}.");
         }
 
         return string.Join(" ", parts);

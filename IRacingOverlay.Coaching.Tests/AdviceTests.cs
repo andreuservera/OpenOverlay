@@ -99,7 +99,7 @@ public class AdviceTests
         var best = Pass(T1, 5.0);
         var f = Assert.Single(CornerDiagnoser.Diagnose(Pass(T1, 5.1) with { ExitSpeedPlus100 = 38 }, best));
         Assert.Equal(FindingKind.SlowExit, f.Kind);
-        Assert.Equal("better exit, 7 km/h slower onto the straight", DebriefText.Advice(f));
+        Assert.Equal("exit 7 km/h slower than your best, get on the power cleaner", DebriefText.Advice(f));
     }
 
     [Fact]
@@ -134,11 +134,27 @@ public class AdviceTests
         }
 
         Assert.Equal(2, d!.Corners[0].RepeatCount);
-        Assert.EndsWith("Again.", DebriefText.Spoken(d));
+        Assert.Contains("Turn 1 again, 2 tenths: brake 20 metres later.", DebriefText.Spoken(d));
 
         coach.Reset();
         d = coach.Debrief(Analysis(4, 60.2, Pass(T1, 5.2, 4) with { BrakePointM = 100 }), bests, 60.0);
         Assert.Equal(0, d.Corners[0].RepeatCount);
+    }
+
+    [Fact]
+    public void ACornerWithNothingToFixOnlyTakesASlotLeftOver()
+    {
+        var corners = Enumerable.Range(1, 4).Select(i => new Corner($"T{i}", i * 1000, i * 1000 + 100, i * 1000 + 200)).ToList();
+        var bests = corners.ToDictionary(c => c.Name, c => Pass(c, 5.0));
+        var lap = Analysis(2, 61.0,
+            Pass(corners[0], 5.50, 2),                                              // biggest loss, no cause found
+            Pass(corners[1], 5.30, 2) with { BrakePointM = corners[1].StartM },     // braked 20 m early
+            Pass(corners[2], 5.20, 2) with { ExitSpeedPlus100 = 37 },
+            Pass(corners[3], 5.10, 2) with { ThrottlePickupM = corners[3].StartM + 190 });
+
+        var d = new PostLapCoach().Debrief(lap, bests, 60.0);
+
+        Assert.Equal(["T2", "T3", "T4"], d.Corners.Select(c => c.Corner.Name));
     }
 
     [Theory]

@@ -15,7 +15,8 @@ public sealed record CornerAdvice(Corner Corner, double LossSeconds, IReadOnlyLi
 
 /// <summary>What the coach says after a clean lap.</summary>
 /// <param name="DeltaToBestSeconds">Lap time minus the session's best lap (0 on a new best).</param>
-/// <param name="Corners">The corners that cost the most time, worst first.</param>
+/// <param name="Corners">The corners that cost the most time, worst first (those with a finding
+/// are picked first).</param>
 public sealed record LapDebrief(
     int LapNumber,
     double LapTime,
@@ -102,7 +103,14 @@ public sealed class PostLapCoach
             }
         }
 
-        var worst = advice.OrderByDescending(a => a.LossSeconds).Take(_options.MaxCorners).ToList();
+        // Corners with something to fix come first; one where the time went somewhere the
+        // measurements don't show only fills a slot that is left over.
+        var worst = advice
+            .OrderByDescending(a => a.Findings.Count > 0)
+            .ThenByDescending(a => a.LossSeconds)
+            .Take(_options.MaxCorners)
+            .OrderByDescending(a => a.LossSeconds)
+            .ToList();
         var delta = Math.Max(0, lap.Lap.LapTime - bestLapTime);
         return new LapDebrief(lap.Lap.LapNumber, lap.Lap.LapTime, delta, delta <= 0, worst);
     }
