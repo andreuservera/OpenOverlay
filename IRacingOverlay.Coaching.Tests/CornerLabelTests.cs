@@ -38,6 +38,20 @@ public sealed class CornerLabelTests : IDisposable
         Assert.Equal(6776, corner.EndM);
     }
 
+    [Fact]
+    public void AMapFromAnOlderDetectorIsRelearnedButKeepsItsNames()
+    {
+        var store = new CornerMapStore(_dir);
+        store.Save("spa", new CornerMap(7000, [new Corner("T1", 100, 200, 300) { Label = "La Source" }]));
+        var path = store.PathFor("spa");
+        File.WriteAllText(path, File.ReadAllText(path).Replace($"\"detectorVersion\": {CornerMapStore.DetectorVersion}", "\"detectorVersion\": 1"));
+
+        Assert.Null(store.Load("spa"));
+
+        store.Save("spa", new CornerMap(7000, [new Corner("T1", 90, 210, 320)]));
+        Assert.Equal("La Source", store.Load("spa")!.Corners[0].Label);
+    }
+
     private static List<RecordedLap> CleanLaps(TrackSimulator track, int count, IReadOnlyDictionary<int, double>? cornerSpeed = null)
     {
         var profile = track.SpeedProfile(cornerSpeed);
