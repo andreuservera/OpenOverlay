@@ -247,7 +247,8 @@ public static class SessionReportBuilder
         {
             Id = corner.Name,
             Name = corner.DisplayName,
-            Kind = DebriefText.Describe(best),
+            // "slow right · slow", "fast left · lift": how it looks and what decides its time.
+            Kind = best is null ? null : string.Join(" · ", new[] { DebriefText.Describe(best), CornerTypes.Label(CornerTypes.Classify(best)) }.Where(k => k is not null)),
             StartM = corner.StartM,
             ApexM = corner.ApexM,
             EndM = corner.EndM,
