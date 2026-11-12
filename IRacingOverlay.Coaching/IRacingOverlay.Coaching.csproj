@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Offline Windows voices for the spoken debrief (Coaching only; the app doesn't reference it). -->
+    <PackageReference Include="System.Speech" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="IRacingOverlay.Coaching.Tests" />
   </ItemGroup>
 
