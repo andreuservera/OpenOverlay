@@ -57,14 +57,27 @@ public static class CornerTypes
         return p.MinSpeed < SlowApexSpeed ? CornerType.Slow : CornerType.BrakingFast;
     }
 
+    /// <summary>A corner's type is fixed from its first this-many clean passes.</summary>
+    public const int SettledAfterPasses = 5;
+
     /// <summary>
     /// The type of a corner over many passes: the one most of its clean passes show, so it doesn't
     /// flip from lap to lap with whichever pass is the best (a chicane that is sometimes taken as
-    /// one slow corner). On a tie, the best pass decides. Null without a clean pass.
+    /// one slow corner). On a tie, the best pass decides. From <see cref="SettledAfterPasses"/>
+    /// clean passes on, only the first ones count, so the type no longer changes. Null without a clean pass.
     /// </summary>
     public static CornerType? Consensus(IEnumerable<CornerPass> passes, CornerPass? best = null)
     {
-        var counts = passes.Where(p => p.IsClean).GroupBy(Classify).Select(g => (Type: g.Key, Count: g.Count())).ToList();
+        // Settled once enough passes agree it: later passes don't move it, so the debriefs of one
+        // session never call the same corner by two types.
+        var clean = passes.Where(p => p.IsClean).OrderBy(p => p.LapNumber).ToList();
+        if (clean.Count >= SettledAfterPasses)
+        {
+            clean = clean.Take(SettledAfterPasses).ToList();
+            best = null;
+        }
+
+        var counts = clean.GroupBy(Classify).Select(g => (Type: g.Key, Count: g.Count())).ToList();
         if (counts.Count == 0)
         {
             return best is null ? null : Classify(best);

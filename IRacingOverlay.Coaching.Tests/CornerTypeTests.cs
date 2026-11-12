@@ -234,4 +234,16 @@ public class CornerTypeTests
 
         Assert.Equal(2, line.Count(ch => ch == ';'));
     }
+
+    [Fact]
+    public void TheTypeIsSettledByTheFirstFivePasses()
+    {
+        var lift = Lift();
+        var dab = Lift() with { BrakePointM = 170, PeakBrake = 0.25f, BrakeLengthM = 30, MinSpeed = 200 / 3.6f };
+        var passes = new List<CornerPass> { lift, lift with { LapNumber = 2 }, lift with { LapNumber = 3 }, dab with { LapNumber = 4 }, dab with { LapNumber = 5 } };
+        Assert.Equal(CornerType.Lift, CornerTypes.Consensus(passes));
+
+        passes.AddRange(Enumerable.Range(6, 4).Select(l => dab with { LapNumber = l }));
+        Assert.Equal(CornerType.Lift, CornerTypes.Consensus(passes, passes[^1]));
+    }
 }
