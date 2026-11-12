@@ -19,8 +19,9 @@ public sealed record CornerPass
 
     /// <summary>
     /// What the corner is judged on: time from its start to where the next corner starts (the end of
-    /// the lap for the last one), seconds. It includes the straight after the corner, because that
-    /// is where a slow exit costs its time. Equal to <see cref="SegmentTime"/> when not measured.
+    /// the lap for the last one), but at most <see cref="CornerAnalyzer.MaxStraightMetres"/> past the
+    /// corner's end, seconds. It includes the straight after the corner, because that is where a
+    /// slow exit costs its time. Equal to <see cref="SegmentTime"/> when not measured.
     /// </summary>
     public double ScoreTime
     {
@@ -28,8 +29,18 @@ public sealed record CornerPass
         init => _scoreTime = value;
     }
 
-    /// <summary>Where <see cref="ScoreTime"/> stops: the next corner's start, metres.</summary>
+    /// <summary>Where <see cref="ScoreTime"/> stops: the next corner's start, or
+    /// <see cref="CornerAnalyzer.MaxStraightMetres"/> past this corner's end if that is sooner, metres.</summary>
     public int ScoreEndM { get; init; }
+
+    /// <summary>The rest of a long straight, from <see cref="ScoreEndM"/> to the next corner's
+    /// start, seconds; 0 when the next corner comes sooner. It is its own piece of the theoretical
+    /// best, so an off on a long straight (or in a flat-out kink like Blanchimont) doesn't void the
+    /// corner before it.</summary>
+    public double RestOfStraightTime { get; init; }
+
+    /// <summary>True when the rest of the straight had no off-track, pit road or incident.</summary>
+    public bool RestOfStraightClean { get; init; } = true;
 
     /// <summary>Distance the car actually travelled through the corner window (speed × time) over
     /// the window's length along the track. Below the usual value for this corner means a shorter
@@ -96,6 +107,11 @@ public static class CornerAnalyzer
     private const float TurnInShareOfPeakSteering = 0.30f;
     private const int MaxEarlyBrakeSearchM = 200;
 
+    /// <summary>How much of the straight after a corner counts toward its score, metres. A slow exit
+    /// costs most of its time in the first few hundred metres; further on, the straight is a
+    /// separate piece, so validity stays local on long laps like Spa.</summary>
+    public const int MaxStraightMetres = 400;
+
     /// <param name="lapFlaws">The lap's own flaws: on a race start or out lap
     /// (<see cref="LapFlaw.StartLap"/>) the first corners are marked, since they are driven from
     /// low speed, in traffic or on cold tyres.</param>
@@ -112,12 +128,25 @@ public static class CornerAnalyzer
 
             int? nextStart = i + 1 < map.Corners.Count ? map.Corners[i + 1].StartM : null;
             var pass = Measure(lap, corner, lapNumber, nextStart);
+            var extra = CornerPassFlaw.None;
             if (lapFlaws.HasFlag(LapFlaw.StartLap) && i < CornerChecks.StartLapCorners)
             {
-                pass = pass with { Flaws = pass.Flaws | CornerPassFlaw.StartLap };
+                extra |= CornerPassFlaw.StartLap;
             }
 
-            passes.Add(pass);
+            if (CornerChecks.CornersSincePitExit(lap, map, i) is { } since && since < CornerChecks.StartLapCorners)
+            {
+                extra |= CornerPassFlaw.PitExit;
+            }
+
+            // Running wide into the next corner's gravel usually means this corner's straight was
+            // gained by braking too late for it.
+            if (i + 1 < map.Corners.Count && CornerChecks.OffOnEntry(lap, map.Corners[i + 1]))
+            {
+                extra |= CornerPassFlaw.OffTrackNext;
+            }
+
+            passes.Add(extra == CornerPassFlaw.None ? pass : pass with { Flaws = pass.Flaws | extra });
         }
 
         return passes;
@@ -205,7 +234,8 @@ public static class CornerAnalyzer
         int? pickup = FirstIndex(pickupFrom, e, i => lap.Throttle[i] > ThrottleOn);
         int? full = pickup is { } p ? FirstIndex(p, e, i => lap.Throttle[i] >= FullThrottle) : null;
 
-        var scoreEnd = Math.Clamp(nextCornerStartM ?? lap.Length - 1, e, lap.Length - 1);
+        var straightEnd = Math.Clamp(nextCornerStartM ?? lap.Length - 1, e, lap.Length - 1);
+        var scoreEnd = Math.Min(straightEnd, e + MaxStraightMetres);
 
         return new CornerPass
         {
@@ -214,6 +244,8 @@ public static class CornerAnalyzer
             SegmentTime = lap.Time[e] - lap.Time[s],
             ScoreTime = lap.Time[scoreEnd] - lap.Time[s],
             ScoreEndM = scoreEnd,
+            RestOfStraightTime = lap.Time[straightEnd] - lap.Time[scoreEnd],
+            RestOfStraightClean = CornerChecks.StretchIsClean(lap, scoreEnd, straightEnd),
             PathRatio = CornerChecks.PathRatio(lap, s, e),
             Flaws = CornerChecks.Inspect(lap, s, scoreEnd),
             EntrySpeed = lap.Speed[s],

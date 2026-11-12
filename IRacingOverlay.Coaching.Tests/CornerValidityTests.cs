@@ -125,7 +125,7 @@ public class CornerValidityTests
     }
 
     [Fact]
-    public void CornersAreScoredToTheNextCornersStart()
+    public void CornersAreScoredToTheNextCornerOrFourHundredMetresPastTheirEnd()
     {
         var normal = Track.SpeedProfile();
         var session = Run(Track.Drive([normal, normal]));
@@ -135,13 +135,14 @@ public class CornerValidityTests
         for (var i = 0; i < a.Passes.Count; i++)
         {
             var p = a.Passes[i];
-            var expectedEnd = i + 1 < map.Corners.Count ? map.Corners[i + 1].StartM : a.Lap.Trace!.Length - 1;
-            Assert.Equal(expectedEnd, p.ScoreEndM);
+            var straightEnd = i + 1 < map.Corners.Count ? map.Corners[i + 1].StartM : a.Lap.Trace!.Length - 1;
+            Assert.Equal(Math.Min(straightEnd, p.Corner.EndM + CornerAnalyzer.MaxStraightMetres), p.ScoreEndM);
+            Assert.True(p.RestOfStraightClean);
             Assert.True(p.ScoreTime > p.SegmentTime);
         }
 
         // Corner scores plus the run to the first corner make up the lap.
-        Assert.Equal(a.Lap.LapTime, a.OutsideCornersTime!.Value + a.Passes.Sum(p => p.ScoreTime), 0.01);
+        Assert.Equal(a.Lap.LapTime, a.OutsideCornersTime!.Value + a.Passes.Sum(p => p.ScoreTime + p.RestOfStraightTime), 0.01);
         Assert.Equal(a.Lap.LapTime, session.TheoreticalBestLapTime!.Value, 0.01);
     }
 
@@ -222,5 +223,63 @@ public class CornerValidityTests
         var d = new Advice.LapDebrief(4, 100.5, 0.5, false, []) { TheoreticalBestLapTime = 99.2 };
 
         Assert.Contains("  Your best corners add up to 1:39.200.", Advice.DebriefText.Lines(d));
+    }
+
+    [Fact]
+    public void TheFirstCornersAfterLeavingPitRoadAreVoided()
+    {
+        var normal = Track.SpeedProfile();
+        // Lap 2 starts in the pit lane, which ends just before T1.
+        var frames = Track.Drive([normal, normal, normal, normal])
+            .Select(f => f.Lap == 2 && f.LapDist < 100 ? f with { OnPitRoad = true } : f).ToList();
+
+        var lap2 = Run(frames).AllAnalyses.Single(a => a.Lap.LapNumber == 2);
+
+        Assert.True(lap2.Passes[0].Flaws.HasFlag(CornerPassFlaw.PitExit));
+        Assert.True(lap2.Passes[1].Flaws.HasFlag(CornerPassFlaw.PitExit));
+        Assert.True(lap2.Passes[2].IsClean);
+    }
+
+    [Fact]
+    public void AnOffOnTheWayIntoACornerVoidsTheCornerBefore()
+    {
+        var normal = Track.SpeedProfile();
+        var session = Run(Track.Drive([normal, normal]));
+        var map = session.CornerMap!;
+        var trace = session.Analyses[0].Lap.Trace!;
+        var t2 = map.Corners[1];
+        for (var i = t2.StartM + 10; i < t2.StartM + 30; i++)
+        {
+            trace.OffTrack[i] = true;
+        }
+
+        var passes = CornerAnalyzer.Analyze(trace, map, 1);
+
+        Assert.True(passes[0].Flaws.HasFlag(CornerPassFlaw.OffTrackNext));
+        Assert.True(passes[1].Flaws.HasFlag(CornerPassFlaw.OffTrack));
+        Assert.True(passes[2].IsClean);
+    }
+
+    [Fact]
+    public void AnOffFarDownALongStraightOnlyVoidsThatStretch()
+    {
+        var normal = Track.SpeedProfile();
+        var session = Run(Track.Drive([normal, normal]));
+        var map = session.CornerMap!;
+        var trace = session.Analyses[0].Lap.Trace!;
+        // The straight after T3 runs to the line, well over 400 m.
+        var t3 = map.Corners[2];
+        var far = t3.EndM + CornerAnalyzer.MaxStraightMetres + 60;
+        Assert.True(far < trace.Length - 30);
+        for (var i = far; i < far + 20; i++)
+        {
+            trace.OffTrack[i] = true;
+        }
+
+        var p = CornerAnalyzer.Analyze(trace, map, 1)[2];
+
+        Assert.True(p.IsClean);
+        Assert.False(p.RestOfStraightClean);
+        Assert.True(p.RestOfStraightTime > 0);
     }
 }

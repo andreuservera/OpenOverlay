@@ -87,6 +87,7 @@ public sealed class CoachingSession
     private readonly List<RecordedLap> _waitingForMap = [];
     private Dictionary<string, CornerPass> _best = new(StringComparer.Ordinal);
     private double? _bestOutsideCorners;
+    private Dictionary<string, double> _bestRestOfStraight = new(StringComparer.Ordinal);
 
     public CoachingSession(CoachingOptions? options = null)
     {
@@ -135,7 +136,7 @@ public sealed class CoachingSession
     /// promise. Null until every corner has a clean pass.
     /// </summary>
     public double? TheoreticalBestLapTime =>
-        CornerMap is { } map ? Corners.BestPasses.TheoreticalLapTime(map, _best, _bestOutsideCorners) : null;
+        CornerMap is { } map ? Corners.BestPasses.TheoreticalLapTime(map, _best, _bestOutsideCorners, _bestRestOfStraight) : null;
 
     public void Observe(in TelemetryFrame frame) => _recorder.Observe(frame);
 
@@ -218,6 +219,7 @@ public sealed class CoachingSession
         CornerMapOrigin = origin;
         _best = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
         _bestOutsideCorners = null;
+        _bestRestOfStraight = new Dictionary<string, double>(StringComparer.Ordinal);
         var laps = _analyses.Select(a => a.Lap).Concat(_waitingForMap).OrderBy(l => l.StartTime).ToList();
         _waitingForMap.Clear();
         _analyses.Clear();
@@ -273,7 +275,9 @@ public sealed class CoachingSession
             _bestOutsideCorners = outside;
         }
 
-        _best = Corners.BestPasses.Select(_analyses.SelectMany(a => a.Passes).Concat(passes));
+        var all = _analyses.SelectMany(a => a.Passes).Concat(passes).ToList();
+        _best = Corners.BestPasses.Select(all);
+        _bestRestOfStraight = Corners.BestPasses.RestOfStraight(all);
         var loss = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var pass in passes)
         {

@@ -25,6 +25,13 @@ public enum CornerPassFlaw
 
     /// <summary>The car took a clearly shorter path than usual: a cut, with or without an off-track.</summary>
     Shortcut = 1 << 5,
+
+    /// <summary>One of the first corners after leaving pit road: not up to speed yet.</summary>
+    PitExit = 1 << 6,
+
+    /// <summary>The car went off on the way into the next corner: this corner's straight was likely
+    /// gained by braking too late for it.</summary>
+    OffTrackNext = 1 << 7,
 }
 
 /// <summary>
@@ -96,6 +103,78 @@ public static class CornerChecks
         }
 
         return flaws;
+    }
+
+    /// <summary>True when nothing on the stretch voids it: no off-track, pit road or incident
+    /// (incidents counted up to <see cref="IncidentDelaySeconds"/> after it).</summary>
+    public static bool StretchIsClean(LapTrace lap, int fromM, int toM)
+    {
+        var last = lap.Length - 1;
+        var from = Math.Clamp(fromM, 0, last);
+        var to = Math.Clamp(toM, from, last);
+        for (var i = from; i <= to; i++)
+        {
+            if (lap.OffTrack[i] || lap.PitRoad[i])
+            {
+                return false;
+            }
+        }
+
+        var lateEnd = Math.Min(last, to + (int)Math.Ceiling(lap.Speed[to] * IncidentDelaySeconds));
+        return lap.Incidents[lateEnd] <= lap.Incidents[from];
+    }
+
+    /// <summary>An off between the approach to <paramref name="corner"/> and its slowest point:
+    /// running into the gravel on the way in.</summary>
+    public static bool OffOnEntry(LapTrace lap, Corner corner)
+    {
+        var last = lap.Length - 1;
+        var from = Math.Clamp(corner.StartM - ApproachMetres, 0, last);
+        var to = Math.Clamp(corner.ApexM, from, last);
+        for (var i = from; i <= to; i++)
+        {
+            if (lap.OffTrack[i])
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// How many corners have started since the car last left pit road, before corner
+    /// <paramref name="index"/> of <paramref name="map"/> (0 = the first corner after pit exit);
+    /// null when the car wasn't on pit road earlier in the lap.
+    /// </summary>
+    public static int? CornersSincePitExit(LapTrace lap, CornerMap map, int index)
+    {
+        var start = Math.Clamp(map.Corners[index].StartM, 0, lap.Length - 1);
+        var exit = -1;
+        for (var i = start - 1; i >= 0; i--)
+        {
+            if (lap.PitRoad[i])
+            {
+                exit = i;
+                break;
+            }
+        }
+
+        if (exit < 0)
+        {
+            return null;
+        }
+
+        var since = 0;
+        for (var k = 0; k < index; k++)
+        {
+            if (map.Corners[k].StartM > exit)
+            {
+                since++;
+            }
+        }
+
+        return since;
     }
 
     /// <summary>Distance travelled (speed × time) from <paramref name="startM"/> to

@@ -190,7 +190,7 @@ if (perLap)
 }
 
 Console.WriteLine();
-Console.WriteLine("Time per corner, to the next corner's start (s); * = best pass, x = not clean (off, incident, cut)");
+Console.WriteLine($"Time per corner, to the next corner's start or {CornerAnalyzer.MaxStraightMetres} m past its end (s); * = best pass, x = not clean (off, incident, cut, pit exit)");
 var header = new StringBuilder("  lap   lap time   ");
 foreach (var c in map.Corners)
 {
@@ -238,7 +238,7 @@ foreach (var c in map.Corners)
 
 Console.WriteLine();
 Console.WriteLine($"Best lap         {(session.BestLap is { } bl ? $"{Time(bl.LapTime)} (lap {bl.LapNumber})" : "-")}");
-Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (every corner's best clean pass, from any lap)");
+Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (best run to the first corner + every corner's best clean pass + the best clean rest of each long straight, from any lap)");
 
 if (debrief || speak)
 {
@@ -263,11 +263,12 @@ if (debrief || speak)
         }
 
         // Same rules as live: every clean corner up to this lap, from any lap.
-        var bestSoFar = BestPasses.Select(all.Take(i + 1).SelectMany(x => x.Passes));
+        var passesSoFar = all.Take(i + 1).SelectMany(x => x.Passes).ToList();
+        var bestSoFar = BestPasses.Select(passesSoFar);
         bestLapSoFar = Math.Min(bestLapSoFar, a.Lap.LapTime);
         last = coach.Debrief(a, bestSoFar, bestLapSoFar) with
         {
-            TheoreticalBestLapTime = BestPasses.TheoreticalLapTime(map, bestSoFar, outsideSoFar),
+            TheoreticalBestLapTime = BestPasses.TheoreticalLapTime(map, bestSoFar, outsideSoFar, BestPasses.RestOfStraight(passesSoFar)),
         };
         foreach (var l in DebriefText.Lines(last))
         {

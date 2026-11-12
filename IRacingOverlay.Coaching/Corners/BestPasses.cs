@@ -78,11 +78,16 @@ public static class BestPasses
 
     /// <summary>
     /// The best passes chained into a lap: the best clean run from the line to the first corner,
-    /// plus each corner's best <see cref="CornerPass.ScoreTime"/>. Null until every corner of
+    /// plus each corner's best <see cref="CornerPass.ScoreTime"/> and the best clean rest of the
+    /// straight after it (<see cref="CornerPass.RestOfStraightTime"/>). Null until every corner of
     /// <paramref name="map"/> has a best pass and the run to the first corner has been clean once.
     /// Corners from different laps may not quite join up, so it is a target, not a promise.
     /// </summary>
-    public static double? TheoreticalLapTime(CornerMap map, IReadOnlyDictionary<string, CornerPass> best, double? bestOutsideCornersTime)
+    public static double? TheoreticalLapTime(
+        CornerMap map,
+        IReadOnlyDictionary<string, CornerPass> best,
+        double? bestOutsideCornersTime,
+        IReadOnlyDictionary<string, double> bestRestOfStraight)
     {
         if (bestOutsideCornersTime is not { } outside || map.Corners.Count == 0)
         {
@@ -97,9 +102,35 @@ public static class BestPasses
                 return null;
             }
 
-            sum += b.ScoreTime;
+            if (!bestRestOfStraight.TryGetValue(c.Name, out var rest))
+            {
+                return null;
+            }
+
+            sum += b.ScoreTime + rest;
         }
 
         return sum;
+    }
+
+    /// <summary>The fastest clean rest-of-straight after each corner, by corner id. A straight
+    /// after a cut doesn't count: the cut makes the car faster onto it.</summary>
+    public static Dictionary<string, double> RestOfStraight(IEnumerable<CornerPass> passes)
+    {
+        var best = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var p in passes)
+        {
+            if (!p.RestOfStraightClean || p.Flaws.HasFlag(CornerPassFlaw.Shortcut))
+            {
+                continue;
+            }
+
+            if (!best.TryGetValue(p.Corner.Name, out var t) || p.RestOfStraightTime < t)
+            {
+                best[p.Corner.Name] = p.RestOfStraightTime;
+            }
+        }
+
+        return best;
     }
 }
