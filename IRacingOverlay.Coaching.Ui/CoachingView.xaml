@@ -352,7 +352,7 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="WHERE A NORMAL LAP LOSES TIME HERE" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{loc:T coaching.corner.phasesTitle}" Style="{StaticResource Caption}"/>
                                 <ItemsControl ItemsSource="{Binding Phases}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="ui:PhaseItem">
@@ -383,7 +383,7 @@
                                 </ItemsControl>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Visibility="{Binding HasInsights, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="WHAT THE PASSES SAY" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{loc:T coaching.corner.insightsTitle}" Style="{StaticResource Caption}"/>
                                 <ItemsControl ItemsSource="{Binding Insights}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>

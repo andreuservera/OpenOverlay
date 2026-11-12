@@ -116,6 +116,11 @@ public sealed record CornerPass
     /// how long the car was off full throttle. 0 when flat.</summary>
     public int LiftLengthM { get; init; }
 
+    /// <summary>The throttle was already off where this corner's piece starts: the lift began in the
+    /// corner before and never went back to full in between. <see cref="LiftPointM"/> is then the
+    /// piece start, not a lift point the driver chose for this corner.</summary>
+    public bool LiftCarriedOver { get; init; }
+
     /// <summary>Lowest throttle before the brake or the slowest point: how deep the lift went, 0–1.
     /// 1 when flat; 0 for a full lift (and for every braking corner).</summary>
     public float MinThrottle { get; init; } = 1;
@@ -300,14 +305,24 @@ public static class CornerAnalyzer
 
         // Lift: first throttle off on the way in, followed back like the brake when it was already off.
         int? lift = FirstIndex(s, minAt, i => lap.Throttle[i] < FullThrottle);
+        // Followed back no further than this corner's piece: a lift that carries on from the corner
+        // before belongs to that corner, not to this one.
+        var liftCarriedOver = false;
         if (lift == s)
         {
+            var limit = Math.Max(0, s - MaxEarlyBrakeSearchM);
+            if (pieceStartM is { } ps && ps < s)
+            {
+                limit = Math.Max(limit, ps);
+            }
+
             var back = s;
-            while (back > Math.Max(0, s - MaxEarlyBrakeSearchM) && lap.Throttle[back - 1] < FullThrottle)
+            while (back > limit && lap.Throttle[back - 1] < FullThrottle)
             {
                 back--;
             }
 
+            liftCarriedOver = pieceStartM is not null && back == limit && back > 0 && lap.Throttle[back - 1] < FullThrottle;
             lift = back;
         }
 
@@ -416,6 +431,7 @@ public static class CornerAnalyzer
             Direction = direction,
             LiftPointM = lift,
             LiftLengthM = liftLength,
+            LiftCarriedOver = liftCarriedOver,
             MinThrottle = lift is null ? 1 : minThrottle,
             BrakeLengthM = brakePoint is { } b0 && release is { } r0 ? r0 - b0 + 1 : 0,
             CoastingM = coastBest,

@@ -84,7 +84,8 @@ public static class CornerDiagnoser
         }
         else if (pass.LiftPointM is { } lp && best.LiftPointM is { } blp)
         {
-            if (blp - lp >= o.BrakePointMetres)
+            // A lift carried on from the corner before has no lift point in this corner to move.
+            if (!pass.LiftCarriedOver && blp - lp >= o.BrakePointMetres)
             {
                 findings.Add(new CornerFinding(FindingKind.LiftedTooEarly, blp - lp));
             }

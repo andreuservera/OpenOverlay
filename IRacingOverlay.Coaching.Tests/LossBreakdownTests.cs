@@ -102,4 +102,33 @@ public class LossBreakdownTests
         Assert.NotNull(hairpin.TimeSpread);
         Assert.Contains(SessionSummaryText.Headline(report), l => l.StartsWith("Most of it goes", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void ACounterIntuitiveWayHasToExplainTheTimeWell()
+    {
+        var corner = new Corner("T1", 100, 200, 300);
+        // A later throttle goes loosely with a quicker corner (r about -0.6).
+        var noise = new[] { 0.0, 0.08, -0.05, 0.1, -0.09, 0.04, -0.02, 0.07 };
+        var passes = Enumerable.Range(0, 8).Select(i => new CornerPass
+        {
+            Corner = corner,
+            LapNumber = i + 1,
+            SegmentTime = 10 - 0.02 * i + noise[i],
+            EntrySpeed = 50,
+            MinSpeed = 20,
+            MinSpeedAtM = 200,
+            ThrottlePickupM = 210 + i,
+            ExitSpeed = 40,
+            ExitSpeedPlus100 = 45,
+            GearAtApex = 2,
+        }).ToList();
+
+        Assert.Null(CornerStats.DecidedBy(passes));
+
+        // Clearly so, it is said, worded as rotating the car longer.
+        var clear = passes.Select((p, i) => p with { SegmentTime = 10 - 0.02 * i }).ToList();
+        var d = CornerStats.DecidedBy(clear);
+        Assert.Equal("throttle pick-up", d!.Value.Measure);
+        Assert.Equal("later", SessionReportBuilder.Better(d.Value.Measure, d.Value.R));
+    }
 }

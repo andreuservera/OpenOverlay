@@ -215,6 +215,10 @@ public static class CornerStats
     /// <summary>A measurement "decides" the time when it explains it at least this well (|r|).</summary>
     public const double MinCorrelation = 0.5;
 
+    /// <summary>A way that goes against the usual (braking earlier, a lower minimum speed or a later
+    /// throttle was quicker) has to explain the time this well before it is said.</summary>
+    public const double MinCounterIntuitiveCorrelation = 0.7;
+
     /// <summary>Sample standard deviation; null for fewer than 3 values.</summary>
     public static double? Spread(IReadOnlyList<double> values)
     {
@@ -259,7 +263,8 @@ public static class CornerStats
                 continue;
             }
 
-            if (Math.Abs(r) >= MinCorrelation && (best is null || Math.Abs(r) > Math.Abs(best.Value.Item2)))
+            var needed = CounterIntuitive(name, r) ? MinCounterIntuitiveCorrelation : MinCorrelation;
+            if (Math.Abs(r) >= needed && (best is null || Math.Abs(r) > Math.Abs(best.Value.Item2)))
             {
                 best = (name, r);
             }
@@ -267,6 +272,14 @@ public static class CornerStats
 
         return best;
     }
+
+    // r is against time: positive means more of the measurement (later, faster) went with more time.
+    private static bool CounterIntuitive(string measure, double r) => measure switch
+    {
+        "brake point" or "lift point" => r > 0,
+        "throttle pick-up" => r < 0,
+        _ => r > 0,
+    };
 
     private static double? Correlation(List<(double X, double Y)> pairs)
     {
