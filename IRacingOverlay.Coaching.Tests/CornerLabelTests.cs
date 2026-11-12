@@ -16,6 +16,28 @@ public sealed class CornerLabelTests : IDisposable
         }
     }
 
+    [Fact]
+    public void AComplexOnlySomeLapsSplitKeepsItsWholeWindowInTheAgreedMap()
+    {
+        // Bus Stop over three laps: one sees one valley, two see two halves, and where the first
+        // half's slowest point falls moves from lap to lap. The first half is where the heavy braking is, so the
+        // agreed corner must start there, not at the second half.
+        var whole = new CornerCandidate(6496, 6727, 6776, 18f);
+        CornerCandidate FirstHalf(int apex) => new(6496, apex, 6714, 20f);
+        var secondHalf = new CornerCandidate(6714, 6727, 6776, 18f);
+        List<List<CornerCandidate>> laps =
+        [
+            [whole], [FirstHalf(6650), secondHalf], [FirstHalf(6705), secondHalf],
+        ];
+
+        var map = CornerMapBuilder.Agree(laps, 7000, new CornerDetectionOptions());
+
+        var corner = Assert.Single(map.Corners);
+        Assert.Equal(6496, corner.StartM);
+        Assert.Equal(6727, corner.ApexM);
+        Assert.Equal(6776, corner.EndM);
+    }
+
     private static List<RecordedLap> CleanLaps(TrackSimulator track, int count, IReadOnlyDictionary<int, double>? cornerSpeed = null)
     {
         var profile = track.SpeedProfile(cornerSpeed);

@@ -6,12 +6,14 @@ namespace IRacingOverlay.Coaching.Corners;
 /// Builds a track's corner map from several clean laps rather than one, so a corner that only some
 /// laps happen to split, or a small dip only some laps show, doesn't change the map.
 ///
-/// 1. Corner candidates are found on every lap (<see cref="CornerDetector"/>, before merging).
-/// 2. Candidates from all laps are grouped by where their slowest point is: within
-///    <see cref="ClusterRadiusMetres"/> of a group's median, they are the same corner.
+/// 1. Corners are found on every lap (<see cref="CornerDetector"/>), with each lap's close pairs
+///    (chicanes, Bus Stop) already merged, so a complex is one window whether or not a lap splits it.
+/// 2. Corners from all laps are grouped by where their slowest point is: within
+///    <see cref="ClusterRadiusMetres"/> (or the merge gap, if larger) of a group's median, they are
+///    the same corner.
 /// 3. A group is kept only if it shows up in at least <see cref="QuorumShare"/> of the laps.
 /// 4. Each kept corner takes the median start, apex and end of its group.
-/// 5. Sub-corners are merged by the minimum apex gap rule and the result is numbered T1…Tn.
+/// 5. The minimum apex gap rule is applied once more and the result is numbered T1…Tn.
 /// </summary>
 public static class CornerMapBuilder
 {
@@ -30,12 +32,19 @@ public static class CornerMapBuilder
         }
 
         var o = options ?? new CornerDetectionOptions();
-        var length = laps.Min(l => l.Length);
+        return Agree(laps.Select(l => CornerDetector.DetectRaw(l, o)).ToList(), laps.Min(l => l.Length), o);
+    }
 
+    /// <summary>Steps 1–5 on corners already found on each lap.</summary>
+    internal static CornerMap Agree(IReadOnlyList<List<CornerCandidate>> perLap, int length, CornerDetectionOptions o)
+    {
+        // Merge on each lap first: clustering raw halves would drop a half that only some laps
+        // split off, and its braking zone with it.
+        var radius = Math.Max(ClusterRadiusMetres, o.MinApexGapMetres);
         var groups = new List<List<CornerCandidate>>();
-        foreach (var candidate in laps.SelectMany(l => CornerDetector.DetectRaw(l, o)).OrderBy(c => c.ApexM))
+        foreach (var candidate in perLap.SelectMany(l => CornerDetector.Merge(l, o)).OrderBy(c => c.ApexM))
         {
-            var group = groups.FirstOrDefault(g => Math.Abs(Median(g.Select(c => c.ApexM)) - candidate.ApexM) <= ClusterRadiusMetres);
+            var group = groups.FirstOrDefault(g => Math.Abs(Median(g.Select(c => c.ApexM)) - candidate.ApexM) <= radius);
             if (group is null)
             {
                 groups.Add([candidate]);
@@ -46,7 +55,7 @@ public static class CornerMapBuilder
             }
         }
 
-        var quorum = (int)Math.Ceiling(QuorumShare * laps.Count);
+        var quorum = (int)Math.Ceiling(QuorumShare * perLap.Count);
         var agreed = groups
             .Where(g => g.Count >= quorum)
             .Select(g => new CornerCandidate(
@@ -57,7 +66,7 @@ public static class CornerMapBuilder
             .Where(c => c.EndM < length)
             .ToList();
 
-        return new CornerMap(length, CornerDetector.Name(CornerDetector.Merge(agreed, o)), laps.Count);
+        return new CornerMap(length, CornerDetector.Name(CornerDetector.Merge(agreed, o)), perLap.Count);
     }
 
     private static int Median(IEnumerable<int> values)

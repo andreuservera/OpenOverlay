@@ -26,6 +26,11 @@ public sealed record CornerDetectionOptions
     /// short burst of speed between them is detected at all, metres.</summary>
     public int MinApexGapMetres { get; init; } = 80;
 
+    /// <summary>Once back on full throttle, the window waits at most this long for the track to
+    /// straighten before it ends anyway, metres. It keeps a long, fast exit (Pouhon, Dunlop) out of
+    /// the corner before it.</summary>
+    public int ExitGraceMetres { get; init; } = 60;
+
     /// <summary>Brake above this is braking.</summary>
     public float BrakeOn { get; init; } = 0.05f;
 
@@ -140,9 +145,25 @@ public static class CornerDetector
 
             // Out of the corner = back on full throttle with the track no longer bending (a chicane's
             // second half is still the corner), but never past the next speed peak.
+            // A long fast bend after the exit is driven flat and isn't part of this corner, so stop
+            // ExitGraceMetres after full throttle whatever the curvature.
             var end = apex;
-            while (end < peakAfter && !(IsFlatOut(lap, end, o) && curvature[end] < threshold))
+            int? flatSince = null;
+            while (end < peakAfter)
             {
+                if (IsFlatOut(lap, end, o))
+                {
+                    flatSince ??= end;
+                    if (curvature[end] < threshold || end - flatSince >= o.ExitGraceMetres)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    flatSince = null;
+                }
+
                 end++;
             }
 

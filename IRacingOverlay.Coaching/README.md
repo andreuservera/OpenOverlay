@@ -33,7 +33,7 @@ dotnet run --project IRacingOverlay.Coaching.Cli -- <file>.ibt --csv out   # als
 
 Flags: `--relearn` agrees a new map instead of using the saved one, `--no-save` leaves saved maps
 alone, `--store <dir>` uses another folder for them, `--corners-per-lap` shows what each clean lap
-would give on its own.
+would give on its own, `--crossings` prints the raw channels around every line crossing.
 
 ## Corner ids and names
 
@@ -41,7 +41,7 @@ The first time a track is seen, corners are agreed from up to five clean laps (l
 fastest clean laps (CLI) and saved to
 `%LOCALAPPDATA%\IRacingOverlay\coaching\corners\<track>.json`. From then on that map is used as is,
 so T1 is always the same corner. Each corner has a `name` field, empty at first: write the real name
-(`"name": "La Source"`) and it is used everywhere instead of the T-number. Relearning a map keeps the
+(`"name": "La Source"`) and it is shown instead of the T-number in every table. Relearning a map keeps the
 names of corners whose apex is within 50 m of where it was. Corners whose apexes are less than 80 m
 apart (a chicane, Les Combes) are one corner.
 

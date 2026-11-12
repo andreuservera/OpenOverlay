@@ -20,7 +20,7 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
-    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap]");
+    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings]");
     return args.Length == 0 ? 1 : 0;
 }
 
@@ -29,6 +29,7 @@ string? csvDir = null;
 var relearn = false;
 var save = true;
 var perLap = false;
+var crossings = false;
 var storeDir = CornerMapStore.DefaultDirectory;
 for (var i = 1; i < args.Length; i++)
 {
@@ -49,6 +50,9 @@ for (var i = 1; i < args.Length; i++)
         case "--corners-per-lap":
             perLap = true;
             break;
+        case "--crossings":
+            crossings = true;
+            break;
     }
 }
 
@@ -62,6 +66,12 @@ Console.WriteLine($"Track     {weekend?.TrackDisplayName ?? weekend?.TrackName ?
 Console.WriteLine($"Car       {car ?? "?"}");
 Console.WriteLine($"Recorded  {ibt.SessionStartUtc:yyyy-MM-dd HH:mm} UTC, {ibt.RecordCount} ticks at {ibt.TickRate} Hz, {ibt.Variables.Count} channels");
 Console.WriteLine();
+
+if (crossings)
+{
+    DumpCrossings(ibt);
+    return 0;
+}
 
 var store = new CornerMapStore(storeDir);
 var trackKey = weekend?.TrackName;
@@ -141,7 +151,7 @@ Console.WriteLine("Time per corner on each clean lap (s); * = best pass");
 var header = new StringBuilder("  lap   lap time   ");
 foreach (var c in map.Corners)
 {
-    header.Append($"{c.Name,8}");
+    header.Append($"{Short(c.DisplayName, 7),8}");
 }
 
 Console.WriteLine(header);
@@ -160,7 +170,7 @@ foreach (var a in session.Analyses)
 
 Console.WriteLine();
 Console.WriteLine("Best pass per corner");
-Console.WriteLine("  corner  lap  time     brake at  peak  trail  min speed @      throttle at  exit     +100 m");
+Console.WriteLine("  corner        lap  time     brake at  peak  trail  min speed @      throttle at  exit     +100 m");
 foreach (var c in map.Corners)
 {
     if (!session.BestPasses.TryGetValue(c.Name, out var b))
@@ -169,7 +179,7 @@ foreach (var c in map.Corners)
     }
 
     Console.WriteLine(
-        $"  {c.Name,-6}  {b.LapNumber,3}  {b.SegmentTime,6:0.000}   {M(b.BrakePointM),8}  {b.PeakBrake * 100,3:0}%  {b.TrailBrakeM,3} m  {Kmh(b.MinSpeed),4:0} km/h {b.MinSpeedAtM,5} m  {M(b.ThrottlePickupM),8}     {Kmh(b.ExitSpeed),4:0}     {Kmh(b.ExitSpeedPlus100),4:0} km/h");
+        $"  {Short(c.DisplayName, 12),-12}  {b.LapNumber,3}  {b.SegmentTime,6:0.000}   {M(b.BrakePointM),8}  {b.PeakBrake * 100,3:0}%  {b.TrailBrakeM,3} m  {Kmh(b.MinSpeed),4:0} km/h {b.MinSpeedAtM,5} m  {M(b.ThrottlePickupM),8}     {Kmh(b.ExitSpeed),4:0}     {Kmh(b.ExitSpeedPlus100),4:0} km/h");
 }
 
 Console.WriteLine();
@@ -196,8 +206,38 @@ if (csvDir is not null)
 
 return 0;
 
+// Diagnostic: the raw channels around every line crossing, to compare where we put the line with
+// where iRacing's own lap timer restarts (LapCurrentLapTime).
+static void DumpCrossings(IbtFile ibt)
+{
+    string[] names = ["SessionTime", "Lap", "LapDistPct", "LapDist", "Speed", "OnPitRoad", "LapCurrentLapTime", "LapLastLapTime"];
+    var present = names.Where(ibt.HasVariable).ToArray();
+    Console.WriteLine("  tick  " + string.Join("  ", present.Select(n => $"{n,18}")));
+    for (var i = 1; i < ibt.RecordCount; i++)
+    {
+        var prev = ibt.ReadRecord(i - 1);
+        var cur = ibt.ReadRecord(i);
+        if (!(prev.Get("LapDistPct") > 0.75 && cur.Get("LapDistPct") < 0.25))
+        {
+            continue;
+        }
+
+        var before = Math.Max(0, 1 - prev.Get("LapDistPct"));
+        var after = Math.Max(0, cur.Get("LapDistPct"));
+        var at = prev.Get("SessionTime") + (cur.Get("SessionTime") - prev.Get("SessionTime")) * (before + after > 1e-9 ? before / (before + after) : 0.5);
+        Console.WriteLine($"crossing into lap {cur.Get("Lap")}: ours at {at:0.0000}");
+        for (var j = Math.Max(0, i - 2); j < Math.Min(ibt.RecordCount, i + 8); j++)
+        {
+            var r = ibt.ReadRecord(j);
+            Console.WriteLine($"  {j - i,4}  " + string.Join("  ", present.Select(n => $"{r.Get(n),18:0.000000}")));
+        }
+    }
+}
+
 static string Time(double seconds) => seconds <= 0 ? "-" : $"{(int)(seconds / 60)}:{seconds % 60:00.000}";
 
 static double Kmh(float metresPerSecond) => metresPerSecond * 3.6;
+
+static string Short(string s, int max) => s.Length <= max ? s : s[..max];
 
 static string M(int? metres) => metres is { } m ? $"{m} m" : "-";
