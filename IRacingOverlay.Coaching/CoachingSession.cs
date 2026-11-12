@@ -121,6 +121,9 @@ public sealed class CoachingSession
     private double? _bestOutsideCorners;
     private Dictionary<string, double> _bestRestOfStraight = new(StringComparer.Ordinal);
 
+    // Bests come only from laps from this index on: it moves when the car is found to have changed.
+    private int _referenceStart;
+
     public CoachingSession(CoachingOptions? options = null)
     {
         _options = options ?? new CoachingOptions();
@@ -137,6 +140,15 @@ public sealed class CoachingSession
     /// <summary>Raised after a lap with an off-track, incident or pit stop has been measured: its
     /// clean corners already count toward the best passes.</summary>
     public event Action<LapAnalysis>? FlawedLapAnalyzed;
+
+    /// <summary>Raised when the car is slower on every straight since an off or incident (likely
+    /// damage): the lap number of the incident and the top-speed drop (0.027 = 2.7%). Best passes,
+    /// best lap and theoretical best restart from the lap after it.</summary>
+    public event Action<int, double>? CarChanged;
+
+    /// <summary>The incident lap after which the car was found slower, when it was; bests only come
+    /// from later laps.</summary>
+    public int? CarChangedAfterLap { get; private set; }
 
     /// <summary>Raised when the corner map is set or replaced (provisional, agreed, or loaded).</summary>
     public event Action<CornerMap>? CornerMapChanged;
@@ -159,7 +171,7 @@ public sealed class CoachingSession
     /// (see <see cref="Corners.BestPasses"/>).</summary>
     public IReadOnlyDictionary<string, CornerPass> BestPasses => _best;
 
-    public RecordedLap? BestLap => _analyses.Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)?.Lap;
+    public RecordedLap? BestLap => _analyses.Skip(_referenceStart).Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)?.Lap;
 
     /// <summary>
     /// The best pass of every corner chained into one lap, each with the straight after it: what
@@ -252,6 +264,8 @@ public sealed class CoachingSession
         _best = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
         _bestOutsideCorners = null;
         _bestRestOfStraight = new Dictionary<string, double>(StringComparer.Ordinal);
+        _referenceStart = 0;
+        CarChangedAfterLap = null;
         var laps = _analyses.Select(a => a.Lap).Concat(_waitingForMap).OrderBy(l => l.StartTime).ToList();
         _waitingForMap.Clear();
         _analyses.Clear();
@@ -302,14 +316,15 @@ public sealed class CoachingSession
             }
         }
 
-        if (CornerChecks.OutsideCornersTime(lap, CornerMap!) is { } outside && (_bestOutsideCorners is null || outside < _bestOutsideCorners))
+        var analysis = new LapAnalysis(lap, passes, new Dictionary<string, double>(StringComparer.Ordinal))
         {
-            _bestOutsideCorners = outside;
-        }
+            OutsideCornersTime = CornerChecks.OutsideCornersTime(lap, CornerMap!),
+            RunInFlaws = CornerChecks.RunInFlaws(lap, CornerMap!),
+        };
+        _analyses.Add(analysis);
+        DetectCarChange();
+        RecomputeBests();
 
-        var all = _analyses.SelectMany(a => a.Passes).Concat(passes).ToList();
-        _best = Corners.BestPasses.Select(all);
-        _bestRestOfStraight = Corners.BestPasses.RestOfStraight(all);
         var loss = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var pass in passes)
         {
@@ -319,10 +334,42 @@ public sealed class CoachingSession
             }
         }
 
-        _analyses.Add(new LapAnalysis(lap, passes, loss)
+        _analyses[^1] = analysis with { LossToBestSeconds = loss };
+    }
+
+    private void RecomputeBests()
+    {
+        var reference = _analyses.Skip(_referenceStart).ToList();
+        var all = reference.SelectMany(a => a.Passes).ToList();
+        _best = Corners.BestPasses.Select(all);
+        _bestRestOfStraight = Corners.BestPasses.RestOfStraight(all);
+        _bestOutsideCorners = reference.Select(a => a.OutsideCornersTime).Where(t => t is not null).Min();
+    }
+
+    /// <summary>
+    /// When the lap <see cref="CarChange.LapsToConfirm"/> laps after an off or incident has just been
+    /// measured, compare top speeds before and after it; if every lap since is clearly slower, the
+    /// references restart from the lap after the incident.
+    /// </summary>
+    private void DetectCarChange()
+    {
+        var j = _analyses.Count - 1 - CarChange.LapsToConfirm;
+        if (j < _referenceStart || (_analyses[j].Lap.Flaws & (LapFlaw.OffTrack | LapFlaw.Incident)) == 0)
         {
-            OutsideCornersTime = CornerChecks.OutsideCornersTime(lap, CornerMap!),
-            RunInFlaws = CornerChecks.RunInFlaws(lap, CornerMap!),
-        });
+            return;
+        }
+
+        var map = CornerMap!;
+        var before = _analyses.Skip(_referenceStart).Take(j - _referenceStart)
+            .Select(a => CarChange.ApproachSpeeds(a.Lap.Trace!, map))
+            .Append(CarChange.ApproachSpeeds(_analyses[j].Lap.Trace!, map, beforeFirstIncident: true))
+            .ToList();
+        var drops = _analyses.Skip(j + 1).Select(a => CarChange.Drop(CarChange.ApproachSpeeds(a.Lap.Trace!, map), before)).ToList();
+        if (drops.All(d => d is { } v && v <= -CarChange.DropShare))
+        {
+            _referenceStart = j + 1;
+            CarChangedAfterLap = _analyses[j].Lap.LapNumber;
+            CarChanged?.Invoke(_analyses[j].Lap.LapNumber, -drops.Average(d => d!.Value));
+        }
     }
 }

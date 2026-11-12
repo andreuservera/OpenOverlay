@@ -286,6 +286,11 @@ foreach (var c in map.Corners)
 }
 
 Console.WriteLine();
+if (session.CarChangedAfterLap is { } carChanged)
+{
+    Console.WriteLine($"Car changed after lap {carChanged}: slower on every straight since (likely damage), so bests only come from later laps.");
+}
+
 Console.WriteLine($"Best lap         {(session.BestLap is { } bl ? $"{Time(bl.LapTime)} (lap {bl.LapNumber})" : "-")}");
 Console.WriteLine($"Theoretical best {(session.TheoreticalBestLapTime is { } tb ? Time(tb) : "-")}  (best run to the first corner + every corner's best clean pass + the best clean rest of each long straight, from any lap)");
 
@@ -294,27 +299,25 @@ if (debrief || speak)
     Console.WriteLine();
     Console.WriteLine("Post-lap debrief (each clean lap against the best passes up to it)");
     var coach = new PostLapCoach();
-    var bestLapSoFar = double.MaxValue;
-    double? outsideSoFar = null;
     LapDebrief? last = null;
     var all = session.AllAnalyses;
     for (var i = 0; i < all.Count; i++)
     {
         var a = all[i];
-        if (a.OutsideCornersTime is { } o && (outsideSoFar is null || o < outsideSoFar))
-        {
-            outsideSoFar = o;
-        }
-
         if (!a.IsCleanLap)
         {
             continue;
         }
 
-        // Same rules as live: every clean corner up to this lap, from any lap.
-        var passesSoFar = all.Take(i + 1).SelectMany(x => x.Passes).ToList();
+        // Same rules as live: every clean piece up to this lap, from any lap since the car last changed.
+        var fromIndex = session.CarChangedAfterLap is { } changed && a.Lap.LapNumber > changed
+            ? all.ToList().FindIndex(x => x.Lap.LapNumber > changed)
+            : 0;
+        var slice = all.Skip(fromIndex).Take(i + 1 - fromIndex).ToList();
+        var passesSoFar = slice.SelectMany(x => x.Passes).ToList();
         var bestSoFar = BestPasses.Select(passesSoFar);
-        bestLapSoFar = Math.Min(bestLapSoFar, a.Lap.LapTime);
+        var bestLapSoFar = slice.Where(x => x.IsCleanLap).Min(x => x.Lap.LapTime);
+        var outsideSoFar = slice.Select(x => x.OutsideCornersTime).Where(t => t is not null).Min();
         last = coach.Debrief(a, bestSoFar, bestLapSoFar) with
         {
             TheoreticalBestLapTime = BestPasses.TheoreticalLapTime(map, bestSoFar, outsideSoFar, BestPasses.RestOfStraight(passesSoFar)),
@@ -414,6 +417,12 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
                     Console.WriteLine($"Lap {lap.LapNumber} not counted: {why}.");
                     voice?.Say($"Lap not counted, {why}.");
                 }
+            };
+            session.CarChanged += (lap, drop) =>
+            {
+                var pct = Math.Round(drop * 100);
+                Console.WriteLine($"Car slower on every straight since lap {lap} (top speed -{drop:P1}); comparing with laps from now on.");
+                voice?.Say($"The car looks damaged, {pct:0} percent down on top speed. Comparing with laps from now on.");
             };
             session.FlawedLapAnalyzed += a =>
             {

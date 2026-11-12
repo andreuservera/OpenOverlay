@@ -289,4 +289,44 @@ public class CornerValidityTests
         Assert.Equal($"straight after {t3.DisplayName}", piece);
         Assert.Equal(CornerPassFlaw.OffTrack, flaws);
     }
+
+    private static double[] Damaged(double[] profile, double share)
+    {
+        var cap = profile.Max() * (1 - share);
+        return profile.Select(v => Math.Min(v, cap)).ToArray();
+    }
+
+    [Fact]
+    public void ACarSlowerOnEveryStraightAfterAnOffRestartsTheReferences()
+    {
+        var normal = Track.SpeedProfile();
+        var hurt = Damaged(normal, 0.04);
+        var t2 = Track.PieceStart(3);
+        var frames = MarkOff(Track.Drive([normal, normal, normal, hurt, hurt, hurt]), lap: 2, t2 + 40, t2 + 70);
+
+        var session = new CoachingSession();
+        int? changedAt = null;
+        session.CarChanged += (lap, _) => changedAt = lap;
+        foreach (var f in frames)
+        {
+            session.Observe(f);
+        }
+
+        Assert.Equal(2, changedAt);
+        Assert.Equal(2, session.CarChangedAfterLap);
+        Assert.True(session.BestLap!.LapNumber > 2);
+        Assert.All(session.BestPasses.Values, p => Assert.True(p.LapNumber > 2));
+    }
+
+    [Fact]
+    public void AnOffWithoutLosingSpeedKeepsTheReferences()
+    {
+        var normal = Track.SpeedProfile();
+        var t2 = Track.PieceStart(3);
+        var frames = MarkOff(Track.Drive([normal, normal, normal, normal, normal, normal]), lap: 2, t2 + 40, t2 + 70);
+
+        var session = Run(frames);
+
+        Assert.Null(session.CarChangedAfterLap);
+    }
 }
