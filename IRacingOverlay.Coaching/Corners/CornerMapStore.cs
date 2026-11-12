@@ -13,6 +13,11 @@ namespace IRacingOverlay.Coaching.Corners;
 /// </summary>
 public sealed class CornerMapStore
 {
+    /// <summary>Version of the corner detection that made a map. Bump it whenever detection changes
+    /// where corners start or end: a map saved by an older version is then relearned (its names are
+    /// kept) instead of being trusted forever.</summary>
+    public const int DetectorVersion = 2;
+
     // A saved map is ignored if the track is now this much longer or shorter (layout changed).
     private const int MaxLengthDifferenceMetres = 25;
 
@@ -35,9 +40,11 @@ public sealed class CornerMapStore
 
     public string PathFor(string trackKey) => Path.Combine(Directory, FileName(trackKey) + ".json");
 
-    /// <summary>The saved map for a track, or null if there is none, it can't be read, or the track
-    /// length no longer matches.</summary>
-    public CornerMap? Load(string trackKey, int? trackLengthMetres = null)
+    /// <summary>The saved map for a track, or null if there is none, it can't be read, the track
+    /// length no longer matches, or it was made by an older <see cref="DetectorVersion"/>.</summary>
+    public CornerMap? Load(string trackKey, int? trackLengthMetres = null) => Load(trackKey, trackLengthMetres, anyVersion: false);
+
+    private CornerMap? Load(string trackKey, int? trackLengthMetres, bool anyVersion)
     {
         var path = PathFor(trackKey);
         if (!File.Exists(path))
@@ -48,7 +55,7 @@ public sealed class CornerMapStore
         try
         {
             var file = JsonSerializer.Deserialize<CornerMapFile>(File.ReadAllText(path), Json);
-            if (file is null || file.Corners.Count == 0)
+            if (file is null || file.Corners.Count == 0 || (!anyVersion && file.DetectorVersion < DetectorVersion))
             {
                 return null;
             }
@@ -73,10 +80,12 @@ public sealed class CornerMapStore
     /// <summary>Saves a map, keeping any names already set for corners at the same place.</summary>
     public void Save(string trackKey, CornerMap map)
     {
-        var previous = Load(trackKey);
+        // Names from any older map, even one being replaced because its detector was out of date.
+        var previous = Load(trackKey, null, anyVersion: true);
         var file = new CornerMapFile
         {
             Track = trackKey,
+            DetectorVersion = DetectorVersion,
             TrackLengthMetres = map.TrackLengthMetres,
             LapsUsed = map.LapsUsed,
             Corners = map.Corners.Select(c => new CornerEntry
@@ -107,6 +116,9 @@ public sealed class CornerMapStore
     private sealed class CornerMapFile
     {
         public string Track { get; set; } = "";
+
+        /// <summary>0 in files written before versions were recorded.</summary>
+        public int DetectorVersion { get; set; }
         public int TrackLengthMetres { get; set; }
         public int LapsUsed { get; set; }
         public List<CornerEntry> Corners { get; set; } = [];

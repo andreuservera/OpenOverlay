@@ -45,6 +45,9 @@ so T1 is always the same corner. Each corner has a `name` field, empty at first:
 names of corners whose apex is within 50 m of where it was. Corners whose apexes are less than 80 m
 apart (a chicane, Les Combes) are one corner.
 
+Each file records the version of the corner detection that made it (`detectorVersion`). When
+detection changes, older maps are relearned automatically on the next clean laps, keeping their names.
+
 It prints every lap with iRacing's own lap time beside the computed one, the corners found, each
 clean lap's time per corner and the best pass per corner.
 
