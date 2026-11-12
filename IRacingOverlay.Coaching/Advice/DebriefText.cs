@@ -12,6 +12,9 @@ public static class DebriefText
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+    /// <summary>Arriving this much slower than the best pass is worth pointing out, km/h.</summary>
+    private const double InheritedEntryKmh = 3;
+
     /// <summary>One instruction for a finding, phrased as what to do next lap.</summary>
     public static string Advice(CornerFinding f) => f.Kind switch
     {
@@ -38,7 +41,13 @@ public static class DebriefText
                 : string.Join("; ", c.Findings.Select(Advice));
             var habit = c.RepeatCount > 0 ? $" (same as {c.RepeatCount} recent lap{(c.RepeatCount == 1 ? "" : "s")})" : "";
             var kind = c.Corner.Label is null && Describe(c.Best) is { } k ? $" ({k})" : "";
-            lines.Add($"  {c.Corner.DisplayName}{kind}: lost {c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.");
+            var entry = c.EntrySlowerKmh >= InheritedEntryKmh ? $" Came in {Kmh(c.EntrySlowerKmh)} slower from the corner before." : "";
+            lines.Add($"  {c.Corner.DisplayName}{kind}: lost {c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.{entry}");
+        }
+
+        if (d.TheoreticalBestLapTime is { } tb)
+        {
+            lines.Add($"  Your best corners add up to {LapTime(tb)}.");
         }
 
         return lines;

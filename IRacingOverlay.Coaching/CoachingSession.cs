@@ -5,8 +5,52 @@ using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.Coaching;
 
-/// <summary>A clean lap measured corner by corner, with how each corner compares to the best so far.</summary>
-public sealed record LapAnalysis(RecordedLap Lap, IReadOnlyList<CornerPass> Passes, IReadOnlyDictionary<string, double> LossToBestSeconds);
+/// <summary>
+/// A lap measured corner by corner, with how each clean corner compares to the best so far. Laps
+/// with an off-track or incident are measured too: their untouched corners count (see
+/// <see cref="CornerPass.Flaws"/>), only the lap as a whole doesn't.
+/// </summary>
+/// <param name="LossToBestSeconds">Time lost against the best pass, by corner id, for the clean passes only.</param>
+public sealed record LapAnalysis(RecordedLap Lap, IReadOnlyList<CornerPass> Passes, IReadOnlyDictionary<string, double> LossToBestSeconds)
+{
+    /// <summary>Time from the line to the first corner when that stretch was clean; null otherwise.</summary>
+    public double? OutsideCornersTime { get; init; }
+
+    /// <summary>What voids the run from the line to the first corner; none when it was clean.</summary>
+    public CornerPassFlaw RunInFlaws { get; init; }
+
+    /// <summary>True when the whole lap was clean, so it counts as a lap (best lap, debrief).</summary>
+    public bool IsCleanLap => Lap.IsClean;
+
+    /// <summary>
+    /// Every piece of the lap that can't be used, in lap order, with why: the run to the first
+    /// corner, a corner, or the rest of a long straight after a corner. This is where an off or
+    /// incident that only touched a straight shows up.
+    /// </summary>
+    public IReadOnlyList<(string Piece, CornerPassFlaw Flaws)> UncleanPieces()
+    {
+        var pieces = new List<(string, CornerPassFlaw)>();
+        if (RunInFlaws != CornerPassFlaw.None && Passes.Count > 0)
+        {
+            pieces.Add(($"run to {Passes[0].Corner.DisplayName}", RunInFlaws));
+        }
+
+        foreach (var p in Passes)
+        {
+            if (!p.IsClean)
+            {
+                pieces.Add((p.Corner.DisplayName, p.Flaws));
+            }
+
+            if (!p.RestOfStraightClean)
+            {
+                pieces.Add(($"straight after {p.Corner.DisplayName}", p.RestOfStraightFlaws));
+            }
+        }
+
+        return pieces;
+    }
+}
 
 /// <summary>Where the current corner map came from.</summary>
 public enum CornerMapOrigin
@@ -47,9 +91,11 @@ public sealed record CoachingOptions
 }
 
 /// <summary>
-/// Phase 0 of the coach: records laps, learns the track's corners, and measures every clean lap
-/// corner by corner against the session's best pass through each corner. It gives no advice yet; it
-/// produces the numbers advice will be built on.
+/// The core of the coach: records laps, learns the track's corners, and measures every lap corner by
+/// corner against the best clean pass through each corner. Corners are judged one by one: a lap with
+/// an off-track or incident doesn't count as a lap, but the corners it didn't touch still count
+/// toward the best passes and the theoretical best (<see cref="CornerChecks"/>). The corner map
+/// itself is only ever learnt from fully clean laps.
 ///
 /// Corners: a saved map for the track is used as is, so T-numbers and names never move between
 /// sessions. Without one, the first clean lap gives a provisional map so measuring can start, and
@@ -65,8 +111,18 @@ public sealed class CoachingSession
 {
     private readonly LapRecorder _recorder;
     private readonly CoachingOptions _options;
+    // Lap flaws that make a lap useless even corner by corner: the car was reset, towed or moved,
+    // the telemetry stopped, or the lap wasn't driven at speed.
+    private const LapFlaw Unusable = LapFlaw.Partial | LapFlaw.NotRacing | LapFlaw.NotOnTrack | LapFlaw.TelemetryGap | LapFlaw.Discontinuity;
+
     private readonly List<LapAnalysis> _analyses = [];
-    private readonly Dictionary<string, CornerPass> _best = new(StringComparer.Ordinal);
+    private readonly List<RecordedLap> _waitingForMap = [];
+    private Dictionary<string, CornerPass> _best = new(StringComparer.Ordinal);
+    private double? _bestOutsideCorners;
+    private Dictionary<string, double> _bestRestOfStraight = new(StringComparer.Ordinal);
+
+    // Bests come only from laps from this index on: it moves when the car is found to have changed.
+    private int _referenceStart;
 
     public CoachingSession(CoachingOptions? options = null)
     {
@@ -81,6 +137,19 @@ public sealed class CoachingSession
     /// <summary>Raised after each clean lap has been measured.</summary>
     public event Action<LapAnalysis>? LapAnalyzed;
 
+    /// <summary>Raised after a lap with an off-track, incident or pit stop has been measured: its
+    /// clean corners already count toward the best passes.</summary>
+    public event Action<LapAnalysis>? FlawedLapAnalyzed;
+
+    /// <summary>Raised when the car is slower on every straight since an off or incident (likely
+    /// damage): the lap number of the incident and the top-speed drop (0.027 = 2.7%). Best passes,
+    /// best lap and theoretical best restart from the lap after it.</summary>
+    public event Action<int, double>? CarChanged;
+
+    /// <summary>The incident lap after which the car was found slower, when it was; bests only come
+    /// from later laps.</summary>
+    public int? CarChangedAfterLap { get; private set; }
+
     /// <summary>Raised when the corner map is set or replaced (provisional, agreed, or loaded).</summary>
     public event Action<CornerMap>? CornerMapChanged;
 
@@ -88,37 +157,30 @@ public sealed class CoachingSession
     public IReadOnlyList<RecordedLap> Laps => _recorder.Laps;
 
     /// <summary>Clean laps, measured, in order.</summary>
-    public IReadOnlyList<LapAnalysis> Analyses => _analyses;
+    public IReadOnlyList<LapAnalysis> Analyses => _analyses.Where(a => a.IsCleanLap).ToList();
+
+    /// <summary>Every measured lap, clean or with clean corners only, in order.</summary>
+    public IReadOnlyList<LapAnalysis> AllAnalyses => _analyses;
 
     /// <summary>The corners, once a clean lap has been driven or a saved map loaded; null before.</summary>
     public CornerMap? CornerMap { get; private set; }
 
     public CornerMapOrigin? CornerMapOrigin { get; private set; }
 
-    /// <summary>Fastest pass through each corner so far, by corner id.</summary>
+    /// <summary>The best clean pass through each corner so far, from any lap, by corner id
+    /// (see <see cref="Corners.BestPasses"/>).</summary>
     public IReadOnlyDictionary<string, CornerPass> BestPasses => _best;
 
-    public RecordedLap? BestLap => _analyses.Count == 0 ? null : _analyses.MinBy(a => a.Lap.LapTime)!.Lap;
+    public RecordedLap? BestLap => _analyses.Skip(_referenceStart).Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)?.Lap;
 
     /// <summary>
-    /// The best lap with every corner swapped for the best pass through it: what the driver has
-    /// already shown they can do. Corners chained from different laps may not quite join up, so treat
-    /// it as a target, not a promise.
+    /// The best pass of every corner chained into one lap, each with the straight after it: what
+    /// the driver has already shown they can do, including corners from laps that didn't count.
+    /// Corners chained from different laps may not quite join up, so treat it as a target, not a
+    /// promise. Null until every corner has a clean pass.
     /// </summary>
-    public double? TheoreticalBestLapTime
-    {
-        get
-        {
-            if (BestLap is not { } best)
-            {
-                return null;
-            }
-
-            var analysis = _analyses.First(a => ReferenceEquals(a.Lap, best));
-            var gain = analysis.Passes.Sum(p => _best.TryGetValue(p.Corner.Name, out var b) ? p.SegmentTime - b.SegmentTime : 0);
-            return best.LapTime - gain;
-        }
-    }
+    public double? TheoreticalBestLapTime =>
+        CornerMap is { } map ? Corners.BestPasses.TheoreticalLapTime(map, _best, _bestOutsideCorners, _bestRestOfStraight) : null;
 
     public void Observe(in TelemetryFrame frame) => _recorder.Observe(frame);
 
@@ -131,7 +193,7 @@ public sealed class CoachingSession
     /// when a store is set.</summary>
     public void RebuildCornerMap(IEnumerable<RecordedLap> laps, bool save = true)
     {
-        var traces = laps.Where(l => l.Trace is not null).Select(l => l.Trace!).ToList();
+        var traces = laps.Where(l => l.IsClean && l.Trace is not null).Select(l => l.Trace!).ToList();
         if (traces.Count == 0)
         {
             throw new ArgumentException("None of the laps has a trace to learn corners from.", nameof(laps));
@@ -147,8 +209,23 @@ public sealed class CoachingSession
     private void OnLapCompleted(RecordedLap lap)
     {
         LapRecorded?.Invoke(lap);
-        if (!lap.IsClean || lap.Trace is null)
+        if (lap.Trace is null || (lap.Flaws & Unusable) != 0)
         {
+            return;
+        }
+
+        if (!lap.IsClean)
+        {
+            // Corners are only ever learnt from clean laps; until there is a map, keep the lap so
+            // its clean corners count once there is one.
+            if (CornerMap is null)
+            {
+                _waitingForMap.Add(lap);
+                return;
+            }
+
+            Measure(lap);
+            FlawedLapAnalyzed?.Invoke(_analyses[^1]);
             return;
         }
 
@@ -164,11 +241,12 @@ public sealed class CoachingSession
             }
         }
 
-        Measure(lap, raise: false);
+        Measure(lap);
 
-        if (CornerMapOrigin == Coaching.CornerMapOrigin.SingleLap && _analyses.Count >= Math.Max(2, _options.CornerMapLaps))
+        var cleanLaps = _analyses.Where(a => a.IsCleanLap).Select(a => a.Lap).ToList();
+        if (CornerMapOrigin == Coaching.CornerMapOrigin.SingleLap && cleanLaps.Count >= Math.Max(2, _options.CornerMapLaps))
         {
-            RebuildCornerMap(_analyses.Select(a => a.Lap));
+            RebuildCornerMap(cleanLaps);
         }
 
         LapAnalyzed?.Invoke(_analyses[^1]);
@@ -183,12 +261,17 @@ public sealed class CoachingSession
 
         CornerMap = map;
         CornerMapOrigin = origin;
-        _best.Clear();
-        var laps = _analyses.Select(a => a.Lap).ToList();
+        _best = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
+        _bestOutsideCorners = null;
+        _bestRestOfStraight = new Dictionary<string, double>(StringComparer.Ordinal);
+        _referenceStart = 0;
+        CarChangedAfterLap = null;
+        var laps = _analyses.Select(a => a.Lap).Concat(_waitingForMap).OrderBy(l => l.StartTime).ToList();
+        _waitingForMap.Clear();
         _analyses.Clear();
         foreach (var lap in laps)
         {
-            Measure(lap, raise: false);
+            Measure(lap);
         }
 
         CornerMapChanged?.Invoke(map);
@@ -218,27 +301,75 @@ public sealed class CoachingSession
         }
     }
 
-    private void Measure(RecordedLap lap, bool raise)
+    private void Measure(RecordedLap lap)
     {
-        var passes = CornerAnalyzer.Analyze(lap.Trace!, CornerMap!, lap.LapNumber);
+        var passes = CornerAnalyzer.Analyze(lap.Trace!, CornerMap!, lap.LapNumber, lap.Flaws).ToList();
+
+        // A cut can't be seen in one pass alone: compare its path with the corner's earlier clean passes.
+        for (var i = 0; i < passes.Count; i++)
+        {
+            var p = passes[i];
+            var earlier = _analyses.SelectMany(a => a.Passes).Where(o => o.IsClean && o.Corner.Name == p.Corner.Name);
+            if (CornerChecks.IsShortcut(p, earlier))
+            {
+                passes[i] = p with { Flaws = p.Flaws | CornerPassFlaw.Shortcut };
+            }
+        }
+
+        var analysis = new LapAnalysis(lap, passes, new Dictionary<string, double>(StringComparer.Ordinal))
+        {
+            OutsideCornersTime = CornerChecks.OutsideCornersTime(lap, CornerMap!),
+            RunInFlaws = CornerChecks.RunInFlaws(lap, CornerMap!),
+        };
+        _analyses.Add(analysis);
+        DetectCarChange();
+        RecomputeBests();
+
         var loss = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var pass in passes)
         {
-            var name = pass.Corner.Name;
-            if (!_best.TryGetValue(name, out var best) || pass.SegmentTime < best.SegmentTime)
+            if (pass.IsClean && _best.TryGetValue(pass.Corner.Name, out var best))
             {
-                _best[name] = pass;
-                best = pass;
+                loss[pass.Corner.Name] = pass.ScoreTime - best.ScoreTime;
             }
-
-            loss[name] = pass.SegmentTime - best.SegmentTime;
         }
 
-        var analysis = new LapAnalysis(lap, passes, loss);
-        _analyses.Add(analysis);
-        if (raise)
+        _analyses[^1] = analysis with { LossToBestSeconds = loss };
+    }
+
+    private void RecomputeBests()
+    {
+        var reference = _analyses.Skip(_referenceStart).ToList();
+        var all = reference.SelectMany(a => a.Passes).ToList();
+        _best = Corners.BestPasses.Select(all);
+        _bestRestOfStraight = Corners.BestPasses.RestOfStraight(all);
+        _bestOutsideCorners = reference.Select(a => a.OutsideCornersTime).Where(t => t is not null).Min();
+    }
+
+    /// <summary>
+    /// When the lap <see cref="CarChange.LapsToConfirm"/> laps after an off or incident has just been
+    /// measured, compare top speeds before and after it; if every lap since is clearly slower, the
+    /// references restart from the lap after the incident.
+    /// </summary>
+    private void DetectCarChange()
+    {
+        var j = _analyses.Count - 1 - CarChange.LapsToConfirm;
+        if (j < _referenceStart || (_analyses[j].Lap.Flaws & (LapFlaw.OffTrack | LapFlaw.Incident)) == 0)
         {
-            LapAnalyzed?.Invoke(analysis);
+            return;
+        }
+
+        var map = CornerMap!;
+        var before = _analyses.Skip(_referenceStart).Take(j - _referenceStart)
+            .Select(a => CarChange.ApproachSpeeds(a.Lap.Trace!, map))
+            .Append(CarChange.ApproachSpeeds(_analyses[j].Lap.Trace!, map, beforeFirstIncident: true))
+            .ToList();
+        var drops = _analyses.Skip(j + 1).Select(a => CarChange.Drop(CarChange.ApproachSpeeds(a.Lap.Trace!, map), before)).ToList();
+        if (drops.All(d => d is { } v && v <= -CarChange.DropShare))
+        {
+            _referenceStart = j + 1;
+            CarChangedAfterLap = _analyses[j].Lap.LapNumber;
+            CarChanged?.Invoke(_analyses[j].Lap.LapNumber, -drops.Average(d => d!.Value));
         }
     }
 }
