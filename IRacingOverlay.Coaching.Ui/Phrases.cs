@@ -22,7 +22,7 @@ internal static class Phrases
     /// <summary>What to do about a finding: "Brake 12 m later".</summary>
     public static string Advice(string kind, double amount, bool isRamp, string? english)
     {
-        var text = TryT(Key("advice", kind, isRamp));
+        var text = MissingAmount(kind, amount, isRamp, english) ? null : TryT(Key("advice", kind, isRamp));
         return text is null ? SessionSummaryText.Capital(english ?? kind) : string.Format(Inv, text, Whole(amount));
     }
 
@@ -31,9 +31,13 @@ internal static class Phrases
     /// <summary>What went wrong, as a sentence with how often and what it cost.</summary>
     public static string Problem(string kind, double amount, bool isRamp, int laps, int outOf, double loss, string? english)
     {
-        var text = TryT(Key("problem", kind, isRamp));
+        var text = MissingAmount(kind, amount, isRamp, english) ? null : TryT(Key("problem", kind, isRamp));
         return text is null ? english ?? kind : string.Format(Inv, text, Whole(amount), laps, outOf, Seconds(loss));
     }
+
+    // Older reports didn't save a mistake's size: say it with their saved English rather than "0 km/h".
+    private static bool MissingAmount(string kind, double amount, bool isRamp, string? english) =>
+        english is not null && amount <= 0 && !(kind == "InitialBrakeTooSoft" && isRamp);
 
     private static string Key(string what, string kind, bool isRamp) =>
         kind == "InitialBrakeTooSoft" && isRamp ? $"coaching.{what}.{kind}.ramp" : $"coaching.{what}.{kind}";
