@@ -10,6 +10,15 @@ namespace IRacingOverlay.Coaching.Advice;
 /// the same first finding came up in this corner: a habit rather than a one-off.</param>
 public sealed record CornerAdvice(Corner Corner, double LossSeconds, IReadOnlyList<CornerFinding> Findings, int RepeatCount)
 {
+    /// <summary>The best pass through this corner, which says what kind of corner it is (how slow,
+    /// which way) when it has no name.</summary>
+    public CornerPass? Best { get; init; }
+
+    /// <summary>Where the corner sits in the lap: 0-based index and how many corners there are.</summary>
+    public int Index { get; init; }
+
+    public int CornerCount { get; init; }
+
     public CornerFinding? Main => Findings.Count > 0 ? Findings[0] : null;
 }
 
@@ -99,7 +108,12 @@ public sealed class PostLapCoach
 
             if (loss >= _options.MinLossSeconds)
             {
-                advice.Add(new CornerAdvice(pass.Corner, loss, findings, repeats));
+                advice.Add(new CornerAdvice(pass.Corner, loss, findings, repeats)
+                {
+                    Best = best,
+                    Index = lap.Passes.ToList().IndexOf(pass),
+                    CornerCount = lap.Passes.Count,
+                });
             }
         }
 

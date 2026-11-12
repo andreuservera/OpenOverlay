@@ -1,4 +1,5 @@
 using System.Globalization;
+using IRacingOverlay.Coaching.Corners;
 
 namespace IRacingOverlay.Coaching.Advice;
 
@@ -36,7 +37,8 @@ public static class DebriefText
                 ? "no single cause; compare the traces"
                 : string.Join("; ", c.Findings.Select(Advice));
             var habit = c.RepeatCount > 0 ? $" (same as {c.RepeatCount} recent lap{(c.RepeatCount == 1 ? "" : "s")})" : "";
-            lines.Add($"  {c.Corner.DisplayName}: lost {c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.");
+            var kind = c.Corner.Label is null && Describe(c.Best) is { } k ? $" ({k})" : "";
+            lines.Add($"  {c.Corner.DisplayName}{kind}: lost {c.LossSeconds.ToString("0.00", Inv)} s. {Capital(what)}{habit}.");
         }
 
         return lines;
@@ -53,8 +55,7 @@ public static class DebriefText
         foreach (var c in d.Corners.Where(c => c.Main is not null).Take(maxCorners))
         {
             var fix = Advice(c.Main!);
-            var again = c.RepeatCount >= 2 ? " again" : "";
-            parts.Add($"{SpokenCorner(c.Corner.DisplayName)}{again}, {Tenths(c.LossSeconds)}: {fix}.");
+            parts.Add($"{SpokenCorner(c, again: c.RepeatCount >= 2)}, {Tenths(c.LossSeconds)}: {fix}.");
         }
 
         return string.Join(" ", parts);
@@ -81,9 +82,59 @@ public static class DebriefText
 
     private static string Capital(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
 
-    /// <summary>"T5" reads as "tee five" to a speech engine; say "Turn 5".</summary>
-    private static string SpokenCorner(string name) =>
-        name.Length > 1 && name[0] == 'T' && name[1..].All(char.IsDigit) ? $"Turn {name[1..]}" : name;
+    /// <summary>
+    /// How a corner is said. Its real name when one is set. Otherwise a bare "Turn 8" means nothing
+    /// at speed, so it is described the way a driver thinks of it: "the last corner", "the first
+    /// corner", or how slow it is and which way it goes ("Turn 8, the slow right").
+    /// </summary>
+    internal static string SpokenCorner(CornerAdvice c, bool again = false)
+    {
+        var a = again ? " again" : "";
+        if (!string.IsNullOrWhiteSpace(c.Corner.Label))
+        {
+            return c.Corner.Label! + a;
+        }
+
+        var turn = c.Corner.Name.Length > 1 && c.Corner.Name[0] == 'T' && c.Corner.Name[1..].All(char.IsDigit)
+            ? $"Turn {c.Corner.Name[1..]}"
+            : c.Corner.Name;
+        if (c.CornerCount > 1 && c.Index == c.CornerCount - 1)
+        {
+            return "The last corner" + a;
+        }
+
+        if (c.Index == 0)
+        {
+            return "Turn 1" + a;
+        }
+
+        return Describe(c.Best) is { } kind ? $"{turn}{a}, the {kind}" : turn + a;
+    }
+
+    /// <summary>"hairpin", "slow right", "fast left"…; null when nothing is known.</summary>
+    internal static string? Describe(CornerPass? best)
+    {
+        if (best is null)
+        {
+            return null;
+        }
+
+        var kmh = best.MinSpeed * 3.6;
+        var way = best.Direction switch { > 0 => "left", < 0 => "right", _ => null };
+        if (kmh < 75)
+        {
+            return way is null ? "hairpin" : $"{way} hairpin";
+        }
+
+        var pace = kmh < 115 ? "slow" : kmh < 165 ? null : "fast";
+        return (pace, way) switch
+        {
+            (null, null) => null,
+            (_, null) => $"{pace} corner",
+            (null, _) => $"{way}-hander",
+            _ => $"{pace} {way}",
+        };
+    }
 
     /// <summary>Time differences the way a race engineer says them.</summary>
     internal static string Tenths(double seconds)

@@ -53,6 +53,10 @@ public sealed record CornerPass
     public float AbsShare { get; init; }
 
     public required int GearAtApex { get; init; }
+
+    /// <summary>Which way the corner turns, from the steering through it: +1 left, -1 right, 0 when
+    /// it can't tell (a chicane steered both ways about equally).</summary>
+    public int Direction { get; init; }
 }
 
 /// <summary>Measures every corner of a <see cref="CornerMap"/> on a lap.</summary>
@@ -149,6 +153,17 @@ public static class CornerAnalyzer
             : null;
         var trail = release is { } r && turnIn is { } ti ? Math.Max(0, r - ti) : 0;
 
+        // iRacing's steering angle is positive to the left. Weigh the whole window so a chicane
+        // takes the direction of its bigger part.
+        double steerSum = 0, steerAbs = 0;
+        for (var i = s; i <= e; i++)
+        {
+            steerSum += lap.Steering[i];
+            steerAbs += Math.Abs(lap.Steering[i]);
+        }
+
+        var direction = steerAbs > 0 && Math.Abs(steerSum) > 0.3 * steerAbs ? Math.Sign(steerSum) : 0;
+
         var pickupFrom = release is { } rel ? rel + 1 : s;
         int? pickup = FirstIndex(pickupFrom, e, i => lap.Throttle[i] > ThrottleOn);
         int? full = pickup is { } p ? FirstIndex(p, e, i => lap.Throttle[i] >= FullThrottle) : null;
@@ -173,6 +188,7 @@ public static class CornerAnalyzer
             ExitSpeedPlus100 = lap.Speed[Math.Clamp(Math.Min(e + 100, nextCornerStartM ?? int.MaxValue), e, lap.Length - 1)],
             AbsShare = brakeSamples > 0 ? (float)absSamples / brakeSamples : 0,
             GearAtApex = lap.Gear[minAt],
+            Direction = direction,
         };
     }
 

@@ -158,6 +158,35 @@ public class AdviceTests
     }
 
     [Theory]
+    [InlineData(60, -1, "Turn 5, the right hairpin")]
+    [InlineData(95, 1, "Turn 5, the slow left")]
+    [InlineData(140, -1, "Turn 5, the right-hander")]
+    [InlineData(200, 1, "Turn 5, the fast left")]
+    [InlineData(140, 0, "Turn 5")]
+    public void ACornerWithoutANameIsDescribedByHowSlowItIsAndWhichWayItGoes(double kmh, int direction, string expected)
+    {
+        var corner = new Corner("T5", 1000, 1100, 1200);
+        var advice = new CornerAdvice(corner, 0.2, [], 0)
+        {
+            Best = Pass(corner, 5.0) with { MinSpeed = (float)(kmh / 3.6), Direction = direction },
+            Index = 4,
+            CornerCount = 10,
+        };
+
+        Assert.Equal(expected, DebriefText.SpokenCorner(advice));
+    }
+
+    [Fact]
+    public void TheLastCornerAndNamedCornersAreSaidAsSuch()
+    {
+        var last = new CornerAdvice(new Corner("T10", 6500, 6700, 6800), 0.2, [], 0) { Index = 9, CornerCount = 10 };
+        Assert.Equal("The last corner again", DebriefText.SpokenCorner(last, again: true));
+
+        var named = last with { Corner = last.Corner with { Label = "Bus Stop" } };
+        Assert.Equal("Bus Stop", DebriefText.SpokenCorner(named));
+    }
+
+    [Theory]
     [InlineData(0.04, "less than a tenth")]
     [InlineData(0.12, "a tenth")]
     [InlineData(0.35, "4 tenths")]
