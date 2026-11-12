@@ -267,6 +267,6 @@ public class CornerTypeTests
         // The best pass went back to full throttle and lifted at 230: no "lift 80 metres later".
         var best = p with { LiftPointM = 230, LiftCarriedOver = false, LiftLengthM = 30, SegmentTime = 4 };
         var pass = p with { SegmentTime = 4.2 };
-        Assert.DoesNotContain(CornerDiagnoser.Diagnose(pass, best), f => f.Kind == FindingKind.LiftedTooEarly);
+        Assert.DoesNotContain(CornerDiagnoser.Diagnose(pass, best), f => f.Kind is FindingKind.LiftedTooEarly or FindingKind.LiftTooLong);
     }
 }

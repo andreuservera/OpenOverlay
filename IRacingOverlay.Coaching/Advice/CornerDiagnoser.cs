@@ -84,7 +84,7 @@ public static class CornerDiagnoser
         }
         else if (pass.LiftPointM is { } lp && best.LiftPointM is { } blp)
         {
-            // A lift carried on from the corner before has no lift point in this corner to move.
+            // A lift carried on from the corner before has no lift point in this corner to move…
             if (!pass.LiftCarriedOver && blp - lp >= o.BrakePointMetres)
             {
                 findings.Add(new CornerFinding(FindingKind.LiftedTooEarly, blp - lp));
@@ -95,7 +95,8 @@ public static class CornerDiagnoser
                 findings.Add(new CornerFinding(FindingKind.LiftTooDeep, (best.MinThrottle - pass.MinThrottle) * 100));
             }
 
-            if (pass.LiftLengthM - best.LiftLengthM >= o.ThrottleMetres)
+            // Nor a length: the part before this corner is the corner before's exit.
+            if (!pass.LiftCarriedOver && pass.LiftLengthM - best.LiftLengthM >= o.ThrottleMetres)
             {
                 findings.Add(new CornerFinding(FindingKind.LiftTooLong, pass.LiftLengthM - best.LiftLengthM));
             }
