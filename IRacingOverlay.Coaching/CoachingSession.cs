@@ -75,6 +75,9 @@ public sealed class CoachingSession
         _recorder.LapCompleted += OnLapCompleted;
     }
 
+    /// <summary>Raised for every lap as it completes, clean or not, before it is measured.</summary>
+    public event Action<RecordedLap>? LapRecorded;
+
     /// <summary>Raised after each clean lap has been measured.</summary>
     public event Action<LapAnalysis>? LapAnalyzed;
 
@@ -143,6 +146,7 @@ public sealed class CoachingSession
 
     private void OnLapCompleted(RecordedLap lap)
     {
+        LapRecorded?.Invoke(lap);
         if (!lap.IsClean || lap.Trace is null)
         {
             return;

@@ -301,8 +301,13 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
     CoachingSession? session = null;
     string? track = null;
     string? pendingTrack = null;
+    string? trackName = null;
 
-    connection.SessionInfoUpdated += (_, info) => pendingTrack = info.WeekendInfo?.TrackName;
+    connection.SessionInfoUpdated += (_, info) =>
+    {
+        trackName = info.WeekendInfo?.TrackDisplayName ?? info.WeekendInfo?.TrackName;
+        pendingTrack = info.WeekendInfo?.TrackName;
+    };
     connection.Connected += (_, _) => Console.WriteLine("Connected to iRacing.");
     connection.Disconnected += (_, _) => Console.WriteLine("Disconnected from iRacing.");
     connection.TelemetryUpdated += (_, snapshot) =>
@@ -311,7 +316,30 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
         {
             track = t;
             session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = store, TurnNames = TrackTurnNames.Default });
-            session.CornerMapChanged += m => Console.WriteLine($"Corners for {t}: {m.Corners.Count} ({session.CornerMapOrigin})");
+            session.CornerMapChanged += m =>
+            {
+                Console.WriteLine($"Corners for {t}: {m.Corners.Count} ({session.CornerMapOrigin})");
+                if (session.CornerMapOrigin == CornerMapOrigin.Consensus)
+                {
+                    voice?.Say("Corners learned.");
+                }
+            };
+
+            // Say why a lap got no debrief when the driver might expect one.
+            session.LapRecorded += lap =>
+            {
+                if (lap.IsClean || (lap.Flaws & (LapFlaw.Partial | LapFlaw.PitRoad | LapFlaw.StartLap | LapFlaw.NotOnTrack | LapFlaw.NotRacing)) != 0)
+                {
+                    return;
+                }
+
+                var why = lap.Flaws.HasFlag(LapFlaw.OffTrack) ? "off track" : lap.Flaws.HasFlag(LapFlaw.Incident) ? "incident" : null;
+                if (why is not null)
+                {
+                    Console.WriteLine($"Lap {lap.LapNumber} not counted: {why}.");
+                    voice?.Say($"Lap not counted, {why}.");
+                }
+            };
             PostLapCoach.Attach(session, d =>
             {
                 Console.WriteLine();
@@ -323,6 +351,8 @@ static int RunLive(string storeDir, bool speak, string? voiceName)
                 voice?.Say(DebriefText.Spoken(d));
             });
             Console.WriteLine($"Coaching at {t}. Drive clean laps; the debrief comes as you cross the line.");
+            // So the driver knows the coach is listening without looking at the screen.
+            voice?.Say($"Coach ready, {trackName ?? t}.");
         }
 
         session?.Observe(snapshot);
