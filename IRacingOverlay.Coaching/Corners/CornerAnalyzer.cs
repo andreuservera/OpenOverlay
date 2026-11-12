@@ -45,7 +45,8 @@ public sealed record CornerPass
 
     public required float ExitSpeed { get; init; }
 
-    /// <summary>Speed 100 m after the corner: what the exit is worth on the straight.</summary>
+    /// <summary>Speed 100 m after the corner, or where the next corner begins if that is sooner:
+    /// what the exit is worth on the straight.</summary>
     public required float ExitSpeedPlus100 { get; init; }
 
     /// <summary>Share of braking samples with ABS active, 0–1.</summary>
@@ -66,20 +67,24 @@ public static class CornerAnalyzer
     public static IReadOnlyList<CornerPass> Analyze(LapTrace lap, CornerMap map, int lapNumber)
     {
         var passes = new List<CornerPass>(map.Corners.Count);
-        foreach (var corner in map.Corners)
+        for (var i = 0; i < map.Corners.Count; i++)
         {
+            var corner = map.Corners[i];
             if (corner.EndM >= lap.Length)
             {
                 continue;
             }
 
-            passes.Add(Measure(lap, corner, lapNumber));
+            int? nextStart = i + 1 < map.Corners.Count ? map.Corners[i + 1].StartM : null;
+            passes.Add(Measure(lap, corner, lapNumber, nextStart));
         }
 
         return passes;
     }
 
-    public static CornerPass Measure(LapTrace lap, Corner c, int lapNumber)
+    /// <param name="nextCornerStartM">Where the next corner begins, so the "+100 m" exit speed is
+    /// never read inside it.</param>
+    public static CornerPass Measure(LapTrace lap, Corner c, int lapNumber, int? nextCornerStartM = null)
     {
         var s = c.StartM;
         var e = c.EndM;
@@ -165,7 +170,7 @@ public static class CornerAnalyzer
             ThrottlePickupM = pickup,
             FullThrottleM = full,
             ExitSpeed = lap.Speed[e],
-            ExitSpeedPlus100 = lap.Speed[Math.Min(e + 100, lap.Length - 1)],
+            ExitSpeedPlus100 = lap.Speed[Math.Clamp(Math.Min(e + 100, nextCornerStartM ?? int.MaxValue), e, lap.Length - 1)],
             AbsShare = brakeSamples > 0 ? (float)absSamples / brakeSamples : 0,
             GearAtApex = lap.Gear[minAt],
         };

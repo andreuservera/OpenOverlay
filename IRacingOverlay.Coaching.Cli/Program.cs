@@ -1,32 +1,54 @@
 using System.Globalization;
 using System.Text;
 using IRacingOverlay.Coaching;
+using IRacingOverlay.Coaching.Corners;
 using IRacingOverlay.Coaching.Ibt;
 using IRacingOverlay.Coaching.Laps;
 
-// coaching-analyze <file.ibt> [--csv <dir>]
+// coaching-analyze <file.ibt> [--csv <dir>] [--relearn] [--no-save] [--store <dir>]
 //
 // Runs the Phase 0 coaching pipeline over an iRacing telemetry file and prints what it found: every
-// lap (with iRacing's own lap time beside ours, as a check), the corners it learned, each clean lap's
-// time per corner, and the best pass through each corner. --csv also writes every clean lap's 1 m
-// trace, for plotting.
+// lap (with iRacing's own lap time beside ours, as a check), the corners, each clean lap's time per
+// corner, and the best pass through each corner. --csv also writes every clean lap's 1 m trace.
+//
+// Corners come from the saved map for the track when there is one (same T-numbers and names every
+// time). Otherwise they are agreed from up to five of the fastest clean laps and saved. --relearn
+// ignores the saved map and agrees a new one; --no-save leaves the saved maps untouched.
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
-    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>]");
+    Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap]");
     return args.Length == 0 ? 1 : 0;
 }
 
 var path = args[0];
 string? csvDir = null;
+var relearn = false;
+var save = true;
+var perLap = false;
+var storeDir = CornerMapStore.DefaultDirectory;
 for (var i = 1; i < args.Length; i++)
 {
-    if (args[i] == "--csv" && i + 1 < args.Length)
+    switch (args[i])
     {
-        csvDir = args[++i];
+        case "--csv" when i + 1 < args.Length:
+            csvDir = args[++i];
+            break;
+        case "--store" when i + 1 < args.Length:
+            storeDir = args[++i];
+            break;
+        case "--relearn":
+            relearn = true;
+            break;
+        case "--no-save":
+            save = false;
+            break;
+        case "--corners-per-lap":
+            perLap = true;
+            break;
     }
 }
 
@@ -41,7 +63,15 @@ Console.WriteLine($"Car       {car ?? "?"}");
 Console.WriteLine($"Recorded  {ibt.SessionStartUtc:yyyy-MM-dd HH:mm} UTC, {ibt.RecordCount} ticks at {ibt.TickRate} Hz, {ibt.Variables.Count} channels");
 Console.WriteLine();
 
-var session = new CoachingSession();
+var store = new CornerMapStore(storeDir);
+var trackKey = weekend?.TrackName;
+var session = new CoachingSession(new CoachingOptions
+{
+    TrackKey = trackKey,
+    // --relearn: don't load the saved map (it is still saved over unless --no-save).
+    Store = relearn || trackKey is null ? null : store,
+    CornerMapLaps = int.MaxValue, // agree the map below, from the fastest laps of the whole file
+});
 foreach (var frame in ibt.Frames())
 {
     session.Observe(frame);
@@ -49,11 +79,14 @@ foreach (var frame in ibt.Frames())
 
 session.Flush();
 
-// Live, the corners come from the first clean lap. With the whole file in hand, learn them from the
-// best lap instead: the cleanest driving gives the cleanest braking and throttle points.
-if (session.BestLap is { } bestLap && !ReferenceEquals(bestLap, session.CornerMapSource))
+if (session.CornerMapOrigin != CornerMapOrigin.Saved && session.Analyses.Count > 0)
 {
-    session.RebuildCornerMap(bestLap);
+    var fastest = session.Analyses.Select(a => a.Lap).OrderBy(l => l.LapTime).Take(5).ToList();
+    session.RebuildCornerMap(fastest, save: false);
+    if (save && trackKey is not null)
+    {
+        store.Save(trackKey, session.CornerMap!);
+    }
 }
 
 Console.WriteLine("Laps (ours vs iRacing's LapLastLapTime)");
@@ -73,12 +106,34 @@ if (session.CornerMap is not { } map)
     return 0;
 }
 
-Console.WriteLine($"Corners learned from lap {session.CornerMapSource!.LapNumber} (track {map.TrackLengthMetres} m)");
-Console.WriteLine("  corner  start   apex    end     length  min speed");
-var source = session.Analyses.First(a => ReferenceEquals(a.Lap, session.CornerMapSource));
-foreach (var p in source.Passes)
+var origin = session.CornerMapOrigin switch
 {
-    Console.WriteLine($"  {p.Corner.Name,-6}  {p.Corner.StartM,5} m {p.Corner.ApexM,5} m {p.Corner.EndM,5} m {p.Corner.LengthM,5} m  {Kmh(p.MinSpeed),5:0} km/h");
+    CornerMapOrigin.Saved => $"saved map for '{trackKey}'",
+    _ => $"agreed from {map.LapsUsed} clean laps" + (save && trackKey is not null ? $", saved for '{trackKey}'" : ""),
+};
+Console.WriteLine($"Corners: {origin} (track {map.TrackLengthMetres} m)");
+if (trackKey is not null)
+{
+    Console.WriteLine($"  edit corner names in {store.PathFor(trackKey)}");
+}
+
+Console.WriteLine("  corner  start   apex    end     length  best min speed  name");
+foreach (var c in map.Corners)
+{
+    var minSpeed = session.BestPasses.TryGetValue(c.Name, out var bp) ? $"{Kmh(bp.MinSpeed),5:0} km/h" : "    -     ";
+    Console.WriteLine($"  {c.Name,-6}  {c.StartM,5} m {c.ApexM,5} m {c.EndM,5} m {c.LengthM,5} m  {minSpeed}      {c.Label ?? ""}");
+}
+
+if (perLap)
+{
+    // Diagnostic: what each clean lap would give on its own, to see how much detection moves.
+    Console.WriteLine();
+    Console.WriteLine("Corner apexes found on each clean lap by itself (m)");
+    foreach (var a in session.Analyses)
+    {
+        var single = CornerDetector.Detect(a.Lap.Trace!);
+        Console.WriteLine($"  lap {a.Lap.LapNumber,3}: {single.Corners.Count,2} corners  " + string.Join(" ", single.Corners.Select(c => c.ApexM)));
+    }
 }
 
 Console.WriteLine();

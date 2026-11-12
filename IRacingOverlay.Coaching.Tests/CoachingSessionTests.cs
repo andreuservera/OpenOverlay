@@ -16,7 +16,7 @@ public class CoachingSessionTests
         // lap 0 partial, lap 1 normal, lap 2 slow in T2, lap 3 slow in T1
         var frames = Track.Drive([normal, normal, slowT2, slowT1]);
 
-        var session = new CoachingSession();
+        var session = new CoachingSession(new CoachingOptions { CornerMapLaps = 3 });
         var analyzed = 0;
         session.LapAnalyzed += _ => analyzed++;
         foreach (var f in frames)
@@ -28,8 +28,10 @@ public class CoachingSessionTests
 
         Assert.Equal(3, analyzed);
         Assert.NotNull(session.CornerMap);
-        Assert.Equal(1, session.CornerMapSource!.LapNumber);
-        Assert.Equal(3, session.CornerMap!.Corners.Count);
+        // Three clean laps: the provisional single-lap map has been replaced by the agreed one.
+        Assert.Equal(CornerMapOrigin.Consensus, session.CornerMapOrigin);
+        Assert.Equal(3, session.CornerMap!.LapsUsed);
+        Assert.Equal(3, session.CornerMap.Corners.Count);
 
         // The slow corners never hold the best pass; lap 1's passes are (within float noise) the best.
         Assert.NotEqual(3, session.BestPasses["T1"].LapNumber);
@@ -77,9 +79,10 @@ public class CoachingSessionTests
         }
 
         var best = session.BestLap!;
-        session.RebuildCornerMap(best);
+        session.RebuildCornerMap([best]);
 
-        Assert.Same(best, session.CornerMapSource);
+        Assert.Equal(CornerMapOrigin.Consensus, session.CornerMapOrigin);
+        Assert.Equal(1, session.CornerMap!.LapsUsed);
         Assert.Equal(2, session.Analyses.Count);
         Assert.All(session.Analyses, a => Assert.Equal(3, a.Passes.Count));
     }

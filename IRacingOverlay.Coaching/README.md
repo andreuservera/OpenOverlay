@@ -17,6 +17,8 @@ it cannot change how the overlay behaves today.
 | `Ibt/IbtFile` | Reads iRacing `.ibt` disk telemetry (Alt+L) with the Sdk's own parsers: header, channels, session YAML, records. |
 | `Laps/LapRecorder` | Frames → laps line to line (crossing interpolated between ticks), resampled to a 1 m grid, with clean-lap rules (pit road, off track, incident, non-racing states, start/out laps, gaps). |
 | `Corners/CornerDetector` | Finds corners from one clean lap: speed valleys where the track bends and the driver braked or lifted; window from braking/lift to full throttle. |
+| `Corners/CornerMapBuilder` | Agrees one corner map from several clean laps (corners found on at least 60% of them, median positions), so one odd lap can't split or merge a corner. |
+| `Corners/CornerMapStore` | Saves each track's map as JSON, so T-numbers stay the same every session and corners can be given real names. |
 | `Corners/CornerAnalyzer` | Per corner per lap: segment time, brake point, peak brake and ramp, trail-brake distance, minimum speed and where, throttle pick-up, full throttle, exit speed and speed 100 m later, ABS share, gear. |
 | `CoachingSession` | Ties it together: best pass per corner, loss to best per lap, theoretical best lap. |
 
@@ -28,6 +30,20 @@ Record a session with Alt+L in iRacing, then:
 dotnet run --project IRacingOverlay.Coaching.Cli -- "$env:USERPROFILE\Documents\iRacing\telemetry\<file>.ibt"
 dotnet run --project IRacingOverlay.Coaching.Cli -- <file>.ibt --csv out   # also writes each clean lap's 1 m trace
 ```
+
+Flags: `--relearn` agrees a new map instead of using the saved one, `--no-save` leaves saved maps
+alone, `--store <dir>` uses another folder for them, `--corners-per-lap` shows what each clean lap
+would give on its own.
+
+## Corner ids and names
+
+The first time a track is seen, corners are agreed from up to five clean laps (live) or the five
+fastest clean laps (CLI) and saved to
+`%LOCALAPPDATA%\IRacingOverlay\coaching\corners\<track>.json`. From then on that map is used as is,
+so T1 is always the same corner. Each corner has a `name` field, empty at first: write the real name
+(`"name": "La Source"`) and it is used everywhere instead of the T-number. Relearning a map keeps the
+names of corners whose apex is within 50 m of where it was. Corners whose apexes are less than 80 m
+apart (a chicane, Les Combes) are one corner.
 
 It prints every lap with iRacing's own lap time beside the computed one, the corners found, each
 clean lap's time per corner and the best pass per corner.
@@ -47,5 +63,4 @@ different point; they are never clean laps, so they never become references.
 - A corner straddling the start/finish line is cut at the line.
 - A lap is clean or not as a whole; one off-track excursion throws away its other corners too.
   Per-corner validity would keep them.
-- Corners come from one lap; the CLI uses the best lap, a live session the first clean one.
 - `SnapshotFrames` has no unit test: `TelemetrySnapshot` can only be built inside the Sdk.

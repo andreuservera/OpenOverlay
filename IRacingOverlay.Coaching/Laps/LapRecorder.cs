@@ -106,11 +106,16 @@ public sealed class LapRecorder
     private void OnLineCrossed(in TelemetryFrame prev, in TelemetryFrame f)
     {
         var length = _trackLength.Value > 0 ? _trackLength.Value : prev.LapDist / Math.Max(prev.LapDistPct, 1e-3);
-        var before = 1.0 - prev.LapDistPct;
-        var fraction = before / Math.Max(before + f.LapDistPct, 1e-9);
+        // In the pit lane LapDistPct can run slightly past 1 before it wraps, and slightly below 0
+        // after: clamp both sides so the crossing stays between the two ticks.
+        var before = Math.Max(0.0, 1.0 - prev.LapDistPct);
+        var after = Math.Max(0.0, f.LapDistPct);
+        var fraction = before + after > 1e-9 ? before / (before + after) : 0.5;
         var crossedAt = prev.SessionTime + (f.SessionTime - prev.SessionTime) * fraction;
 
-        Add(f, f.LapDist + length);
+        // Keep the distances either side of the line in order, whatever the pit lane reports.
+        var prevEnd = _distances.Count > 0 ? _distances[^1] : prev.LapDist;
+        Add(f, Math.Max(f.LapDist + length, prevEnd));
         // The lap after one spent outside racing (gridding, formation lap, pit stall) is a start or
         // out lap: driven from low speed, in traffic or on cold tyres, so not representative.
         var followsNonRacing = (_flaws & (LapFlaw.NotRacing | LapFlaw.NotOnTrack)) != 0;
@@ -125,8 +130,9 @@ public sealed class LapRecorder
         _sessionNum = f.SessionNum;
         _incidentsAtStart = prev.IncidentCount;
         _flaws = followsNonRacing ? LapFlaw.StartLap : LapFlaw.None;
-        Add(prev, prev.LapDist - length);
-        Add(f, f.LapDist);
+        var start = Math.Max(0.0, f.LapDist);
+        Add(prev, Math.Min(prev.LapDist - length, Math.Min(0.0, start - 0.01)));
+        Add(f, start);
     }
 
     private void FinishLap(double crossedAt, double length, in TelemetryFrame lastBeforeLine)

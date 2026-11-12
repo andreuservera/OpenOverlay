@@ -44,6 +44,30 @@ public class LapRecorderTests
     }
 
     [Fact]
+    public void ACrossingWithLapDistPctPastOneStaysBetweenTheTwoTicks()
+    {
+        // In the pit lane iRacing lets LapDistPct run slightly past 1 before it wraps (seen at
+        // Tsukuba: 1.000337 then 0.000469); the crossing must still land between those ticks.
+        var frames = Laps(3);
+        var crossings = 0;
+        for (var i = 1; i < frames.Count; i++)
+        {
+            // Only one crossing, so the error doesn't cancel out between a lap's two ends.
+            if (frames[i - 1].LapDistPct > 0.75f && frames[i].LapDistPct < 0.25f && ++crossings == 2)
+            {
+                frames[i - 1] = frames[i - 1] with { LapDistPct = 1.0003f, LapDist = (float)Track.Length + 0.6f };
+                frames[i] = frames[i] with { LapDistPct = 0.0004f, LapDist = 0.8f };
+            }
+        }
+
+        var expected = TrackSimulator.LapTime(Track.SpeedProfile());
+        foreach (var lap in Record(frames).Skip(1))
+        {
+            Assert.Equal(expected, lap.LapTime, 1.0 / 60);
+        }
+    }
+
+    [Fact]
     public void TheTraceIsOnAOneMetreGridWithTimeRunningFromTheLine()
     {
         var lap = Record(Laps(1))[1];

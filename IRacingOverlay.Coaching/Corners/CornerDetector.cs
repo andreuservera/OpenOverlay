@@ -21,6 +21,11 @@ public sealed record CornerDetectionOptions
     /// <summary>Width of the centred moving averages applied to curvature and speed, metres.</summary>
     public int SmoothingMetres { get; init; } = 20;
 
+    /// <summary>Corners whose slowest points are closer than this are one corner (a chicane, Les
+    /// Combes, the Bus Stop): a coach talks about them as one, and lap-to-lap noise decides whether the
+    /// short burst of speed between them is detected at all, metres.</summary>
+    public int MinApexGapMetres { get; init; } = 80;
+
     /// <summary>Brake above this is braking.</summary>
     public float BrakeOn { get; init; } = 0.05f;
 
@@ -44,6 +49,9 @@ public sealed record CornerDetectionOptions
 ///    where the driver is back to full throttle, never past the next speed peak. On tight tracks
 ///    (Tsukuba, Okayama) the driver is never flat between corners, and that speed peak is the boundary.
 ///
+/// 4. Corners whose slowest points are closer than <see cref="CornerDetectionOptions.MinApexGapMetres"/>
+///    are merged into one (chicanes, esses).
+///
 /// A corner that straddles the start/finish line is cut at the line; the grid has no wrap-around yet.
 /// </summary>
 public static class CornerDetector
@@ -51,9 +59,17 @@ public static class CornerDetector
     // Below this speed, yaw rate / speed blows up (pit lane, spins); treat as no curvature data.
     private const float MinSpeedForCurvature = 8f;
 
+    /// <summary>The corners of one lap, sub-corners merged and named T1…Tn. For a map that stays the
+    /// same from session to session, build it from several laps with <see cref="CornerMapBuilder"/>.</summary>
     public static CornerMap Detect(LapTrace lap, CornerDetectionOptions? options = null)
     {
         var o = options ?? new CornerDetectionOptions();
+        return new CornerMap(lap.Length, Name(Merge(DetectRaw(lap, o), o)));
+    }
+
+    /// <summary>Every corner candidate of one lap, before sub-corners are merged.</summary>
+    internal static List<CornerCandidate> DetectRaw(LapTrace lap, CornerDetectionOptions o)
+    {
         var n = lap.Length;
         var curvature = Smooth(Curvature(lap), o.SmoothingMetres);
         var speed = Smooth(Array.ConvertAll(lap.Speed, v => (double)v), o.SmoothingMetres / 2);
@@ -95,7 +111,7 @@ public static class CornerDetector
         }
 
         // 2 + 3. keep real corners and size their windows
-        var corners = new List<Corner>();
+        var corners = new List<CornerCandidate>();
         foreach (var valley in valleys)
         {
             var peakBefore = peaks.LastOrDefault(p => p < valley); // 0 when none
@@ -122,17 +138,57 @@ public static class CornerDetector
                 continue; // speed fell with the driver flat out: a hill, not a corner
             }
 
+            // Out of the corner = back on full throttle with the track no longer bending (a chicane's
+            // second half is still the corner), but never past the next speed peak.
             var end = apex;
-            while (end < peakAfter && !IsFlatOut(lap, end, o))
+            while (end < peakAfter && !(IsFlatOut(lap, end, o) && curvature[end] < threshold))
             {
                 end++;
             }
 
-            corners.Add(new Corner($"T{corners.Count + 1}", start, apex, end));
+            corners.Add(new CornerCandidate(start, apex, end, lap.Speed[apex]));
         }
 
-        return new CornerMap(n, corners);
+        return corners;
     }
+
+    /// <summary>Joins consecutive candidates whose slowest points are within
+    /// <see cref="CornerDetectionOptions.MinApexGapMetres"/>, and trims any overlap between neighbours.</summary>
+    internal static List<CornerCandidate> Merge(IReadOnlyList<CornerCandidate> candidates, CornerDetectionOptions o)
+    {
+        var merged = new List<CornerCandidate>();
+        var lastSubApex = int.MinValue;
+        foreach (var candidate in candidates.OrderBy(x => x.ApexM))
+        {
+            var c = candidate;
+            if (merged.Count > 0 && c.ApexM - lastSubApex < o.MinApexGapMetres)
+            {
+                var m = merged[^1];
+                var slower = c.MinSpeed < m.MinSpeed ? c : m;
+                merged[^1] = new CornerCandidate(Math.Min(m.StartM, c.StartM), slower.ApexM, Math.Max(m.EndM, c.EndM), slower.MinSpeed);
+            }
+            else
+            {
+                if (merged.Count > 0 && c.StartM < merged[^1].EndM)
+                {
+                    // Overlapping windows: split at the middle of the gap between the two apexes' windows.
+                    var m = merged[^1];
+                    var cut = Math.Clamp((m.EndM + c.StartM) / 2, m.ApexM, c.ApexM);
+                    merged[^1] = m with { EndM = cut };
+                    c = c with { StartM = cut };
+                }
+
+                merged.Add(c);
+            }
+
+            lastSubApex = c.ApexM;
+        }
+
+        return merged;
+    }
+
+    internal static List<Corner> Name(IEnumerable<CornerCandidate> candidates) =>
+        candidates.Select((c, i) => new Corner($"T{i + 1}", c.StartM, c.ApexM, c.EndM)).ToList();
 
     private static double Drop(double speed, CornerDetectionOptions o) =>
         Math.Max(o.MinSpeedDropMetresPerSecond, o.MinSpeedDropShare * speed);
@@ -220,3 +276,6 @@ public static class CornerDetector
         return best;
     }
 }
+
+/// <summary>A corner found on one lap, before naming.</summary>
+internal readonly record struct CornerCandidate(int StartM, int ApexM, int EndM, float MinSpeed);
