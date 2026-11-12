@@ -30,6 +30,8 @@
   "nav.section.SETTINGS": "PARAMÈTRES",
   "nav.home.title": "Accueil",
   "nav.home.blurb": "Ce qui est à l'écran, ce qui demande votre attention et ce que vous faites le plus.",
+  "nav.coaching.title": "Coaching",
+  "nav.coaching.blurb": "Vos sessions avec le coach : meilleur tour, tour théorique, les erreurs que vous répétez et chaque virage en détail.",
   "nav.layouts.title": "Layouts",
   "nav.layouts.blurb": "Les dispositions enregistrées de vos widgets, et le dashboard du deuxième écran.",
   "nav.general.title": "Général",
