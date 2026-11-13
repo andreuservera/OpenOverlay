@@ -61,11 +61,15 @@ public static class FocusPlanner
             return pinned;
         }
 
-        // Corners with a recurring mistake first: "compare the traces" isn't something to practise.
-        var candidates = history.Corners.Where(c => c.RecentLoss is { } g && g >= MinGainSeconds).ToList();
-        var withHabit = candidates.Where(c => c.Habit is not null).OrderByDescending(c => c.RecentLoss).ToList();
-        var picked = withHabit.Count > 0 ? withHabit : candidates.OrderByDescending(c => c.RecentLoss).ToList();
-        return picked.Take(MaxCorners).Select(c => Item(c, false)).ToList();
+        // Only corners with a recurring mistake that says what to do: "compare the traces" isn't
+        // something to practise. Reports saved before findings carried advice have none, so a plan
+        // built from those alone stays empty rather than suggesting that.
+        return history.Corners
+            .Where(c => c.RecentLoss is { } g && g >= MinGainSeconds && c.Habit?.Advice is { Length: > 0 })
+            .OrderByDescending(c => c.RecentLoss)
+            .Take(MaxCorners)
+            .Select(c => Item(c, false))
+            .ToList();
     }
 }
 

@@ -85,12 +85,46 @@ public sealed record TrackHistory
 
     /// <summary>The history of the track and car <paramref name="reports"/> holds the most of,
     /// or of the given track and car; null when no report with corners matches.</summary>
+    /// <summary>
+    /// The same drive saved twice, live and again from its .ibt, counts once. Two reports are the same
+    /// drive when their driving overlaps in time (start plus the laps' total time), or when they have
+    /// the same laps with the same best lap. The one with more clean laps is kept, the .ibt on a tie:
+    /// it is read from the whole recording.
+    /// </summary>
+    internal static List<SessionReport> OneReportPerDrive(List<SessionReport> reports)
+    {
+        static DateTime End(SessionReport r) => r.StartedUtc.AddSeconds(r.Laps.Sum(l => Math.Max(0, l.Time)));
+        static bool SameDrive(SessionReport a, SessionReport b) =>
+            a.Source != b.Source && (
+                (a.StartedUtc < End(b) && b.StartedUtc < End(a)) ||
+                (a.Laps.Count == b.Laps.Count && a.BestLapTime is { } x && b.BestLapTime is { } y && Math.Abs(x - y) < 0.0005 &&
+                 Math.Abs((a.StartedUtc - b.StartedUtc).TotalHours) < 12));
+        static int Rank(SessionReport r) => r.CleanLapCount * 2 + (r.Source == "ibt" ? 1 : 0);
+
+        var kept = new List<SessionReport>();
+        foreach (var report in reports)
+        {
+            var twin = kept.FindIndex(k => SameDrive(k, report));
+            if (twin < 0)
+            {
+                kept.Add(report);
+            }
+            else if (Rank(report) > Rank(kept[twin]))
+            {
+                kept[twin] = report;
+            }
+        }
+
+        return kept.OrderBy(r => r.StartedUtc).ToList();
+    }
+
     public static TrackHistory? Build(IEnumerable<SessionReport> reports, string trackKey, string car)
     {
         var mine = reports
             .Where(r => r.TrackKey == trackKey && r.CarName == car && r.Corners.Count > 0 && r.CleanLapCount > 0)
             .OrderBy(r => r.StartedUtc)
             .ToList();
+        mine = OneReportPerDrive(mine);
         if (mine.Count == 0)
         {
             return null;

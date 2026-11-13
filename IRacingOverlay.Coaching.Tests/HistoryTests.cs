@@ -79,9 +79,10 @@ public sealed class HistoryTests : IDisposable
         Assert.Equal(0.17, plan[0].AimLoss!.Value, 6);
         Assert.Equal("T1: brake 10 metres later, aim to lose under 0.17 s here", plan[0].Text);
 
-        // With no mistake anywhere, the corners with most to gain.
+        // With no mistake anywhere (reports saved before findings carried advice), no plan rather
+        // than "compare your traces".
         var none = TrackHistory.Build([Session(1, "296", Corner("T1", 400, 10, 0.32), Corner("T3", 1500, 9, 0.2))], "suzuka", "296")!;
-        Assert.Equal(["T1", "T3"], FocusPlanner.Plan(none).Select(p => p.CornerId));
+        Assert.Empty(FocusPlanner.Plan(none));
 
         var store = new FocusStore(_dir);
         store.Set("suzuka", "296", "T2", "T2", 905, true);
@@ -90,6 +91,27 @@ public sealed class HistoryTests : IDisposable
         Assert.Equal("T2", pinned[0].CornerId);
         store.Set("suzuka", "296", "T2", "T2", 905, false);
         Assert.Empty(store.Pinned("suzuka", "296"));
+    }
+
+    [Fact]
+    public void TheSameDriveSavedLiveAndFromItsIbt_CountsOnce()
+    {
+        var live = Session(1, "296", Corner("T1", 400, 10, 0.3, early: 4)) with { Id = "live", Source = "live" };
+        // The .ibt starts a few minutes later (the recording begins in the car) but overlaps the drive.
+        var ibt = Session(1, "296", Corner("T1", 400, 10, 0.3, early: 4)) with
+        {
+            Id = "ibt",
+            StartedUtc = live.StartedUtc.AddMinutes(1),
+            Laps = [new LapRow { Number = 1, Time = 130, Clean = true }, new LapRow { Number = 2, Time = 131, Clean = true }],
+        };
+        // Same laps and best lap, but the start times don't overlap: still the same drive.
+        var liveLater = Session(2, "296", Corner("T1", 400, 10, 0.3)) with { Id = "live2", Source = "live" };
+        var ibtLater = liveLater with { Id = "ibt2", Source = "ibt", StartedUtc = liveLater.StartedUtc.AddMinutes(5) };
+        var otherDay = Session(3, "296", Corner("T1", 400, 10, 0.3));
+
+        var h = TrackHistory.Build([live, ibt, liveLater, ibtLater, otherDay], "suzuka", "296")!;
+
+        Assert.Equal(["ibt", "ibt2", "s3-296"], h.Sessions.Select(s => s.ReportId));
     }
 
     [Fact]

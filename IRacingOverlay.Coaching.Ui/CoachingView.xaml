@@ -112,8 +112,12 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}" VerticalAlignment="Center"/>
                         <Border Margin="10,0,0,0" Padding="7,1" CornerRadius="9" VerticalAlignment="Center"
-                                Background="{DynamicResource Cp.AccentWash}" ToolTip="{loc:T coaching.beta.hint}"
-                                ToolTipService.Placement="Bottom" ToolTipService.HorizontalOffset="0">
+                                Background="{DynamicResource Cp.AccentWash}">
+                            <!-- Placed in code, right under the tag: "Bottom" lets Windows' handedness
+                                 setting (right-handed tablets) flip the tip to the left of the tag. -->
+                            <Border.ToolTip>
+                                <ToolTip x:Name="BetaTip" Placement="Custom" Content="{loc:T coaching.beta.hint}"/>
+                            </Border.ToolTip>
                             <TextBlock Text="{loc:T coaching.beta}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.Accent}" FontWeight="SemiBold"/>
                         </Border>
                     </StackPanel>
