@@ -169,6 +169,7 @@
   "coaching.pass.notClean": "Nicht sauber: {0}",
   "coaching.session.cleanLaps": "{0}/{1} sauber",
   "coaching.session.unknownTrack": "Unbekannte Strecke",
+  "coaching.source.both": "live und aus .ibt",
   "coaching.source.ibt": "aus .ibt",
   "coaching.source.ibtFile": "analysiert aus {0}",
   "coaching.source.live": "Live-Coach",

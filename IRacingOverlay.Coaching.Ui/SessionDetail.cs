@@ -179,7 +179,10 @@ public sealed class SessionDetail : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
-public sealed record StatTile(string Label, string Value, string Hint);
+public sealed record StatTile(string Label, string Value, string Hint)
+{
+    public override string ToString() => $"{Label}: {Value}";
+}
 
 public sealed class MistakeItem(int rank, RecurringMistake m)
 {
@@ -211,7 +214,7 @@ public sealed class CornerItem
         TypicalLoss = c.MedianLoss is { } m ? $"+{m.ToString("0.00", Format.Culture)}" : "—";
         LossBar = c.MedianLoss is { } ml && maxLoss > 0 ? Math.Max(2, BarWidth * ml / maxLoss) : 0;
         BestLapLoss = c.BestLapLoss is { } bll ? $"+{bll.ToString("0.00", Format.Culture)}" : "—";
-        var main = c.Findings.FirstOrDefault();
+        var main = FindingContradictions.Without(c.Findings).FirstOrDefault();
         MainFinding = main is null ? "" : $"{Phrases.Advice(main.Kind, main.TypicalAmount, main.IsRamp, main.Advice, main.NoBraking)} ({main.Laps}/{main.OutOf})";
     }
 
@@ -286,7 +289,8 @@ public sealed class CornerDetail : INotifyPropertyChanged
             Row("coaching.compare.gear", best?.Gear, typ?.Gear, v => $"{v:0}"),
         ];
 
-        Findings = c.Findings.Select(f => new FindingItem(
+        // Opposite advice over a few laps (brake earlier, brake later) only says the corner varies.
+        Findings = FindingContradictions.Without(c.Findings).Select(f => new FindingItem(
             Phrases.Advice(f.Kind, f.TypicalAmount, f.IsRamp, f.Advice, f.NoBraking),
             F("coaching.corner.findingDetail", f.Laps, f.OutOf, Phrases.Seconds(f.TypicalLoss)))).ToList();
         Passes = c.Passes.Select(p => new PassItem(p)).ToList();
@@ -398,7 +402,11 @@ public sealed class CornerDetail : INotifyPropertyChanged
         Row(labelKey, (double?)best, (double?)typical, fmt);
 }
 
-public sealed record PhaseItem(string Phase, string Seconds, double BarWidth, bool IsGain);
+public sealed record PhaseItem(string Phase, string Seconds, double BarWidth, bool IsGain)
+{
+    /// <summary>What screen readers say for the row (UI Automation names an item by its text).</summary>
+    public override string ToString() => $"{Phase}: {Seconds}";
+}
 
 /// <summary>One corner of the focus plan, worded.</summary>
 public sealed class FocusItem(FocusCorner f)
@@ -443,7 +451,11 @@ public sealed class HistoryPanel
     public IReadOnlyList<CornerHistoryItem> Corners { get; }
 }
 
-public sealed record HistorySessionItem(string Date, string BestLap, double BarHeight, bool IsBest);
+public sealed record HistorySessionItem(string Date, string BestLap, double BarHeight, bool IsBest)
+{
+    /// <summary>What screen readers say for the bar (UI Automation names an item by its text), not the record's fields.</summary>
+    public override string ToString() => $"{Date}: {BestLap}";
+}
 
 public sealed class CornerHistoryItem(CornerHistory c)
 {
@@ -473,9 +485,15 @@ public sealed class CornerHistoryItem(CornerHistory c)
             : SessionSummaryText.Capital(Phrases.Advice(h.Kind, h.TypicalAmount, h.IsRamp, h.Advice, h.NoBraking));
 }
 
-public sealed record CompareRow(string Label, string Best, string Typical, string Difference);
+public sealed record CompareRow(string Label, string Best, string Typical, string Difference)
+{
+    public override string ToString() => $"{Label}: {Best}, {Typical}, {Difference}";
+}
 
-public sealed record FindingItem(string Advice, string Detail);
+public sealed record FindingItem(string Advice, string Detail)
+{
+    public override string ToString() => $"{Advice}, {Detail}";
+}
 
 public sealed class PassItem(PassRow p)
 {

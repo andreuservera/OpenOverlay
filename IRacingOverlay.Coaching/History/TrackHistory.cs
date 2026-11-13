@@ -4,6 +4,9 @@ using IRacingOverlay.Coaching.Reports;
 namespace IRacingOverlay.Coaching.History;
 
 /// <summary>One saved session at a track, as history sees it.</summary>
+/// <summary>One drive's report, and the other reports of the same drive (saved live and from its .ibt).</summary>
+public sealed record SavedDrive(SessionReport Kept, IReadOnlyList<SessionReport> Copies);
+
 public sealed record HistorySession(string ReportId, DateTime StartedUtc, double? BestLapTime, double? TheoreticalBestLapTime, int CleanLaps, string? SessionType);
 
 /// <summary>One corner in one session.</summary>
@@ -91,31 +94,41 @@ public sealed record TrackHistory
     /// the same laps with the same best lap. The one with more clean laps is kept, the .ibt on a tie:
     /// it is read from the whole recording.
     /// </summary>
-    internal static List<SessionReport> OneReportPerDrive(List<SessionReport> reports)
+    internal static List<SessionReport> OneReportPerDrive(List<SessionReport> reports) =>
+        Drives(reports).Select(d => d.Kept).OrderBy(r => r.StartedUtc).ToList();
+
+    /// <summary>The reports grouped by drive (see <see cref="OneReportPerDrive"/>), in the order the
+    /// kept report first appears: the report to show for each drive and the other copies of it.</summary>
+    public static IReadOnlyList<SavedDrive> Drives(IEnumerable<SessionReport> reports)
     {
         static DateTime End(SessionReport r) => r.StartedUtc.AddSeconds(r.Laps.Sum(l => Math.Max(0, l.Time)));
         static bool SameDrive(SessionReport a, SessionReport b) =>
-            a.Source != b.Source && (
+            a.Source != b.Source && a.TrackKey == b.TrackKey && a.CarName == b.CarName && (
                 (a.StartedUtc < End(b) && b.StartedUtc < End(a)) ||
                 (a.Laps.Count == b.Laps.Count && a.BestLapTime is { } x && b.BestLapTime is { } y && Math.Abs(x - y) < 0.0005 &&
                  Math.Abs((a.StartedUtc - b.StartedUtc).TotalHours) < 12));
         static int Rank(SessionReport r) => r.CleanLapCount * 2 + (r.Source == "ibt" ? 1 : 0);
 
-        var kept = new List<SessionReport>();
+        var drives = new List<(SessionReport Kept, List<SessionReport> Copies)>();
         foreach (var report in reports)
         {
-            var twin = kept.FindIndex(k => SameDrive(k, report));
+            var twin = drives.FindIndex(d => d.Copies.Append(d.Kept).Any(k => SameDrive(k, report)));
             if (twin < 0)
             {
-                kept.Add(report);
+                drives.Add((report, []));
             }
-            else if (Rank(report) > Rank(kept[twin]))
+            else if (Rank(report) > Rank(drives[twin].Kept))
             {
-                kept[twin] = report;
+                drives[twin].Copies.Add(drives[twin].Kept);
+                drives[twin] = (report, drives[twin].Copies);
+            }
+            else
+            {
+                drives[twin].Copies.Add(report);
             }
         }
 
-        return kept.OrderBy(r => r.StartedUtc).ToList();
+        return drives.Select(d => new SavedDrive(d.Kept, d.Copies)).ToList();
     }
 
     public static TrackHistory? Build(IEnumerable<SessionReport> reports, string trackKey, string car)

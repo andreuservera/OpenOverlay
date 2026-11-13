@@ -169,6 +169,7 @@
   "coaching.pass.notClean": "Não limpo: {0}",
   "coaching.session.cleanLaps": "{0}/{1} limpas",
   "coaching.session.unknownTrack": "Pista desconhecida",
+  "coaching.source.both": "ao vivo e do .ibt",
   "coaching.source.ibt": "de .ibt",
   "coaching.source.ibtFile": "analisada de {0}",
   "coaching.source.live": "coach ao vivo",
