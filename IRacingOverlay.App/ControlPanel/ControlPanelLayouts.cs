@@ -256,6 +256,7 @@ public sealed partial class ControlPanelViewModel
                 Loc.T("layouts.switchOneOnFrom"))
                 .With(new LayoutCardsSetting(cards), create, import),
             shortcuts,
+            AutoOpenGroup(layouts),
             .. DashboardGroups(),
         ];
     }
