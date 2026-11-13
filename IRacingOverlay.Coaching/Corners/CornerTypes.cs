@@ -40,7 +40,12 @@ public static class CornerTypes
     /// and will want tuning for slower and faster cars.</summary>
     public const float SlowApexSpeed = 110 / 3.6f;
 
-    public static CornerType Classify(CornerPass p)
+    public static CornerType Classify(CornerPass p) => Classify(p, SlowApexSpeed);
+
+    /// <summary>As <see cref="Classify(CornerPass)"/>, with the car's own idea of a slow corner.</summary>
+    public static CornerType Classify(CornerPass p, CarProfile? profile) => Classify(p, profile?.SlowApexSpeed ?? SlowApexSpeed);
+
+    private static CornerType Classify(CornerPass p, float slowApexSpeed)
     {
         if (p.SpeedDips >= 2)
         {
@@ -54,7 +59,7 @@ public static class CornerTypes
             return p.LiftPointM is null || p.MinThrottle >= FlatThrottle ? CornerType.Flat : CornerType.Lift;
         }
 
-        return p.MinSpeed < SlowApexSpeed ? CornerType.Slow : CornerType.BrakingFast;
+        return p.MinSpeed < slowApexSpeed ? CornerType.Slow : CornerType.BrakingFast;
     }
 
     /// <summary>A corner's type is fixed from its first this-many clean passes.</summary>
@@ -72,8 +77,9 @@ public static class CornerTypes
     /// one slow corner). On a tie, the best pass decides. From <see cref="SettledAfterPasses"/>
     /// clean passes on, only the first ones count, so the type no longer changes. Null without a clean pass.
     /// </summary>
-    public static CornerType? Consensus(IEnumerable<CornerPass> passes, CornerPass? best = null)
+    public static CornerType? Consensus(IEnumerable<CornerPass> passes, CornerPass? best = null, CarProfile? profile = null)
     {
+        CornerType Classify(CornerPass p) => CornerTypes.Classify(p, profile);
         // Settled once enough passes agree it: later passes don't move it, so the debriefs of one
         // session never call the same corner by two types.
         var clean = passes.Where(p => p.IsClean).OrderBy(p => p.LapNumber).ToList();
@@ -96,8 +102,9 @@ public static class CornerTypes
 
     /// <summary>The type at least <see cref="SavedShare"/> of <paramref name="passes"/> show, or
     /// null when they are split (or there are none).</summary>
-    public static CornerType? Decisive(IReadOnlyCollection<CornerPass> passes)
+    public static CornerType? Decisive(IReadOnlyCollection<CornerPass> passes, CarProfile? profile = null)
     {
+        CornerType Classify(CornerPass p) => CornerTypes.Classify(p, profile);
         if (passes.Count == 0)
         {
             return null;

@@ -302,7 +302,7 @@ public sealed class LiveCoach
             Voice?.Say(DebriefText.Spoken(d));
         });
         LoadFocusPlan(coach, t);
-        Log?.Invoke($"Coaching at {t}. Drive clean laps; the debrief comes as you cross the line.");
+        Log?.Invoke($"Coaching at {t} ({session.Profile.Label} thresholds). Drive clean laps; the debrief comes as you cross the line.");
         if (reference is not null)
         {
             Log?.Invoke($"Comparing with your best lap ever here: {SessionSummaryText.LapTime(reference.LapTime)} ({reference.RecordedUtc.ToLocalTime():d MMM yyyy}).");
