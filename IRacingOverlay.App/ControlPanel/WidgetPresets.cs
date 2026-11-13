@@ -37,6 +37,7 @@ public static class WidgetPresets
         [WidgetCatalog.Standings] = (0.02, 0.05),
         [WidgetCatalog.Relative] = (0.02, 0.42),
         [WidgetCatalog.TrackMap] = (0.30, 0.90),
+        [WidgetCatalog.CircuitMap] = (0.62, 0.45),
         [WidgetCatalog.Flag] = (0.42, 0.04),
         [WidgetCatalog.Delta] = (0.44, 0.17),
         [WidgetCatalog.Incident] = (0.60, 0.04),

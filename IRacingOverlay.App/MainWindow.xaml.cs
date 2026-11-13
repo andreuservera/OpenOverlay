@@ -7,6 +7,7 @@ using IRacingOverlay.App.ControlPanel;
 using IRacingOverlay.App.Dashboard;
 using IRacingOverlay.App.Diagnostics;
 using IRacingOverlay.App.Overlay;
+using IRacingOverlay.App.TrackMaps;
 using IRacingOverlay.App.ViewModels;
 using IRacingOverlay.App.Widgets;
 using IRacingOverlay.Sdk;
@@ -321,6 +322,7 @@ public partial class MainWindow : Window
         IRacingOverlay.Coaching.Ui.LiveCoaching.Attach(_connection);
         _connection.Fault += OnConnectionFault;
         _connection.TelemetryUpdated += (_, snapshot) => _incidentReports.Observe(snapshot);
+        _connection.TelemetryUpdated += (_, snapshot) => ObserveTrackOutline(snapshot);
         _connection.TelemetryUpdated += (_, _) => PostCriticalTick();
         _connection.Connected += (_, _) =>
         {
@@ -477,7 +479,24 @@ public partial class MainWindow : Window
     private IncidentWidget? Incidents => _vm.WidgetOf<IncidentWidget>(WidgetCatalog.Incident);
     private TrackInfoWidget? TrackInfo => _vm.WidgetOf<TrackInfoWidget>(WidgetCatalog.TrackInfo);
     private WeatherWidget? Weather => _vm.WidgetOf<WeatherWidget>(WidgetCatalog.Weather);
+    // Learns and keeps the current track's shape for the circuit map.
+    private readonly TrackOutlineLearner _trackOutlines = new();
+
+    /// <summary>On the telemetry thread. A failure here must never reach the reader.</summary>
+    private void ObserveTrackOutline(TelemetrySnapshot snapshot)
+    {
+        try
+        {
+            _trackOutlines.Observe(snapshot, _connection.Session);
+        }
+        catch (Exception e)
+        {
+            AppLog.Warn("TrackMap", "Track shape learning failed", e);
+        }
+    }
+
     private TrackMapWidget? TrackMap => _vm.WidgetOf<TrackMapWidget>(WidgetCatalog.TrackMap);
+    private CircuitMapWidget? CircuitMap => _vm.WidgetOf<CircuitMapWidget>(WidgetCatalog.CircuitMap);
     private FuelCalculatorWidget? FuelCalculator => _vm.WidgetOf<FuelCalculatorWidget>(WidgetCatalog.FuelCalculator);
 
     /// <summary>
@@ -516,6 +535,7 @@ public partial class MainWindow : Window
         Clear(WidgetCatalog.TrackInfo, TrackInfo, w => w.UpdateState(TrackInfoState.Empty));
         Clear(WidgetCatalog.Weather, Weather, w => w.UpdateState(WeatherState.Empty));
         Clear(WidgetCatalog.TrackMap, TrackMap, w => w.UpdateState([]));
+        Clear(WidgetCatalog.CircuitMap, CircuitMap, w => w.UpdateState(CircuitMapState.Empty));
         Clear(WidgetCatalog.FuelCalculator, FuelCalculator, w => w.UpdateState(FuelCalculatorState.Empty));
 
         if (_dashboard is { } dashboard)
@@ -806,6 +826,12 @@ public partial class MainWindow : Window
 
         Feed(WidgetCatalog.TrackMap, TrackMap, () => TrackMapBuilder.Build(telemetry, session),
             (widget, markers) => widget.UpdateState(markers), (dashboard, markers) => dashboard.UpdateTrackMap(markers));
+
+        // The shape is learned on the telemetry thread, and only while the map is on screen.
+        _trackOutlines.Wanted = CircuitMap is not null;
+        Feed(WidgetCatalog.CircuitMap, CircuitMap,
+            () => new CircuitMapState(_trackOutlines.Current, _trackOutlines.LearningProgress, TrackMapBuilder.Build(telemetry, session)),
+            (widget, state) => widget.UpdateState(state), null);
 
         // Memory usage barely changes tick to tick: once a second rather than on every 100ms tick.
         if (_tickCount % DiagnosticsUpdateEveryNTicks == 0)

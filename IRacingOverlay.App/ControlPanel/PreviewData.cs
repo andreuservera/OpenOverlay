@@ -516,6 +516,28 @@ public static class PreviewData
         return markers;
     }
 
+    /// <summary>The same field on a made-up circuit, so the map's look can be judged without having
+    /// driven anywhere yet.</summary>
+    public static TrackMaps.CircuitMapState CircuitMap(PreviewScenario scenario = PreviewScenario.Race) =>
+        new(PreviewOutline.Value, null, TrackMap(scenario));
+
+    private static readonly Lazy<TrackMaps.TrackOutline> PreviewOutline = new(() =>
+    {
+        const int points = 600;
+        var x = new float[points];
+        var y = new float[points];
+        for (var i = 0; i < points; i++)
+        {
+            // A lumpy loop with a hairpin-ish pinch: enough corners to read as a circuit.
+            var a = 2 * Math.PI * i / points;
+            var r = 1000 * (1 + 0.28 * Math.Sin(2 * a) + 0.12 * Math.Cos(3 * a + 0.6) + 0.06 * Math.Sin(5 * a));
+            x[i] = (float)(r * Math.Sin(a) * 1.35);
+            y[i] = (float)(r * Math.Cos(a));
+        }
+
+        return new TrackMaps.TrackOutline("preview", x, y, 5000, 0);
+    });
+
     /// <summary>Strength of field for the header chip — the average of the mock field's iRatings,
     /// so the number the preview shows is consistent with the rows underneath it.</summary>
     public static double StrengthOfField() => Field.Average(e => e.IRating);
