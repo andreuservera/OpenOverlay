@@ -9,12 +9,15 @@ namespace IRacingOverlay.Coaching.Reports;
 public sealed class LiveReportSaver
 {
     private readonly SessionReportStore _store;
+    private readonly LapTraceStore _traces;
+    private readonly HashSet<(string, int)> _tracesQueued = [];
     private readonly object _gate = new();
     private Task _writing = Task.CompletedTask;
 
     public LiveReportSaver(SessionReportStore store)
     {
         _store = store;
+        _traces = LapTraceStore.For(store);
     }
 
     /// <summary>Where the last report was written; null before the first.</summary>
@@ -27,9 +30,14 @@ public sealed class LiveReportSaver
     public void Save(CoachingSession session, SessionReportInfo info)
     {
         var report = SessionReportBuilder.Build(session, info);
+        // Each measured lap's channels once, for comparing laps later (copied here: the session isn't thread-safe).
+        var laps = session.AllAnalyses.Select(a => a.Lap)
+            .Where(l => l.Trace is not null && _tracesQueued.Add((info.Id, l.LapNumber)))
+            .Select(l => StoredLap.From(l.LapNumber, l.LapTime, l.Trace!))
+            .ToList();
         lock (_gate)
         {
-            _writing = _writing.ContinueWith(_ => Write(report), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            _writing = _writing.ContinueWith(_ => Write(report, laps), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
         }
     }
 
@@ -45,10 +53,15 @@ public sealed class LiveReportSaver
         writing.Wait(timeout ?? TimeSpan.FromSeconds(5));
     }
 
-    private void Write(SessionReport report)
+    private void Write(SessionReport report, IReadOnlyList<StoredLap> laps)
     {
         try
         {
+            foreach (var lap in laps)
+            {
+                _traces.Save(report.Id, lap);
+            }
+
             _store.Save(report);
             LastPath = _store.PathFor(report.Id);
             LastError = null;

@@ -99,6 +99,15 @@ from its detail ("Focus on this corner"), saved per track and car in
 `%LOCALAPPDATA%\IRacingOverlay\coaching\focus`. With live coaching on, the debrief talks about the
 focus corners first.
 
+## Comparing laps
+
+Every measured lap of a saved session keeps its channels on the 1 m grid (time, speed, pedals,
+gear) beside the report, in `<sessions folder>\traces\<report id>\lap-NNN.bin.gz`, about 60 KB
+a lap (`Reports/LapTraceStore`); a live session adds its laps as they are driven. The Coaching page
+overlays any two of them, or a lap and the best lap ever for the track and car, for the whole lap
+or one corner: speed, the time between them, pedals and gear. Sessions saved before this have no
+laps kept; analyse their .ibt again to compare their laps.
+
 ## Checked against real files
 
 | File | Laps | Computed vs iRacing lap time | Corners found |

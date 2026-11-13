@@ -20,9 +20,14 @@ public sealed class SessionDetail : INotifyPropertyChanged
     private readonly FocusStore? _focusStore;
     private IReadOnlyList<FocusItem> _focus = [];
 
-    public SessionDetail(SessionReport r, string? selectCornerId = null, TrackHistory? history = null, FocusStore? focus = null)
+    public SessionDetail(SessionReport r, string? selectCornerId = null, TrackHistory? history = null, FocusStore? focus = null,
+        LapTraceStore? traces = null, Func<StoredLap?>? reference = null, double? referenceLapTime = null)
     {
         Report = r;
+        var kept = traces?.Laps(r.Id) ?? [];
+        LapCompare = traces is not null && (kept.Count >= 2 || (kept.Count == 1 && reference is not null))
+            ? new LapComparePanel(r, traces, kept, reference, referenceLapTime)
+            : null;
         _history = history;
         _focusStore = focus;
         History = history is { Sessions.Count: >= 2 } h ? new HistoryPanel(h) : null;
@@ -101,6 +106,11 @@ public sealed class SessionDetail : INotifyPropertyChanged
 
             _selectedCorner = value;
             Corner = value is null ? null : new CornerDetail(value.Report, CanPin ? PinState(value.Report) : null);
+            if (value is not null)
+            {
+                LapCompare?.ShowCorner(value.Report.Name);
+            }
+
             OnPropertyChanged();
         }
     }
@@ -117,6 +127,11 @@ public sealed class SessionDetail : INotifyPropertyChanged
     }
 
     public bool HasCorner => _corner is not null;
+
+    /// <summary>Any two laps overlaid; null when the session's laps weren't kept (older reports).</summary>
+    public LapComparePanel? LapCompare { get; }
+
+    public bool HasLapCompare => LapCompare is not null;
 
     /// <summary>Progress across the sessions at this track with this car; null with only one.</summary>
     public HistoryPanel? History { get; }

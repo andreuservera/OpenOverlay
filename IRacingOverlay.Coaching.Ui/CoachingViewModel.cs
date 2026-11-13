@@ -209,7 +209,9 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         var history = r.TrackKey is { } track && r.CarName is { } car
             ? History.TrackHistory.Build(Sessions.Select(s => s.Report).Where(o => o.StartedUtc <= r.StartedUtc), track, car)
             : null;
-        return new SessionDetail(r, corner, history, LiveCoaching.Focus);
+        var reference = r.TrackKey is { } t && r.CarName is { } c ? LiveCoaching.References.Load(t, c) : null;
+        return new SessionDetail(r, corner, history, LiveCoaching.Focus, LapTraceStore.For(_store),
+            reference is null ? null : () => StoredLap.From(0, reference.LapTime, reference.Trace), reference?.LapTime);
     }
 
     private void Load(string? select)
@@ -299,8 +301,16 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
                         Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
                         try
                         {
-                            var (_, r) = IbtSessionAnalyzer.Analyze(file, _maps, references: LiveCoaching.References, types: LiveCoaching.Types);
+                            var (session, r) = IbtSessionAnalyzer.Analyze(file, _maps, references: LiveCoaching.References, types: LiveCoaching.Types);
                             _store.Save(r);
+                            try
+                            {
+                                LapTraceStore.For(_store).SaveAll(r.Id, session);
+                            }
+                            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                            {
+                                // Laps can't be overlaid for this session; the report is there.
+                            }
                             return r;
                         }
                         finally
@@ -453,6 +463,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
             foreach (var report in item.Copies.Prepend(item.Report))
             {
                 _store.Delete(report.Id);
+                LapTraceStore.For(_store).Delete(report.Id);
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)

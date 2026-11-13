@@ -21,8 +21,8 @@ public sealed class CornerTraceChart : FrameworkElement
     public static readonly DependencyProperty ApexMProperty = DependencyProperty.Register(
         nameof(ApexM), typeof(int), typeof(CornerTraceChart), new FrameworkPropertyMetadata(-1, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    internal static readonly Brush BestBrush = Frozen(Color.FromRgb(0xFF, 0xD2, 0x4D));
-    internal static readonly Brush TypicalBrush = Frozen(Color.FromRgb(0x6C, 0xB4, 0xFF));
+    public static readonly Brush BestBrush = Frozen(Color.FromRgb(0xFF, 0xD2, 0x4D));
+    public static readonly Brush TypicalBrush = Frozen(Color.FromRgb(0x6C, 0xB4, 0xFF));
     private static readonly Brush ThrottleBrush = Frozen(Color.FromRgb(0x3D, 0xD6, 0x8C));
     private static readonly Brush BrakeBrush = Frozen(Color.FromRgb(0xF2, 0x6D, 0x6D));
     private static readonly Brush GridBrush = Frozen(Color.FromArgb(0x40, 0x8B, 0x95, 0xA3));
