@@ -64,7 +64,7 @@ public static class SessionReportBuilder
 
     public static SessionReport Build(CoachingSession session, SessionReportInfo info, SessionReportOptions? options = null, DateTime? nowUtc = null)
     {
-        var o = options ?? new SessionReportOptions();
+        var o = options ?? new SessionReportOptions { MinLossSeconds = session.Profile.MinLossSeconds, Diagnosis = session.Profile.Diagnosis };
         var reference = session.ReferenceAnalyses;
         var referenceSet = new HashSet<RecordedLap>(reference.Select(a => a.Lap), ReferenceEqualityComparer.Instance);
         var analysisOf = session.AllAnalyses.ToDictionary<LapAnalysis, RecordedLap, LapAnalysis>(a => a.Lap, a => a, ReferenceEqualityComparer.Instance);
@@ -78,7 +78,7 @@ public static class SessionReportBuilder
             var grip = GripEnvelope.Learn(reference.Where(a => a.Lap.Trace is not null).Select(a => a.Lap.Trace!));
             for (var i = 0; i < map.Corners.Count; i++)
             {
-                corners.Add(BuildCorner(map.Corners[i], reference, best, bestLap, o, grip, session.SavedCornerTypes));
+                corners.Add(BuildCorner(map.Corners[i], reference, best, bestLap, o, grip, session.SavedCornerTypes, session.Profile));
             }
         }
         else
@@ -159,6 +159,7 @@ public static class SessionReportBuilder
             TrackKey = info.TrackKey,
             TrackName = info.TrackName,
             CarName = info.CarName,
+            CarClass = session.Profile.Class.ToString(),
             SessionType = info.SessionType,
             TrackLengthMetres = session.CornerMap?.TrackLengthMetres ?? session.Laps.Select(l => l.Trace?.Length ?? 0).DefaultIfEmpty(0).Max(),
             Laps = laps,
@@ -179,7 +180,7 @@ public static class SessionReportBuilder
         && f.Laps >= o.RecurringMinLaps
         && f.Laps >= Math.Ceiling(o.RecurringShare * f.OutOf - 1e-9);
 
-    private static CornerReport BuildCorner(Corner corner, IReadOnlyList<LapAnalysis> reference, IReadOnlyDictionary<string, CornerPass> bests, RecordedLap? bestLap, SessionReportOptions o, GripEnvelope? grip = null, IReadOnlyDictionary<string, CornerType>? savedTypes = null)
+    private static CornerReport BuildCorner(Corner corner, IReadOnlyList<LapAnalysis> reference, IReadOnlyDictionary<string, CornerPass> bests, RecordedLap? bestLap, SessionReportOptions o, GripEnvelope? grip = null, IReadOnlyDictionary<string, CornerType>? savedTypes = null, CarProfile? profile = null)
     {
         var passes = new List<(CornerPass Pass, LapAnalysis Lap)>();
         foreach (var a in reference)
@@ -194,7 +195,7 @@ public static class SessionReportBuilder
         }
 
         bests.TryGetValue(corner.Name, out var best);
-        var type = savedTypes is not null && savedTypes.TryGetValue(corner.Name, out var saved) ? saved : CornerTypes.Consensus(passes.Select(x => x.Pass), best);
+        var type = savedTypes is not null && savedTypes.TryGetValue(corner.Name, out var saved) ? saved : CornerTypes.Consensus(passes.Select(x => x.Pass), best, profile);
         var rows = new List<PassRow>();
         var compared = new List<(CornerPass Pass, LapAnalysis Lap, double Loss, IReadOnlyList<CornerFinding> Findings)>();
         foreach (var (p, a) in passes)

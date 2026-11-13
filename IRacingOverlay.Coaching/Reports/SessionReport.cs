@@ -36,6 +36,10 @@ public sealed record SessionReport
 
     public string? CarName { get; init; }
 
+    /// <summary>The thresholds the coach used for the car (a <see cref="Coaching.CarClass"/> name:
+    /// Gt, LowPower, Formula); null in older reports.</summary>
+    public string? CarClass { get; init; }
+
     /// <summary>Practice, Qualify, Race… when known.</summary>
     public string? SessionType { get; init; }
 

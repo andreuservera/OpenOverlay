@@ -122,6 +122,21 @@ normal lap loses), **consistency** when your best is close but a normal lap isn'
 lists what the faster pass does differently: brake and throttle points, and apex and exit speeds,
 the speeds marked as possibly setup. The lap can also be overlaid in "Compare laps".
 
+## Thresholds per car class
+
+The thresholds were tuned on GT3 cars. On very different cars they would report noise or miss real
+mistakes, so they come in a small table per car class (`CarProfile`), picked from the car's name:
+
+| Class | Cars | Slow corner under | Smallest loss | Notable differences |
+| --- | --- | --- | --- | --- |
+| GT (fallback) | GT3, GT4, Cup… | 110 km/h | 0.05 s | as tuned |
+| Low power | MX-5, GR86, Vee, FF1600… | 80 km/h | 0.04 s | smaller brake, throttle, speed and lift differences count |
+| Formula | F4 and up | 130 km/h | 0.05 s | speed differences need 3 km/h, understeer a 20% change |
+
+The low-power and formula values are first estimates from how those cars drive; they will be
+checked against real .ibt sessions (Phase D of the roadmap). The class used is saved in each
+report (`carClass`) and printed by the CLI.
+
 ## Checked against real files
 
 | File | Laps | Computed vs iRacing lap time | Corners found |

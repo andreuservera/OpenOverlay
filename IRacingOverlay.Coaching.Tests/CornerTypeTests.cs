@@ -10,6 +10,8 @@ public class CornerTypeTests
     private static readonly Corner C = new("T1", 100, 250, 350);
 
     // A braking corner taken at 80 km/h from 200 km/h.
+    internal static CornerPass BrakingPass() => Braking();
+
     private static CornerPass Braking(double time = 5) => new()
     {
         Corner = C,

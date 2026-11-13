@@ -97,7 +97,7 @@ public sealed class PostLapCoach
     /// its history when the session's corners change (the old corner ids would no longer match).</summary>
     public static PostLapCoach Attach(CoachingSession session, Action<LapDebrief> onDebrief, CoachOptions? options = null)
     {
-        var coach = new PostLapCoach(options);
+        var coach = new PostLapCoach(options ?? new CoachOptions { MinLossSeconds = session.Profile.MinLossSeconds, Diagnosis = session.Profile.Diagnosis });
         session.CornerMapChanged += _ => coach.Reset();
         session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.CoachingReference, session.CoachingReferenceLapTime ?? a.Lap.LapTime, session.CornerTypeById) with
         {

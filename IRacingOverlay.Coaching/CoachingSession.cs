@@ -99,6 +99,9 @@ public sealed record CoachingOptions
     /// <summary>Where each corner's type is kept per track and car (<see cref="CornerTypeStore"/>);
     /// null to agree the types afresh every session. Needs <see cref="TrackKey"/> and <see cref="Car"/>.</summary>
     public CornerTypeStore? TypeStore { get; init; }
+
+    /// <summary>The thresholds for the car; null picks them from <see cref="Car"/> (<see cref="CarProfiles.For"/>).</summary>
+    public CarProfile? Profile { get; init; }
 }
 
 /// <summary>
@@ -138,9 +141,13 @@ public sealed class CoachingSession
     public CoachingSession(CoachingOptions? options = null)
     {
         _options = options ?? new CoachingOptions();
+        Profile = _options.Profile ?? CarProfiles.For(_options.Car);
         _recorder = new LapRecorder(_options.TrackLengthMetres);
         _recorder.LapCompleted += OnLapCompleted;
     }
+
+    /// <summary>The thresholds in use, for the car in the session.</summary>
+    public CarProfile Profile { get; }
 
     /// <summary>Raised for every lap as it completes, clean or not, before it is measured.</summary>
     public event Action<RecordedLap>? LapRecorded;
@@ -371,7 +378,7 @@ public sealed class CoachingSession
 
             var saved = _savedTypes.TryGetValue(g.Key, out var s) ? s : (CornerType?)null;
             var counted = saved is null ? clean.Take(CornerTypes.SettledAfterPasses).ToList() : clean;
-            var type = CornerTypes.Decisive(counted);
+            var type = CornerTypes.Decisive(counted, Profile);
             if (saved is null)
             {
                 if (type is { } t)
@@ -391,7 +398,7 @@ public sealed class CoachingSession
             {
                 replaced[g.Key] = other;
             }
-            else if (counted.Count(p => CornerTypes.Classify(p) == saved) * 2 < counted.Count)
+            else if (counted.Count(p => CornerTypes.Classify(p, Profile) == saved) * 2 < counted.Count)
             {
                 dropped.Add(g.Key); // most passes disagree, but on no one type: agreed per session again
             }
@@ -503,7 +510,7 @@ public sealed class CoachingSession
         _bestRestOfStraight = Corners.BestPasses.RestOfStraight(all);
         _bestOutsideCorners = reference.Select(a => a.OutsideCornersTime).Where(t => t is not null).Min();
         _types = all.GroupBy(p => p.Corner.Name, StringComparer.Ordinal)
-            .Select(g => (g.Key, Type: CornerTypes.Consensus(g, _best.GetValueOrDefault(g.Key))))
+            .Select(g => (g.Key, Type: CornerTypes.Consensus(g, _best.GetValueOrDefault(g.Key), Profile)))
             .Where(x => x.Type is not null)
             .ToDictionary(x => x.Key, x => x.Type!.Value, StringComparer.Ordinal);
         SaveSettledTypes(all);

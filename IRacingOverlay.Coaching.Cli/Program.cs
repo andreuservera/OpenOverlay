@@ -144,6 +144,8 @@ var trackKey = weekend?.TrackName;
 // names already typed into the saved file.
 var (session, report) = IbtSessionAnalyzer.Analyze(path, store, relearn, save, references: save ? new ReferenceLapStore(ReferenceLapStore.DefaultDirectory) : null, types: save ? new CornerTypeStore(CornerTypeStore.DefaultDirectory) : null);
 
+Console.WriteLine($"Thresholds: {session.Profile.Label} (slow corners under {session.Profile.SlowApexSpeed * 3.6:0} km/h, noise under {session.Profile.MinLossSeconds:0.00} s)");
+Console.WriteLine();
 Console.WriteLine("Laps (ours vs iRacing's LapLastLapTime)");
 Console.WriteLine("  lap   time        iRacing     diff      status");
 foreach (var lap in session.Laps)
@@ -312,7 +314,7 @@ if (debrief || speak)
 {
     Console.WriteLine();
     Console.WriteLine("Post-lap debrief (each clean lap against the best passes up to it)");
-    var coach = new PostLapCoach();
+    var coach = new PostLapCoach(new CoachOptions { MinLossSeconds = session.Profile.MinLossSeconds, Diagnosis = session.Profile.Diagnosis });
     LapDebrief? last = null;
     var all = session.AllAnalyses;
     for (var i = 0; i < all.Count; i++)
@@ -333,7 +335,7 @@ if (debrief || speak)
         var bestLapSoFar = slice.Where(x => x.IsCleanLap).Min(x => x.Lap.LapTime);
         var outsideSoFar = slice.Select(x => x.OutsideCornersTime).Where(t => t is not null).Min();
         var typesSoFar = passesSoFar.GroupBy(x => x.Corner.Name)
-            .Select(g => (g.Key, Type: CornerTypes.Consensus(g, bestSoFar.GetValueOrDefault(g.Key))))
+            .Select(g => (g.Key, Type: CornerTypes.Consensus(g, bestSoFar.GetValueOrDefault(g.Key), session.Profile)))
             .Where(x => x.Type is not null)
             .ToDictionary(x => x.Key, x => x.Type!.Value);
         foreach (var (id, saved) in session.SavedCornerTypes)
