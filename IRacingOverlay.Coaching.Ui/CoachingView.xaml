@@ -160,7 +160,7 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
-                                                        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource Cp.Text}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                                                        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap"/>
                                                         <TextBlock Text="{Binding Detail}" Style="{DynamicResource Cp.Hint}"/>
                                                     </StackPanel>
                                                     <Button Grid.Column="1" Content="{loc:T coaching.reference.clear}" Style="{DynamicResource Cp.Button}" Command="{Binding ClearCommand}"

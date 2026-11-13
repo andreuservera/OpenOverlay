@@ -199,12 +199,13 @@ public static class CornerAnalyzer
             int? nextPiece = i + 1 < map.Corners.Count ? PieceStart(map, i + 1) : null;
             var pass = Measure(lap, corner, lapNumber, nextStart, PieceStart(map, i), nextPiece);
             var extra = CornerPassFlaw.None;
-            if (lapFlaws.HasFlag(LapFlaw.StartLap) && i < CornerChecks.StartLapCorners)
+            if (lapFlaws.HasFlag(LapFlaw.StartLap) && (i < CornerChecks.StartLapCorners || corner.StartM < CornerChecks.ColdMetres(map.TrackLengthMetres)))
             {
                 extra |= CornerPassFlaw.StartLap;
             }
 
-            if (CornerChecks.CornersSincePitExit(lap, map, i) is { } since && since < CornerChecks.StartLapCorners)
+            if (CornerChecks.CornersSincePitExit(lap, map, i) is { } since
+                && (since < CornerChecks.StartLapCorners || CornerChecks.MetresSincePitExit(lap, map, i) < CornerChecks.ColdMetres(map.TrackLengthMetres)))
             {
                 extra |= CornerPassFlaw.PitExit;
             }
