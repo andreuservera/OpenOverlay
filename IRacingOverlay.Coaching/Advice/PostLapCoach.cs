@@ -33,6 +33,9 @@ public sealed record CornerAdvice(Corner Corner, double LossSeconds, IReadOnlyLi
     /// <summary>How much slower the car arrived than on the best pass, km/h (0 when not slower).
     /// That part of the loss was made in the corner before, not here.</summary>
     public double EntrySlowerKmh { get; init; }
+
+    /// <summary>One of the corners the driver is working on this session (<see cref="PostLapCoach.FocusApexM"/>).</summary>
+    public bool IsFocus { get; init; }
 }
 
 /// <summary>What the coach says after a clean lap.</summary>
@@ -106,6 +109,17 @@ public sealed class PostLapCoach
 
     public void Reset() => _history.Clear();
 
+    /// <summary>Where the corners of the focus plan are (their apexes, metres from the line): when
+    /// they lose time they are reported before any other corner. Empty for none; can change at any
+    /// time from another thread (the whole list is swapped).</summary>
+    public IReadOnlyList<int> FocusApexM { get; set; } = [];
+
+    private bool IsFocus(Corner c)
+    {
+        var focus = FocusApexM;
+        return focus.Any(a => Math.Abs(a - c.ApexM) <= CornerMapBuilder.ClusterRadiusMetres);
+    }
+
     /// <param name="lap">The lap to debrief.</param>
     /// <param name="bestPasses">The best pass through each corner so far, by corner id, this lap included.</param>
     /// <param name="bestLapTime">The best lap time so far, this lap included.</param>
@@ -145,17 +159,21 @@ public sealed class PostLapCoach
                     CornerCount = lap.Passes.Count,
                     EntrySlowerKmh = Math.Max(0, (best.EntrySpeed - pass.EntrySpeed) * 3.6),
                     Type = type ?? CornerTypes.Classify(best),
+                    IsFocus = IsFocus(pass.Corner),
                 });
             }
         }
 
         // Corners with something to fix come first; one where the time went somewhere the
         // measurements don't show only fills a slot that is left over.
+        // The corners being worked on come first, whatever else lost more.
         var worst = advice
-            .OrderByDescending(a => a.Findings.Count > 0)
+            .OrderByDescending(a => a.IsFocus)
+            .ThenByDescending(a => a.Findings.Count > 0)
             .ThenByDescending(a => a.LossSeconds)
             .Take(_options.MaxCorners)
-            .OrderByDescending(a => a.LossSeconds)
+            .OrderByDescending(a => a.IsFocus)
+            .ThenByDescending(a => a.LossSeconds)
             .ToList();
         var delta = Math.Max(0, lap.Lap.LapTime - bestLapTime);
         return new LapDebrief(lap.Lap.LapNumber, lap.Lap.LapTime, delta, delta <= 0, worst);

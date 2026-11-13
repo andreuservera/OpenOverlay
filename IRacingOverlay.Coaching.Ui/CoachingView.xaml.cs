@@ -21,6 +21,9 @@ public partial class CoachingView : UserControl
     {
         InitializeComponent();
         DataContext = _model;
+        // Left edge on the tag's, just under it, whatever side Windows would open popups on.
+        BetaTip.CustomPopupPlacementCallback = (_, target, _) =>
+            [new System.Windows.Controls.Primitives.CustomPopupPlacement(new Point(0, target.Height + 4), System.Windows.Controls.Primitives.PopupPrimaryAxis.Horizontal)];
         IsVisibleChanged += (_, e) =>
         {
             if (e.NewValue is true)

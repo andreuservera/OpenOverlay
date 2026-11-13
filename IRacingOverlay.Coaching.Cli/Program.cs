@@ -393,7 +393,7 @@ static int RunLive(string storeDir, bool speak, string? voiceName, SessionReport
         Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output.");
     }
 
-    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default, new ReferenceLapStore(ReferenceLapStore.DefaultDirectory), new CornerTypeStore(CornerTypeStore.DefaultDirectory))
+    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default, new ReferenceLapStore(ReferenceLapStore.DefaultDirectory), new CornerTypeStore(CornerTypeStore.DefaultDirectory), new IRacingOverlay.Coaching.History.FocusStore(IRacingOverlay.Coaching.History.FocusStore.DefaultDirectory))
     {
         Voice = voice,
         CompareWithBestEver = bestEver,

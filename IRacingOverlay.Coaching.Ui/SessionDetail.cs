@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using IRacingOverlay.Coaching.History;
 using IRacingOverlay.Coaching.Reports;
 using static IRacingOverlay.Coaching.Ui.CoachingText;
 
@@ -14,9 +16,17 @@ public sealed class SessionDetail : INotifyPropertyChanged
     private CornerItem? _selectedCorner;
     private CornerDetail? _corner;
 
-    public SessionDetail(SessionReport r, string? selectCornerId = null)
+    private readonly TrackHistory? _history;
+    private readonly FocusStore? _focusStore;
+    private IReadOnlyList<FocusItem> _focus = [];
+
+    public SessionDetail(SessionReport r, string? selectCornerId = null, TrackHistory? history = null, FocusStore? focus = null)
     {
         Report = r;
+        _history = history;
+        _focusStore = focus;
+        History = history is { Sessions.Count: >= 2 } h ? new HistoryPanel(h) : null;
+        Replan();
         Title = SessionItem.TrackOf(r);
         Subtitle = Format.Join(
             r.CarName,
@@ -90,7 +100,7 @@ public sealed class SessionDetail : INotifyPropertyChanged
             }
 
             _selectedCorner = value;
-            Corner = value is null ? null : new CornerDetail(value.Report);
+            Corner = value is null ? null : new CornerDetail(value.Report, CanPin ? PinState(value.Report) : null);
             OnPropertyChanged();
         }
     }
@@ -107,6 +117,61 @@ public sealed class SessionDetail : INotifyPropertyChanged
     }
 
     public bool HasCorner => _corner is not null;
+
+    /// <summary>Progress across the sessions at this track with this car; null with only one.</summary>
+    public HistoryPanel? History { get; }
+
+    public bool HasHistory => History is not null;
+
+    /// <summary>What to practise next session: pinned corners, or the ones with most to gain.</summary>
+    public IReadOnlyList<FocusItem> Focus
+    {
+        get => _focus;
+        private set
+        {
+            _focus = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasFocus));
+            OnPropertyChanged(nameof(FocusHint));
+        }
+    }
+
+    public bool HasFocus => _focus.Count > 0;
+
+    public string FocusHint => T(_focus.Any(f => f.Pinned) ? "coaching.focus.hintPinned" : "coaching.focus.hint");
+
+    private bool CanPin => _focusStore is not null && Report.TrackKey is not null && Report.CarName is not null;
+
+    private PinState PinState(CornerReport c)
+    {
+        var pinned = _focusStore!.IsPinned(Report.TrackKey!, Report.CarName!, c.ApexM);
+        return new PinState(pinned, isPinned =>
+        {
+            try
+            {
+                _focusStore.Set(Report.TrackKey!, Report.CarName!, c.Id, c.Name, c.ApexM, isPinned);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
+
+            Replan();
+            return true;
+        });
+    }
+
+    private void Replan()
+    {
+        if (_history is null)
+        {
+            Focus = [];
+            return;
+        }
+
+        var pinned = CanPin ? _focusStore!.Pinned(Report.TrackKey!, Report.CarName!) : null;
+        Focus = FocusPlanner.Plan(_history, pinned).Select(f => new FocusItem(f)).ToList();
+    }
 
     public IReadOnlyList<LapItem> Laps { get; }
 
@@ -169,12 +234,29 @@ public sealed class CornerItem
     public string MainFinding { get; }
 }
 
+/// <summary>Whether a corner is pinned to work on, and how to change it (false when it couldn't be saved).</summary>
+public sealed record PinState(bool Pinned, Func<bool, bool> Set);
+
 /// <summary>One corner open in detail: the traces, best against typical, and every pass.</summary>
-public sealed class CornerDetail
+public sealed class CornerDetail : INotifyPropertyChanged
 {
-    public CornerDetail(CornerReport c)
+    private readonly PinState? _pin;
+    private bool _pinned;
+
+    public CornerDetail(CornerReport c, PinState? pin = null)
     {
         Report = c;
+        _pin = pin;
+        _pinned = pin?.Pinned ?? false;
+        TogglePinCommand = new RelayCommand(() =>
+        {
+            if (_pin is not null && _pin.Set(!_pinned))
+            {
+                _pinned = !_pinned;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PinText)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPinned)));
+            }
+        });
         Title = c.Name;
         Subtitle = Format.Join(
             c.Name != c.Id ? c.Id : null,
@@ -252,6 +334,17 @@ public sealed class CornerDetail
     /// <summary>Widest phase bar, device-independent pixels.</summary>
     private const double PhaseBarWidth = 140;
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>The corner can be pinned (the session knows its track and car).</summary>
+    public bool CanPin => _pin is not null;
+
+    public bool IsPinned => _pinned;
+
+    public string PinText => T(_pinned ? "coaching.focus.unpin" : "coaching.focus.pin");
+
+    public ICommand TogglePinCommand { get; }
+
     /// <summary>Where a normal lap loses its time here, phase by phase.</summary>
     public IReadOnlyList<PhaseItem> Phases { get; }
 
@@ -306,6 +399,79 @@ public sealed class CornerDetail
 }
 
 public sealed record PhaseItem(string Phase, string Seconds, double BarWidth, bool IsGain);
+
+/// <summary>One corner of the focus plan, worded.</summary>
+public sealed class FocusItem(FocusCorner f)
+{
+    public string Name { get; } = f.Name;
+
+    public bool Pinned { get; } = f.Pinned;
+
+    public string What { get; } = SessionSummaryText.Capital(f.Habit is { } h
+        ? Phrases.Advice(h.Kind, h.TypicalAmount, h.IsRamp, h.Advice, h.NoBraking)
+        : T("coaching.focus.traces"));
+
+    public string Aim { get; } = f.AimLoss is { } l ? F("coaching.focus.aim", Phrases.Seconds(l)) : "";
+
+    public string Gain { get; } = f.Gain is { } g ? F("coaching.focus.gain", Phrases.Seconds(g)) : "";
+}
+
+/// <summary>Progress across sessions at one track with one car.</summary>
+public sealed class HistoryPanel
+{
+    public HistoryPanel(TrackHistory h)
+    {
+        Hint = F("coaching.history.hint", h.Sessions.Count, h.Car, h.BestLapEver is { } b ? Phrases.LapTime(b) : "—");
+        var laps = h.Sessions.Where(s => s.BestLapTime is not null).ToList();
+        var lo = laps.Select(s => s.BestLapTime!.Value).DefaultIfEmpty(0).Min();
+        var hi = laps.Select(s => s.BestLapTime!.Value).DefaultIfEmpty(0).Max();
+        Sessions = laps.Select(s => new HistorySessionItem(
+            s.StartedUtc == default ? "" : s.StartedUtc.ToLocalTime().ToString("d MMM", Culture),
+            Phrases.LapTime(s.BestLapTime!.Value),
+            hi - lo > 1e-6 ? SparkHeight * (0.25 + 0.75 * (hi - s.BestLapTime!.Value) / (hi - lo)) : SparkHeight * 0.6,
+            s.BestLapTime == h.BestLapEver)).ToList();
+        Corners = h.Corners.Select(c => new CornerHistoryItem(c)).ToList();
+    }
+
+    private const double SparkHeight = 36;
+
+    public string Hint { get; }
+
+    /// <summary>Each session's best lap, oldest first, as bars: taller is quicker.</summary>
+    public IReadOnlyList<HistorySessionItem> Sessions { get; }
+
+    public IReadOnlyList<CornerHistoryItem> Corners { get; }
+}
+
+public sealed record HistorySessionItem(string Date, string BestLap, double BarHeight, bool IsBest);
+
+public sealed class CornerHistoryItem(CornerHistory c)
+{
+    public string Name { get; } = c.Name;
+
+    public string BestEver { get; } = c.BestEver is { } b ? b.ToString("0.000", Format.Culture) : "—";
+
+    public string BestEverWhen { get; } = c.BestEverUtc is { } w ? w.ToLocalTime().ToString("d MMM", Culture) : "";
+
+    /// <summary>Normal loss at first and now: "0.42 → 0.18".</summary>
+    public string Loss { get; } = c.RecentLoss is not { } now ? "—"
+        : c.EarlyLoss is { } then ? $"{then.ToString("0.00", Format.Culture)} → {now.ToString("0.00", Format.Culture)}"
+        : now.ToString("0.00", Format.Culture);
+
+    /// <summary>−1 better, +1 worse, 0 about the same or unknown (a 0.03 s band is noise).</summary>
+    public int Trend { get; } = c.EarlyLoss is { } e && c.RecentLoss is { } r && Math.Abs(r - e) >= 0.03 ? Math.Sign(r - e) : 0;
+
+    public string TrendText => Trend switch { < 0 => T("coaching.history.better"), > 0 => T("coaching.history.worse"), _ => "" };
+
+    public bool IsBetter => Trend < 0;
+
+    public bool IsWorse => Trend > 0;
+
+    public string Habit { get; } = c.Habit is not { } h ? ""
+        : c.HabitShareFirst is { } first && c.HabitShareLast is { } last
+            ? F("coaching.history.habit", SessionSummaryText.Capital(Phrases.Advice(h.Kind, h.TypicalAmount, h.IsRamp, h.Advice, h.NoBraking)), Math.Round(first * 100), Math.Round(last * 100))
+            : SessionSummaryText.Capital(Phrases.Advice(h.Kind, h.TypicalAmount, h.IsRamp, h.Advice, h.NoBraking));
+}
 
 public sealed record CompareRow(string Label, string Best, string Typical, string Difference);
 

@@ -77,6 +77,9 @@ public static class LiveCoaching
     /// <summary>Each corner's type, kept per track and car once a session has settled it.</summary>
     public static CornerTypeStore Types { get; } = new(CornerTypeStore.DefaultDirectory);
 
+    /// <summary>The corners pinned on the Coaching page to work on, per track and car.</summary>
+    public static History.FocusStore Focus { get; } = new(History.FocusStore.DefaultDirectory);
+
     /// <summary>The switches in force; changed from the Coaching page.</summary>
     public static CoachingSettings Settings { get; private set; } = CoachingSettings.Load();
 
@@ -178,7 +181,7 @@ public static class LiveCoaching
             if (_coach is null)
             {
                 _coachCompare = Settings.CompareWithBestEver;
-                _coach = new LiveCoach(new CornerMapStore(CornerMapStore.DefaultDirectory), new SessionReportStore(SessionReportStore.DefaultDirectory), TrackTurnNames.Default, References, Types)
+                _coach = new LiveCoach(new CornerMapStore(CornerMapStore.DefaultDirectory), new SessionReportStore(SessionReportStore.DefaultDirectory), TrackTurnNames.Default, References, Types, Focus)
                 {
                     CompareWithBestEver = _coachCompare,
                 };
