@@ -159,6 +159,7 @@ if (saveReport)
 {
     var reports = new SessionReportStore(reportsDir);
     reports.Save(report);
+    LapTraceStore.For(reports).SaveAll(report.Id, session);
     Console.WriteLine($"Session report saved for the app's Coaching page: {reports.PathFor(report.Id)}");
     Console.WriteLine();
 }

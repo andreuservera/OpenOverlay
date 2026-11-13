@@ -109,7 +109,7 @@ public sealed class SessionReportStore
         return s.Length == 0 ? "track" : s.Length > 60 ? s[..60] : s;
     }
 
-    private static string FileName(string id)
+    internal static string FileName(string id)
     {
         var invalid = Path.GetInvalidFileNameChars();
         return new string(id.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
