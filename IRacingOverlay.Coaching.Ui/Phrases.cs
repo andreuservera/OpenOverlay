@@ -137,7 +137,7 @@ internal static class Phrases
             lines.Add(F("coaching.summary.consistency", Seconds(gap), Seconds(spread)));
         }
 
-        if (r.Corners.Where(c => c.MedianLoss is > 0.0005).MaxBy(c => c.MedianLoss) is { } costliest)
+        if (SessionSummaryText.Costliest(r) is { } costliest)
         {
             lines.Add(F("coaching.summary.costliest", costliest.Name, Seconds(costliest.MedianLoss!.Value)));
         }
@@ -153,7 +153,7 @@ internal static class Phrases
     /// <summary>As <see cref="SessionSummaryText.WhereTheTimeGoes"/>, in the app's language.</summary>
     public static string? WhereTheTimeGoes(SessionReport r)
     {
-        var totals = r.Corners.SelectMany(c => c.LossByPhase)
+        var totals = SessionSummaryText.Representative(r).SelectMany(c => c.LossByPhase)
             .GroupBy(PhaseKey)
             .Select(g => (Key: g.Key, Seconds: g.Sum(p => Math.Max(0, p.Seconds))))
             .Where(x => x.Seconds >= 0.01)

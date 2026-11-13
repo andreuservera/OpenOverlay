@@ -15,7 +15,7 @@ using IRacingOverlay.Sdk;
 //
 // Runs the Phase 0 coaching pipeline over an iRacing telemetry file and prints what it found: every
 // lap (with iRacing's own lap time beside ours, as a check), the corners, each clean lap's time per
-// corner, and the best pass through each corner. --csv also writes every clean lap's 1 m trace.
+// corner, and the best pass through each corner. --csv also writes every measured lap's 1 m trace (clean or not).
 //
 // Corners come from the saved map for the track when there is one (same T-numbers and names every
 // time). Otherwise they are agreed from up to five of the fastest clean laps and saved. --relearn
@@ -358,10 +358,12 @@ if (debrief || speak)
 if (csvDir is not null)
 {
     Directory.CreateDirectory(csvDir);
-    foreach (var a in session.Analyses)
+    // Every measured lap; one that didn't count as a lap says why in its name.
+    foreach (var a in session.AllAnalyses)
     {
         var t = a.Lap.Trace!;
-        var file = Path.Combine(csvDir, $"lap{a.Lap.LapNumber:000}.csv");
+        var why = a.IsCleanLap ? "" : "-" + a.Lap.Flaws.ToString().Replace(", ", "+");
+        var file = Path.Combine(csvDir, $"lap{a.Lap.LapNumber:000}{why}.csv");
         using var w = new StreamWriter(file);
         w.WriteLine("dist_m,time_s,speed_kmh,throttle,brake,steering_rad,lat_accel,long_accel,yaw_rate,gear,abs");
         for (var m = 0; m < t.Length; m++)
@@ -370,7 +372,7 @@ if (csvDir is not null)
         }
     }
 
-    Console.WriteLine($"Wrote {session.Analyses.Count} lap traces to {csvDir}");
+    Console.WriteLine($"Wrote {session.AllAnalyses.Count} lap traces to {csvDir}");
 }
 
 return 0;

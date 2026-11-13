@@ -131,4 +131,25 @@ public class LossBreakdownTests
         Assert.Equal("throttle pick-up", d!.Value.Measure);
         Assert.Equal("later", SessionReportBuilder.Better(d.Value.Measure, d.Value.R));
     }
+
+    [Fact]
+    public void OneBadPassOfTwoDoesNotMakeTheNormalLap()
+    {
+        Assert.Equal(0.02, SessionReportBuilder.NormalLoss([1.66, 0.02]));
+        Assert.Equal(0.3, SessionReportBuilder.NormalLoss([0.1, 0.3, 2.0]));
+
+        // The costliest corner is named from corners with enough passes to say what is normal.
+        PassRow Row(double? loss, bool best = false) => new() { Lap = 1, Time = 10, Loss = loss, Clean = true, IsBest = best };
+        var r = new SessionReport
+        {
+            Id = "t",
+            Source = "ibt",
+            Corners =
+            [
+                new CornerReport { Id = "T1", Name = "Kemmel", MedianLoss = 0.8, Passes = [Row(0, true), Row(0.8), Row(0.02)] },
+                new CornerReport { Id = "T2", Name = "Les Combes", MedianLoss = 0.2, Passes = [Row(0, true), Row(0.2), Row(0.25), Row(0.1)] },
+            ],
+        };
+        Assert.Equal("Les Combes", SessionSummaryText.Costliest(r)!.Name);
+    }
 }
