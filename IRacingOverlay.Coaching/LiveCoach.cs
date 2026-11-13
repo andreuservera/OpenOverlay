@@ -24,6 +24,8 @@ public sealed class LiveCoach
     private CoachingSession? _session;
     private string? _track;
     private string? _pendingTrack;
+    private string? _pendingCar;
+    private string? _sessionCar;
     private string? _trackName;
     private IracingSessionInfo? _sessionInfo;
     private SessionReportInfo? _reportInfo;
@@ -63,11 +65,14 @@ public sealed class LiveCoach
         _sessionInfo = info;
         _trackName = info.WeekendInfo?.TrackDisplayName ?? info.WeekendInfo?.TrackName;
         _pendingTrack = info.WeekendInfo?.TrackName;
+        var driver = info.DriverInfo;
+        _pendingCar = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName;
     }
 
     public void OnTelemetry(TelemetrySnapshot snapshot)
     {
-        if (_pendingTrack is { } t && t != _track)
+        // A new session for another track, or another car on the same one.
+        if (_pendingTrack is { } t && (t != _track || _pendingCar != _sessionCar))
         {
             Start(t);
         }
@@ -87,6 +92,7 @@ public sealed class LiveCoach
     private void Start(string t)
     {
         _track = t;
+        _sessionCar = _pendingCar;
         var driver = _sessionInfo?.DriverInfo;
         _car = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName;
         var reference = CompareWithBestEver && _references is not null && _car is not null ? _references.Load(t, _car) : null;

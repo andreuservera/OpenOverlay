@@ -103,9 +103,8 @@ public sealed partial class ControlPanelViewModel
                 EditCurrentLayout();
                 break;
             case HotkeyActions.ToggleLiveCoaching:
-                // The coach says "live coaching on/off" itself, for a driver who can't look away.
-                var on = IRacingOverlay.Coaching.Ui.LiveCoaching.Toggle();
-                ShowToast(Loc.T(on ? "hotkeys.liveCoachingOn" : "hotkeys.liveCoachingOff"), null);
+                // The coach says "live coaching on/off" and shows it over the sim itself.
+                IRacingOverlay.Coaching.Ui.LiveCoaching.Toggle();
                 break;
         }
     }

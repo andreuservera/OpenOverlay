@@ -66,6 +66,11 @@ public static class LiveCoaching
     private static WindowsSpeech? _voice;
     private static bool _coachCompare;
 
+    // Live coaching switched off keeps its coach here, so switching it back on in the same
+    // session carries on with the same session and report instead of starting another.
+    private static LiveCoach? _paused;
+    private static bool _pausedCompare;
+
     /// <summary>Where each track and car's best lap ever is kept.</summary>
     public static ReferenceLapStore References { get; } = new(ReferenceLapStore.DefaultDirectory);
 
@@ -114,6 +119,7 @@ public static class LiveCoaching
         var on = !Settings.LiveEnabled;
         Change(Settings with { LiveEnabled = on });
         Announce(on ? "Live coaching on." : "Live coaching off.");
+        OverlayToast.Show(CoachingText.T(on ? "hotkeys.liveCoachingOn" : "hotkeys.liveCoachingOff"));
         return on;
     }
 
@@ -141,7 +147,7 @@ public static class LiveCoaching
             var on = Settings.LiveEnabled && _connection is not null;
             if (!on)
             {
-                Stop();
+                Stop(keep: true);
                 return;
             }
 
@@ -151,6 +157,21 @@ public static class LiveCoaching
                 Stop();
             }
 
+            if (_coach is null && _paused is not null && _pausedCompare == Settings.CompareWithBestEver)
+            {
+                _coach = _paused;
+                _coachCompare = _pausedCompare;
+                _paused = null;
+                if (_connection!.Session is { } info)
+                {
+                    _coach.OnSessionInfo(info);
+                }
+
+                _connection.SessionInfoUpdated += OnSessionInfo;
+                _connection.TelemetryUpdated += OnTelemetry;
+            }
+
+            _paused = null;
             if (_coach is null)
             {
                 _coachCompare = Settings.CompareWithBestEver;
@@ -181,8 +202,8 @@ public static class LiveCoaching
         }
     }
 
-    // Under Gate.
-    private static void Stop()
+    // Under Gate. With keep, the coach is set aside to carry on if switched back on.
+    private static void Stop(bool keep = false)
     {
         if (_connection is { } c)
         {
@@ -191,6 +212,16 @@ public static class LiveCoaching
         }
 
         _coach?.Flush();
+        if (keep && _coach is not null)
+        {
+            _paused = _coach;
+            _pausedCompare = _coachCompare;
+        }
+        else if (!keep)
+        {
+            _paused = null;
+        }
+
         _coach = null;
         _voice?.Dispose();
         _voice = null;
