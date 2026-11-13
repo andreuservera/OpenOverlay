@@ -74,6 +74,10 @@ public static class LiveCoaching
     /// <summary>Where each track and car's best lap ever is kept.</summary>
     public static ReferenceLapStore References { get; } = new(ReferenceLapStore.DefaultDirectory);
 
+    /// <summary>A faster driver's lap per track and car, imported to compare against on the
+    /// Coaching page; kept apart from the driver's own best ever.</summary>
+    public static ReferenceLapStore Faster { get; } = new(Path.Combine(ReferenceLapStore.DefaultDirectory, "faster"));
+
     /// <summary>Each corner's type, kept per track and car once a session has settled it.</summary>
     public static CornerTypeStore Types { get; } = new(CornerTypeStore.DefaultDirectory);
 

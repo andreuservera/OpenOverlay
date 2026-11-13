@@ -6,10 +6,18 @@ using static IRacingOverlay.Coaching.Ui.CoachingText;
 namespace IRacingOverlay.Coaching.Ui;
 
 /// <summary>A lap that can be picked for comparing: one of the session's, or the best lap ever.</summary>
-public sealed record LapOption(string Label, int Lap, bool IsReference = false)
+/// <param name="Lap">The session's lap number; 0 for a stored lap (<paramref name="Other"/>).</param>
+public sealed record LapOption(string Label, int Lap, OtherLap? Other = null)
 {
+    public bool IsReference => Other is not null;
+
     public override string ToString() => Label;
 }
+
+/// <summary>A lap from outside the session: the best lap ever, or a faster driver's.</summary>
+/// <param name="Label">Shown in the list ("Best lap ever · 2:03.456").</param>
+/// <param name="Short">Said in a sentence ("your best lap ever").</param>
+public sealed record OtherLap(string Label, string Short, Func<StoredLap?> Load);
 
 /// <summary>A stretch of the lap to compare: the whole lap or one corner with its approach and exit.</summary>
 public sealed record RangeOption(string Label, int FromM, int ToM)
@@ -29,19 +37,17 @@ public sealed class LapComparePanel : INotifyPropertyChanged
 
     private readonly SessionReport _report;
     private readonly LapTraceStore _traces;
-    private readonly Func<StoredLap?>? _reference;
-    private readonly Dictionary<(int, bool), StoredLap?> _cache = [];
+    private readonly Dictionary<LapOption, StoredLap?> _cache = [];
     private LapOption? _a;
     private LapOption? _b;
     private RangeOption? _range;
     private LapCompareData? _data;
     private string _summary = "";
 
-    public LapComparePanel(SessionReport report, LapTraceStore traces, IReadOnlyList<int> kept, Func<StoredLap?>? reference, double? referenceLapTime)
+    public LapComparePanel(SessionReport report, LapTraceStore traces, IReadOnlyList<int> kept, IReadOnlyList<OtherLap> others)
     {
         _report = report;
         _traces = traces;
-        _reference = reference;
 
         var rows = report.Laps.ToDictionary(l => l.Number);
         var options = kept.Select(n =>
@@ -51,10 +57,7 @@ public sealed class LapComparePanel : INotifyPropertyChanged
             var note = n == report.BestLapNumber ? " · " + T("coaching.best") : row is { Clean: false } ? " · " + T("coaching.laps.notClean") : "";
             return new LapOption(SessionSummaryText.Capital(F("coaching.lapN", n)) + time + note, n);
         }).ToList();
-        if (reference is not null && referenceLapTime is { } rt)
-        {
-            options.Add(new LapOption(F("coaching.laps.bestEver", Phrases.LapTime(rt)), 0, IsReference: true));
-        }
+        options.AddRange(others.Select(o => new LapOption(o.Label, 0, o)));
 
         Laps = options;
         Ranges = new[] { new RangeOption(T("coaching.laps.wholeLap"), 0, report.TrackLengthMetres) }
@@ -144,11 +147,10 @@ public sealed class LapComparePanel : INotifyPropertyChanged
 
     private StoredLap? Load(LapOption o)
     {
-        var key = (o.Lap, o.IsReference);
-        if (!_cache.TryGetValue(key, out var lap))
+        if (!_cache.TryGetValue(o, out var lap))
         {
-            lap = o.IsReference ? _reference?.Invoke() : _traces.Load(_report.Id, o.Lap);
-            _cache[key] = lap;
+            lap = o.Other is { } other ? other.Load() : _traces.Load(_report.Id, o.Lap);
+            _cache[o] = lap;
         }
 
         return lap;
@@ -176,7 +178,7 @@ public sealed class LapComparePanel : INotifyPropertyChanged
             : F((d > 0 ? "coaching.laps.slower" : "coaching.laps.quicker") + lap, SessionSummaryText.Capital(ShortName(_b)), Phrases.Seconds(Math.Abs(d)), ShortName(_a));
     }
 
-    private static string ShortName(LapOption o) => o.IsReference ? T("coaching.laps.bestEverShort") : F("coaching.lapN", o.Lap);
+    private static string ShortName(LapOption o) => o.Other?.Short ?? F("coaching.lapN", o.Lap);
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

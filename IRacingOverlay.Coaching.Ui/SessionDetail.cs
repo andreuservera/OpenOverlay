@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using IRacingOverlay.Coaching.History;
+using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
 using static IRacingOverlay.Coaching.Ui.CoachingText;
 
@@ -21,13 +22,27 @@ public sealed class SessionDetail : INotifyPropertyChanged
     private IReadOnlyList<FocusItem> _focus = [];
 
     public SessionDetail(SessionReport r, string? selectCornerId = null, TrackHistory? history = null, FocusStore? focus = null,
-        LapTraceStore? traces = null, Func<StoredLap?>? reference = null, double? referenceLapTime = null)
+        LapTraceStore? traces = null, ReferenceLap? reference = null, ReferenceLap? faster = null)
     {
         Report = r;
+        var others = new List<OtherLap>();
+        if (reference is not null)
+        {
+            others.Add(new OtherLap(F("coaching.laps.bestEver", Phrases.LapTime(reference.LapTime)), T("coaching.laps.bestEverShort"),
+                () => StoredLap.From(0, reference.LapTime, reference.Trace)));
+        }
+
+        if (faster is not null)
+        {
+            others.Add(new OtherLap(F("coaching.laps.faster", Phrases.LapTime(faster.LapTime)), T("coaching.laps.fasterShort"),
+                () => StoredLap.From(0, faster.LapTime, faster.Trace)));
+        }
+
         var kept = traces?.Laps(r.Id) ?? [];
-        LapCompare = traces is not null && (kept.Count >= 2 || (kept.Count == 1 && reference is not null))
-            ? new LapComparePanel(r, traces, kept, reference, referenceLapTime)
+        LapCompare = traces is not null && kept.Count + others.Count >= 2 && kept.Count >= 1
+            ? new LapComparePanel(r, traces, kept, others)
             : null;
+        Faster = new FasterPanel(r, faster, () => SetFasterRequested?.Invoke(), () => ClearFasterRequested?.Invoke());
         _history = history;
         _focusStore = focus;
         History = history is { Sessions.Count: >= 2 } h ? new HistoryPanel(h) : null;
@@ -127,6 +142,15 @@ public sealed class SessionDetail : INotifyPropertyChanged
     }
 
     public bool HasCorner => _corner is not null;
+
+    /// <summary>Asks the page to pick a faster driver's lap for this session's track and car.</summary>
+    public event Action? SetFasterRequested;
+
+    /// <summary>Asks the page to forget the faster driver's lap.</summary>
+    public event Action? ClearFasterRequested;
+
+    /// <summary>The session against a faster driver's lap, corner by corner.</summary>
+    public FasterPanel Faster { get; }
 
     /// <summary>Any two laps overlaid; null when the session's laps weren't kept (older reports).</summary>
     public LapComparePanel? LapCompare { get; }
@@ -425,6 +449,72 @@ public sealed record PhaseItem(string Phase, string Seconds, double BarWidth, bo
 {
     /// <summary>What screen readers say for the row (UI Automation names an item by its text).</summary>
     public override string ToString() => $"{Phase}: {Seconds}";
+}
+
+/// <summary>The session against a faster driver's lap: per corner, your best and a normal lap
+/// against theirs, and what they do differently.</summary>
+public sealed class FasterPanel
+{
+    public FasterPanel(SessionReport r, ReferenceLap? faster, Action pick, Action clear)
+    {
+        CanSet = r.TrackKey is not null && r.CarName is not null && r.Corners.Count > 0;
+        PickCommand = new RelayCommand(pick);
+        ClearCommand = new RelayCommand(clear);
+        if (faster is null)
+        {
+            Title = "";
+            Rows = [];
+            return;
+        }
+
+        Title = F("coaching.faster.lap", Phrases.LapTime(faster.LapTime), faster.SourceFile is { } f ? Path.GetFileName(f) : faster.Car);
+        Rows = FasterLapComparison.Compare(r, faster).Select(g => new FasterRow(g)).ToList();
+        var technique = Rows.Count(x => x.Gap.Verdict == GapVerdict.Technique);
+        var consistency = Rows.Count(x => x.Gap.Verdict == GapVerdict.Consistency);
+        Summary = r.BestLapTime is { } b
+            ? F("coaching.faster.summary", Phrases.Seconds(b - faster.LapTime), technique, consistency)
+            : "";
+    }
+
+    /// <summary>The session knows its track and car, so a faster lap can be set for them.</summary>
+    public bool CanSet { get; }
+
+    public bool HasLap => Rows.Count > 0;
+
+    public bool HasNoLap => !HasLap;
+
+    public string PickText => T(HasLap ? "coaching.faster.replace" : "coaching.faster.pick");
+
+    public string Title { get; }
+
+    public string Summary { get; } = "";
+
+    public IReadOnlyList<FasterRow> Rows { get; }
+
+    public ICommand PickCommand { get; }
+
+    public ICommand ClearCommand { get; }
+}
+
+public sealed class FasterRow(CornerGap g)
+{
+    public CornerGap Gap { get; } = g;
+
+    public string Name { get; } = g.Name;
+
+    public string Times { get; } = $"{(g.YourBest is { } y ? y.ToString("0.000", Format.Culture) : "—")} / {g.FasterTime.ToString("0.000", Format.Culture)}";
+
+    public string GapText { get; } = g.Gap is { } x ? (x >= 0 ? "+" : "−") + Math.Abs(x).ToString("0.00", Format.Culture) : "—";
+
+    public string Normal { get; } = g.NormalLoss is { } n ? $"+{n.ToString("0.00", Format.Culture)}" : "—";
+
+    public string Verdict { get; } = T($"coaching.faster.verdict.{g.Verdict.ToString().ToLowerInvariant()}");
+
+    public bool IsTechnique => g.Verdict == GapVerdict.Technique;
+
+    public string Differences { get; } = string.Join(", ", g.Differences.Select(d =>
+        F($"coaching.faster.diff.{d.Measure}.{(d.Amount > 0 ? "more" : "less")}", Math.Round(Math.Abs(d.Amount)).ToString("0", Format.Culture))
+        + (d.SetupSensitive ? "*" : "")));
 }
 
 /// <summary>One corner of the focus plan, worded.</summary>

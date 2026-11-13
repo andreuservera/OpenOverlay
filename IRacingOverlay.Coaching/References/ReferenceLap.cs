@@ -125,6 +125,24 @@ public sealed class ReferenceLapStore
         return reference;
     }
 
+    /// <summary>The file extension of an exported lap: the same gzip'd JSON as the store keeps.</summary>
+    public const string FileExtension = ".oolap";
+
+    /// <summary>Writes the track and car's reference to <paramref name="path"/> to share or back up.</summary>
+    public void Export(string trackKey, string car, string path)
+    {
+        var source = PathFor(trackKey, car);
+        if (!File.Exists(source))
+        {
+            throw new FileNotFoundException("No reference lap stored for this track and car.", source);
+        }
+
+        File.Copy(source, path, overwrite: true);
+    }
+
+    /// <summary>A lap exported with <see cref="Export"/> (or a store file); null when it can't be read.</summary>
+    public static ReferenceLap? ReadFile(string path) => File.Exists(path) ? Read(path) : null;
+
     public void Delete(string trackKey, string car)
     {
         var path = PathFor(trackKey, car);
