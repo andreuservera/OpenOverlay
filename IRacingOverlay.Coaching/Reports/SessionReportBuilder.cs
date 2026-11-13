@@ -78,7 +78,7 @@ public static class SessionReportBuilder
             var grip = GripEnvelope.Learn(reference.Where(a => a.Lap.Trace is not null).Select(a => a.Lap.Trace!));
             for (var i = 0; i < map.Corners.Count; i++)
             {
-                corners.Add(BuildCorner(map.Corners[i], reference, best, bestLap, o, grip));
+                corners.Add(BuildCorner(map.Corners[i], reference, best, bestLap, o, grip, session.SavedCornerTypes));
             }
         }
         else
@@ -179,7 +179,7 @@ public static class SessionReportBuilder
         && f.Laps >= o.RecurringMinLaps
         && f.Laps >= Math.Ceiling(o.RecurringShare * f.OutOf - 1e-9);
 
-    private static CornerReport BuildCorner(Corner corner, IReadOnlyList<LapAnalysis> reference, IReadOnlyDictionary<string, CornerPass> bests, RecordedLap? bestLap, SessionReportOptions o, GripEnvelope? grip = null)
+    private static CornerReport BuildCorner(Corner corner, IReadOnlyList<LapAnalysis> reference, IReadOnlyDictionary<string, CornerPass> bests, RecordedLap? bestLap, SessionReportOptions o, GripEnvelope? grip = null, IReadOnlyDictionary<string, CornerType>? savedTypes = null)
     {
         var passes = new List<(CornerPass Pass, LapAnalysis Lap)>();
         foreach (var a in reference)
@@ -194,7 +194,7 @@ public static class SessionReportBuilder
         }
 
         bests.TryGetValue(corner.Name, out var best);
-        var type = CornerTypes.Consensus(passes.Select(x => x.Pass), best);
+        var type = savedTypes is not null && savedTypes.TryGetValue(corner.Name, out var saved) ? saved : CornerTypes.Consensus(passes.Select(x => x.Pass), best);
         var rows = new List<PassRow>();
         var compared = new List<(CornerPass Pass, LapAnalysis Lap, double Loss, IReadOnlyList<CornerFinding> Findings)>();
         foreach (var (p, a) in passes)

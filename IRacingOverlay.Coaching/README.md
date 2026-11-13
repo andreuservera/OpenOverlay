@@ -42,8 +42,11 @@ dotnet run --project IRacingOverlay.Coaching.Cli -- <file>.ibt --debrief --speak
 dotnet run --project IRacingOverlay.Coaching.Cli -- --live --speak                # coach while you drive
 ```
 
-`--live` connects to iRacing the same way the overlay does (its own connection, nothing in the app
-changes) and gives the debrief as you cross the line after each clean lap.
+`--live` is a **developer tool**: drivers use the app's live coaching switch on the Coaching page
+(or the shortcut you can assign to it in the app's shortcuts), which runs the same coach. `--live` connects to iRacing the same
+way the overlay does (its own connection, nothing in the app changes) and gives the debrief as you
+cross the line after each clean lap; it is handy for watching the coach's log while changing it,
+and it has not been tested as much as the app's switch.
 
 Speech picks the first installed English voice unless `--voice "<name>"` names one;
 `--list-voices` shows what is installed. It plays on the Windows default audio output.
@@ -70,6 +73,15 @@ apart (a chicane, Les Combes) are one corner.
 Each file records the version of the corner detection that made it (`detectorVersion`). When
 detection changes, older maps are relearned automatically on the next clean laps, keeping their names.
 
+Each corner's type (flat, lift, fast braking, slow, complex) decides which checks run. It is agreed
+from a corner's first five clean passes and, when at least four of them show the same type, saved
+per track **and car** to `%LOCALAPPDATA%\IRacingOverlay\coaching\corner-types\<track>__<car>.json`,
+so the corner keeps that type in every later session with that car and reports stay comparable. A
+corner whose passes are split (Spoon 2: sometimes a lift, sometimes a brake) isn't saved and is
+agreed each session; a saved type is agreed again when at least 80% of a later session's clean
+passes show another, and forgotten when most of them disagree with it. To force a type, change its `type` and set `"fixed": true`; delete the file to
+have every type agreed again.
+
 It prints every lap with iRacing's own lap time beside the computed one, the corners found, each
 clean lap's time per corner and the best pass per corner.
 
@@ -86,6 +98,4 @@ different point; they are never clean laps, so they never become references.
 ## Known limits (next steps)
 
 - A corner straddling the start/finish line is cut at the line.
-- A lap is clean or not as a whole; one off-track excursion throws away its other corners too.
-  Per-corner validity would keep them.
 - `SnapshotFrames` has no unit test: `TelemetrySnapshot` can only be built inside the Sdk.

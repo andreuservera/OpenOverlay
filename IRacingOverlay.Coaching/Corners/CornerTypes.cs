@@ -60,6 +60,12 @@ public static class CornerTypes
     /// <summary>A corner's type is fixed from its first this-many clean passes.</summary>
     public const int SettledAfterPasses = 5;
 
+    /// <summary>A type is only saved for later sessions (<see cref="CornerTypeStore"/>) when at least
+    /// this share of the settling passes show it (4 of 5); a corner whose passes are split between
+    /// two types keeps being agreed per session. A saved type is replaced when this share of a later
+    /// session's clean passes (at least <see cref="SettledAfterPasses"/>) show another type.</summary>
+    public const double SavedShare = 0.8;
+
     /// <summary>
     /// The type of a corner over many passes: the one most of its clean passes show, so it doesn't
     /// flip from lap to lap with whichever pass is the best (a chicane that is sometimes taken as
@@ -86,6 +92,19 @@ public static class CornerTypes
         var top = counts.Max(c => c.Count);
         var leaders = counts.Where(c => c.Count == top).Select(c => c.Type).ToList();
         return best is not null && leaders.Contains(Classify(best)) ? Classify(best) : leaders[0];
+    }
+
+    /// <summary>The type at least <see cref="SavedShare"/> of <paramref name="passes"/> show, or
+    /// null when they are split (or there are none).</summary>
+    public static CornerType? Decisive(IReadOnlyCollection<CornerPass> passes)
+    {
+        if (passes.Count == 0)
+        {
+            return null;
+        }
+
+        var top = passes.GroupBy(Classify).MaxBy(g => g.Count())!;
+        return (double)top.Count() / passes.Count >= SavedShare ? top.Key : null;
     }
 
     /// <summary>How the type reads in a table or debrief.</summary>

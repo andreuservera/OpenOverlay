@@ -92,6 +92,13 @@ public sealed record CoachingOptions
     /// <summary>A lap to coach against instead of this session's best (the driver's best lap ever
     /// for this track and car); null to coach against the session. See <see cref="CoachingSession.CoachingReference"/>.</summary>
     public References.ReferenceLap? Reference { get; init; }
+
+    /// <summary>The car (iRacing's CarScreenName), for what is kept per track and car.</summary>
+    public string? Car { get; init; }
+
+    /// <summary>Where each corner's type is kept per track and car (<see cref="CornerTypeStore"/>);
+    /// null to agree the types afresh every session. Needs <see cref="TrackKey"/> and <see cref="Car"/>.</summary>
+    public CornerTypeStore? TypeStore { get; init; }
 }
 
 /// <summary>
@@ -207,6 +214,13 @@ public sealed class CoachingSession
 
     private Dictionary<string, CornerType> _types = new(StringComparer.Ordinal);
 
+    /// <summary>The corner types saved for this track and car (<see cref="CoachingOptions.TypeStore"/>),
+    /// by corner id: they win over what this session's passes say.</summary>
+    public IReadOnlyDictionary<string, CornerType> SavedCornerTypes => _savedTypes;
+
+    private Dictionary<string, CornerType> _savedTypes = new(StringComparer.Ordinal);
+    private IReadOnlySet<string> _fixedTypes = new HashSet<string>(StringComparer.Ordinal);
+
     public RecordedLap? BestLap => _analyses.Skip(_referenceStart).Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)?.Lap;
 
     /// <summary>
@@ -302,6 +316,7 @@ public sealed class CoachingSession
             ? CornerAnalyzer.Analyze(reference.Trace, map, 0, LapFlaw.None).Where(p => p.IsClean).ToDictionary(p => p.Corner.Name, StringComparer.Ordinal)
             : null;
         _coachingReference = null;
+        _savedTypes = LoadSavedTypes(map);
         _best = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
         _bestOutsideCorners = null;
         _bestRestOfStraight = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -316,6 +331,108 @@ public sealed class CoachingSession
         }
 
         CornerMapChanged?.Invoke(map);
+    }
+
+    private Dictionary<string, CornerType> LoadSavedTypes(CornerMap map)
+    {
+        if (_options.TypeStore is not { } store || _options.TrackKey is not { } key || _options.Car is not { } car)
+        {
+            return new Dictionary<string, CornerType>(StringComparer.Ordinal);
+        }
+
+        _fixedTypes = store.Fixed(key, car, map);
+        return new Dictionary<string, CornerType>(store.Load(key, car, map), StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Saves the type of every corner whose first <see cref="CornerTypes.SettledAfterPasses"/> clean
+    /// passes clearly agree on one (<see cref="CornerTypes.SavedShare"/>) and that has none saved yet,
+    /// and replaces a saved type (unless it was fixed by hand) when this session's clean passes
+    /// clearly show another, or forgets it when most of them disagree with it but not on one type. Not on a provisional map, whose corners may still be merged or split.
+    /// </summary>
+    private void SaveSettledTypes(IReadOnlyList<CornerPass> passes)
+    {
+        if (_options.TypeStore is not { } store || _options.TrackKey is not { } key || _options.Car is not { } car
+            || CornerMap is not { } map || CornerMapOrigin == Coaching.CornerMapOrigin.SingleLap)
+        {
+            return;
+        }
+
+        var added = new Dictionary<string, CornerType>(StringComparer.Ordinal);
+        var replaced = new Dictionary<string, CornerType>(StringComparer.Ordinal);
+        var dropped = new List<string>();
+        foreach (var g in passes.Where(p => p.IsClean).GroupBy(p => p.Corner.Name, StringComparer.Ordinal))
+        {
+            var clean = g.OrderBy(p => p.LapNumber).ToList();
+            if (clean.Count < CornerTypes.SettledAfterPasses)
+            {
+                continue;
+            }
+
+            var saved = _savedTypes.TryGetValue(g.Key, out var s) ? s : (CornerType?)null;
+            var counted = saved is null ? clean.Take(CornerTypes.SettledAfterPasses).ToList() : clean;
+            var type = CornerTypes.Decisive(counted);
+            if (saved is null)
+            {
+                if (type is { } t)
+                {
+                    added[g.Key] = t;
+                }
+
+                continue; // split between types: agreed afresh each session
+            }
+
+            if (_fixedTypes.Contains(g.Key) || type == saved)
+            {
+                continue;
+            }
+
+            if (type is { } other)
+            {
+                replaced[g.Key] = other;
+            }
+            else if (counted.Count(p => CornerTypes.Classify(p) == saved) * 2 < counted.Count)
+            {
+                dropped.Add(g.Key); // most passes disagree, but on no one type: agreed per session again
+            }
+        }
+
+        if (added.Count == 0 && replaced.Count == 0 && dropped.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (id, type) in added.Concat(replaced))
+        {
+            _savedTypes[id] = type;
+        }
+
+        foreach (var id in dropped)
+        {
+            _savedTypes.Remove(id); // _types already holds this session's agreed type
+        }
+
+        try
+        {
+            if (added.Count > 0)
+            {
+                store.Save(key, car, map, added);
+            }
+
+            if (replaced.Count > 0)
+            {
+                store.Save(key, car, map, replaced, replace: true);
+            }
+
+            if (dropped.Count > 0)
+            {
+                store.Remove(key, car, map, dropped);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Not saved: kept for this session, agreed again next time.
+        }
     }
 
     private void SaveMap()
@@ -389,6 +506,11 @@ public sealed class CoachingSession
             .Select(g => (g.Key, Type: CornerTypes.Consensus(g, _best.GetValueOrDefault(g.Key))))
             .Where(x => x.Type is not null)
             .ToDictionary(x => x.Key, x => x.Type!.Value, StringComparer.Ordinal);
+        SaveSettledTypes(all);
+        foreach (var (id, type) in _savedTypes)
+        {
+            _types[id] = type;
+        }
 
         if (_referencePasses is not null)
         {

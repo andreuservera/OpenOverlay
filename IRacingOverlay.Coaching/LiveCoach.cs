@@ -32,12 +32,15 @@ public sealed class LiveCoach
     private bool _reportDue;
 
     private readonly ReferenceLapStore? _references;
+    private readonly CornerTypeStore? _types;
     private string? _car;
 
     /// <param name="references">Where each track and car's best lap ever is kept: every clean lap
     /// quicker than the stored one replaces it. Null keeps none.</param>
-    public LiveCoach(CornerMapStore maps, SessionReportStore? reports, TrackTurnNames? names = null, ReferenceLapStore? references = null)
+    /// <param name="types">Where each corner's type is kept per track and car; null agrees them afresh every session.</param>
+    public LiveCoach(CornerMapStore maps, SessionReportStore? reports, TrackTurnNames? names = null, ReferenceLapStore? references = null, CornerTypeStore? types = null)
     {
+        _types = types;
         _maps = maps;
         _saver = reports is null ? null : new LiveReportSaver(reports);
         _names = names;
@@ -96,7 +99,7 @@ public sealed class LiveCoach
         var driver = _sessionInfo?.DriverInfo;
         _car = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName;
         var reference = CompareWithBestEver && _references is not null && _car is not null ? _references.Load(t, _car) : null;
-        var session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = _maps, TurnNames = _names, Reference = reference });
+        var session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = _maps, TurnNames = _names, Reference = reference, Car = _car, TypeStore = _types });
         _session = session;
         var started = DateTime.UtcNow;
         _reportInfo = new SessionReportInfo

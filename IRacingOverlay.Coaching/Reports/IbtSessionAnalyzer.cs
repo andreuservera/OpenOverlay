@@ -16,7 +16,8 @@ public static class IbtSessionAnalyzer
         bool relearn = false,
         bool saveMap = true,
         CancellationToken cancel = default,
-        References.ReferenceLapStore? references = null)
+        References.ReferenceLapStore? references = null,
+        CornerTypeStore? types = null)
     {
         using var ibt = IbtFile.Open(path);
         var weekend = ibt.Session?.WeekendInfo;
@@ -31,6 +32,8 @@ public static class IbtSessionAnalyzer
             LoadSavedMap = !relearn,
             TurnNames = TrackTurnNames.Default,
             CornerMapLaps = int.MaxValue, // agreed below, from the fastest laps of the whole file
+            Car = car,
+            TypeStore = trackKey is null ? null : types,
         });
 
         var n = 0;

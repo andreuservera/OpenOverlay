@@ -33,6 +33,8 @@
   "nav.coaching.title": "Coaching",
   "nav.coaching.blurb": "Your coached sessions: best lap, theoretical best, the mistakes you repeat, and every corner in detail.",
   "coaching.title": "Coaching",
+  "coaching.beta": "Beta",
+  "coaching.beta.hint": "Coaching is new: its findings are tuned for GT3 cars and may change. Tell us what reads wrong.",
   "coaching.sessions.hint": "Sessions you drove with the coach on, newest first. Pick one for its post-session analysis.",
   "coaching.live.title": "Live coaching",
   "coaching.live.hint": "Records your sessions while iRacing runs, so they show up here without an .ibt. Off: the coach doesn't run at all; you can still analyse an .ibt afterwards.",

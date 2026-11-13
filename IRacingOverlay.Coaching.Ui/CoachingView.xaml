@@ -109,7 +109,13 @@
         <Border Grid.Column="0" Background="{DynamicResource Cp.Rail}" BorderBrush="{DynamicResource Cp.Border}" BorderThickness="0,0,1,0">
             <DockPanel Margin="16,18,12,12">
                 <StackPanel DockPanel.Dock="Top">
-                    <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}" VerticalAlignment="Center"/>
+                        <Border Margin="10,0,0,0" Padding="7,1" CornerRadius="9" VerticalAlignment="Center"
+                                Background="{DynamicResource Cp.AccentWash}" ToolTip="{loc:T coaching.beta.hint}">
+                            <TextBlock Text="{loc:T coaching.beta}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.Accent}" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
                     <TextBlock Style="{DynamicResource Cp.Hint}" Margin="0,4,0,0"
                                Text="{loc:T coaching.sessions.hint}"/>
                     <!-- Live coaching: off by default, and when off nothing of the coach runs with iRacing. -->
