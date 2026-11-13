@@ -2,6 +2,21 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.15.0] - 2026-11-13
+
+#### Added
+- Circuit map: a new widget with every car on the track's real shape. Drive one clean lap at a track and the map draws it, then keeps it for next time.
+- Radar: a widget of its own showing the cars around you from above, who is alongside and on which side, and how close the cars behind and ahead are.
+- Diagnostics: replay an .ibt recording into the overlays on a loop, as if you were driving, to try a layout without iRacing.
+- Layouts can open by themselves for a kind of session (practice, qualifying, race), a car, or both, and close again when nothing matches.
+- Coaching: compare a session with a faster driver's lap, from their .ibt or a lap file, corner by corner: where the gap is technique and where it is consistency, and what the faster lap does differently. Your best laps ever can be exported and imported as lap files.
+- Coaching: with live coaching on, a short cue a few seconds before each corner you are working on ("brake later", "carry speed"), on screen by default or spoken, until the mistake stays away.
+- Coaching: the advice adapts to the kind of car (GT, low power like the MX-5, or formula), so small cars and fast cars get thresholds that fit them.
+
+#### Fixed
+- Coaching: an online practice or race driven after a test session on the same track and car was added to that session's report, and the Coaching page couldn't open it. Each event and each session of an event now gets its own report, and the older mixed reports open again.
+- The live coaching shortcut no longer switches straight back off when one press arrives twice.
+
 ### [0.14.0] - 2026-11-13
 
 #### Added
@@ -10,10 +25,6 @@ All notable changes to OpenOverlay, newest first.
 - Live coaching, off by default: switch it on in the Coaching page, or with a shortcut while driving, and hear a short debrief as you cross the line. While it is off, nothing of the coach runs with iRacing.
 - Live coaching can compare against your best lap ever for the track and car instead of the session's best. Every quicker clean lap replaces it, and you can choose an .ibt as the reference.
 - The Coaching page speaks all six app languages; the spoken debrief uses the free Windows voices and works offline.
-- Circuit map: a new widget with every car on the track's real shape. Drive one clean lap at a track and the map draws it, then keeps it for next time.
-- Radar: a widget of its own showing the cars around you from above, who is alongside and on which side, and how close the cars behind and ahead are.
-- Diagnostics: replay an .ibt recording into the overlays on a loop, as if you were driving, to try a layout without iRacing.
-- Layouts can open by themselves for a kind of session (practice, qualifying, race), a car, or both, and close again when nothing matches.
 
 
 ### [0.13.0] - 2026-11-07
