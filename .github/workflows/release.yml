@@ -64,18 +64,38 @@ jobs:
         run: vpk download github --repoUrl https://github.com/${{ github.repository }} --token ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true # fine to fail on the very first Velopack-packaged release — nothing to diff against yet
 
+      # Signed only when the repository has a code-signing certificate: SIGNING_CERT_PFX_BASE64 (the
+      # .pfx, base64) and SIGNING_CERT_PASSWORD. Without them the installer is built unsigned, as before.
       - name: Pack installer
-        run: >
-          vpk pack
-          --packId OpenOverlay
-          --packVersion ${{ steps.version.outputs.version }}
-          --packDir publish-selfcontained
-          --packTitle "OpenOverlay"
-          --packAuthors "OpenOverlay contributors"
-          --mainExe OpenOverlay.exe
-          --icon IRacingOverlay.App/Assets/icon.ico
-          --shortcuts Desktop,StartMenuRoot
-          --releaseNotes release-notes.md
+        shell: bash
+        env:
+          CERT: ${{ secrets.SIGNING_CERT_PFX_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          sign=()
+          if [ -n "$CERT" ]; then
+            pfx="$RUNNER_TEMP/signing.pfx"
+            printf '%s' "$CERT" | base64 -d > "$pfx"
+            sign=(--signParams "/f \"$pfx\" /p \"$CERT_PASSWORD\" /fd sha256 /tr http://timestamp.digicert.com /td sha256")
+          else
+            echo "::notice::No code-signing certificate configured; the installer is unsigned."
+          fi
+          vpk pack \
+            --packId OpenOverlay \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir publish-selfcontained \
+            --packTitle "OpenOverlay" \
+            --packAuthors "OpenOverlay contributors" \
+            --mainExe OpenOverlay.exe \
+            --icon IRacingOverlay.App/Assets/icon.ico \
+            --shortcuts Desktop,StartMenuRoot \
+            --releaseNotes release-notes.md \
+            "${sign[@]}"
+
+      - name: Remove the signing certificate
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/signing.pfx"
 
       # Manual runs have no tag yet, so create it after the build succeeded (a failed build leaves no tag).
       # `git tag` fails if the tag already exists, which stops a duplicate release.
