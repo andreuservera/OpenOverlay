@@ -275,7 +275,8 @@ public static class SessionReportBuilder
             BestTrace = bestEntry is { } be ? Trace(be.Item1, be.Item2.Lap, corner, o.TraceStepMetres) : null,
             TypicalTrace = typicalPass is { } t ? Trace(t.Item1, t.Item2.Lap, corner, o.TraceStepMetres) : null,
             LossByPhase = PhaseLosses(compared.Select(c => (c.Pass, c.Lap)).ToList(), bestEntry),
-            Grip = GripOf(grip, bestEntry, typicalPass),
+            // A flat corner uses little of the grip by nature, so a share of it says nothing.
+            Grip = type is CornerType.Flat ? null : GripOf(grip, bestEntry, typicalPass),
             TimeSpread = CornerStats.Spread(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass.ScoreTime).ToList()),
             BrakePointSpreadM = type is CornerType.Flat or CornerType.Lift ? null
                 : CornerStats.Spread(passes.Where(x => x.Pass.IsClean && x.Pass.BrakePointM is not null).Select(x => (double)x.Pass.BrakePointM!.Value).ToList()),

@@ -105,6 +105,29 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
 
     public string FolderPath => _store.Directory;
 
+    /// <summary>Live coaching on: the coach records each session while iRacing runs. Off, it doesn't
+    /// run at all; analysing an .ibt still works.</summary>
+    public bool LiveEnabled
+    {
+        get => LiveCoaching.Settings.LiveEnabled;
+        set
+        {
+            LiveCoaching.Change(LiveCoaching.Settings with { LiveEnabled = value });
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>With live coaching on, a short spoken debrief after each clean lap.</summary>
+    public bool SpeakDebrief
+    {
+        get => LiveCoaching.Settings.SpeakDebrief;
+        set
+        {
+            LiveCoaching.Change(LiveCoaching.Settings with { SpeakDebrief = value });
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand RefreshCommand { get; }
 
     public ICommand ImportIbtCommand { get; }

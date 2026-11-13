@@ -373,125 +373,20 @@ return 0;
 // again if the track changes. Everything runs on the connection's reader thread.
 static int RunLive(string storeDir, bool speak, string? voiceName, SessionReportStore? reports)
 {
-    var store = new CornerMapStore(storeDir);
-    var saver = reports is null ? null : new LiveReportSaver(reports);
     using var voice = speak ? new WindowsSpeech(voice: voiceName) : null;
     if (voice is not null)
     {
         Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output.");
     }
 
-    using var connection = new IRacingConnection();
-    CoachingSession? session = null;
-    string? track = null;
-    string? pendingTrack = null;
-    string? trackName = null;
-    IracingSessionInfo? sessionInfo = null;
-    SessionReportInfo? reportInfo = null;
-    var reportDue = false;
+    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default) { Voice = voice };
+    coach.Log += Console.WriteLine;
 
-    connection.SessionInfoUpdated += (_, info) =>
-    {
-        sessionInfo = info;
-        trackName = info.WeekendInfo?.TrackDisplayName ?? info.WeekendInfo?.TrackName;
-        pendingTrack = info.WeekendInfo?.TrackName;
-    };
+    using var connection = new IRacingConnection();
+    connection.SessionInfoUpdated += (_, info) => coach.OnSessionInfo(info);
     connection.Connected += (_, _) => Console.WriteLine("Connected to iRacing.");
     connection.Disconnected += (_, _) => Console.WriteLine("Disconnected from iRacing.");
-    connection.TelemetryUpdated += (_, snapshot) =>
-    {
-        if (pendingTrack is { } t && t != track)
-        {
-            track = t;
-            session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = store, TurnNames = TrackTurnNames.Default });
-            var started = DateTime.UtcNow;
-            var driver = sessionInfo?.DriverInfo;
-            reportInfo = new SessionReportInfo
-            {
-                Id = SessionReportStore.NewId(started, t),
-                Source = "live",
-                StartedUtc = started,
-                TrackKey = t,
-                TrackName = trackName ?? t,
-                CarName = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName,
-            };
-            // Saved after every lap (once it has been measured, below), so the report is there even
-            // if the coach is closed mid-session.
-            session.LapRecorded += _ => reportDue = true;
-            session.CornerMapChanged += m =>
-            {
-                Console.WriteLine($"Corners for {t}: {m.Corners.Count} ({session.CornerMapOrigin})");
-                if (session.CornerMapOrigin == CornerMapOrigin.Consensus)
-                {
-                    voice?.Say("Corners learned.");
-                }
-            };
-
-            // Say why a lap got no debrief when the driver might expect one.
-            session.LapRecorded += lap =>
-            {
-                if (session.CornerMap is not null)
-                {
-                    return; // FlawedLapAnalyzed says it, with how many corners still count.
-                }
-
-                if (lap.IsClean || (lap.Flaws & (LapFlaw.Partial | LapFlaw.PitRoad | LapFlaw.StartLap | LapFlaw.NotOnTrack | LapFlaw.NotRacing)) != 0)
-                {
-                    return;
-                }
-
-                var why = lap.Flaws.HasFlag(LapFlaw.OffTrack) ? "off track" : lap.Flaws.HasFlag(LapFlaw.Incident) ? "incident" : null;
-                if (why is not null)
-                {
-                    Console.WriteLine($"Lap {lap.LapNumber} not counted: {why}.");
-                    voice?.Say($"Lap not counted, {why}.");
-                }
-            };
-            session.CarChanged += (lap, drop) =>
-            {
-                var pct = Math.Round(drop * 100);
-                Console.WriteLine($"Car slower on every straight since lap {lap} (top speed -{drop:P1}); comparing with laps from now on.");
-                voice?.Say($"The car looks damaged, {pct:0} percent down on top speed. Comparing with laps from now on.");
-            };
-            session.FlawedLapAnalyzed += a =>
-            {
-                var why = a.Lap.Flaws.HasFlag(LapFlaw.OffTrack) ? "off track" : a.Lap.Flaws.HasFlag(LapFlaw.Incident) ? "incident" : null;
-                if (why is null)
-                {
-                    return; // pit or start laps: nothing the driver needs to hear
-                }
-
-                var kept = a.Passes.Count(p => p.IsClean);
-                var where = a.UncleanPieces().Select(u => u.Piece).FirstOrDefault();
-                var said = kept == a.Passes.Count && where is not null
-                    ? $"Lap not counted, {why} on the {where}. All corners still count."
-                    : $"Lap not counted, {why}. {kept} of {a.Passes.Count} corners still count.";
-                Console.WriteLine($"Lap {a.Lap.LapNumber}: {said} Not clean: {string.Join(", ", a.UncleanPieces().Select(u => $"{u.Piece} ({u.Flaws})"))}");
-                voice?.Say(said);
-            };
-            PostLapCoach.Attach(session, d =>
-            {
-                Console.WriteLine();
-                foreach (var l in DebriefText.Lines(d))
-                {
-                    Console.WriteLine(l);
-                }
-
-                voice?.Say(DebriefText.Spoken(d));
-            });
-            Console.WriteLine($"Coaching at {t}. Drive clean laps; the debrief comes as you cross the line.");
-            // So the driver knows the coach is listening without looking at the screen.
-            voice?.Say($"Coach ready, {trackName ?? t}.");
-        }
-
-        session?.Observe(snapshot);
-        if (reportDue && session is { Laps.Count: > 0 } coached && saver is not null && reportInfo is not null)
-        {
-            reportDue = false;
-            var type = sessionInfo?.SessionInfo?.Sessions.FirstOrDefault(s => s.SessionNum == coached.Laps[^1].SessionNum)?.SessionType;
-            saver.Save(coached, reportInfo with { SessionType = string.IsNullOrWhiteSpace(type) ? null : type });
-        }
-    };
+    connection.TelemetryUpdated += (_, snapshot) => coach.OnTelemetry(snapshot);
 
     using var stop = new ManualResetEventSlim();
     Console.CancelKeyPress += (_, e) =>
@@ -503,8 +398,8 @@ static int RunLive(string storeDir, bool speak, string? voiceName, SessionReport
     Console.WriteLine("Waiting for iRacing... (Ctrl+C to stop)");
     connection.Start();
     stop.Wait();
-    saver?.Flush();
-    if (saver?.LastPath is { } saved)
+    coach.Flush();
+    if (coach.LastReportPath is { } saved)
     {
         Console.WriteLine($"Session report saved: {saved}");
     }

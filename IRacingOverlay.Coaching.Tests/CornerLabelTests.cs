@@ -68,13 +68,37 @@ public sealed class CornerLabelTests : IDisposable
         ]);
 
         var named = TrackTurnNames.Default.Apply(map, "spa 2024 up").Corners;
+        Corner At(int start) => named.Single(c => c.StartM == start);
 
-        Assert.Equal("La Source", named[0].Label);
-        Assert.True(named[0].LabelIsLookedUp);
-        Assert.Equal("Eau Rouge and Raidillon", named[1].Label);
-        Assert.Equal("My name", named[2].Label);
-        Assert.False(named[2].LabelIsLookedUp);
-        Assert.Null(named[3].Label);
+        Assert.Equal("La Source", At(256).Label);
+        Assert.True(At(256).LabelIsLookedUp);
+        Assert.Equal("Eau Rouge and Raidillon", At(900).Label);
+        Assert.Equal("My name", At(3191).Label);
+        Assert.False(At(3191).LabelIsLookedUp);
+        Assert.Null(At(5900).Label);
+    }
+
+    [Fact]
+    public void NamedTurnsTakenFlatAreAddedAsCorners()
+    {
+        // The detector only found the corners the driver slowed for; Eau Rouge, Raidillon and
+        // Blanchimont are flat in a GT3.
+        var turns = TrackTurnNames.Default.For("spa 2024 up");
+        var map = new CornerMap(6930,
+        [
+            new Corner("T1", 256, 391, 468),
+            new Corner("T2", 2250, 2400, 2560),
+        ]);
+
+        var corners = TrackTurnNames.Apply(map, turns).Corners;
+
+        Assert.Contains(corners, c => c.Label == "Eau Rouge and Raidillon");
+        Assert.Contains(corners, c => c.Label == "Blanchimont");
+        Assert.Equal(corners.Select((_, i) => $"T{i + 1}"), corners.Select(c => c.Name));
+        Assert.Equal(corners.OrderBy(c => c.StartM).Select(c => c.StartM), corners.Select(c => c.StartM));
+        // Added corners never overlap the detected ones.
+        Assert.All(corners.Zip(corners.Skip(1)), p => Assert.True(p.First.EndM < p.Second.StartM));
+        Assert.Equal("La Source", corners[0].Label);
     }
 
     [Fact]
