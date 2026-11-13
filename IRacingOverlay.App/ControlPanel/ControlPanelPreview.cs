@@ -13,6 +13,7 @@ public sealed partial class ControlPanelViewModel
         WidgetCatalog.Relative,
         WidgetCatalog.Standings,
         WidgetCatalog.TrackMap,
+        WidgetCatalog.CircuitMap,
         WidgetCatalog.TrackInfo,
         WidgetCatalog.Weather,
     ];

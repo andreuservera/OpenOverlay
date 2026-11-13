@@ -10,6 +10,7 @@ All notable changes to OpenOverlay, newest first.
 - Live coaching, off by default: switch it on in the Coaching page, or with a shortcut while driving, and hear a short debrief as you cross the line. While it is off, nothing of the coach runs with iRacing.
 - Live coaching can compare against your best lap ever for the track and car instead of the session's best. Every quicker clean lap replaces it, and you can choose an .ibt as the reference.
 - The Coaching page speaks all six app languages; the spoken debrief uses the free Windows voices and works offline.
+- Circuit map: a new widget with every car on the track's real shape. Drive one clean lap at a track and the map draws it, then keeps it for next time.
 
 
 ### [0.13.0] - 2026-11-07

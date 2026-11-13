@@ -102,6 +102,7 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
   optional gear, speed and steering; choose and reorder its parts.
 - **Incidents** — your incident count, and your team's in a team race.
 - **Track map** — every car's position around the lap on one bar, coloured by class.
+- **Circuit map** — every car on the track's real shape. The shape is learnt from one clean lap you drive at the track (no pit road, no tow or reset) and kept in `%LOCALAPPDATA%\IRacingOverlay\trackmaps`; delete a track's file there to learn it again.
 
 ### Layouts
 
