@@ -64,7 +64,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
             }
 
             _selected = value;
-            Detail = value is null ? null : new SessionDetail(value.Report);
+            Detail = value is null ? null : NewDetail(value.Report);
             OnPropertyChanged();
             CommandManager.InvalidateRequerySuggested();
         }
@@ -198,8 +198,18 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         }
 
         _selected = Sessions.FirstOrDefault(s => s.Report.Id == id);
-        Detail = _selected is null ? null : new SessionDetail(_selected.Report, corner);
+        Detail = _selected is null ? null : NewDetail(_selected.Report, corner);
         OnPropertyChanged(nameof(Selected));
+    }
+
+    /// <summary>The session's detail with its track history: the sessions at the same track with
+    /// the same car up to this one.</summary>
+    private SessionDetail NewDetail(SessionReport r, string? corner = null)
+    {
+        var history = r.TrackKey is { } track && r.CarName is { } car
+            ? History.TrackHistory.Build(Sessions.Select(s => s.Report).Where(o => o.StartedUtc <= r.StartedUtc), track, car)
+            : null;
+        return new SessionDetail(r, corner, history, LiveCoaching.Focus);
     }
 
     private void Load(string? select)

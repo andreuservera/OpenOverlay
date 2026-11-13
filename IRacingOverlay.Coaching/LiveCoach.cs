@@ -1,5 +1,6 @@
 using IRacingOverlay.Coaching.Advice;
 using IRacingOverlay.Coaching.Corners;
+using IRacingOverlay.Coaching.History;
 using IRacingOverlay.Coaching.Laps;
 using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
@@ -33,14 +34,20 @@ public sealed class LiveCoach
 
     private readonly ReferenceLapStore? _references;
     private readonly CornerTypeStore? _types;
+    private readonly SessionReportStore? _reports;
+    private readonly FocusStore? _focus;
     private string? _car;
 
     /// <param name="references">Where each track and car's best lap ever is kept: every clean lap
     /// quicker than the stored one replaces it. Null keeps none.</param>
     /// <param name="types">Where each corner's type is kept per track and car; null agrees them afresh every session.</param>
-    public LiveCoach(CornerMapStore maps, SessionReportStore? reports, TrackTurnNames? names = null, ReferenceLapStore? references = null, CornerTypeStore? types = null)
+    /// <param name="focus">The corners the driver pinned; with <paramref name="reports"/>, the focus
+    /// plan (<see cref="FocusPlanner"/>) whose corners the debrief talks about first. Null for none.</param>
+    public LiveCoach(CornerMapStore maps, SessionReportStore? reports, TrackTurnNames? names = null, ReferenceLapStore? references = null, CornerTypeStore? types = null, FocusStore? focus = null)
     {
         _types = types;
+        _reports = reports;
+        _focus = focus;
         _maps = maps;
         _saver = reports is null ? null : new LiveReportSaver(reports);
         _names = names;
@@ -91,6 +98,39 @@ public sealed class LiveCoach
 
     /// <summary>Waits for the report writes under way (at most a few seconds).</summary>
     public void Flush() => _saver?.Flush();
+
+    /// <summary>The focus plan from the saved sessions at this track with this car, read off the
+    /// reader thread (it reads every saved report); the debrief uses it from the lap after.</summary>
+    private void LoadFocusPlan(PostLapCoach coach, string track)
+    {
+        if (_reports is not { } reports || _car is not { } car)
+        {
+            return;
+        }
+
+        var focus = _focus;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (TrackHistory.Build(reports.LoadAll(), track, car) is not { } history)
+                {
+                    return;
+                }
+
+                var plan = FocusPlanner.Plan(history, focus?.Pinned(track, car));
+                if (plan.Count > 0)
+                {
+                    coach.FocusApexM = plan.Select(p => p.ApexM).ToList();
+                    Log?.Invoke("Focus this session: " + string.Join("; ", plan.Select(p => p.Text)) + ".");
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // No plan: every corner is judged alike.
+            }
+        });
+    }
 
     private void Start(string t)
     {
@@ -188,7 +228,7 @@ public sealed class LiveCoach
             Log?.Invoke($"Lap {a.Lap.LapNumber}: {said} Not clean: {string.Join(", ", a.UncleanPieces().Select(u => $"{u.Piece} ({u.Flaws})"))}");
             Voice?.Say(said);
         };
-        PostLapCoach.Attach(session, d =>
+        var coach = PostLapCoach.Attach(session, d =>
         {
             Log?.Invoke("");
             foreach (var l in DebriefText.Lines(d))
@@ -198,6 +238,7 @@ public sealed class LiveCoach
 
             Voice?.Say(DebriefText.Spoken(d));
         });
+        LoadFocusPlan(coach, t);
         Log?.Invoke($"Coaching at {t}. Drive clean laps; the debrief comes as you cross the line.");
         if (reference is not null)
         {

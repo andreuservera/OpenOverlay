@@ -85,6 +85,20 @@ have every type agreed again.
 It prints every lap with iRacing's own lap time beside the computed one, the corners found, each
 clean lap's time per corner and the best pass per corner.
 
+## Progress and focus plan
+
+The Coaching page reads every saved session at the same track with the same car together
+(`History/TrackHistory`): per corner, the best pass ever, what a normal lap loses now against in
+the first sessions, and whether the recurring mistake there is going away. Corners are matched by
+apex, so relearned maps still line up.
+
+From that it proposes a **focus plan** (`History/FocusPlanner`): the one or two corners with the
+most time to gain over the last three sessions, each with its recurring mistake and a target (half
+the normal loss, e.g. "T1: brake 10 metres later, aim for 0.15 s"). Any corner can be pinned instead
+from its detail ("Focus on this corner"), saved per track and car in
+`%LOCALAPPDATA%\IRacingOverlay\coaching\focus`. With live coaching on, the debrief talks about the
+focus corners first.
+
 ## Checked against real files
 
 | File | Laps | Computed vs iRacing lap time | Corners found |
