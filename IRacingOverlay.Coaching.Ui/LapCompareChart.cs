@@ -61,7 +61,8 @@ public sealed class LapCompareChart : FrameworkElement
 
         var pen = new Pen(GridBrush, 1);
 
-        // Corners as shaded bands, named at the top.
+        // Corners as shaded bands, named at the top; a name that would run into the previous one is left out.
+        var nameEnd = double.MinValue;
         foreach (var (s, e, name) in d.Corners)
         {
             if (e < from || s > to)
@@ -72,9 +73,11 @@ public sealed class LapCompareChart : FrameworkElement
             var x0 = X(Math.Max(s, from));
             var x1 = X(Math.Min(e, to));
             dc.DrawRectangle(CornerBrush, null, new Rect(x0, speedTop, Math.Max(1, x1 - x0), bottom - speedTop));
-            if (x1 - x0 > 24)
+            var label = Text(name);
+            if (x1 - x0 > 24 && x0 + 3 >= nameEnd)
             {
-                DrawText(dc, name, new Point(x0 + 3, speedTop + 1), false, false);
+                dc.DrawText(label, new Point(x0 + 3, speedTop + 1));
+                nameEnd = x0 + 3 + label.Width + 6;
             }
         }
 
@@ -90,7 +93,8 @@ public sealed class LapCompareChart : FrameworkElement
             DrawText(dc, $"{v:0}", new Point(left - 6, Ys(v)), true, true);
         }
 
-        DrawText(dc, "km/h", new Point(left - 6, speedTop + speedHeight + 6), true, true);
+        // Inside the plot at the bottom right, clear of the axis ticks: a lap or a corner ends fast, so the lines are high there.
+        DrawText(dc, "km/h", new Point(left + width - 4, speedTop + speedHeight - 8), true, true);
         dc.DrawGeometry(null, new Pen(CornerTraceChart.TypicalBrush, 1.6) { DashStyle = new DashStyle([4, 2], 0) }, Line(d.B.SpeedKmh, from, to, step, X, Ys));
         dc.DrawGeometry(null, new Pen(CornerTraceChart.BestBrush, 1.8), Line(d.A.SpeedKmh, from, to, step, X, Ys));
 
@@ -123,7 +127,7 @@ public sealed class LapCompareChart : FrameworkElement
         var gMax = Math.Max(2, gears.Max());
         double Yg(double g) => gearTop + gearHeight - Math.Max(0, g) / gMax * gearHeight;
         dc.DrawLine(pen, new Point(left, gearTop + gearHeight), new Point(left + width, gearTop + gearHeight));
-        DrawText(dc, CoachingText.T("coaching.compare.gear"), new Point(left - 6, gearTop + gearHeight / 2), true, true);
+        DrawText(dc, CoachingText.T("coaching.chart.gear"), new Point(left - 6, gearTop + gearHeight / 2), true, true);
         var gb = d.B.Gear.Select(g => (float)g).ToArray();
         var ga = d.A.Gear.Select(g => (float)g).ToArray();
         dc.DrawGeometry(null, new Pen(CornerTraceChart.TypicalBrush, 1.2) { DashStyle = dashed }, Line(gb, from, to, 1, X, Yg));

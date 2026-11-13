@@ -210,6 +210,8 @@ public sealed class MistakeItem(int rank, RecurringMistake m)
     public string Advice { get; } = Phrases.Advice(m.Kind, m.TypicalAmount, m.IsRamp, m.Advice, m.NoBraking) + ".";
 
     public string Cost { get; } = F("coaching.mistakes.cost", Phrases.Seconds(m.TypicalLoss), m.Laps, m.OutOf);
+
+    public override string ToString() => $"{Rank}. {Corner}: {Problem} {Advice}";
 }
 
 /// <summary>A row of the corners table.</summary>
@@ -250,6 +252,8 @@ public sealed class CornerItem
     public string BestLapLoss { get; }
 
     public string MainFinding { get; }
+
+    public override string ToString() => string.IsNullOrEmpty(MainFinding) ? $"{Name}: {TypicalLoss}" : $"{Name}: {TypicalLoss}, {MainFinding}";
 }
 
 /// <summary>Whether a corner is pinned to work on, and how to change it (false when it couldn't be saved).</summary>
@@ -437,6 +441,8 @@ public sealed class FocusItem(FocusCorner f)
     public string Aim { get; } = f.AimLoss is { } l ? F("coaching.focus.aim", Phrases.Seconds(l)) : "";
 
     public string Gain { get; } = f.Gain is { } g ? F("coaching.focus.gain", Phrases.Seconds(g)) : "";
+
+    public override string ToString() => $"{Name}: {What}";
 }
 
 /// <summary>Progress across sessions at one track with one car.</summary>

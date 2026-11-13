@@ -641,15 +641,18 @@
                     <StackPanel DataContext="{Binding LapCompare}">
                         <TextBlock Text="{loc:T coaching.compareLaps.title}" Style="{StaticResource Caption}"/>
                         <TextBlock Text="{loc:T coaching.compareLaps.hint}" Style="{DynamicResource Cp.Hint}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                        <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <WrapPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <Border Width="14" Height="3" Background="{x:Static ui:CornerTraceChart.BestBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
                             <ComboBox Style="{DynamicResource Cp.ComboBox}" MinWidth="190" ItemsSource="{Binding Laps}" SelectedItem="{Binding A}" Margin="0,0,10,4"/>
                             <TextBlock Text="{loc:T coaching.compareLaps.vs}" VerticalAlignment="Center" Foreground="{DynamicResource Cp.TextFaint}" Margin="0,0,10,4"/>
                             <Border Width="14" Height="3" Background="{x:Static ui:CornerTraceChart.TypicalBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <ComboBox Style="{DynamicResource Cp.ComboBox}" MinWidth="190" ItemsSource="{Binding Laps}" SelectedItem="{Binding B}" Margin="0,0,18,4"/>
-                            <TextBlock Text="{loc:T coaching.compareLaps.range}" VerticalAlignment="Center" Foreground="{DynamicResource Cp.TextFaint}" Margin="0,0,8,4"/>
-                            <ComboBox Style="{DynamicResource Cp.ComboBox}" MinWidth="150" ItemsSource="{Binding Ranges}" SelectedItem="{Binding Range}" Margin="0,0,0,4"/>
+                            <ComboBox Style="{DynamicResource Cp.ComboBox}" MinWidth="190" ItemsSource="{Binding Laps}" SelectedItem="{Binding B}" Margin="0,0,0,4"/>
                         </WrapPanel>
+                        <!-- The range has its own row, so a long lap name never pushes it around. -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="{loc:T coaching.compareLaps.range}" VerticalAlignment="Center" Foreground="{DynamicResource Cp.TextFaint}" Margin="0,0,8,0"/>
+                            <ComboBox Style="{DynamicResource Cp.ComboBox}" MinWidth="190" ItemsSource="{Binding Ranges}" SelectedItem="{Binding Range}"/>
+                        </StackPanel>
                         <TextBlock Text="{Binding Summary}" FontSize="14" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap" Margin="0,0,0,6"/>
                         <ui:LapCompareChart Data="{Binding Data}" Visibility="{Binding HasData, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>

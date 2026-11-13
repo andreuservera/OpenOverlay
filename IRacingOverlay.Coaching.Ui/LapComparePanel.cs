@@ -169,9 +169,11 @@ public sealed class LapComparePanel : INotifyPropertyChanged
         var delta = LapDelta.Between(a, b, _range.FromM, to);
         Data = new LapCompareData(a, b, _range.FromM, to, delta, _report.Corners.Select(c => (c.StartM, c.EndM, c.Name)).ToList());
         var d = delta.Length > 0 ? delta[^1] : 0;
+        // "here" reads oddly over a whole lap, so that range has its own wording.
+        var lap = ReferenceEquals(_range, Ranges[0]) ? "Lap" : "";
         Summary = Math.Abs(d) < 0.005
-            ? F("coaching.laps.same", _b.Label, _a.Label)
-            : F(d > 0 ? "coaching.laps.slower" : "coaching.laps.quicker", SessionSummaryText.Capital(ShortName(_b)), Phrases.Seconds(Math.Abs(d)), ShortName(_a));
+            ? F("coaching.laps.same" + lap, _b.Label, _a.Label)
+            : F((d > 0 ? "coaching.laps.slower" : "coaching.laps.quicker") + lap, SessionSummaryText.Capital(ShortName(_b)), Phrases.Seconds(Math.Abs(d)), ShortName(_a));
     }
 
     private static string ShortName(LapOption o) => o.IsReference ? T("coaching.laps.bestEverShort") : F("coaching.lapN", o.Lap);
