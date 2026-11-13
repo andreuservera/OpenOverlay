@@ -10,6 +10,8 @@
   "widget.CircuitMap.blurb": "Every car on the track's real shape, learned from one clean lap you drive there.",
   "widget.CircuitMap.learning": "Drive one clean lap to draw this track.",
   "widget.CircuitMap.learningLap": "Learning this track: {0}% of a clean lap",
+  "widget.Radar.name": "Radar",
+  "widget.Radar.blurb": "Cars around you seen from above: who is alongside, on which side, and how close behind or ahead.",
   "widget.Flag.name": "Flags",
   "widget.Flag.blurb": "Every flag currently being shown to you.",
   "widget.Incident.name": "Incidents",

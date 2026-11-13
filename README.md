@@ -103,6 +103,7 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 - **Incidents** — your incident count, and your team's in a team race.
 - **Track map** — every car's position around the lap on one bar, coloured by class.
 - **Circuit map** — every car on the track's real shape. The shape is learnt from one clean lap you drive at the track (no pit road, no tow or reset) and kept in `%LOCALAPPDATA%\IRacingOverlay\trackmaps`; delete a track's file there to learn it again.
+- **Radar** — the cars around you seen from above: who is alongside and on which side, and how close the cars behind and ahead are, within 20 m. iRacing only says which side a car is on, not exactly where, so cars alongside sit in a lane beside yours.
 
 ### Layouts
 

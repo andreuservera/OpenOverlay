@@ -67,6 +67,7 @@ public static class WidgetCatalog
     public const string Weather = "Weather";
     public const string TrackMap = "TrackMap";
     public const string CircuitMap = "CircuitMap";
+    public const string Radar = "Radar";
     public const string FuelCalculator = "FuelCalculator";
 
     /// <summary>Grouped by what they are for — the race around you, your car and driving, the track
@@ -96,6 +97,10 @@ public static class WidgetCatalog
         new(FuelCalculator, "M5,3 H19 V21 H5 Z M8,7 H16 M8,11.5 H10 M13.5,11.5 H16 M8,16 H10 M13.5,16 H16", Category: WidgetCategory.Car, PreviewPhoto: "bcn.jpg"),
 
         new(Delta, "M12,21 A8,8 0 1 0 12,5 A8,8 0 0 0 12,21 Z M12,9.5 V13 L14.5,15 M9.5,2.5 H14.5", Category: WidgetCategory.Car, HeaderByDefault: false, PreviewPhoto: "bcn.jpg"),
+
+        // Seen from above: the player's car with one alongside.
+        new(Radar, "M10,8 H14 V16 H10 Z M3,6 H7 V14 H3 Z M17,11 H21 V19 H17 Z", Category: WidgetCategory.Car, HeaderByDefault: false,
+            PreviewPhoto: "spa.jpg"),
 
         new(PedalTrace, "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewHeight: 110, Category: WidgetCategory.Car, PreviewPhoto: "nogaro.jpg"),
 

@@ -10,6 +10,8 @@
   "widget.CircuitMap.blurb": "Chaque voiture sur le vrai tracé du circuit, appris lors d'un tour propre que vous y faites.",
   "widget.CircuitMap.learning": "Faites un tour propre pour dessiner ce circuit.",
   "widget.CircuitMap.learningLap": "Apprentissage du circuit : {0}% d'un tour propre",
+  "widget.Radar.name": "Radar",
+  "widget.Radar.blurb": "Les voitures autour de vous vues du dessus : qui est à côté, de quel côté, et à quelle distance derrière ou devant.",
   "widget.Flag.name": "Drapeaux",
   "widget.Flag.blurb": "Tous les drapeaux qui vous sont présentés en ce moment.",
   "widget.Incident.name": "Incidents",

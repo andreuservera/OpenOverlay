@@ -94,6 +94,7 @@ public static class WidgetConfigCodecs
             new TrackInfoConfigCodec(targets.TrackInfo, targets.Persist.TrackInfo),
             new EmptyConfigCodec(WidgetCatalog.TrackMap),
             new EmptyConfigCodec(WidgetCatalog.CircuitMap),
+            new EmptyConfigCodec(WidgetCatalog.Radar),
         ];
 
         return codecs.ToDictionary(codec => codec.Type);

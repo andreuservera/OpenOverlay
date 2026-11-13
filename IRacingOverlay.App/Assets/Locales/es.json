@@ -10,6 +10,8 @@
   "widget.CircuitMap.blurb": "Cada coche sobre la forma real del circuito, aprendida de una vuelta limpia tuya.",
   "widget.CircuitMap.learning": "Da una vuelta limpia para dibujar este circuito.",
   "widget.CircuitMap.learningLap": "Aprendiendo el circuito: {0}% de una vuelta limpia",
+  "widget.Radar.name": "Radar",
+  "widget.Radar.blurb": "Los coches a tu alrededor vistos desde arriba: quién va a tu lado, por qué lado y a qué distancia detrás o delante.",
   "widget.Flag.name": "Banderas",
   "widget.Flag.blurb": "Todas las banderas que se te muestran ahora.",
   "widget.Incident.name": "Incidentes",
