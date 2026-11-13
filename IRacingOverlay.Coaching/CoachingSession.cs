@@ -88,6 +88,10 @@ public sealed record CoachingOptions
 
     /// <summary>Clean laps the map is agreed from before it is fixed and saved.</summary>
     public int CornerMapLaps { get; init; } = 5;
+
+    /// <summary>A lap to coach against instead of this session's best (the driver's best lap ever
+    /// for this track and car); null to coach against the session. See <see cref="CoachingSession.CoachingReference"/>.</summary>
+    public References.ReferenceLap? Reference { get; init; }
 }
 
 /// <summary>
@@ -174,6 +178,28 @@ public sealed class CoachingSession
     /// <summary>The best clean pass through each corner so far, from any lap, by corner id
     /// (see <see cref="Corners.BestPasses"/>).</summary>
     public IReadOnlyDictionary<string, CornerPass> BestPasses => _best;
+
+    /// <summary>
+    /// What the post-lap debrief compares each corner with. Without a reference lap
+    /// (<see cref="CoachingOptions.Reference"/>) it is <see cref="BestPasses"/>. With one, it is the
+    /// passes of one lap: the reference lap, or this session's best lap once that is quicker; a
+    /// corner the reference lap didn't drive cleanly falls back to its best pass of the session.
+    /// The post-session report keeps comparing with the session's own bests.
+    /// </summary>
+    public IReadOnlyDictionary<string, CornerPass> CoachingReference => _coachingReference ?? _best;
+
+    /// <summary>The lap time <see cref="CoachingReference"/> stands for: the reference lap's, or the
+    /// session's best lap's when that is quicker or there is no reference; null before any lap.</summary>
+    public double? CoachingReferenceLapTime =>
+        _referencePasses is null ? BestLap?.LapTime
+        : BestLap is { } b && b.LapTime < _options.Reference!.LapTime ? b.LapTime
+        : _options.Reference!.LapTime;
+
+    /// <summary>True while the debrief compares with the stored reference lap rather than this session.</summary>
+    public bool CoachingAgainstReference => _referencePasses is not null && !(BestLap is { } b && b.LapTime < _options.Reference!.LapTime);
+
+    private Dictionary<string, CornerPass>? _referencePasses;
+    private Dictionary<string, CornerPass>? _coachingReference;
 
     /// <summary>Each corner's type, agreed over its clean passes (<see cref="CornerTypes.Consensus"/>),
     /// by corner id: it decides which checks run and stays put from lap to lap.</summary>
@@ -271,6 +297,11 @@ public sealed class CoachingSession
 
         CornerMap = map;
         CornerMapOrigin = origin;
+        // The reference lap measured on this map, if it was driven on the same track length.
+        _referencePasses = _options.Reference is { } reference && Math.Abs(reference.Trace.Length - map.TrackLengthMetres) <= 2
+            ? CornerAnalyzer.Analyze(reference.Trace, map, 0, LapFlaw.None).Where(p => p.IsClean).ToDictionary(p => p.Corner.Name, StringComparer.Ordinal)
+            : null;
+        _coachingReference = null;
         _best = new Dictionary<string, CornerPass>(StringComparer.Ordinal);
         _bestOutsideCorners = null;
         _bestRestOfStraight = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -358,6 +389,19 @@ public sealed class CoachingSession
             .Select(g => (g.Key, Type: CornerTypes.Consensus(g, _best.GetValueOrDefault(g.Key))))
             .Where(x => x.Type is not null)
             .ToDictionary(x => x.Key, x => x.Type!.Value, StringComparer.Ordinal);
+
+        if (_referencePasses is not null)
+        {
+            // One lap's passes: the reference, or this session's best lap once it is quicker.
+            var lap = CoachingAgainstReference
+                ? _referencePasses
+                : reference.Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)!.Passes.Where(p => p.IsClean).ToDictionary(p => p.Corner.Name, StringComparer.Ordinal);
+            _coachingReference = new Dictionary<string, CornerPass>(_best, StringComparer.Ordinal);
+            foreach (var (id, pass) in lap)
+            {
+                _coachingReference[id] = pass;
+            }
+        }
     }
 
     /// <summary>

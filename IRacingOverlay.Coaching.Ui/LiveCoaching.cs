@@ -1,5 +1,6 @@
 using System.Text.Json;
 using IRacingOverlay.Coaching.Corners;
+using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
 using IRacingOverlay.Coaching.Speech;
 using IRacingOverlay.Sdk;
@@ -17,6 +18,9 @@ public sealed record CoachingSettings
 
     /// <summary>With live coaching on, say a short debrief after each clean lap.</summary>
     public bool SpeakDebrief { get; init; }
+
+    /// <summary>Coach against the best lap ever for the track and car instead of this session's best.</summary>
+    public bool CompareWithBestEver { get; init; }
 
     public static string DefaultPath => Path.Combine(Path.GetDirectoryName(SessionReportStore.DefaultDirectory)!, "settings.json");
 
@@ -60,6 +64,10 @@ public static class LiveCoaching
     private static IRacingConnection? _connection;
     private static LiveCoach? _coach;
     private static WindowsSpeech? _voice;
+    private static bool _coachCompare;
+
+    /// <summary>Where each track and car's best lap ever is kept.</summary>
+    public static ReferenceLapStore References { get; } = new(ReferenceLapStore.DefaultDirectory);
 
     /// <summary>The switches in force; changed from the Coaching page.</summary>
     public static CoachingSettings Settings { get; private set; } = CoachingSettings.Load();
@@ -137,9 +145,19 @@ public static class LiveCoaching
                 return;
             }
 
+            // A different reference starts a new session (and report) against it.
+            if (_coach is not null && _coachCompare != Settings.CompareWithBestEver)
+            {
+                Stop();
+            }
+
             if (_coach is null)
             {
-                _coach = new LiveCoach(new CornerMapStore(CornerMapStore.DefaultDirectory), new SessionReportStore(SessionReportStore.DefaultDirectory), TrackTurnNames.Default);
+                _coachCompare = Settings.CompareWithBestEver;
+                _coach = new LiveCoach(new CornerMapStore(CornerMapStore.DefaultDirectory), new SessionReportStore(SessionReportStore.DefaultDirectory), TrackTurnNames.Default, References)
+                {
+                    CompareWithBestEver = _coachCompare,
+                };
                 if (_connection!.Session is { } info)
                 {
                     _coach.OnSessionInfo(info);

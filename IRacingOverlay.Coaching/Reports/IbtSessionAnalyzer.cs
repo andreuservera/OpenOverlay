@@ -15,7 +15,8 @@ public static class IbtSessionAnalyzer
         CornerMapStore? store,
         bool relearn = false,
         bool saveMap = true,
-        CancellationToken cancel = default)
+        CancellationToken cancel = default,
+        References.ReferenceLapStore? references = null)
     {
         using var ibt = IbtFile.Open(path);
         var weekend = ibt.Session?.WeekendInfo;
@@ -66,6 +67,12 @@ public static class IbtSessionAnalyzer
             CarName = car,
             SessionType = string.IsNullOrWhiteSpace(sessionType) ? null : sessionType,
         });
+        // The file's best lap becomes the track and car's best ever if it is quicker than the stored one.
+        if (references is not null && trackKey is not null && car is not null && session.BestLap is { } best)
+        {
+            references.Offer(trackKey, car, best, "ibt", Path.GetFullPath(path), ibt.SessionStartUtc);
+        }
+
         return (session, report);
     }
 }

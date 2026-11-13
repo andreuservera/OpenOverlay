@@ -1,6 +1,7 @@
 using IRacingOverlay.Coaching.Advice;
 using IRacingOverlay.Coaching.Corners;
 using IRacingOverlay.Coaching.Laps;
+using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
 using IRacingOverlay.Coaching.Speech;
 using IRacingOverlay.Sdk;
@@ -28,12 +29,22 @@ public sealed class LiveCoach
     private SessionReportInfo? _reportInfo;
     private bool _reportDue;
 
-    public LiveCoach(CornerMapStore maps, SessionReportStore? reports, TrackTurnNames? names = null)
+    private readonly ReferenceLapStore? _references;
+    private string? _car;
+
+    /// <param name="references">Where each track and car's best lap ever is kept: every clean lap
+    /// quicker than the stored one replaces it. Null keeps none.</param>
+    public LiveCoach(CornerMapStore maps, SessionReportStore? reports, TrackTurnNames? names = null, ReferenceLapStore? references = null)
     {
         _maps = maps;
         _saver = reports is null ? null : new LiveReportSaver(reports);
         _names = names;
+        _references = references;
     }
+
+    /// <summary>Coach against the best lap ever for this track and car (from the reference store)
+    /// instead of this session's best. Read when a session starts.</summary>
+    public bool CompareWithBestEver { get; set; }
 
     /// <summary>Says the debrief and lap notes; null to stay quiet. Can change at any time.</summary>
     public ISpeechOutput? Voice { get; set; }
@@ -76,10 +87,12 @@ public sealed class LiveCoach
     private void Start(string t)
     {
         _track = t;
-        var session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = _maps, TurnNames = _names });
+        var driver = _sessionInfo?.DriverInfo;
+        _car = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName;
+        var reference = CompareWithBestEver && _references is not null && _car is not null ? _references.Load(t, _car) : null;
+        var session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = _maps, TurnNames = _names, Reference = reference });
         _session = session;
         var started = DateTime.UtcNow;
-        var driver = _sessionInfo?.DriverInfo;
         _reportInfo = new SessionReportInfo
         {
             Id = SessionReportStore.NewId(started, t),
@@ -87,8 +100,30 @@ public sealed class LiveCoach
             StartedUtc = started,
             TrackKey = t,
             TrackName = _trackName ?? t,
-            CarName = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName,
+            CarName = _car,
         };
+
+        // Every clean lap quicker than the stored best ever becomes the new one.
+        if (_references is not null && _car is { } car)
+        {
+            var references = _references;
+            session.LapRecorded += lap =>
+            {
+                if (!lap.IsClean)
+                {
+                    return;
+                }
+
+                // Off the reader thread: it reads and maybe writes a few hundred KB.
+                _ = Task.Run(() =>
+                {
+                    if (references.Offer(t, car, lap, "live") is { } kept && ReferenceEquals(kept.Trace, lap.Trace))
+                    {
+                        Log?.Invoke($"Lap {lap.LapNumber} is your best ever here: kept as the reference.");
+                    }
+                });
+            };
+        }
 
         // Saved after every lap (once it has been measured), so the report is there even if the
         // coach is stopped mid-session.
@@ -155,6 +190,15 @@ public sealed class LiveCoach
             Voice?.Say(DebriefText.Spoken(d));
         });
         Log?.Invoke($"Coaching at {t}. Drive clean laps; the debrief comes as you cross the line.");
+        if (reference is not null)
+        {
+            Log?.Invoke($"Comparing with your best lap ever here: {SessionSummaryText.LapTime(reference.LapTime)} ({reference.RecordedUtc.ToLocalTime():d MMM yyyy}).");
+        }
+        else if (CompareWithBestEver)
+        {
+            Log?.Invoke("No best lap ever stored for this track and car yet: comparing with this session.");
+        }
+
         // So the driver knows the coach is listening without looking at the screen.
         Voice?.Say($"Coach ready, {_trackName ?? t}.");
     }

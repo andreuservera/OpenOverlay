@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using IRacingOverlay.Coaching.Corners;
+using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
 
 namespace IRacingOverlay.Coaching.Ui;
@@ -36,12 +37,14 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         ImportIbtCommand = new RelayCommand(ImportIbt, () => !IsBusy);
         OpenFolderCommand = new RelayCommand(OpenFolder);
         DeleteCommand = new RelayCommand(DeleteSelected, () => Selected is not null && !IsBusy);
+        SetReferenceCommand = new RelayCommand(SetReferenceFromIbt, () => !IsBusy);
         CoachingText.LanguageChanged += Reword;
         // A shortcut can switch live coaching while the page is open.
         LiveCoaching.SettingsChanged += () =>
         {
             OnPropertyChanged(nameof(LiveEnabled));
             OnPropertyChanged(nameof(SpeakDebrief));
+            OnPropertyChanged(nameof(CompareWithBestEver));
         };
     }
 
@@ -134,6 +137,29 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         }
     }
 
+    /// <summary>Live coaching compares with the best lap ever for the track and car (see
+    /// <see cref="References"/>) instead of this session's best.</summary>
+    public bool CompareWithBestEver
+    {
+        get => LiveCoaching.Settings.CompareWithBestEver;
+        set
+        {
+            LiveCoaching.Change(LiveCoaching.Settings with { CompareWithBestEver = value });
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>The best lap ever stored for each track and car.</summary>
+    public ObservableCollection<ReferenceItem> References { get; } = [];
+
+    public bool HasReferences => References.Count > 0;
+
+    public bool HasNoReferences => References.Count == 0;
+
+    /// <summary>Picks an .ibt whose best lap becomes its track and car's reference, even if slower
+    /// (a faster driver's lap, or one from another setup).</summary>
+    public ICommand SetReferenceCommand { get; }
+
     public ICommand RefreshCommand { get; }
 
     public ICommand ImportIbtCommand { get; }
@@ -205,6 +231,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
             _reloading = false;
         }
 
+        LoadReferences(reports);
         _loaded = true;
         OnPropertyChanged(nameof(HasSessions));
         OnPropertyChanged(nameof(IsEmpty));
@@ -258,7 +285,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
                         Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
                         try
                         {
-                            var (_, r) = IbtSessionAnalyzer.Analyze(file, _maps);
+                            var (_, r) = IbtSessionAnalyzer.Analyze(file, _maps, references: LiveCoaching.References);
                             _store.Save(r);
                             return r;
                         }
@@ -283,6 +310,99 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         Status = failed.Count == 0 ? "" : CoachingText.F("coaching.status.analyzeFailed", string.Join(", ", failed));
         _selected = null;
         Load(last);
+    }
+
+    private void LoadReferences(IReadOnlyList<SessionReport> reports)
+    {
+        var names = reports.Where(r => r.TrackKey is not null && r.TrackName is not null)
+            .GroupBy(r => r.TrackKey!).ToDictionary(g => g.Key, g => g.First().TrackName);
+        References.Clear();
+        try
+        {
+            foreach (var info in LiveCoaching.References.List(k => names.GetValueOrDefault(k)))
+            {
+                References.Add(new ReferenceItem(info, ClearReference));
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status = CoachingText.F("coaching.status.readFailed", e.Message);
+        }
+
+        OnPropertyChanged(nameof(HasReferences));
+        OnPropertyChanged(nameof(HasNoReferences));
+    }
+
+    private void ClearReference(ReferenceItem item)
+    {
+        try
+        {
+            LiveCoaching.References.Delete(item.Info.TrackKey, item.Info.Car);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status = CoachingText.F("coaching.status.deleteFailed", e.Message);
+        }
+
+        Refresh();
+    }
+
+    private void SetReferenceFromIbt()
+    {
+        var telemetry = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "iRacing", "telemetry");
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = CoachingText.T("coaching.reference.dialogTitle"),
+            Filter = CoachingText.T("coaching.ibt.filter") + " (*.ibt)|*.ibt",
+            InitialDirectory = Directory.Exists(telemetry) ? telemetry : null,
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        _ = SetReferenceAsync(dialog.FileName);
+    }
+
+    /// <summary>Makes the best clean lap of <paramref name="file"/> its track and car's reference.</summary>
+    public async Task SetReferenceAsync(string file)
+    {
+        IsBusy = true;
+        Status = CoachingText.F("coaching.status.analyzing", Path.GetFileName(file));
+        try
+        {
+            var message = await Task.Run(() =>
+            {
+                var (session, report) = IbtSessionAnalyzer.Analyze(file, _maps, saveMap: false);
+                if (session.BestLap is not { Trace: not null } best || report.TrackKey is null || report.CarName is null)
+                {
+                    return CoachingText.T("coaching.reference.noLap");
+                }
+
+                LiveCoaching.References.Save(new ReferenceLap
+                {
+                    TrackKey = report.TrackKey,
+                    Car = report.CarName,
+                    LapTime = best.LapTime,
+                    RecordedUtc = report.StartedUtc,
+                    Source = "imported",
+                    SourceFile = Path.GetFullPath(file),
+                    Trace = best.Trace,
+                });
+                return "";
+            });
+            Status = message;
+        }
+        catch (Exception e) when (e is not OutOfMemoryException)
+        {
+            Status = CoachingText.F("coaching.status.analyzeFailed", $"{Path.GetFileName(file)} ({e.Message})");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        Refresh();
     }
 
     private void OpenFolder()
@@ -371,4 +491,26 @@ internal sealed class RelayCommand(Action run, Func<bool>? canRun = null) : ICom
     public bool CanExecute(object? parameter) => canRun?.Invoke() ?? true;
 
     public void Execute(object? parameter) => run();
+}
+
+/// <summary>A stored best lap ever, in the references list.</summary>
+public sealed class ReferenceItem
+{
+    public ReferenceItem(ReferenceLapInfo info, Action<ReferenceItem> clear)
+    {
+        Info = info;
+        Title = $"{info.TrackName ?? info.TrackKey} · {info.Car}";
+        var when = info.RecordedUtc.ToLocalTime().ToString("d MMM yyyy", CoachingText.Culture);
+        Detail = CoachingText.F(info.Source == "imported" ? "coaching.reference.detailImported" : "coaching.reference.detail",
+            SessionSummaryText.LapTime(info.LapTime), when);
+        ClearCommand = new RelayCommand(() => clear(this));
+    }
+
+    public ReferenceLapInfo Info { get; }
+
+    public string Title { get; }
+
+    public string Detail { get; }
+
+    public ICommand ClearCommand { get; }
 }

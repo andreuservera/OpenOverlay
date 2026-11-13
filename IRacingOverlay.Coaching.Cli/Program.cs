@@ -5,12 +5,13 @@ using IRacingOverlay.Coaching.Advice;
 using IRacingOverlay.Coaching.Corners;
 using IRacingOverlay.Coaching.Ibt;
 using IRacingOverlay.Coaching.Laps;
+using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
 using IRacingOverlay.Coaching.Speech;
 using IRacingOverlay.Sdk;
 
 // coaching-analyze <file.ibt> [--csv <dir>] [--relearn] [--no-save] [--store <dir>] [--debrief] [--speak] [--no-report] [--reports <dir>]
-// coaching-analyze --live [--speak] [--store <dir>] [--no-report] [--reports <dir>]
+// coaching-analyze --live [--speak] [--best-ever] [--store <dir>] [--no-report] [--reports <dir>]
 //
 // Runs the Phase 0 coaching pipeline over an iRacing telemetry file and prints what it found: every
 // lap (with iRacing's own lap time beside ours, as a check), the corners, each clean lap's time per
@@ -22,7 +23,8 @@ using IRacingOverlay.Sdk;
 //
 // --debrief prints the post-lap coaching each clean lap would have got (Phase 1), against the best
 // passes up to that lap; --speak also says the last one out loud. --live connects to iRacing and
-// gives that debrief after every clean lap while you drive, spoken with --speak.
+// gives that debrief after every clean lap while you drive, spoken with --speak; --best-ever compares
+// with the best lap ever for the track and car (kept from every clean lap, live or .ibt) instead.
 //
 // Both save a session report (best lap, theoretical best, recurring mistakes, every corner) after
 // every lap, for the post-session analysis on the app's Coaching page; --no-report doesn't.
@@ -33,7 +35,7 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
     Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings] [--debrief] [--speak] [--voice <name>] [--list-voices] [--no-report] [--reports <dir>]");
-    Console.WriteLine("       coaching-analyze --live [--speak] [--voice <name>] [--store <dir>] [--no-report] [--reports <dir>]");
+    Console.WriteLine("       coaching-analyze --live [--speak] [--best-ever] [--voice <name>] [--store <dir>] [--no-report] [--reports <dir>]");
     return args.Length == 0 ? 1 : 0;
 }
 
@@ -56,6 +58,7 @@ var perLap = false;
 var crossings = false;
 var debrief = false;
 var speak = false;
+var bestEver = false;
 string? voiceName = null;
 var storeDir = CornerMapStore.DefaultDirectory;
 var saveReport = true;
@@ -91,6 +94,9 @@ for (var i = 1; i < args.Length; i++)
         case "--debrief":
             debrief = true;
             break;
+        case "--best-ever":
+            bestEver = true;
+            break;
         case "--speak":
             speak = true;
             break;
@@ -110,7 +116,7 @@ for (var i = 1; i < args.Length; i++)
 
 if (live)
 {
-    return RunLive(storeDir, speak, voiceName, saveReport ? new SessionReportStore(reportsDir) : null);
+    return RunLive(storeDir, speak, voiceName, saveReport ? new SessionReportStore(reportsDir) : null, bestEver);
 }
 
 using var ibt = IbtFile.Open(path);
@@ -135,7 +141,7 @@ var trackKey = weekend?.TrackName;
 // --relearn: agree a new map (still saved over unless --no-save). Without a saved map the corners
 // are agreed from the fastest laps of the whole file; saving through the session also picks up
 // names already typed into the saved file.
-var (session, report) = IbtSessionAnalyzer.Analyze(path, store, relearn, save);
+var (session, report) = IbtSessionAnalyzer.Analyze(path, store, relearn, save, references: save ? new ReferenceLapStore(ReferenceLapStore.DefaultDirectory) : null);
 
 Console.WriteLine("Laps (ours vs iRacing's LapLastLapTime)");
 Console.WriteLine("  lap   time        iRacing     diff      status");
@@ -371,7 +377,7 @@ return 0;
 
 // Live: coach while driving. The session starts once iRacing says which track this is, and starts
 // again if the track changes. Everything runs on the connection's reader thread.
-static int RunLive(string storeDir, bool speak, string? voiceName, SessionReportStore? reports)
+static int RunLive(string storeDir, bool speak, string? voiceName, SessionReportStore? reports, bool bestEver)
 {
     using var voice = speak ? new WindowsSpeech(voice: voiceName) : null;
     if (voice is not null)
@@ -379,7 +385,11 @@ static int RunLive(string storeDir, bool speak, string? voiceName, SessionReport
         Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output.");
     }
 
-    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default) { Voice = voice };
+    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default, new ReferenceLapStore(ReferenceLapStore.DefaultDirectory))
+    {
+        Voice = voice,
+        CompareWithBestEver = bestEver,
+    };
     coach.Log += Console.WriteLine;
 
     using var connection = new IRacingConnection();
