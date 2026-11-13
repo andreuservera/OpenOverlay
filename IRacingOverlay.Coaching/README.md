@@ -108,6 +108,20 @@ overlays any two of them, or a lap and the best lap ever for the track and car, 
 or one corner: speed, the time between them, pedals and gear. Sessions saved before this have no
 laps kept; analyse their .ibt again to compare their laps.
 
+## A faster driver's lap
+
+Your own best only shows where you are inconsistent. A session can also be compared with a faster
+driver's lap, set per track and car from their .ibt (its fastest clean lap) or from a lap file
+exported from the "Best laps ever" list (`.oolap`, the same gzip'd JSON as the store). It is kept
+apart from your own best ever, in `coaching\references\faster`. A lap from another car or track
+asks first; one from another layout (track length off by more than 25 m) is refused.
+
+`References/FasterLapComparison` measures that lap on the session's own corners and sorts each
+corner: **technique** when even your best pass is a tenth or more slower (and that is more than a
+normal lap loses), **consistency** when your best is close but a normal lap isn't, or level. It
+lists what the faster pass does differently: brake and throttle points, and apex and exit speeds,
+the speeds marked as possibly setup. The lap can also be overlaid in "Compare laps".
+
 ## Checked against real files
 
 | File | Laps | Computed vs iRacing lap time | Corners found |

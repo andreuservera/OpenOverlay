@@ -209,9 +209,121 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         var history = r.TrackKey is { } track && r.CarName is { } car
             ? History.TrackHistory.Build(Sessions.Select(s => s.Report).Where(o => o.StartedUtc <= r.StartedUtc), track, car)
             : null;
-        var reference = r.TrackKey is { } t && r.CarName is { } c ? LiveCoaching.References.Load(t, c) : null;
-        return new SessionDetail(r, corner, history, LiveCoaching.Focus, LapTraceStore.For(_store),
-            reference is null ? null : () => StoredLap.From(0, reference.LapTime, reference.Trace), reference?.LapTime);
+        var known = r.TrackKey is not null && r.CarName is not null;
+        var reference = known ? LiveCoaching.References.Load(r.TrackKey!, r.CarName!) : null;
+        var faster = known ? LiveCoaching.Faster.Load(r.TrackKey!, r.CarName!) : null;
+        var detail = new SessionDetail(r, corner, history, LiveCoaching.Focus, LapTraceStore.For(_store), reference, faster);
+        detail.SetFasterRequested += () => PickFasterLap(r);
+        detail.ClearFasterRequested += () =>
+        {
+            try
+            {
+                LiveCoaching.Faster.Delete(r.TrackKey!, r.CarName!);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                Status = CoachingText.F("coaching.status.deleteFailed", e.Message);
+            }
+
+            Rebuild();
+        };
+        return detail;
+    }
+
+    /// <summary>Builds the open session's detail again (a reference was set or cleared).</summary>
+    private void Rebuild()
+    {
+        if (_selected is not null)
+        {
+            Detail = NewDetail(_selected.Report, _detail?.SelectedCorner?.Report.Id);
+        }
+    }
+
+    private void PickFasterLap(SessionReport r)
+    {
+        var telemetry = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "iRacing", "telemetry");
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = CoachingText.T("coaching.faster.dialogTitle"),
+            Filter = CoachingText.T("coaching.faster.filter") + $" (*.ibt;*{ReferenceLapStore.FileExtension})|*.ibt;*{ReferenceLapStore.FileExtension}",
+            InitialDirectory = Directory.Exists(telemetry) ? telemetry : null,
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            _ = SetFasterAsync(dialog.FileName, r);
+        }
+    }
+
+    /// <summary>The fastest clean lap of an .ibt (or an exported lap file) becomes the faster
+    /// driver's lap for the session's track and car, after a warning when it is another car or track.</summary>
+    public async Task SetFasterAsync(string file, SessionReport r)
+    {
+        IsBusy = true;
+        Status = CoachingText.F("coaching.status.analyzing", Path.GetFileName(file));
+        try
+        {
+            var lap = await Task.Run(() => ReadLap(file));
+            if (lap is null)
+            {
+                Status = CoachingText.T("coaching.reference.noLap");
+                return;
+            }
+
+            if (!FasterLapComparison.SameLayout(r, lap.Trace))
+            {
+                Status = CoachingText.F("coaching.faster.otherLayout", lap.TrackKey);
+                return;
+            }
+
+            if ((lap.TrackKey != r.TrackKey || lap.Car != r.CarName)
+                && System.Windows.MessageBox.Show(
+                    CoachingText.F("coaching.faster.otherCar", lap.Car, lap.TrackKey, r.CarName ?? "", r.TrackKey ?? ""),
+                    CoachingText.T("coaching.faster.dialogTitle"), System.Windows.MessageBoxButton.OKCancel, System.Windows.MessageBoxImage.Warning)
+                    != System.Windows.MessageBoxResult.OK)
+            {
+                Status = "";
+                return;
+            }
+
+            LiveCoaching.Faster.Save(lap with { TrackKey = r.TrackKey!, Car = r.CarName!, Source = "faster", SourceFile = Path.GetFullPath(file) });
+            Status = "";
+        }
+        catch (Exception e) when (e is not OutOfMemoryException)
+        {
+            Status = CoachingText.F("coaching.status.analyzeFailed", $"{Path.GetFileName(file)} ({e.Message})");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        Rebuild();
+    }
+
+    /// <summary>The fastest clean lap of an .ibt, or the lap in an exported file; null when there is none.</summary>
+    private ReferenceLap? ReadLap(string file)
+    {
+        if (file.EndsWith(ReferenceLapStore.FileExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return ReferenceLapStore.ReadFile(file);
+        }
+
+        var (session, report) = IbtSessionAnalyzer.Analyze(file, _maps, saveMap: false);
+        if (session.BestLap is not { Trace: not null } best || report.TrackKey is null || report.CarName is null)
+        {
+            return null;
+        }
+
+        return new ReferenceLap
+        {
+            TrackKey = report.TrackKey,
+            Car = report.CarName,
+            LapTime = best.LapTime,
+            RecordedUtc = report.StartedUtc,
+            Source = "imported",
+            SourceFile = Path.GetFullPath(file),
+            Trace = best.Trace,
+        };
     }
 
     private void Load(string? select)
@@ -345,7 +457,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         {
             foreach (var info in LiveCoaching.References.List(k => names.GetValueOrDefault(k)))
             {
-                References.Add(new ReferenceItem(info, ClearReference));
+                References.Add(new ReferenceItem(info, ClearReference, ExportReference));
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -371,13 +483,37 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         Refresh();
     }
 
+    private void ExportReference(ReferenceItem item)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = CoachingText.T("coaching.reference.export"),
+            Filter = CoachingText.T("coaching.reference.fileFilter") + $" (*{ReferenceLapStore.FileExtension})|*{ReferenceLapStore.FileExtension}",
+            FileName = SessionReportStore.Slug($"{item.Info.TrackName ?? item.Info.TrackKey} {item.Info.Car}") + ReferenceLapStore.FileExtension,
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            LiveCoaching.References.Export(item.Info.TrackKey, item.Info.Car, dialog.FileName);
+            Status = CoachingText.F("coaching.reference.exported", Path.GetFileName(dialog.FileName));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status = CoachingText.F("coaching.status.saveFailed", e.Message);
+        }
+    }
+
     private void SetReferenceFromIbt()
     {
         var telemetry = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "iRacing", "telemetry");
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = CoachingText.T("coaching.reference.dialogTitle"),
-            Filter = CoachingText.T("coaching.ibt.filter") + " (*.ibt)|*.ibt",
+            Filter = CoachingText.T("coaching.faster.filter") + $" (*.ibt;*{ReferenceLapStore.FileExtension})|*.ibt;*{ReferenceLapStore.FileExtension}",
             InitialDirectory = Directory.Exists(telemetry) ? telemetry : null,
         };
         if (dialog.ShowDialog() != true)
@@ -397,22 +533,12 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         {
             var message = await Task.Run(() =>
             {
-                var (session, report) = IbtSessionAnalyzer.Analyze(file, _maps, saveMap: false);
-                if (session.BestLap is not { Trace: not null } best || report.TrackKey is null || report.CarName is null)
+                if (ReadLap(file) is not { } lap)
                 {
                     return CoachingText.T("coaching.reference.noLap");
                 }
 
-                LiveCoaching.References.Save(new ReferenceLap
-                {
-                    TrackKey = report.TrackKey,
-                    Car = report.CarName,
-                    LapTime = best.LapTime,
-                    RecordedUtc = report.StartedUtc,
-                    Source = "imported",
-                    SourceFile = Path.GetFullPath(file),
-                    Trace = best.Trace,
-                });
+                LiveCoaching.References.Save(lap);
                 return "";
             });
             Status = message;
@@ -530,8 +656,9 @@ internal sealed class RelayCommand(Action run, Func<bool>? canRun = null) : ICom
 /// <summary>A stored best lap ever, in the references list.</summary>
 public sealed class ReferenceItem
 {
-    public ReferenceItem(ReferenceLapInfo info, Action<ReferenceItem> clear)
+    public ReferenceItem(ReferenceLapInfo info, Action<ReferenceItem> clear, Action<ReferenceItem> export)
     {
+        ExportCommand = new RelayCommand(() => export(this));
         Info = info;
         Title = $"{info.TrackName ?? info.TrackKey} · {info.Car}";
         var when = info.RecordedUtc.ToLocalTime().ToString("d MMM yyyy", CoachingText.Culture);
@@ -547,4 +674,6 @@ public sealed class ReferenceItem
     public string Detail { get; }
 
     public ICommand ClearCommand { get; }
+
+    public ICommand ExportCommand { get; }
 }

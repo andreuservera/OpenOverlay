@@ -90,7 +90,7 @@ public sealed class SessionReportStore
         return $"{(prefix is null ? "" : prefix + "-")}{startedUtc:yyyyMMdd-HHmmss}-{slug}";
     }
 
-    internal static string Slug(string text)
+    public static string Slug(string text)
     {
         var sb = new StringBuilder();
         foreach (var ch in text.ToLowerInvariant())

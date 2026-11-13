@@ -5,6 +5,7 @@ using IRacingOverlay.Coaching.Laps;
 using IRacingOverlay.Coaching.References;
 using IRacingOverlay.Coaching.Reports;
 using IRacingOverlay.Coaching.Speech;
+using IRacingOverlay.Coaching.Telemetry;
 using IRacingOverlay.Sdk;
 
 namespace IRacingOverlay.Coaching;
@@ -27,6 +28,10 @@ public sealed class LiveCoach
     private string? _pendingTrack;
     private string? _pendingCar;
     private string? _sessionCar;
+    private int? _pendingSubSession;
+    private int? _sessionSubSession;
+    private int? _sessionNum;
+    private string? _lastBaseId;
     private string? _trackName;
     private IracingSessionInfo? _sessionInfo;
     private SessionReportInfo? _reportInfo;
@@ -75,23 +80,71 @@ public sealed class LiveCoach
         _sessionInfo = info;
         _trackName = info.WeekendInfo?.TrackDisplayName ?? info.WeekendInfo?.TrackName;
         _pendingTrack = info.WeekendInfo?.TrackName;
+        _pendingSubSession = info.WeekendInfo?.SubSessionID;
         var driver = info.DriverInfo;
         _pendingCar = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName;
     }
 
     public void OnTelemetry(TelemetrySnapshot snapshot)
     {
-        // A new session for another track, or another car on the same one.
-        if (_pendingTrack is { } t && (t != _track || _pendingCar != _sessionCar))
+        // A new session for another track, another car on the same one, another event (an online
+        // session after a test drive on the same track and car), or the next session of an event.
+        var sessionNum = SnapshotFrames.SessionNumOf(snapshot);
+        if (_pendingTrack is { } t)
         {
-            Start(t);
+            var why = t != _track ? "track" : _pendingCar != _sessionCar ? "car" : _pendingSubSession != _sessionSubSession ? "event" : _sessionNum is { } n && n != sessionNum ? "session" : null;
+            if (why is not null)
+            {
+                if (_session is not null)
+                {
+                    SaveIfDue();
+                    Log?.Invoke($"New {why}: starting a new report.");
+                }
+
+                _sessionNum = sessionNum;
+                Start(t);
+            }
         }
 
         _session?.Observe(snapshot);
+        SaveIfDue();
+    }
+
+    /// <summary>
+    /// iRacing went away: whatever comes next is another session, even on the same track with the
+    /// same car, so the report so far is saved and the next one starts afresh.
+    /// </summary>
+    public void EndSession()
+    {
+        SaveIfDue();
+        if (_session is not null)
+        {
+            Log?.Invoke("iRacing closed: this session's report is complete.");
+        }
+
+        _session = null;
+        _track = null;
+        _sessionCar = null;
+        _sessionSubSession = null;
+        _sessionNum = null;
+        _pendingTrack = null;
+        _pendingCar = null;
+        _pendingSubSession = null;
+        _sessionInfo = null;
+        _reportInfo = null;
+    }
+
+    private void SaveIfDue()
+    {
         if (_reportDue && _session is { Laps.Count: > 0 } coached && _saver is not null && _reportInfo is not null)
         {
             _reportDue = false;
             var type = _sessionInfo?.SessionInfo?.Sessions.FirstOrDefault(s => s.SessionNum == coached.Laps[^1].SessionNum)?.SessionType;
+            if (_saver.LastError is { } error)
+            {
+                Log?.Invoke($"The last report could not be saved: {error.Message}");
+            }
+
             _saver.Save(coached, _reportInfo with { SessionType = string.IsNullOrWhiteSpace(type) ? null : type });
         }
     }
@@ -136,15 +189,21 @@ public sealed class LiveCoach
     {
         _track = t;
         _sessionCar = _pendingCar;
+        _sessionSubSession = _pendingSubSession;
+        _reportDue = false;
         var driver = _sessionInfo?.DriverInfo;
         _car = driver?.Drivers.FirstOrDefault(d => d.CarIdx == driver.DriverCarIdx)?.CarScreenName;
         var reference = CompareWithBestEver && _references is not null && _car is not null ? _references.Load(t, _car) : null;
         var session = new CoachingSession(new CoachingOptions { TrackKey = t, Store = _maps, TurnNames = _names, Reference = reference, Car = _car, TypeStore = _types });
         _session = session;
         var started = DateTime.UtcNow;
+        // Two sessions begun within the same second (a new event straight after another) keep apart.
+        var baseId = SessionReportStore.NewId(started, t);
+        var id = baseId == _lastBaseId ? $"{baseId}-{Guid.NewGuid().ToString("N")[..6]}" : baseId;
+        _lastBaseId = baseId;
         _reportInfo = new SessionReportInfo
         {
-            Id = SessionReportStore.NewId(started, t),
+            Id = id,
             Source = "live",
             StartedUtc = started,
             TrackKey = t,
@@ -176,7 +235,11 @@ public sealed class LiveCoach
 
         // Saved after every lap (once it has been measured), so the report is there even if the
         // coach is stopped mid-session.
-        session.LapRecorded += _ => _reportDue = true;
+        session.LapRecorded += lap =>
+        {
+            _reportDue = true;
+            Log?.Invoke($"Lap {lap.LapNumber}: {SessionSummaryText.LapTime(lap.LapTime)}, {(lap.IsClean ? "clean" : lap.Flaws.ToString())}.");
+        };
         session.CornerMapChanged += m =>
         {
             Log?.Invoke($"Corners for {t}: {m.Corners.Count} ({session.CornerMapOrigin})");

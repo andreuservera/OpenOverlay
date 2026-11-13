@@ -174,8 +174,12 @@
                                                         <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap"/>
                                                         <TextBlock Text="{Binding Detail}" Style="{DynamicResource Cp.Hint}"/>
                                                     </StackPanel>
-                                                    <Button Grid.Column="1" Content="{loc:T coaching.reference.clear}" Style="{DynamicResource Cp.Button}" Command="{Binding ClearCommand}"
-                                                            VerticalAlignment="Center" Margin="6,0,0,0" Padding="8,2"/>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Content="{loc:T coaching.reference.export}" Style="{DynamicResource Cp.Button}" Command="{Binding ExportCommand}"
+                                                                Margin="6,0,0,0" Padding="8,2" ToolTip="{loc:T coaching.reference.export.tip}"/>
+                                                        <Button Content="{loc:T coaching.reference.clear}" Style="{DynamicResource Cp.Button}" Command="{Binding ClearCommand}"
+                                                                Margin="6,0,0,0" Padding="8,2"/>
+                                                    </StackPanel>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
@@ -633,6 +637,77 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Against a faster driver's lap -->
+                <Border Style="{StaticResource Section}" Visibility="{Binding Faster.CanSet, Converter={StaticResource BoolToVis}}">
+                    <StackPanel DataContext="{Binding Faster}" Grid.IsSharedSizeScope="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{loc:T coaching.faster.title}" Style="{StaticResource Caption}"/>
+                            <Button Grid.Column="1" Style="{DynamicResource Cp.Button}" Content="{Binding PickText}" Command="{Binding PickCommand}" Padding="10,3" Margin="6,0,0,6"/>
+                            <Button Grid.Column="2" Style="{DynamicResource Cp.Button}" Content="{loc:T coaching.faster.clear}" Command="{Binding ClearCommand}" Padding="10,3" Margin="6,0,0,6"
+                                    Visibility="{Binding HasLap, Converter={StaticResource BoolToVis}}"/>
+                        </Grid>
+                        <TextBlock Text="{loc:T coaching.faster.hint}" Style="{DynamicResource Cp.Hint}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                        <StackPanel Visibility="{Binding HasLap, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding Title}" FontSize="13" Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Summary}" FontSize="14" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap" Margin="0,4,0,8"/>
+                            <Grid Margin="10,0,10,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="120"/>
+                                    <ColumnDefinition SharedSizeGroup="fTimes" Width="Auto"/>
+                                    <ColumnDefinition SharedSizeGroup="fGap" Width="Auto"/>
+                                    <ColumnDefinition SharedSizeGroup="fNormal" Width="Auto"/>
+                                    <ColumnDefinition Width="2*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{loc:T coaching.col.corner}" Style="{StaticResource HeadCell}"/>
+                                <TextBlock Grid.Column="1" Text="{loc:T coaching.faster.col.times}" Style="{StaticResource HeadNumCell}" MinWidth="110"/>
+                                <TextBlock Grid.Column="2" Text="{loc:T coaching.faster.col.gap}" Style="{StaticResource HeadNumCell}" MinWidth="56"/>
+                                <TextBlock Grid.Column="3" Text="{loc:T coaching.faster.col.normal}" Style="{StaticResource HeadNumCell}" MinWidth="64"/>
+                                <TextBlock Grid.Column="4" Text="{loc:T coaching.faster.col.what}" Style="{StaticResource HeadCell}"/>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="ui:FasterRow">
+                                        <Grid Margin="10,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" MinWidth="120"/>
+                                                <ColumnDefinition SharedSizeGroup="fTimes" Width="Auto"/>
+                                                <ColumnDefinition SharedSizeGroup="fGap" Width="Auto"/>
+                                                <ColumnDefinition SharedSizeGroup="fNormal" Width="Auto"/>
+                                                <ColumnDefinition Width="2*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Margin="0,0,14,0">
+                                                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Cp.Text}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Verdict}" FontSize="12" TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Cp.TextFaint}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsTechnique}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Cp.Accent}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Text="{Binding Times}" Style="{StaticResource NumCell}" MinWidth="110" Margin="0,0,14,0"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding GapText}" Style="{StaticResource NumCell}" MinWidth="56" Margin="0,0,14,0"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding Normal}" Style="{StaticResource NumCell}" MinWidth="64" Margin="0,0,14,0"/>
+                                            <TextBlock Grid.Column="4" Text="{Binding Differences}" FontSize="13" Foreground="{DynamicResource Cp.TextSoft}" TextWrapping="Wrap"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{loc:T coaching.faster.setupNote}" Style="{DynamicResource Cp.Hint}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
