@@ -348,7 +348,7 @@ public sealed class CoachingSession
     /// Saves the type of every corner whose first <see cref="CornerTypes.SettledAfterPasses"/> clean
     /// passes clearly agree on one (<see cref="CornerTypes.SavedShare"/>) and that has none saved yet,
     /// and replaces a saved type (unless it was fixed by hand) when this session's clean passes
-    /// clearly show another. Not on a provisional map, whose corners may still be merged or split.
+    /// clearly show another, or forgets it when most of them disagree with it but not on one type. Not on a provisional map, whose corners may still be merged or split.
     /// </summary>
     private void SaveSettledTypes(IReadOnlyList<CornerPass> passes)
     {
@@ -360,6 +360,7 @@ public sealed class CoachingSession
 
         var added = new Dictionary<string, CornerType>(StringComparer.Ordinal);
         var replaced = new Dictionary<string, CornerType>(StringComparer.Ordinal);
+        var dropped = new List<string>();
         foreach (var g in passes.Where(p => p.IsClean).GroupBy(p => p.Corner.Name, StringComparer.Ordinal))
         {
             var clean = g.OrderBy(p => p.LapNumber).ToList();
@@ -370,22 +371,33 @@ public sealed class CoachingSession
 
             var saved = _savedTypes.TryGetValue(g.Key, out var s) ? s : (CornerType?)null;
             var counted = saved is null ? clean.Take(CornerTypes.SettledAfterPasses).ToList() : clean;
-            if (CornerTypes.Decisive(counted) is not { } type)
+            var type = CornerTypes.Decisive(counted);
+            if (saved is null)
             {
+                if (type is { } t)
+                {
+                    added[g.Key] = t;
+                }
+
                 continue; // split between types: agreed afresh each session
             }
 
-            if (saved is null)
+            if (_fixedTypes.Contains(g.Key) || type == saved)
             {
-                added[g.Key] = type;
+                continue;
             }
-            else if (saved != type && !_fixedTypes.Contains(g.Key))
+
+            if (type is { } other)
             {
-                replaced[g.Key] = type;
+                replaced[g.Key] = other;
+            }
+            else if (counted.Count(p => CornerTypes.Classify(p) == saved) * 2 < counted.Count)
+            {
+                dropped.Add(g.Key); // most passes disagree, but on no one type: agreed per session again
             }
         }
 
-        if (added.Count == 0 && replaced.Count == 0)
+        if (added.Count == 0 && replaced.Count == 0 && dropped.Count == 0)
         {
             return;
         }
@@ -393,6 +405,11 @@ public sealed class CoachingSession
         foreach (var (id, type) in added.Concat(replaced))
         {
             _savedTypes[id] = type;
+        }
+
+        foreach (var id in dropped)
+        {
+            _savedTypes.Remove(id); // _types already holds this session's agreed type
         }
 
         try
@@ -405,6 +422,11 @@ public sealed class CoachingSession
             if (replaced.Count > 0)
             {
                 store.Save(key, car, map, replaced, replace: true);
+            }
+
+            if (dropped.Count > 0)
+            {
+                store.Remove(key, car, map, dropped);
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)

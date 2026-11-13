@@ -95,12 +95,31 @@ public sealed class CornerTypeStore
             return;
         }
 
+        Write(trackKey, car, entries);
+    }
+
+    private void Write(string trackKey, string car, List<Entry> entries)
+    {
         System.IO.Directory.CreateDirectory(Directory);
         var path = PathFor(trackKey, car);
         var temp = path + ".tmp";
         var file = new TypeFile { Track = trackKey, Car = car, Corners = entries.OrderBy(e => e.ApexM).ToList() };
         File.WriteAllText(temp, JsonSerializer.Serialize(file, Json));
         File.Move(temp, path, overwrite: true);
+    }
+
+    /// <summary>Forgets the saved types of these corners (not those fixed by hand).</summary>
+    public void Remove(string trackKey, string car, CornerMap map, IEnumerable<string> cornerIds)
+    {
+        var apexes = map.Corners.Where(c => cornerIds.Contains(c.Name)).Select(c => c.ApexM).ToList();
+        var entries = Read(trackKey, car).ToList();
+        var kept = entries.Where(e => e.Fixed || !apexes.Any(a => Math.Abs(a - e.ApexM) <= CornerMapBuilder.ClusterRadiusMetres)).ToList();
+        if (kept.Count == entries.Count)
+        {
+            return;
+        }
+
+        Write(trackKey, car, kept);
     }
 
     public void Delete(string trackKey, string car)

@@ -79,7 +79,7 @@ per track **and car** to `%LOCALAPPDATA%\IRacingOverlay\coaching\corner-types\<t
 so the corner keeps that type in every later session with that car and reports stay comparable. A
 corner whose passes are split (Spoon 2: sometimes a lift, sometimes a brake) isn't saved and is
 agreed each session; a saved type is agreed again when at least 80% of a later session's clean
-passes show another. To force a type, change its `type` and set `"fixed": true`; delete the file to
+passes show another, and forgotten when most of them disagree with it. To force a type, change its `type` and set `"fixed": true`; delete the file to
 have every type agreed again.
 
 It prints every lap with iRacing's own lap time beside the computed one, the corners found, each
