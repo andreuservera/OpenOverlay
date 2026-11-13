@@ -37,6 +37,12 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         OpenFolderCommand = new RelayCommand(OpenFolder);
         DeleteCommand = new RelayCommand(DeleteSelected, () => Selected is not null && !IsBusy);
         CoachingText.LanguageChanged += Reword;
+        // A shortcut can switch live coaching while the page is open.
+        LiveCoaching.SettingsChanged += () =>
+        {
+            OnPropertyChanged(nameof(LiveEnabled));
+            OnPropertyChanged(nameof(SpeakDebrief));
+        };
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

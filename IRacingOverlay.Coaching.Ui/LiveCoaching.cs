@@ -85,12 +85,45 @@ public static class LiveCoaching
         }
     }
 
+    /// <summary>Raised after the switches changed (from the page or a shortcut), on the caller's thread.</summary>
+    public static event Action? SettingsChanged;
+
     /// <summary>Switches live coaching and its voice, saves the choice and applies it now.</summary>
     public static void Change(CoachingSettings settings)
     {
         Settings = settings;
         settings.Save();
         Apply();
+        SettingsChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Live coaching on if it was off and the other way round, for a shortcut pressed while driving;
+    /// says which it is now, since the driver can't look at the screen. Returns whether it is on.
+    /// </summary>
+    public static bool Toggle()
+    {
+        var on = !Settings.LiveEnabled;
+        Change(Settings with { LiveEnabled = on });
+        Announce(on ? "Live coaching on." : "Live coaching off.");
+        return on;
+    }
+
+    private static WindowsSpeech? _announcer;
+
+    private static void Announce(string text)
+    {
+        try
+        {
+            lock (Gate)
+            {
+                (_announcer ??= new WindowsSpeech()).Say(text);
+            }
+        }
+        catch (Exception e) when (e is InvalidOperationException or PlatformNotSupportedException or System.Runtime.InteropServices.COMException)
+        {
+            // No voice installed: the toast still says it.
+        }
     }
 
     private static void Apply()

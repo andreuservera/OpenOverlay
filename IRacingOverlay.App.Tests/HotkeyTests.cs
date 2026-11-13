@@ -64,6 +64,14 @@ public class HotkeyTests
     }
 
     [Fact]
+    public void LiveCoachingToggle_StartsUnassigned_AndIsItsOwnAction()
+    {
+        Assert.Equal([HotkeyActions.ToggleLiveCoaching], HotkeyActions.Coaching);
+        Assert.Null(HotkeyDefaults.For(HotkeyActions.ToggleLiveCoaching).Hotkey);
+        Assert.Empty(HotkeyActions.Coaching.Intersect(HotkeyActions.Global.Concat(HotkeyActions.Layouts)));
+    }
+
+    [Fact]
     public void LayoutActions_StartUnassigned_AndALayoutsOwnActionRoundTripsItsId()
     {
         Assert.All(HotkeyActions.Layouts, action => Assert.Null(HotkeyDefaults.For(action).Hotkey));

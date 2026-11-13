@@ -102,6 +102,11 @@ public sealed partial class ControlPanelViewModel
             case HotkeyActions.EditLayout:
                 EditCurrentLayout();
                 break;
+            case HotkeyActions.ToggleLiveCoaching:
+                // The coach says "live coaching on/off" itself, for a driver who can't look away.
+                var on = IRacingOverlay.Coaching.Ui.LiveCoaching.Toggle();
+                ShowToast(Loc.T(on ? "hotkeys.liveCoachingOn" : "hotkeys.liveCoachingOff"), null);
+                break;
         }
     }
 
@@ -158,6 +163,7 @@ public sealed partial class ControlPanelViewModel
             HotkeyActions.NextLayout => Loc.T("hotkeys.nextLayout"),
             HotkeyActions.PreviousLayout => Loc.T("hotkeys.previousLayout"),
             HotkeyActions.EditLayout => Loc.T("hotkeys.editLayout"),
+            HotkeyActions.ToggleLiveCoaching => Loc.T("hotkeys.toggleLiveCoaching"),
             _ => Loc.T("hotkeys.resetOverlayPositions"),
         };
     }
@@ -178,12 +184,14 @@ public sealed partial class ControlPanelViewModel
         HotkeyActions.NextLayout => Loc.T("hotkeys.switchesStraightToIt"),
         HotkeyActions.PreviousLayout => Loc.T("hotkeys.switchesStraightToIt"),
         HotkeyActions.EditLayout => Loc.T("hotkeys.theOpenLayoutOr"),
+        HotkeyActions.ToggleLiveCoaching => Loc.T("hotkeys.liveCoachingHint"),
         _ => null,
     };
 
     private static IEnumerable<string> AllHotkeyActions() =>
         HotkeyActions.Global
             .Concat(HotkeyActions.Layouts)
+            .Concat(HotkeyActions.Coaching)
             .Concat(WidgetCatalog.All.Select(d => HotkeyActions.ToggleWidget(d.Key)));
 
     private IEnumerable<SettingsGroup> HotkeyGroups()
@@ -200,6 +208,7 @@ public sealed partial class ControlPanelViewModel
             Loc.T("hotkeys.workInAnyApp"));
         var layouts = new SettingsGroup(Loc.T("hotkeys.layouts"), Loc.T("hotkeys.eachLayoutSOwn"));
         var widgets = new SettingsGroup(Loc.T("hotkeys.widgets"), Loc.T("hotkeys.showOrHideOne"));
+        var coaching = new SettingsGroup(Loc.T("hotkeys.coaching"));
         foreach (var binding in _hotkeys)
         {
             var action = binding.Action;
@@ -218,6 +227,7 @@ public sealed partial class ControlPanelViewModel
             }
             (HotkeyActions.TryGetWidget(action, out _) ? widgets
                 : HotkeyActions.Layouts.Contains(action) ? layouts
+                : HotkeyActions.Coaching.Contains(action) ? coaching
                 : global).Items.Add(setting);
         }
 
@@ -225,6 +235,7 @@ public sealed partial class ControlPanelViewModel
         [
             global,
             layouts,
+            coaching,
             widgets,
             new SettingsGroup(Loc.T("hotkeys.defaults"))
                 .With(
