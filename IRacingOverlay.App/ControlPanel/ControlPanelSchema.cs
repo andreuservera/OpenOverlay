@@ -84,7 +84,7 @@ public sealed partial class ControlPanelViewModel
                 LayoutsPageKey => LayoutsPage(),
                 GeneralPageKey => GeneralPage(),
                 HotkeysPageKey => HotkeyGroups(),
-                DiagnosticsPageKey => [DiagnosticsGroup()],
+                DiagnosticsPageKey => [DiagnosticsGroup(), ReplayGroup()],
                 HelpPageKey => HelpPage(),
                 _ => [],
             };

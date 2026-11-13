@@ -152,6 +152,9 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 - Settings are saved crash-safe, with a backup of the previous version.
 - **Logs and diagnostics** stay on your PC: one log file per day (kept 30 days), **Copy
   diagnostics** and **Export report** (a .zip with logs, crash reports and settings) for bug reports.
+- **Replay a session** (Diagnostics) — plays an .ibt telemetry file into the overlays on a loop, as if
+  you were driving, to try a layout or a widget without iRacing. Only while iRacing is closed, since
+  the recording goes into the same shared memory the sim uses.
 - **What's New, Changelog and About** — the version you're running (always in the status bar), its
   build and update channel, what changed in it, and every earlier release. After an update, a short
   notice says what's new, once.

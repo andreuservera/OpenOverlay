@@ -436,6 +436,8 @@ public partial class MainWindow : Window
             _tray = null;
             ShutdownGuard.Step("live coaching");
             IRacingOverlay.Coaching.Ui.LiveCoaching.Detach();
+            ShutdownGuard.Step("replay");
+            ControlPanelViewModel.StopReplay();
             ShutdownGuard.Step("iRacing connection");
             _connection.Stop();
             ShutdownGuard.Step("widgets");
