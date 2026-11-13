@@ -10,6 +10,8 @@
   "widget.CircuitMap.blurb": "Jedes Auto auf der echten Form der Strecke, gelernt aus einer sauberen Runde von dir.",
   "widget.CircuitMap.learning": "Fahre eine saubere Runde, um diese Strecke zu zeichnen.",
   "widget.CircuitMap.learningLap": "Strecke wird gelernt: {0}% einer sauberen Runde",
+  "widget.Radar.name": "Radar",
+  "widget.Radar.blurb": "Die Autos um dich herum von oben: wer neben dir ist, auf welcher Seite und wie nah dahinter oder davor.",
   "widget.Flag.name": "Flaggen",
   "widget.Flag.blurb": "Alle Flaggen, die dir gerade gezeigt werden.",
   "widget.Incident.name": "Incidents",

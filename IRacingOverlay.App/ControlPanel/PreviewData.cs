@@ -516,6 +516,14 @@ public static class PreviewData
         return markers;
     }
 
+    /// <summary>A side-by-side moment: one car level on the left, one just behind, one pulling away ahead.</summary>
+    public static RadarState Radar() => new(
+    [
+        new RadarCar(-1.5, RadarLane.Left, "#FFDA59"),
+        new RadarCar(-9, RadarLane.Centre, "#FFDA59"),
+        new RadarCar(14, RadarLane.Centre, "#33CEFF"),
+    ]);
+
     /// <summary>The same field on a made-up circuit, so the map's look can be judged without having
     /// driven anywhere yet.</summary>
     public static TrackMaps.CircuitMapState CircuitMap(PreviewScenario scenario = PreviewScenario.Race) =>

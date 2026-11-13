@@ -573,6 +573,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
         WidgetCatalog.CircuitMap => new CircuitMapWidget(),
+        WidgetCatalog.Radar => new RadarWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),
     };

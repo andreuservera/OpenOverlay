@@ -1,0 +1,10 @@
+<UserControl x:Class="IRacingOverlay.App.Widgets.RadarPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
+             xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
+             xmlns:loc="clr-namespace:IRacingOverlay.App.Localization">
+    <ov:WidgetFrame x:Name="Frame" Padding="6" Title="{loc:T widget.Radar.name}">
+        <w:RadarView x:Name="View" Width="110" Height="180"/>
+    </ov:WidgetFrame>
+</UserControl>

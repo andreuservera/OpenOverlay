@@ -496,6 +496,7 @@ public partial class MainWindow : Window
     }
 
     private TrackMapWidget? TrackMap => _vm.WidgetOf<TrackMapWidget>(WidgetCatalog.TrackMap);
+    private RadarWidget? Radar => _vm.WidgetOf<RadarWidget>(WidgetCatalog.Radar);
     private CircuitMapWidget? CircuitMap => _vm.WidgetOf<CircuitMapWidget>(WidgetCatalog.CircuitMap);
     private FuelCalculatorWidget? FuelCalculator => _vm.WidgetOf<FuelCalculatorWidget>(WidgetCatalog.FuelCalculator);
 
@@ -536,6 +537,7 @@ public partial class MainWindow : Window
         Clear(WidgetCatalog.Weather, Weather, w => w.UpdateState(WeatherState.Empty));
         Clear(WidgetCatalog.TrackMap, TrackMap, w => w.UpdateState([]));
         Clear(WidgetCatalog.CircuitMap, CircuitMap, w => w.UpdateState(CircuitMapState.Empty));
+        Clear(WidgetCatalog.Radar, Radar, w => w.UpdateState(RadarState.Empty));
         Clear(WidgetCatalog.FuelCalculator, FuelCalculator, w => w.UpdateState(FuelCalculatorState.Empty));
 
         if (_dashboard is { } dashboard)
@@ -1012,6 +1014,10 @@ public partial class MainWindow : Window
             Feed(WidgetCatalog.Cockpit, cockpit, () => CockpitBuilder.Build(telemetry, session),
                 (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdateCockpit(state));
         }
+
+        // On the fast tick with the cockpit: a car arriving alongside can't wait for the next 100 ms.
+        Feed(WidgetCatalog.Radar, Radar, () => RadarBuilder.Build(telemetry, session),
+            (widget, state) => widget.UpdateState(state), null);
 
         Feed(WidgetCatalog.PedalTrace, Pedals, () => _pedalTraceBuilder.Build(telemetry),
             (widget, state) => widget.UpdateState(state), (dashboard, state) => dashboard.UpdatePedalTrace(state));

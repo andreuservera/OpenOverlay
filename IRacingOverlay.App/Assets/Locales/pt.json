@@ -10,6 +10,8 @@
   "widget.CircuitMap.blurb": "Cada carro no traçado real do circuito, aprendido em uma volta limpa sua.",
   "widget.CircuitMap.learning": "Faça uma volta limpa para desenhar este circuito.",
   "widget.CircuitMap.learningLap": "Aprendendo o circuito: {0}% de uma volta limpa",
+  "widget.Radar.name": "Radar",
+  "widget.Radar.blurb": "Os carros ao seu redor vistos de cima: quem está ao lado, de que lado e a que distância atrás ou à frente.",
   "widget.Flag.name": "Bandeiras",
   "widget.Flag.blurb": "Todas as bandeiras que estão sendo mostradas para você agora.",
   "widget.Incident.name": "Incidentes",
