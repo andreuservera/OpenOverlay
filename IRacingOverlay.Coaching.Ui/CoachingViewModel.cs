@@ -285,7 +285,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
                         Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
                         try
                         {
-                            var (_, r) = IbtSessionAnalyzer.Analyze(file, _maps, references: LiveCoaching.References);
+                            var (_, r) = IbtSessionAnalyzer.Analyze(file, _maps, references: LiveCoaching.References, types: LiveCoaching.Types);
                             _store.Save(r);
                             return r;
                         }

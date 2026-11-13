@@ -36,6 +36,7 @@ if (args.Length == 0 || args[0] is "-h" or "--help")
 {
     Console.WriteLine("usage: coaching-analyze <file.ibt> [--csv <output dir>] [--relearn] [--no-save] [--store <dir>] [--corners-per-lap] [--crossings] [--debrief] [--speak] [--voice <name>] [--list-voices] [--no-report] [--reports <dir>]");
     Console.WriteLine("       coaching-analyze --live [--speak] [--best-ever] [--voice <name>] [--store <dir>] [--no-report] [--reports <dir>]");
+    Console.WriteLine("       (--live is a developer tool: drivers use the live coaching switch in the app.)");
     return args.Length == 0 ? 1 : 0;
 }
 
@@ -141,7 +142,7 @@ var trackKey = weekend?.TrackName;
 // --relearn: agree a new map (still saved over unless --no-save). Without a saved map the corners
 // are agreed from the fastest laps of the whole file; saving through the session also picks up
 // names already typed into the saved file.
-var (session, report) = IbtSessionAnalyzer.Analyze(path, store, relearn, save, references: save ? new ReferenceLapStore(ReferenceLapStore.DefaultDirectory) : null);
+var (session, report) = IbtSessionAnalyzer.Analyze(path, store, relearn, save, references: save ? new ReferenceLapStore(ReferenceLapStore.DefaultDirectory) : null, types: save ? new CornerTypeStore(CornerTypeStore.DefaultDirectory) : null);
 
 Console.WriteLine("Laps (ours vs iRacing's LapLastLapTime)");
 Console.WriteLine("  lap   time        iRacing     diff      status");
@@ -334,6 +335,11 @@ if (debrief || speak)
             .Select(g => (g.Key, Type: CornerTypes.Consensus(g, bestSoFar.GetValueOrDefault(g.Key))))
             .Where(x => x.Type is not null)
             .ToDictionary(x => x.Key, x => x.Type!.Value);
+        foreach (var (id, saved) in session.SavedCornerTypes)
+        {
+            typesSoFar[id] = saved;
+        }
+
         last = coach.Debrief(a, bestSoFar, bestLapSoFar, typesSoFar) with
         {
             TheoreticalBestLapTime = BestPasses.TheoreticalLapTime(map, bestSoFar, outsideSoFar, BestPasses.RestOfStraight(passesSoFar)),
@@ -387,7 +393,7 @@ static int RunLive(string storeDir, bool speak, string? voiceName, SessionReport
         Console.WriteLine($"Speaking with \"{voice.VoiceName}\" on the default audio output.");
     }
 
-    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default, new ReferenceLapStore(ReferenceLapStore.DefaultDirectory))
+    var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default, new ReferenceLapStore(ReferenceLapStore.DefaultDirectory), new CornerTypeStore(CornerTypeStore.DefaultDirectory))
     {
         Voice = voice,
         CompareWithBestEver = bestEver,
