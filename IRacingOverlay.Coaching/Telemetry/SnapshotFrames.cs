@@ -35,6 +35,9 @@ public static class SnapshotFrames
         IncidentCount = (int)Number(s, FrameVars.IncidentCount),
     };
 
+    /// <summary>Which session of the event the snapshot is from (practice, qualifying, race…).</summary>
+    public static int SessionNumOf(TelemetrySnapshot s) => (int)Number(s, FrameVars.SessionNum);
+
     private static readonly Func<TelemetrySnapshot, string, double>[] Readers =
     [
         (s, n) => s.GetFloat(n),

@@ -317,6 +317,7 @@ public partial class MainWindow : Window
         _vm.TableHeaderChanged += PushTableHeader;
 
         // The coach only listens while live coaching is switched on in its page.
+        IRacingOverlay.Coaching.Ui.LiveCoaching.Log += line => AppLog.Info("Coaching", line);
         IRacingOverlay.Coaching.Ui.LiveCoaching.Attach(_connection);
         _connection.Fault += OnConnectionFault;
         _connection.TelemetryUpdated += (_, snapshot) => _incidentReports.Observe(snapshot);

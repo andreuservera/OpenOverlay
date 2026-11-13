@@ -95,6 +95,15 @@ public static class LiveCoaching
             _connection = connection;
         }
 
+        // Whatever runs after iRacing closes is another session, even on the same track and car.
+        connection.Disconnected += (_, _) =>
+        {
+            lock (Gate)
+            {
+                _coach?.EndSession();
+                _paused?.EndSession();
+            }
+        };
         Apply();
     }
 
@@ -105,6 +114,17 @@ public static class LiveCoaching
         {
             Stop();
             _connection = null;
+        }
+    }
+
+    /// <summary>What the live coach did, one line at a time (the app writes it to its log), on the reader thread.</summary>
+    public static event Action<string>? Log;
+
+    private static void Write(string line)
+    {
+        if (!string.IsNullOrWhiteSpace(line))
+        {
+            Log?.Invoke(line);
         }
     }
 
@@ -126,12 +146,25 @@ public static class LiveCoaching
     /// </summary>
     public static bool Toggle()
     {
+        // One press can arrive twice (seen 1.1 s apart on a driver's PC): a second toggle that soon
+        // would switch it straight back, so it is ignored.
+        var now = Environment.TickCount64;
+        if (now - _lastToggle < ToggleDebounceMs)
+        {
+            Write("Live coaching shortcut repeated within 1.5 s: ignored.");
+            return Settings.LiveEnabled;
+        }
+
+        _lastToggle = now;
         var on = !Settings.LiveEnabled;
         Change(Settings with { LiveEnabled = on });
         Announce(on ? "Live coaching on." : "Live coaching off.");
         OverlayToast.Show(CoachingText.T(on ? "hotkeys.liveCoachingOn" : "hotkeys.liveCoachingOff"));
         return on;
     }
+
+    private const long ToggleDebounceMs = 1500;
+    private static long _lastToggle = long.MinValue / 2;
 
     private static WindowsSpeech? _announcer;
 
@@ -172,6 +205,7 @@ public static class LiveCoaching
                 _coach = _paused;
                 _coachCompare = _pausedCompare;
                 _paused = null;
+                Write("Live coaching resumed.");
                 if (_connection!.Session is { } info)
                 {
                     _coach.OnSessionInfo(info);
@@ -189,6 +223,8 @@ public static class LiveCoaching
                 {
                     CompareWithBestEver = _coachCompare,
                 };
+                _coach.Log += Write;
+                Write(_connection!.Session?.WeekendInfo?.TrackName is { } track ? $"Live coaching on, at {track}." : "Live coaching on; waiting for iRacing to name the track.");
                 if (_connection!.Session is { } info)
                 {
                     _coach.OnSessionInfo(info);
@@ -208,7 +244,8 @@ public static class LiveCoaching
                 _voice = null;
             }
 
-            _coach.Voice = _voice;
+            _coach.Voice = _voice is null ? null : new LoggedVoice(_voice, Write);
+            Write(_voice is null ? "Spoken debrief off: the coach records without speaking." : "Spoken debrief on.");
         }
     }
 
@@ -222,6 +259,11 @@ public static class LiveCoaching
         }
 
         _coach?.Flush();
+        if (_coach is not null)
+        {
+            Write(keep ? "Live coaching off (kept to carry on)." : "Live coaching stopped.");
+        }
+
         if (keep && _coach is not null)
         {
             _paused = _coach;

@@ -49,8 +49,9 @@ public sealed class LapComparePanel : INotifyPropertyChanged
         _report = report;
         _traces = traces;
 
-        var rows = report.Laps.ToDictionary(l => l.Number);
-        var options = kept.Select(n =>
+        // Reports saved before sessions were split on a new event can hold the same lap number twice.
+        var rows = report.Laps.GroupBy(l => l.Number).ToDictionary(g => g.Key, g => g.Last());
+        var options = kept.Distinct().Select(n =>
         {
             var row = rows.GetValueOrDefault(n);
             var time = row is null ? "" : " · " + Phrases.LapTime(row.Time);
