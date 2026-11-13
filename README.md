@@ -115,6 +115,19 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 - Give each layout its own **shortcut**, and use global ones to open/close the selected layout,
   switch to the next or previous one, or edit it.
 
+### Coaching (beta)
+
+- A **Coaching** page in the Control Panel that studies your laps corner by corner, after the
+  session or from any `.ibt` telemetry file (recorded with `Alt+L` in iRacing): best lap,
+  theoretical best, where the time goes, the mistakes you repeat, and every corner against your own
+  best (brake point, minimum speed, throttle pick-up, exit speed).
+- Corners are learnt once per track and named from track data (La Source, Eau Rouge, 130R…).
+- **Live coaching**, off by default: when switched on (on the page or with a shortcut), a short
+  spoken debrief as you cross the line, against your session's best or your best lap ever for the
+  track and car. When off, nothing of the coach runs while iRacing is open.
+- Beta: the findings are tuned for GT3 cars first and may change. Fully offline, using the free
+  Windows voices.
+
 ### Control and comfort
 
 - **Global hotkeys** for the things you need without leaving the sim. Defaults: show/hide overlays

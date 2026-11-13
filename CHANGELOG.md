@@ -2,6 +2,16 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.14.0] - 2026-11-13
+
+#### Added
+- Coaching (beta): a new page that studies your laps corner by corner, after a session or from any .ibt telemetry file: best and theoretical best lap, where the time goes, the mistakes you repeat, and every corner against your own best. Corners touched by an off-track or incident are left out, the rest of the lap still counts.
+- Corners are learnt once per track and named from real track data (La Source, Eau Rouge, 130R…), and each corner's type (flat, lift, braking, slow, complex) is kept per car, so your sessions stay comparable.
+- Live coaching, off by default: switch it on in the Coaching page, or with a shortcut while driving, and hear a short debrief as you cross the line. While it is off, nothing of the coach runs with iRacing.
+- Live coaching can compare against your best lap ever for the track and car instead of the session's best. Every quicker clean lap replaces it, and you can choose an .ibt as the reference.
+- The Coaching page speaks all six app languages; the spoken debrief uses the free Windows voices and works offline.
+
+
 ### [0.13.0] - 2026-11-07
 
 #### Changed

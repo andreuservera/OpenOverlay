@@ -33,6 +33,8 @@
   "nav.coaching.title": "Coaching",
   "nav.coaching.blurb": "Tus sesiones con el coach: mejor vuelta, vuelta teórica, los errores que repites y cada curva en detalle.",
   "coaching.title": "Coaching",
+  "coaching.beta": "Beta",
+  "coaching.beta.hint": "El coaching es nuevo: sus conclusiones están ajustadas para coches GT3 y pueden cambiar. Cuéntanos lo que no cuadre.",
   "coaching.sessions.hint": "Sesiones que hiciste con el coach activado, la más reciente primero. Elige una para ver su análisis.",
   "coaching.live.title": "Coaching en directo",
   "coaching.live.hint": "Graba tus sesiones mientras iRacing está abierto, para que aparezcan aquí sin un .ibt. Apagado: el coach no se ejecuta; puedes analizar un .ibt después.",
