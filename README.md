@@ -262,6 +262,10 @@ git push origin main v0.2.0
 
 The workflow stops if the tag doesn't match the newest entry.
 
+**Code signing:** add the repository secrets `SIGNING_CERT_PFX_BASE64` (the code-signing `.pfx`,
+base64-encoded) and `SIGNING_CERT_PASSWORD`, and the workflow signs the app and installer through
+Velopack (`signtool`, SHA-256, timestamped). Without them it builds unsigned, as before.
+
 **Manually**, if you want to build/test an installer locally first:
 
 ```powershell
@@ -279,6 +283,11 @@ compute yet; every release after that will ship a small delta update instead of 
 its version from the newest `[X.Y.Z]` entry, and that entry is what the app shows as What's New and
 what the release says on GitHub; the Changelog page shows the whole file. Headings without a
 version, such as `[Unreleased]`, are ignored.
+
+## Security
+
+Please report security problems privately; see [SECURITY.md](SECURITY.md), which also says what the
+app reads, writes and connects to.
 
 ## Contributing
 
