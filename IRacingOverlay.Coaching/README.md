@@ -74,10 +74,13 @@ Each file records the version of the corner detection that made it (`detectorVer
 detection changes, older maps are relearned automatically on the next clean laps, keeping their names.
 
 Each corner's type (flat, lift, fast braking, slow, complex) decides which checks run. It is agreed
-from a corner's first five clean passes and then saved per track **and car** to
-`%LOCALAPPDATA%\IRacingOverlay\coaching\corner-types\<track>__<car>.json`, so a borderline corner
-keeps the same type in every later session with that car and reports stay comparable. Change a
-corner's `type` in that file to correct it, or delete the file to have the types agreed again.
+from a corner's first five clean passes and, when at least four of them show the same type, saved
+per track **and car** to `%LOCALAPPDATA%\IRacingOverlay\coaching\corner-types\<track>__<car>.json`,
+so the corner keeps that type in every later session with that car and reports stay comparable. A
+corner whose passes are split (Spoon 2: sometimes a lift, sometimes a brake) isn't saved and is
+agreed each session; a saved type is agreed again when at least 80% of a later session's clean
+passes show another. To force a type, change its `type` and set `"fixed": true`; delete the file to
+have every type agreed again.
 
 It prints every lap with iRacing's own lap time beside the computed one, the corners found, each
 clean lap's time per corner and the best pass per corner.

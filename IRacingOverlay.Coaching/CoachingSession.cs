@@ -219,6 +219,7 @@ public sealed class CoachingSession
     public IReadOnlyDictionary<string, CornerType> SavedCornerTypes => _savedTypes;
 
     private Dictionary<string, CornerType> _savedTypes = new(StringComparer.Ordinal);
+    private IReadOnlySet<string> _fixedTypes = new HashSet<string>(StringComparer.Ordinal);
 
     public RecordedLap? BestLap => _analyses.Skip(_referenceStart).Where(a => a.IsCleanLap).MinBy(a => a.Lap.LapTime)?.Lap;
 
@@ -339,12 +340,16 @@ public sealed class CoachingSession
             return new Dictionary<string, CornerType>(StringComparer.Ordinal);
         }
 
+        _fixedTypes = store.Fixed(key, car, map);
         return new Dictionary<string, CornerType>(store.Load(key, car, map), StringComparer.Ordinal);
     }
 
-    /// <summary>Saves the type of every corner this session has just settled
-    /// (<see cref="CornerTypes.SettledAfterPasses"/> clean passes) and that has none saved yet. Not
-    /// on a provisional map, whose corners may still be merged or split.</summary>
+    /// <summary>
+    /// Saves the type of every corner whose first <see cref="CornerTypes.SettledAfterPasses"/> clean
+    /// passes clearly agree on one (<see cref="CornerTypes.SavedShare"/>) and that has none saved yet,
+    /// and replaces a saved type (unless it was fixed by hand) when this session's clean passes
+    /// clearly show another. Not on a provisional map, whose corners may still be merged or split.
+    /// </summary>
     private void SaveSettledTypes(IReadOnlyList<CornerPass> passes)
     {
         if (_options.TypeStore is not { } store || _options.TrackKey is not { } key || _options.Car is not { } car
@@ -353,23 +358,54 @@ public sealed class CoachingSession
             return;
         }
 
-        var settled = passes.Where(p => p.IsClean && !_savedTypes.ContainsKey(p.Corner.Name))
-            .GroupBy(p => p.Corner.Name, StringComparer.Ordinal)
-            .Where(g => g.Count() >= CornerTypes.SettledAfterPasses && _types.ContainsKey(g.Key))
-            .ToDictionary(g => g.Key, g => _types[g.Key], StringComparer.Ordinal);
-        if (settled.Count == 0)
+        var added = new Dictionary<string, CornerType>(StringComparer.Ordinal);
+        var replaced = new Dictionary<string, CornerType>(StringComparer.Ordinal);
+        foreach (var g in passes.Where(p => p.IsClean).GroupBy(p => p.Corner.Name, StringComparer.Ordinal))
+        {
+            var clean = g.OrderBy(p => p.LapNumber).ToList();
+            if (clean.Count < CornerTypes.SettledAfterPasses)
+            {
+                continue;
+            }
+
+            var saved = _savedTypes.TryGetValue(g.Key, out var s) ? s : (CornerType?)null;
+            var counted = saved is null ? clean.Take(CornerTypes.SettledAfterPasses).ToList() : clean;
+            if (CornerTypes.Decisive(counted) is not { } type)
+            {
+                continue; // split between types: agreed afresh each session
+            }
+
+            if (saved is null)
+            {
+                added[g.Key] = type;
+            }
+            else if (saved != type && !_fixedTypes.Contains(g.Key))
+            {
+                replaced[g.Key] = type;
+            }
+        }
+
+        if (added.Count == 0 && replaced.Count == 0)
         {
             return;
         }
 
-        foreach (var (id, type) in settled)
+        foreach (var (id, type) in added.Concat(replaced))
         {
             _savedTypes[id] = type;
         }
 
         try
         {
-            store.Save(key, car, map, settled);
+            if (added.Count > 0)
+            {
+                store.Save(key, car, map, added);
+            }
+
+            if (replaced.Count > 0)
+            {
+                store.Save(key, car, map, replaced, replace: true);
+            }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

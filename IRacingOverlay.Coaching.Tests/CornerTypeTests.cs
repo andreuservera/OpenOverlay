@@ -236,6 +236,18 @@ public class CornerTypeTests
     }
 
     [Fact]
+    public void OnlyATypeMostPassesClearlyShowIsKeptForLaterSessions()
+    {
+        var lift = Lift();
+        var dab = Lift() with { BrakePointM = 170, PeakBrake = 0.25f, BrakeLengthM = 30, MinSpeed = 200 / 3.6f };
+
+        // Spoon 2: three lifts and two real brakes in five passes is split, so nothing is saved.
+        Assert.Null(CornerTypes.Decisive([lift, lift, lift, dab, dab]));
+        Assert.Equal(CornerType.Lift, CornerTypes.Decisive([lift, lift, lift, lift, dab]));
+        Assert.Null(CornerTypes.Decisive([]));
+    }
+
+    [Fact]
     public void TheTypeIsSettledByTheFirstFivePasses()
     {
         var lift = Lift();

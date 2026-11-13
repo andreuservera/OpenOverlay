@@ -50,25 +50,50 @@ public sealed class CornerTypeStoreTests : IDisposable
         Assert.Empty(store.Load("spa", "MX-5", session.CornerMap));
     }
 
+    private void FixByHand(CornerTypeStore store, CornerMap map, string id, CornerType type, bool isFixed)
+    {
+        store.Delete("spa", "GT3");
+        store.Save("spa", "GT3", map, new Dictionary<string, CornerType> { [id] = type });
+        if (isFixed)
+        {
+            var path = store.PathFor("spa", "GT3");
+            File.WriteAllText(path, File.ReadAllText(path).Replace("\"fixed\": false", "\"fixed\": true"));
+        }
+    }
+
     [Fact]
-    public void ASavedTypeWinsOverWhatTheSessionSees()
+    public void ASavedTypeIsAgreedAgainWhenALaterSessionClearlyShowsAnother()
+    {
+        var store = new CornerTypeStore(_dir);
+        var first = Drive(7, store);
+        var map = first.CornerMap!;
+        var corner = map.Corners[0];
+        var real = first.CornerTypeById[corner.Name];
+        var other = real == CornerType.Complex ? CornerType.Flat : CornerType.Complex;
+        FixByHand(store, map, corner.Name, other, isFixed: false);
+
+        var second = Drive(7, store);
+
+        Assert.Equal(real, second.CornerTypeById[corner.Name]);
+        Assert.Equal(real, store.Load("spa", "GT3", map)[corner.Name]);
+    }
+
+    [Fact]
+    public void ATypeFixedByHandWinsOverWhatTheSessionSees()
     {
         var store = new CornerTypeStore(_dir);
         var first = Drive(7, store);
         var map = first.CornerMap!;
         var corner = map.Corners[0];
         var other = first.CornerTypeById[corner.Name] == CornerType.Complex ? CornerType.Flat : CornerType.Complex;
-
-        // As if edited by hand: the first corner's type changed.
-        store.Delete("spa", "GT3");
-        store.Save("spa", "GT3", map, new Dictionary<string, CornerType> { [corner.Name] = other });
+        FixByHand(store, map, corner.Name, other, isFixed: true);
 
         var second = Drive(7, store);
         Assert.Equal(other, second.CornerTypeById[corner.Name]);
         var report = SessionReportBuilder.Build(second, new SessionReportInfo { Id = "x", Source = "test", StartedUtc = DateTime.UtcNow });
         Assert.Equal(other.ToString(), report.Corners.First(c => c.Id == corner.Name).Type);
 
-        // Saving again doesn't overwrite a type already there.
+        // Not replaced by the session.
         Assert.Equal(other, store.Load("spa", "GT3", map)[corner.Name]);
     }
 }

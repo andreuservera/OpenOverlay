@@ -11,8 +11,12 @@ namespace IRacingOverlay.Coaching.Corners;
 /// a GT3 and a braking corner in a slower car. Corners are matched by where their apex is, so a
 /// relearned map keeps the types of corners that didn't move.
 ///
+/// A type is only saved when the passes clearly agree on it (<see cref="CornerTypes.SavedShare"/>),
+/// and a saved type is agreed again when a later session's passes clearly show another one.
+///
 /// One small JSON file per track and car, meant to be editable by hand: change a corner's
-/// <c>type</c> to fix it, or delete the file to have the types agreed again. Default folder:
+/// <c>type</c> and set <c>"fixed": true</c> to keep it whatever the passes say, or delete the file
+/// to have the types agreed again. Default folder:
 /// %LOCALAPPDATA%\IRacingOverlay\coaching\corner-types.
 /// </summary>
 public sealed class CornerTypeStore
@@ -54,24 +58,39 @@ public sealed class CornerTypeStore
         return result;
     }
 
-    /// <summary>Saves the types of <paramref name="map"/>'s corners, keeping types already saved
-    /// (a type once saved only changes by editing or deleting the file).</summary>
-    public void Save(string trackKey, string car, CornerMap map, IReadOnlyDictionary<string, CornerType> types)
+    /// <summary>The corners of <paramref name="map"/> whose saved type is <c>fixed</c> (set by hand), by id.</summary>
+    public IReadOnlySet<string> Fixed(string trackKey, string car, CornerMap map) =>
+        Read(trackKey, car).Where(e => e.Fixed).Select(e => Match(map, e.ApexM)?.Name).OfType<string>().ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>Saves the types of <paramref name="map"/>'s corners. A corner that already has a
+    /// type keeps it unless <paramref name="replace"/> is true; a <c>fixed</c> type is never replaced.</summary>
+    public void Save(string trackKey, string car, CornerMap map, IReadOnlyDictionary<string, CornerType> types, bool replace = false)
     {
         var entries = Read(trackKey, car).ToList();
-        var added = false;
+        var changed = false;
         foreach (var c in map.Corners)
         {
-            if (!types.TryGetValue(c.Name, out var type) || entries.Any(e => Math.Abs(e.ApexM - c.ApexM) <= CornerMapBuilder.ClusterRadiusMetres))
+            if (!types.TryGetValue(c.Name, out var type))
             {
                 continue;
             }
 
+            var existing = entries.FirstOrDefault(e => Math.Abs(e.ApexM - c.ApexM) <= CornerMapBuilder.ClusterRadiusMetres);
+            if (existing is not null)
+            {
+                if (!replace || existing.Fixed || existing.Type == type)
+                {
+                    continue;
+                }
+
+                entries.Remove(existing);
+            }
+
             entries.Add(new Entry { Id = c.Name, Name = c.Label, ApexM = c.ApexM, Type = type });
-            added = true;
+            changed = true;
         }
 
-        if (!added)
+        if (!changed)
         {
             return;
         }
@@ -133,5 +152,8 @@ public sealed class CornerTypeStore
         public int ApexM { get; set; }
 
         public CornerType Type { get; set; }
+
+        /// <summary>Set by hand to keep <see cref="Type"/> whatever later passes show.</summary>
+        public bool Fixed { get; set; }
     }
 }
