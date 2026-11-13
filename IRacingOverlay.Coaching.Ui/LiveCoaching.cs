@@ -22,6 +22,10 @@ public sealed record CoachingSettings
     /// <summary>Coach against the best lap ever for the track and car instead of this session's best.</summary>
     public bool CompareWithBestEver { get; init; }
 
+    /// <summary>With live coaching on, a cue of two or three words just before each focus corner:
+    /// on screen by default (nothing spoken), spoken, or off.</summary>
+    public Advice.CueMode Cues { get; init; } = Advice.CueMode.Notice;
+
     public static string DefaultPath => Path.Combine(Path.GetDirectoryName(SessionReportStore.DefaultDirectory)!, "settings.json");
 
     public static CoachingSettings Load(string? path = null)
@@ -225,6 +229,9 @@ public static class LiveCoaching
                 };
                 _coach.Log += Write;
                 Write(_connection!.Session?.WeekendInfo?.TrackName is { } track ? $"Live coaching on, at {track}." : "Live coaching on; waiting for iRacing to name the track.");
+                _coach.Notice += (cue, isFixed) => OverlayToast.Show(isFixed
+                    ? CoachingText.F("coaching.cue.fixed", cue.CornerName)
+                    : $"{cue.CornerName}: {CoachingText.TryT("coaching.cue.word." + cue.Kind) ?? cue.Words}");
                 if (_connection!.Session is { } info)
                 {
                     _coach.OnSessionInfo(info);
@@ -234,7 +241,7 @@ public static class LiveCoaching
                 _connection.TelemetryUpdated += OnTelemetry;
             }
 
-            if (Settings.SpeakDebrief)
+            if (Settings.SpeakDebrief || Settings.Cues == Advice.CueMode.Voice)
             {
                 _voice ??= new WindowsSpeech();
             }
@@ -244,8 +251,11 @@ public static class LiveCoaching
                 _voice = null;
             }
 
-            _coach.Voice = _voice is null ? null : new LoggedVoice(_voice, Write);
-            Write(_voice is null ? "Spoken debrief off: the coach records without speaking." : "Spoken debrief on.");
+            var logged = _voice is null ? null : new LoggedVoice(_voice, Write);
+            _coach.Voice = Settings.SpeakDebrief ? logged : null;
+            _coach.Cues = Settings.Cues;
+            _coach.CueVoice = Settings.Cues == Advice.CueMode.Voice ? logged : null;
+            Write(Settings.SpeakDebrief ? "Spoken debrief on." : "Spoken debrief off: the coach records without speaking.");
         }
     }
 

@@ -399,9 +399,13 @@ static int RunLive(string storeDir, bool speak, string? voiceName, SessionReport
     var coach = new LiveCoach(new CornerMapStore(storeDir), reports, TrackTurnNames.Default, new ReferenceLapStore(ReferenceLapStore.DefaultDirectory), new CornerTypeStore(CornerTypeStore.DefaultDirectory), new IRacingOverlay.Coaching.History.FocusStore(IRacingOverlay.Coaching.History.FocusStore.DefaultDirectory))
     {
         Voice = voice,
+        CueVoice = voice,
         CompareWithBestEver = bestEver,
+        // Spoken cues with --speak; otherwise printed.
+        Cues = voice is null ? CueMode.Notice : CueMode.Voice,
     };
     coach.Log += Console.WriteLine;
+    coach.Notice += (cue, isFixed) => Console.WriteLine(isFixed ? $"  [cue] {cue.CornerName} sorted" : $"  [cue] {cue.CornerName}: {cue.Words}");
 
     using var connection = new IRacingConnection();
     connection.SessionInfoUpdated += (_, info) => coach.OnSessionInfo(info);

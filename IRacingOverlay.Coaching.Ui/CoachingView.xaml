@@ -155,6 +155,16 @@
                                            VerticalAlignment="Center" TextWrapping="Wrap" ToolTip="{loc:T coaching.live.bestEver.tip}"/>
                                 <CheckBox Grid.Column="1" Style="{DynamicResource Cp.Switch}" IsChecked="{Binding CompareWithBestEver, Mode=TwoWay}"/>
                             </Grid>
+                            <!-- A two- or three-word cue before each focus corner -->
+                            <Grid Margin="0,8,0,0" Visibility="{Binding LiveEnabled, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{loc:T coaching.cue.title}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.TextSoft}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap" ToolTip="{loc:T coaching.cue.tip}"/>
+                                <ComboBox Grid.Column="1" Style="{DynamicResource Cp.ComboBox}" MinWidth="110" ItemsSource="{Binding CueOptions}" SelectedItem="{Binding Cue}" Margin="8,0,0,0"/>
+                            </Grid>
                             <!-- The best lap ever kept for each track and car -->
                             <Expander Margin="0,10,0,0" Foreground="{DynamicResource Cp.TextSoft}">
                                 <Expander.Header>

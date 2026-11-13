@@ -45,6 +45,7 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(LiveEnabled));
             OnPropertyChanged(nameof(SpeakDebrief));
             OnPropertyChanged(nameof(CompareWithBestEver));
+            OnPropertyChanged(nameof(Cue));
         };
     }
 
@@ -133,6 +134,30 @@ public sealed class CoachingViewModel : INotifyPropertyChanged
         set
         {
             LiveCoaching.Change(LiveCoaching.Settings with { SpeakDebrief = value });
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>The ways to cue before a focus corner, for the page's list.</summary>
+    public IReadOnlyList<CueOption> CueOptions { get; } =
+    [
+        new(Advice.CueMode.Notice, CoachingText.T("coaching.cue.notice")),
+        new(Advice.CueMode.Voice, CoachingText.T("coaching.cue.voice")),
+        new(Advice.CueMode.Off, CoachingText.T("coaching.cue.off")),
+    ];
+
+    /// <summary>With live coaching on, the cue before each focus corner.</summary>
+    public CueOption? Cue
+    {
+        get => CueOptions.FirstOrDefault(o => o.Mode == LiveCoaching.Settings.Cues);
+        set
+        {
+            if (value is null)
+            {
+                return;
+            }
+
+            LiveCoaching.Change(LiveCoaching.Settings with { Cues = value.Mode });
             OnPropertyChanged();
         }
     }
@@ -651,6 +676,11 @@ internal sealed class RelayCommand(Action run, Func<bool>? canRun = null) : ICom
     public bool CanExecute(object? parameter) => canRun?.Invoke() ?? true;
 
     public void Execute(object? parameter) => run();
+}
+
+public sealed record CueOption(Advice.CueMode Mode, string Label)
+{
+    public override string ToString() => Label;
 }
 
 /// <summary>A stored best lap ever, in the references list.</summary>
