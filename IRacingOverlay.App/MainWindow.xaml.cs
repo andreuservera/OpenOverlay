@@ -671,6 +671,8 @@ public partial class MainWindow : Window
 
         var session = _connection.Session;
         ObserveSession(telemetry, session);
+        _statusGuard.Run(() => _vm.SetDrivingContext(
+            Layouts.LayoutAutoOpen.KindOf(CurrentSession.Entry(telemetry, session)?.SessionType), PlayerCar(session)));
         _statusGuard.Run(() =>
         {
             Units.Observe(telemetry);
@@ -1217,6 +1219,12 @@ public partial class MainWindow : Window
     /// they were built from. A different event resets them, so a restarted sim never shows another
     /// car's fuel burn; the same event keeps them, so rejoining after an iRacing crash carries on.
     /// </summary>
+    /// <summary>The car the player is in, as iRacing names it; null before the session is known.</summary>
+    private static string? PlayerCar(IracingSessionInfo? session) =>
+        session?.DriverInfo is { } info && info.Drivers.FirstOrDefault(d => d.CarIdx == info.DriverCarIdx) is { CarScreenName: { Length: > 0 } name }
+            ? name
+            : null;
+
     private void ObserveSession(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
         if (ReferenceEquals(session, _observedSession) || session?.WeekendInfo is not { } weekend)

@@ -13,6 +13,7 @@ All notable changes to OpenOverlay, newest first.
 - Circuit map: a new widget with every car on the track's real shape. Drive one clean lap at a track and the map draws it, then keeps it for next time.
 - Radar: a widget of its own showing the cars around you from above, who is alongside and on which side, and how close the cars behind and ahead are.
 - Diagnostics: replay an .ibt recording into the overlays on a loop, as if you were driving, to try a layout without iRacing.
+- Layouts can open by themselves for a kind of session (practice, qualifying, race), a car, or both, and close again when nothing matches.
 
 
 ### [0.13.0] - 2026-11-07

@@ -116,6 +116,10 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 - **Export and import** layouts as files, choosing the monitor they go on.
 - Give each layout its own **shortcut**, and use global ones to open/close the selected layout,
   switch to the next or previous one, or edit it.
+- **Open automatically** — a layout can open by itself for a kind of session (practice, qualifying,
+  race), a car, or both. When what you drive changes, the best match opens; when nothing matches, a
+  layout that opened by itself closes again. Opening mid-session never asks anything: a monitor that
+  isn't connected leaves it closed, and a different resolution scales the positions.
 
 ### Coaching (beta)
 
