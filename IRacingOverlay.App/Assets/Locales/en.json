@@ -38,7 +38,7 @@
   "coaching.focus.title": "Focus for next session",
   "coaching.focus.hint": "The corners with the most time to gain over your recent sessions here. With live coaching on, the debrief talks about them first.",
   "coaching.focus.hintPinned": "The corners you chose to work on. With live coaching on, the debrief talks about them first.",
-  "coaching.focus.aim": "aim for {0}",
+  "coaching.focus.aim": "aim: lose under {0} here",
   "coaching.focus.gain": "A normal lap loses {0} here.",
   "coaching.focus.traces": "Compare your best and typical traces",
   "coaching.focus.pin": "Focus on this corner",

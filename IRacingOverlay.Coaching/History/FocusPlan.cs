@@ -8,17 +8,21 @@ namespace IRacingOverlay.Coaching.History;
 /// <summary>One corner to work on next session, with what to do and what it is worth.</summary>
 /// <param name="Gain">What a normal lap loses here now, seconds: the time on the table.</param>
 /// <param name="Target">The time to aim to win back next session, seconds (part of <paramref name="Gain"/>).</param>
+/// <remarks>Said as the loss to stay under (<see cref="AimLoss"/>), so it doesn't read as a lap time.</remarks>
 /// <param name="Habit">The recurring mistake to fix; null when the time goes somewhere no single finding explains.</param>
 /// <param name="Pinned">Chosen by the driver rather than picked by the coach.</param>
 public sealed record FocusCorner(string CornerId, string Name, int ApexM, double? Gain, double? Target, FindingTally? Habit, bool Pinned)
 {
-    /// <summary>In words, in English: "T1: brake 10 metres later, aim for 0.15 s".</summary>
+    /// <summary>What a normal lap should lose here at most once the target is met, seconds.</summary>
+    public double? AimLoss => Gain is { } g && Target is { } t ? Math.Max(0, Math.Round((g - t) * 100) / 100) : null;
+
+    /// <summary>In words, in English: "T1: brake 10 metres later, aim to lose under 0.15 s here".</summary>
     public string Text
     {
         get
         {
             var what = Habit?.Advice is { Length: > 0 } a ? char.ToLowerInvariant(a[0]) + a[1..] : "compare your best and typical traces";
-            var aim = Target is { } t ? $", aim for {t.ToString("0.00", CultureInfo.InvariantCulture)} s" : "";
+            var aim = AimLoss is { } l ? $", aim to lose under {l.ToString("0.00", CultureInfo.InvariantCulture)} s here" : "";
             return $"{Name}: {what}{aim}";
         }
     }
@@ -26,8 +30,8 @@ public sealed record FocusCorner(string CornerId, string Name, int ApexM, double
 
 /// <summary>
 /// What to practise next session at a track with a car: the one or two corners with the most time
-/// to gain over recent sessions, each with its recurring mistake and a target, or the corners the
-/// driver pinned on the Coaching page instead. The live coach talks about these corners first.
+/// to gain over recent sessions (those with a recurring mistake to fix first), each with its mistake
+/// and a target, or the corners the driver pinned on the Coaching page instead. The live coach talks about these corners first.
 /// </summary>
 public static class FocusPlanner
 {
@@ -57,12 +61,11 @@ public static class FocusPlanner
             return pinned;
         }
 
-        return history.Corners
-            .Where(c => c.RecentLoss is { } g && g >= MinGainSeconds)
-            .OrderByDescending(c => c.RecentLoss)
-            .Take(MaxCorners)
-            .Select(c => Item(c, false))
-            .ToList();
+        // Corners with a recurring mistake first: "compare the traces" isn't something to practise.
+        var candidates = history.Corners.Where(c => c.RecentLoss is { } g && g >= MinGainSeconds).ToList();
+        var withHabit = candidates.Where(c => c.Habit is not null).OrderByDescending(c => c.RecentLoss).ToList();
+        var picked = withHabit.Count > 0 ? withHabit : candidates.OrderByDescending(c => c.RecentLoss).ToList();
+        return picked.Take(MaxCorners).Select(c => Item(c, false)).ToList();
     }
 }
 

@@ -38,7 +38,7 @@
   "coaching.focus.title": "À travailler à la prochaine session",
   "coaching.focus.hint": "Les virages où il y a le plus de temps à gagner sur tes dernières sessions ici. Avec le coaching en direct, le débrief en parle en premier.",
   "coaching.focus.hintPinned": "Les virages que tu as choisi de travailler. Avec le coaching en direct, le débrief en parle en premier.",
-  "coaching.focus.aim": "objectif {0}",
+  "coaching.focus.aim": "objectif : perdre moins de {0} ici",
   "coaching.focus.gain": "Un tour normal perd {0} ici.",
   "coaching.focus.traces": "Compare tes tracés meilleur et typique",
   "coaching.focus.pin": "Travailler ce virage",

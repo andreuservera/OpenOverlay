@@ -411,7 +411,7 @@ public sealed class FocusItem(FocusCorner f)
         ? Phrases.Advice(h.Kind, h.TypicalAmount, h.IsRamp, h.Advice, h.NoBraking)
         : T("coaching.focus.traces"));
 
-    public string Aim { get; } = f.Target is { } t ? F("coaching.focus.aim", Phrases.Seconds(t)) : "";
+    public string Aim { get; } = f.AimLoss is { } l ? F("coaching.focus.aim", Phrases.Seconds(l)) : "";
 
     public string Gain { get; } = f.Gain is { } g ? F("coaching.focus.gain", Phrases.Seconds(g)) : "";
 }

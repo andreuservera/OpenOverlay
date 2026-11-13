@@ -79,13 +79,15 @@ internal static class Phrases
         // Older reports saved neither the direction nor the type, only English words: word it from those.
         var parts = c.Kind?.Split(" · ") ?? [];
         var type = c.Type ?? (parts.Length > 1 && SavedTypes.TryGetValue(parts[^1], out var savedType) ? savedType : null);
-        var typeText = type is null ? null : TryT($"coaching.type.{type}") ?? type;
-        var look = Look(c, parts.Length > 0 ? parts[0] : null);
+        var look = Look(c, parts.Length > 0 ? parts[0] : null, out var saysSlow);
+        // "slow right · slow" says it twice: the look already tells a slow corner.
+        var typeText = type is null || (type == "Slow" && saysSlow) ? null : TryT($"coaching.type.{type}") ?? type;
         return look is null && typeText is null ? null : Format.Join(look, typeText);
     }
 
-    private static string? Look(CornerReport c, string? saved)
+    private static string? Look(CornerReport c, string? saved, out bool saysSlow)
     {
+        saysSlow = false;
         if (c.Best is not { } best)
         {
             return null;
@@ -93,6 +95,7 @@ internal static class Phrases
 
         if (c.Direction == 0 && saved is not null && SavedKinds.TryGetValue(saved, out var key))
         {
+            saysSlow = key.Contains("slow", StringComparison.OrdinalIgnoreCase) || key.Contains("hairpin", StringComparison.OrdinalIgnoreCase);
             return T(key);
         }
 
@@ -100,10 +103,12 @@ internal static class Phrases
         var kmh = best.MinSpeedKmh;
         if (kmh < 75)
         {
+            saysSlow = true;
             return T(way.Length == 0 ? "coaching.kind.hairpin" : $"coaching.kind.hairpin{way}");
         }
 
         var pace = kmh < 115 ? "slow" : kmh < 165 ? "" : "fast";
+        saysSlow = pace == "slow";
         return (pace, way) switch
         {
             ("", "") => null,

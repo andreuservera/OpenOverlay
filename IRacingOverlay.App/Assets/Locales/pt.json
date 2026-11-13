@@ -38,7 +38,7 @@
   "coaching.focus.title": "Foco para a próxima sessão",
   "coaching.focus.hint": "As curvas com mais tempo a ganhar nas suas últimas sessões aqui. Com o coaching ao vivo ligado, o resumo fala delas primeiro.",
   "coaching.focus.hintPinned": "As curvas que você escolheu treinar. Com o coaching ao vivo ligado, o resumo fala delas primeiro.",
-  "coaching.focus.aim": "meta {0}",
+  "coaching.focus.aim": "meta: perder menos de {0} aqui",
   "coaching.focus.gain": "Uma volta normal perde {0} aqui.",
   "coaching.focus.traces": "Compare seus traçados melhor e típico",
   "coaching.focus.pin": "Focar nesta curva",

@@ -112,7 +112,8 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{loc:T coaching.title}" Style="{DynamicResource Cp.Display}" VerticalAlignment="Center"/>
                         <Border Margin="10,0,0,0" Padding="7,1" CornerRadius="9" VerticalAlignment="Center"
-                                Background="{DynamicResource Cp.AccentWash}" ToolTip="{loc:T coaching.beta.hint}">
+                                Background="{DynamicResource Cp.AccentWash}" ToolTip="{loc:T coaching.beta.hint}"
+                                ToolTipService.Placement="Bottom" ToolTipService.HorizontalOffset="0">
                             <TextBlock Text="{loc:T coaching.beta}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.Accent}" FontWeight="SemiBold"/>
                         </Border>
                     </StackPanel>

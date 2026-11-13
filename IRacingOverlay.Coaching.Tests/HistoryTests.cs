@@ -72,10 +72,16 @@ public sealed class HistoryTests : IDisposable
     {
         var h = TrackHistory.Build([Session(1, "296", Corner("T1", 400, 10, 0.32, early: 5), Corner("T2", 900, 8, 0.02), Corner("T3", 1500, 9, 0.2))], "suzuka", "296")!;
 
+        // T3 loses time but with no mistake to name: T1, which has one, is all the plan needs.
         var plan = FocusPlanner.Plan(h);
-        Assert.Equal(["T1", "T3"], plan.Select(p => p.CornerId));
+        Assert.Equal(["T1"], plan.Select(p => p.CornerId));
         Assert.Equal(0.15, plan[0].Target!.Value, 6);
-        Assert.Equal("T1: brake 10 metres later, aim for 0.15 s", plan[0].Text);
+        Assert.Equal(0.17, plan[0].AimLoss!.Value, 6);
+        Assert.Equal("T1: brake 10 metres later, aim to lose under 0.17 s here", plan[0].Text);
+
+        // With no mistake anywhere, the corners with most to gain.
+        var none = TrackHistory.Build([Session(1, "296", Corner("T1", 400, 10, 0.32), Corner("T3", 1500, 9, 0.2))], "suzuka", "296")!;
+        Assert.Equal(["T1", "T3"], FocusPlanner.Plan(none).Select(p => p.CornerId));
 
         var store = new FocusStore(_dir);
         store.Set("suzuka", "296", "T2", "T2", 905, true);

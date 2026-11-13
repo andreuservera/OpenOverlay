@@ -38,7 +38,7 @@
   "coaching.focus.title": "Su cosa concentrarti nella prossima sessione",
   "coaching.focus.hint": "Le curve con più tempo da guadagnare nelle tue ultime sessioni qui. Con il coaching dal vivo attivo, il resoconto parla prima di loro.",
   "coaching.focus.hintPinned": "Le curve che hai scelto di allenare. Con il coaching dal vivo attivo, il resoconto parla prima di loro.",
-  "coaching.focus.aim": "obiettivo {0}",
+  "coaching.focus.aim": "obiettivo: perdere meno di {0} qui",
   "coaching.focus.gain": "Un giro normale perde {0} qui.",
   "coaching.focus.traces": "Confronta le tue tracce migliore e tipica",
   "coaching.focus.pin": "Concentrati su questa curva",
