@@ -66,6 +66,20 @@ public sealed class LiveCoach
     /// <summary>Says the debrief and lap notes; null to stay quiet. Can change at any time.</summary>
     public ISpeechOutput? Voice { get; set; }
 
+    /// <summary>The cue before each focus corner (<see cref="CornerCues"/>): off, on screen
+    /// (<see cref="Notice"/>) or spoken (<see cref="CueVoice"/>). Can change at any time.</summary>
+    public CueMode Cues { get; set; }
+
+    /// <summary>Says the cues when <see cref="Cues"/> is <see cref="CueMode.Voice"/>.</summary>
+    public ISpeechOutput? CueVoice { get; set; }
+
+    /// <summary>A cue to show on screen over the sim, when <see cref="Cues"/> is
+    /// <see cref="CueMode.Notice"/>: the corner and its cue, and whether it is the last one
+    /// because the mistake is fixed. The page words it in the app's language.</summary>
+    public event Action<FocusCue, bool>? Notice;
+
+    private volatile CornerCues? _cues;
+
     /// <summary>What the coach has to say, written out (the CLI prints it).</summary>
     public event Action<string>? Log;
 
@@ -106,7 +120,13 @@ public sealed class LiveCoach
             }
         }
 
-        _session?.Observe(snapshot);
+        var frame = Telemetry.SnapshotFrames.FromSnapshot(snapshot);
+        _session?.Observe(frame);
+        if (Cues != CueMode.Off && _cues is { Active: true } cues && _session?.CornerMap is { } map)
+        {
+            cues.Observe(map, frame.Lap, frame.LapDist, frame.Speed, frame.OnPitRoad);
+        }
+
         SaveIfDue();
     }
 
@@ -123,6 +143,7 @@ public sealed class LiveCoach
         }
 
         _session = null;
+        _cues = null;
         _track = null;
         _sessionCar = null;
         _sessionSubSession = null;
@@ -176,6 +197,31 @@ public sealed class LiveCoach
                 {
                     coach.FocusApexM = plan.Select(p => p.ApexM).ToList();
                     Log?.Invoke("Focus this session: " + string.Join("; ", plan.Select(p => p.Text)) + ".");
+                    var cues = new CornerCues(plan.Where(p => p.Habit is not null).Select(p => new FocusCue(p.ApexM, p.Name, p.Habit!.Kind)));
+                    cues.Cue += c =>
+                    {
+                        if (Cues == CueMode.Voice)
+                        {
+                            CueVoice?.Say(c.Words);
+                        }
+                        else if (Cues == CueMode.Notice)
+                        {
+                            Notice?.Invoke(c, false);
+                        }
+                    };
+                    cues.Fixed += c =>
+                    {
+                        Log?.Invoke($"{c.CornerName}: no \"{c.Words}\" needed for {CornerCues.FixedAfterLaps} laps, cue stopped.");
+                        if (Cues == CueMode.Voice)
+                        {
+                            CueVoice?.Say($"{c.CornerName} sorted.");
+                        }
+                        else if (Cues == CueMode.Notice)
+                        {
+                            Notice?.Invoke(c, true);
+                        }
+                    };
+                    _cues = cues;
                 }
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -187,6 +233,7 @@ public sealed class LiveCoach
 
     private void Start(string t)
     {
+        _cues = null;
         _track = t;
         _sessionCar = _pendingCar;
         _sessionSubSession = _pendingSubSession;
@@ -300,6 +347,7 @@ public sealed class LiveCoach
             }
 
             Voice?.Say(DebriefText.Spoken(d));
+            _cues?.OnDebrief(d);
         });
         LoadFocusPlan(coach, t);
         Log?.Invoke($"Coaching at {t} ({session.Profile.Label} thresholds). Drive clean laps; the debrief comes as you cross the line.");

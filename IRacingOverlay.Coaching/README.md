@@ -137,6 +137,14 @@ The low-power and formula values are first estimates from how those cars drive; 
 checked against real .ibt sessions (Phase D of the roadmap). The class used is saved in each
 report (`carClass`) and printed by the CLI.
 
+## Cue before the focus corner
+
+With live coaching on, the coach can give one cue of two or three words about three seconds before
+each corner of the focus plan that has a recurring mistake ("brake later", "carry speed"), once a
+lap (`Advice/CornerCues`). It is shown on screen by default (the same notice as the live-coaching
+shortcut), so nothing is spoken unless "Spoken" is chosen; "Off" turns it off. A corner's cue stops
+for the session once the mistake has stayed away for three laps running.
+
 ## Checked against real files
 
 | File | Laps | Computed vs iRacing lap time | Corners found |
