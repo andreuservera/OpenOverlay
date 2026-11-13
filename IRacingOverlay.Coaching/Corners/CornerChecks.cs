@@ -53,8 +53,38 @@ public static class CornerChecks
     /// window still belongs to it, seconds.</summary>
     public const double IncidentDelaySeconds = 1.0;
 
-    /// <summary>On a race start or out lap, this many corners from the line are not representative.</summary>
+    /// <summary>On a race start or out lap, at least this many corners from the line (or pit exit)
+    /// are not representative…</summary>
     public const int StartLapCorners = 2;
+
+    /// <summary>…nor any corner starting within this distance of it, metres (at most
+    /// <see cref="StartLapShare"/> of the lap): tyres and brakes are still cold, and with flat
+    /// corners in the map (Eau Rouge) two corners can be over in 500 m.</summary>
+    public const int StartLapMetres = 1000;
+
+    /// <summary>The cold stretch is never more than this share of the lap, so a short track keeps its corners.</summary>
+    public const double StartLapShare = 0.2;
+
+    /// <summary>The cold stretch after the line or pit exit on a lap of <paramref name="trackLength"/> metres.</summary>
+    public static int ColdMetres(int trackLength) => (int)Math.Min(StartLapMetres, StartLapShare * trackLength);
+
+    /// <summary>
+    /// Metres from where the car left pit road earlier in the lap to the start of corner
+    /// <paramref name="index"/>; null when the car wasn't on pit road earlier in the lap.
+    /// </summary>
+    public static int? MetresSincePitExit(LapTrace lap, CornerMap map, int index)
+    {
+        var start = Math.Clamp(map.Corners[index].StartM, 0, lap.Length - 1);
+        for (var i = start - 1; i >= 0; i--)
+        {
+            if (lap.PitRoad[i])
+            {
+                return start - i;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>A pass whose path is shorter than the corner's usual path by more than this share
     /// is a cut. The racing line itself moves the ratio by well under 1%; cutting a chicane by 10 m

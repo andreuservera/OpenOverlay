@@ -266,7 +266,7 @@ public static class SessionReportBuilder
             CleanPasses = passes.Count(x => x.Pass.IsClean),
             BestLap = best?.LapNumber,
             BestTime = best?.ScoreTime,
-            MedianLoss = compared.Count > 0 ? Median(compared.Select(c => c.Loss).ToList()) : null,
+            MedianLoss = compared.Count > 0 ? NormalLoss(compared.Select(c => c.Loss).ToList()) : null,
             BestLapLoss = bestLapLoss,
             Best = best is null ? null : rows[passes.FindIndex(x => ReferenceEquals(x.Pass, best))],
             Typical = typicalPass is { } tp ? rows[passes.FindIndex(x => ReferenceEquals(x.Pass, tp.Item1))] : null,
@@ -274,7 +274,8 @@ public static class SessionReportBuilder
             Findings = tallies,
             BestTrace = bestEntry is { } be ? Trace(be.Item1, be.Item2.Lap, corner, o.TraceStepMetres) : null,
             TypicalTrace = typicalPass is { } t ? Trace(t.Item1, t.Item2.Lap, corner, o.TraceStepMetres) : null,
-            LossByPhase = PhaseLosses(compared.Select(c => (c.Pass, c.Lap)).ToList(), bestEntry),
+            // With two passes the normal lap is the better one (see NormalLoss), so its split is too.
+            LossByPhase = PhaseLosses((compared.Count == 2 ? compared.OrderBy(c => c.Loss).Take(1) : compared).Select(c => (c.Pass, c.Lap)).ToList(), bestEntry),
             // A flat corner uses little of the grip by nature, so a share of it says nothing.
             Grip = type is CornerType.Flat ? null : GripOf(grip, bestEntry, typicalPass),
             TimeSpread = CornerStats.Spread(passes.Where(x => x.Pass.IsClean).Select(x => x.Pass.ScoreTime).ToList()),
@@ -442,6 +443,10 @@ public static class SessionReportBuilder
 
     private static List<string> FlawNames(LapFlaw flaws) =>
         Enum.GetValues<LapFlaw>().Where(f => f != LapFlaw.None && flaws.HasFlag(f)).Select(f => f.ToString()).ToList();
+
+    /// <summary>What a normal lap loses: the median, except that of two passes it is the smaller
+    /// loss, so one bad pass (a lift, traffic) doesn't make up half of it.</summary>
+    internal static double NormalLoss(List<double> values) => values.Count == 2 ? values.Min() : Median(values);
 
     private static double Median(List<double> values)
     {

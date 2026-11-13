@@ -135,6 +135,46 @@
                                            VerticalAlignment="Center" TextWrapping="Wrap"/>
                                 <CheckBox Grid.Column="1" Style="{DynamicResource Cp.Switch}" IsChecked="{Binding SpeakDebrief, Mode=TwoWay}"/>
                             </Grid>
+                            <Grid Margin="0,8,0,0" Visibility="{Binding LiveEnabled, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{loc:T coaching.live.bestEver}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.TextSoft}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap" ToolTip="{loc:T coaching.live.bestEver.tip}"/>
+                                <CheckBox Grid.Column="1" Style="{DynamicResource Cp.Switch}" IsChecked="{Binding CompareWithBestEver, Mode=TwoWay}"/>
+                            </Grid>
+                            <!-- The best lap ever kept for each track and car -->
+                            <Expander Margin="0,10,0,0" Foreground="{DynamicResource Cp.TextSoft}">
+                                <Expander.Header>
+                                    <TextBlock Text="{loc:T coaching.reference.title}" Style="{DynamicResource Cp.Hint}" Foreground="{DynamicResource Cp.TextSoft}"/>
+                                </Expander.Header>
+                                <StackPanel Margin="0,6,0,0">
+                                    <TextBlock Style="{DynamicResource Cp.Hint}" TextWrapping="Wrap" Text="{loc:T coaching.reference.hint}"/>
+                                    <ItemsControl ItemsSource="{Binding References}" Margin="0,6,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="ui:ReferenceItem">
+                                                <Grid Margin="0,3">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="{DynamicResource Cp.Text}" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding Detail}" Style="{DynamicResource Cp.Hint}"/>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1" Content="{loc:T coaching.reference.clear}" Style="{DynamicResource Cp.Button}" Command="{Binding ClearCommand}"
+                                                            VerticalAlignment="Center" Margin="6,0,0,0" Padding="8,2"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Style="{DynamicResource Cp.Hint}" Text="{loc:T coaching.reference.none}" Margin="0,4,0,0"
+                                               Visibility="{Binding HasNoReferences, Converter={StaticResource BoolToVis}}"/>
+                                    <Button Content="{loc:T coaching.reference.fromIbt}" Style="{DynamicResource Cp.Button}" Command="{Binding SetReferenceCommand}" Margin="0,8,0,0"
+                                            ToolTip="{loc:T coaching.reference.fromIbt.tip}"/>
+                                </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </Border>
                     <!-- The main action on a row of its own, the two small ones split the row under it:

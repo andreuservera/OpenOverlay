@@ -91,9 +91,10 @@ public static class DebriefText
             return spoken ? $"Best lap, {time}." : $"Lap {d.LapNumber}: {time}, best lap.";
         }
 
+        var best = d.AgainstReferenceLap ? "your best ever" : "your best";
         return spoken
-            ? $"{time}, {Tenths(d.DeltaToBestSeconds)} off your best."
-            : $"Lap {d.LapNumber}: {time}, +{d.DeltaToBestSeconds.ToString("0.000", Inv)} s to best.";
+            ? $"{time}, {Tenths(d.DeltaToBestSeconds)} off {best}."
+            : $"Lap {d.LapNumber}: {time}, +{d.DeltaToBestSeconds.ToString("0.000", Inv)} s to {(d.AgainstReferenceLap ? "best ever" : "best")}.";
     }
 
     private static string M(double metres) => $"{Math.Round(metres).ToString("0", Inv)} metres";

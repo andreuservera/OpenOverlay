@@ -243,6 +243,33 @@ public class CornerValidityTests
     }
 
     [Fact]
+    public void AfterPitExitEveryCornerInTheColdStretchIsVoidedNotJustTwo()
+    {
+        // Spa-like: a flat corner right after pit exit, then another before the tyres are warm.
+        var lap = new Laps.LapTrace(7000);
+        for (var i = 0; i < lap.Length; i++)
+        {
+            lap.Speed[i] = 60;
+            lap.Time[i] = i / 60f;
+            lap.Throttle[i] = 1;
+            lap.PitRoad[i] = i < 900;
+        }
+
+        var map = new CornerMap(7000,
+        [
+            new Corner("T1", 950, 1000, 1080),   // Eau Rouge
+            new Corner("T2", 1100, 1200, 1330),  // Raidillon
+            new Corner("T3", 1500, 1590, 1670),  // Kemmel: 600 m after pit exit
+            new Corner("T4", 2300, 2400, 2550),  // Les Combes
+        ]);
+
+        var passes = CornerAnalyzer.Analyze(lap, map, 1);
+
+        Assert.All(passes.Take(3), p => Assert.True(p.Flaws.HasFlag(CornerPassFlaw.PitExit)));
+        Assert.False(passes[3].Flaws.HasFlag(CornerPassFlaw.PitExit));
+    }
+
+    [Fact]
     public void AnOffOnTheWayIntoACornerVoidsTheCornerBefore()
     {
         var normal = Track.SpeedProfile();

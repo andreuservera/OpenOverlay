@@ -50,6 +50,10 @@ public sealed record LapDebrief(
     /// didn't count included; null until every corner has one.</summary>
     public double? TheoreticalBestLapTime { get; init; }
 
+    /// <summary>Compared with the stored reference lap (the best lap ever for this track and car)
+    /// rather than this session's best.</summary>
+    public bool AgainstReferenceLap { get; init; }
+
     /// <summary>Time lost in the reported corners together.</summary>
     public double ReportedLossSeconds => Corners.Sum(c => c.LossSeconds);
 }
@@ -92,9 +96,10 @@ public sealed class PostLapCoach
     {
         var coach = new PostLapCoach(options);
         session.CornerMapChanged += _ => coach.Reset();
-        session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.BestPasses, session.BestLap?.LapTime ?? a.Lap.LapTime, session.CornerTypeById) with
+        session.LapAnalyzed += a => onDebrief(coach.Debrief(a, session.CoachingReference, session.CoachingReferenceLapTime ?? a.Lap.LapTime, session.CornerTypeById) with
         {
             TheoreticalBestLapTime = session.TheoreticalBestLapTime,
+            AgainstReferenceLap = session.CoachingAgainstReference,
         });
         return coach;
     }

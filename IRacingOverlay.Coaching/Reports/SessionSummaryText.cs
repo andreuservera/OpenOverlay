@@ -37,7 +37,7 @@ public static partial class SessionSummaryText
             lines.Add($"Clean laps were {Seconds(gap)} off your best on average, with a spread of {Seconds(spread)}.");
         }
 
-        var costliest = r.Corners.Where(c => c.MedianLoss is > 0.0005).MaxBy(c => c.MedianLoss);
+        var costliest = Costliest(r);
         if (costliest is not null)
         {
             lines.Add($"A normal lap loses the most at {costliest.Name}: {Seconds(costliest.MedianLoss!.Value)} against your best pass.");
@@ -51,6 +51,21 @@ public static partial class SessionSummaryText
         return lines;
     }
 
+    /// <summary>A "normal lap" figure needs this many compared passes to be one.</summary>
+    public const int MinComparedPasses = 3;
+
+    /// <summary>The corners with enough compared passes for their normal-lap loss to mean something;
+    /// every corner when none has (a session of two or three clean laps).</summary>
+    public static IReadOnlyList<CornerReport> Representative(SessionReport r)
+    {
+        var enough = r.Corners.Where(c => c.ComparedPasses >= MinComparedPasses).ToList();
+        return enough.Count > 0 ? enough : r.Corners;
+    }
+
+    /// <summary>The corner a normal lap loses the most in, among <see cref="Representative"/> ones.</summary>
+    public static CornerReport? Costliest(SessionReport r) =>
+        Representative(r).Where(c => c.MedianLoss is > 0.0005).MaxBy(c => c.MedianLoss);
+
     /// <summary>
     /// Which phase of the corners a normal lap loses its time in, over the whole lap: "Most of it
     /// goes under braking (0.42 s a lap), then on the straights after the corners (0.30 s)."
@@ -58,7 +73,7 @@ public static partial class SessionSummaryText
     /// </summary>
     public static string? WhereTheTimeGoes(SessionReport r)
     {
-        var totals = r.Corners.SelectMany(c => c.LossByPhase)
+        var totals = Representative(r).SelectMany(c => c.LossByPhase)
             .GroupBy(p => p.Phase)
             .Select(g => (Phase: g.Key, Seconds: g.Sum(p => Math.Max(0, p.Seconds))))
             .Where(x => x.Seconds >= 0.01)

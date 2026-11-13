@@ -157,6 +157,10 @@ public sealed record CornerReport
     /// <summary>Speed and pedals through the corner on the typical pass.</summary>
     public CornerTrace? TypicalTrace { get; init; }
 
+    /// <summary>Clean passes compared with the best one (every clean pass but the best).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int ComparedPasses => Passes.Count(p => p.Loss is not null && !p.IsBest);
+
     /// <summary>Where a normal lap loses its time here: the median loss against the best pass in
     /// each phase (approach, braking, rotation, traction, straight), seconds.</summary>
     public List<PhaseLossRow> LossByPhase { get; init; } = [];
