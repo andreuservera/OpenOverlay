@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Corner-by-corner driving coach. Deliberately its own assembly: it only *reads* from
+    IRacingOverlay.Sdk and nothing in the existing app references it, so it cannot change how the
+    current overlay behaves.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IRacingOverlay.Sdk\IRacingOverlay.Sdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Offline Windows voices for the spoken debrief (Coaching only; the app doesn't reference it). -->
+    <PackageReference Include="System.Speech" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Turn names from Lovely Track Data (CC BY-NC-SA 4.0, see TrackData/README.md). -->
+    <None Include="TrackData\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="TrackData" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IRacingOverlay.Coaching.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -38,6 +38,8 @@ public static class PanelFactory
         WidgetCatalog.TrackInfo => new TrackInfoPanel { Options = options.TrackInfo ?? new TrackInfoOptions() },
         WidgetCatalog.Weather => new WeatherPanel { Options = options.Weather ?? new WeatherOptions() },
         WidgetCatalog.TrackMap => new TrackMapPanel(),
+        WidgetCatalog.CircuitMap => new CircuitMapPanel(),
+        WidgetCatalog.Radar => new RadarPanel(),
         WidgetCatalog.FuelCalculator => new FuelCalculatorPanel { Options = options.FuelCalculator ?? new FuelCalculatorOptions() },
         _ => null,
     };
@@ -108,6 +110,12 @@ public static class PanelFactory
                 break;
             case TrackMapPanel trackMap:
                 trackMap.UpdateState(PreviewData.TrackMap(options.Scenario));
+                break;
+            case RadarPanel radar:
+                radar.UpdateState(PreviewData.Radar());
+                break;
+            case CircuitMapPanel circuitMap:
+                circuitMap.UpdateState(PreviewData.CircuitMap(options.Scenario));
                 break;
             case FuelCalculatorPanel fuelCalculator:
                 fuelCalculator.UpdateState(PreviewData.FuelCalculator());

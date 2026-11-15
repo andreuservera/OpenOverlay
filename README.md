@@ -102,6 +102,8 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
   optional gear, speed and steering; choose and reorder its parts.
 - **Incidents** — your incident count, and your team's in a team race.
 - **Track map** — every car's position around the lap on one bar, coloured by class.
+- **Circuit map** — every car on the track's real shape. The shape is learnt from one clean lap you drive at the track (no pit road, no tow or reset) and kept in `%LOCALAPPDATA%\IRacingOverlay\trackmaps`; delete a track's file there to learn it again.
+- **Radar** — the cars around you seen from above: who is alongside and on which side, and how close the cars behind and ahead are, within 20 m. iRacing only says which side a car is on, not exactly where, so cars alongside sit in a lane beside yours.
 
 ### Layouts
 
@@ -114,6 +116,23 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 - **Export and import** layouts as files, choosing the monitor they go on.
 - Give each layout its own **shortcut**, and use global ones to open/close the selected layout,
   switch to the next or previous one, or edit it.
+- **Open automatically** — a layout can open by itself for a kind of session (practice, qualifying,
+  race), a car, or both. When what you drive changes, the best match opens; when nothing matches, a
+  layout that opened by itself closes again. Opening mid-session never asks anything: a monitor that
+  isn't connected leaves it closed, and a different resolution scales the positions.
+
+### Coaching (beta)
+
+- A **Coaching** page in the Control Panel that studies your laps corner by corner, after the
+  session or from any `.ibt` telemetry file (recorded with `Alt+L` in iRacing): best lap,
+  theoretical best, where the time goes, the mistakes you repeat, and every corner against your own
+  best (brake point, minimum speed, throttle pick-up, exit speed).
+- Corners are learnt once per track and named from track data (La Source, Eau Rouge, 130R…).
+- **Live coaching**, off by default: when switched on (on the page or with a shortcut), a short
+  spoken debrief as you cross the line, against your session's best or your best lap ever for the
+  track and car. When off, nothing of the coach runs while iRacing is open.
+- Beta: the findings are tuned for GT3 cars first and may change. Fully offline, using the free
+  Windows voices.
 
 ### Control and comfort
 
@@ -137,6 +156,9 @@ flags, fuel calculator, incidents, delta, cockpit and pedals all on one screen:
 - Settings are saved crash-safe, with a backup of the previous version.
 - **Logs and diagnostics** stay on your PC: one log file per day (kept 30 days), **Copy
   diagnostics** and **Export report** (a .zip with logs, crash reports and settings) for bug reports.
+- **Replay a session** (Diagnostics) — plays an .ibt telemetry file into the overlays on a loop, as if
+  you were driving, to try a layout or a widget without iRacing. Only while iRacing is closed, since
+  the recording goes into the same shared memory the sim uses.
 - **What's New, Changelog and About** — the version you're running (always in the status bar), its
   build and update channel, what changed in it, and every earlier release. After an update, a short
   notice says what's new, once.
@@ -244,6 +266,10 @@ git push origin main v0.2.0
 
 The workflow stops if the tag doesn't match the newest entry.
 
+**Code signing:** add the repository secrets `SIGNING_CERT_PFX_BASE64` (the code-signing `.pfx`,
+base64-encoded) and `SIGNING_CERT_PASSWORD`, and the workflow signs the app and installer through
+Velopack (`signtool`, SHA-256, timestamped). Without them it builds unsigned, as before.
+
 **Manually**, if you want to build/test an installer locally first:
 
 ```powershell
@@ -261,6 +287,11 @@ compute yet; every release after that will ship a small delta update instead of 
 its version from the newest `[X.Y.Z]` entry, and that entry is what the app shows as What's New and
 what the release says on GitHub; the Changelog page shows the whole file. Headings without a
 version, such as `[Unreleased]`, are ignored.
+
+## Security
+
+Please report security problems privately; see [SECURITY.md](SECURITY.md), which also says what the
+app reads, writes and connects to.
 
 ## Contributing
 

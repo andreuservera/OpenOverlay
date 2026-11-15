@@ -146,6 +146,13 @@ public sealed class Layout
 
     public bool HotkeyEnabled { get; set; } = true;
 
+    /// <summary>The kinds of session this layout opens by itself for (see <see cref="LayoutAutoOpen"/>).
+    /// Set on the Layouts page and kept by the store like the shortcut; an export leaves it out.</summary>
+    public List<SessionKind> AutoSessions { get; set; } = [];
+
+    /// <summary>The car (iRacing's CarScreenName) this layout opens by itself for, or null for any.</summary>
+    public string? AutoCar { get; set; }
+
     [JsonInclude]
     public IReadOnlyList<LayoutWidget> Widgets
     {
@@ -226,6 +233,9 @@ public sealed class Layout
         // Two layouts can't share a shortcut.
         copy.Hotkey = null;
         copy.HotkeyEnabled = true;
+        // Nor the same automatic opening: only one of them could ever win.
+        copy.AutoSessions = [];
+        copy.AutoCar = null;
         return copy;
     }
 
@@ -281,6 +291,8 @@ public sealed class Layout
         GridSize = GridSize,
         Hotkey = Hotkey,
         HotkeyEnabled = HotkeyEnabled,
+        AutoSessions = [.. AutoSessions],
+        AutoCar = AutoCar,
         _widgets = _widgets.Select(widget => widget.Clone()).ToList(),
     };
 

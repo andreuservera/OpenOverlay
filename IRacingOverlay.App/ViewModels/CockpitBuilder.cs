@@ -211,7 +211,7 @@ internal static class CockpitBuilder
     }
 
     /// <summary>"5.7536 km" → 5753.6. iRacing writes the session's TrackLength in kilometres; anything unparsable is null.</summary>
-    private static double? ParseTrackLengthMeters(string? text)
+    internal static double? ParseTrackLengthMeters(string? text)
     {
         var km = text?.Replace("km", "").Trim();
         return double.TryParse(km, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0

@@ -11,6 +11,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.App", "IRaci
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.App.Tests", "IRacingOverlay.App.Tests\IRacingOverlay.App.Tests.csproj", "{1B37AC04-5285-43A1-9059-81935C3BD367}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Coaching", "IRacingOverlay.Coaching\IRacingOverlay.Coaching.csproj", "{729CFF4E-AFC7-47D4-8198-473507064543}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Coaching.Tests", "IRacingOverlay.Coaching.Tests\IRacingOverlay.Coaching.Tests.csproj", "{F494D19A-26F8-4F87-BF9A-1E768C7EE2C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Coaching.Cli", "IRacingOverlay.Coaching.Cli\IRacingOverlay.Coaching.Cli.csproj", "{E9BE956B-A758-4608-9C04-78085CACEFE2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IRacingOverlay.Coaching.Ui", "IRacingOverlay.Coaching.Ui\IRacingOverlay.Coaching.Ui.csproj", "{FBFA4F95-82C7-4A7D-90CE-9E25B7B32D30}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +44,21 @@ Global
 		{1B37AC04-5285-43A1-9059-81935C3BD367}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1B37AC04-5285-43A1-9059-81935C3BD367}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1B37AC04-5285-43A1-9059-81935C3BD367}.Release|Any CPU.Build.0 = Release|Any CPU
+		{729CFF4E-AFC7-47D4-8198-473507064543}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{729CFF4E-AFC7-47D4-8198-473507064543}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{729CFF4E-AFC7-47D4-8198-473507064543}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{729CFF4E-AFC7-47D4-8198-473507064543}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F494D19A-26F8-4F87-BF9A-1E768C7EE2C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F494D19A-26F8-4F87-BF9A-1E768C7EE2C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F494D19A-26F8-4F87-BF9A-1E768C7EE2C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F494D19A-26F8-4F87-BF9A-1E768C7EE2C8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9BE956B-A758-4608-9C04-78085CACEFE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9BE956B-A758-4608-9C04-78085CACEFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9BE956B-A758-4608-9C04-78085CACEFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9BE956B-A758-4608-9C04-78085CACEFE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FBFA4F95-82C7-4A7D-90CE-9E25B7B32D30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBFA4F95-82C7-4A7D-90CE-9E25B7B32D30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBFA4F95-82C7-4A7D-90CE-9E25B7B32D30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBFA4F95-82C7-4A7D-90CE-9E25B7B32D30}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -86,6 +86,15 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
         AddHomePage();
 
+        // Coaching stands alone under Home: the page is the coach's own view (IRacingOverlay.Coaching.Ui),
+        // shown over the settings and preview panes while it is open (MainWindow.xaml).
+        NavItems.Add(NavItem.ForPage(
+            CoachingPageKey, "nav.coaching.title", "nav.coaching.blurb",
+            "M4,20 H20 M5,16 L9,11 L13,14 L19,7 M15,7 H19 V11", "#coaching"));
+        // Its texts are in the app's language files ("coaching." keys); the page follows the language.
+        IRacingOverlay.Coaching.Ui.CoachingText.Use(Loc.T, Loc.Current);
+        Loc.Changed += () => IRacingOverlay.Coaching.Ui.CoachingText.Changed(Loc.Current);
+
         foreach (var descriptor in WidgetCatalog.All)
         {
             var slot = new WidgetSlot(descriptor, () => CreateWidget(descriptor.Key));
@@ -146,6 +155,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         Select(NavItems[0]);
     }
 
+    private const string CoachingPageKey = "app.coaching";
     private const string GeneralPageKey = "app.general";
     private const string HotkeysPageKey = "app.hotkeys";
     private const string DiagnosticsPageKey = "app.diagnostics";
@@ -512,6 +522,7 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasPreview));
         OnPropertyChanged(nameof(IsHomePage));
         OnPropertyChanged(nameof(IsHelpPage));
+        OnPropertyChanged(nameof(IsCoachingPage));
         OnPropertyChanged(nameof(HomeScreen));
         OnPropertyChanged(nameof(PreviewLayout));
         OnPropertyChanged(nameof(HasLayoutPreview));
@@ -543,6 +554,9 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     public WidgetSlot? SelectedWidget => _selected?.Widget;
 
+    /// <summary>The Coaching page is open: its own view covers the settings and preview panes.</summary>
+    public bool IsCoachingPage => _selected?.Key == CoachingPageKey;
+
     public bool HasPreview => _selected?.IsWidget == true;
 
     private OverlayWindowBase CreateWidget(string key) => key switch
@@ -558,6 +572,8 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
         WidgetCatalog.TrackInfo => Configured(new TrackInfoWidget(), w => w.SetOptions(TrackInfoOptions)),
         WidgetCatalog.Weather => Configured(new WeatherWidget(), w => w.SetOptions(WeatherOptions)),
         WidgetCatalog.TrackMap => new TrackMapWidget(),
+        WidgetCatalog.CircuitMap => new CircuitMapWidget(),
+        WidgetCatalog.Radar => new RadarWidget(),
         WidgetCatalog.FuelCalculator => Configured(new FuelCalculatorWidget(), w => w.SetOptions(FuelCalculatorOptions)),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "No factory registered for this widget."),
     };

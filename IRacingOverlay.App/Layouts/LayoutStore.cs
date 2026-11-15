@@ -131,6 +131,20 @@ internal sealed class LayoutStore
         return true;
     }
 
+    /// <summary>Sets when a layout opens by itself. False if the layout doesn't exist.</summary>
+    public bool SetAutoOpen(Guid id, IReadOnlyList<SessionKind> sessions, string? car)
+    {
+        if (Find(id) is not { } layout)
+        {
+            return false;
+        }
+
+        layout.AutoSessions = [.. sessions.Distinct()];
+        layout.AutoCar = string.IsNullOrWhiteSpace(car) ? null : car;
+        Write();
+        return true;
+    }
+
     public bool Delete(Guid id)
     {
         if (_layouts.RemoveAll(layout => layout.Id == id) == 0)
@@ -157,6 +171,8 @@ internal sealed class LayoutStore
             // it opened must not bring back a shortcut changed since.
             copy.Hotkey = _layouts[index].Hotkey;
             copy.HotkeyEnabled = _layouts[index].HotkeyEnabled;
+            copy.AutoSessions = [.. _layouts[index].AutoSessions];
+            copy.AutoCar = _layouts[index].AutoCar;
             _layouts[index] = copy;
         }
         else

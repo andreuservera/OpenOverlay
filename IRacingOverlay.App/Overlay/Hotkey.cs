@@ -23,6 +23,9 @@ public static class HotkeyActions
     /// <summary>Opens the editor on the open layout (or the one chosen in the toolbar).</summary>
     public const string EditLayout = "EditLayout";
 
+    /// <summary>Switches the coach's live coaching on or off (IRacingOverlay.Coaching.Ui.LiveCoaching).</summary>
+    public const string ToggleLiveCoaching = "ToggleLiveCoaching";
+
     private const string WidgetPrefix = "ToggleWidget.";
     private const string LayoutPrefix = "OpenLayout.";
 
@@ -31,6 +34,9 @@ public static class HotkeyActions
 
     /// <summary>The layout actions that are not tied to one layout. Unassigned by default.</summary>
     public static IReadOnlyList<string> Layouts { get; } = [ToggleLayout, NextLayout, PreviousLayout, EditLayout];
+
+    /// <summary>The coach's actions. Unassigned by default.</summary>
+    public static IReadOnlyList<string> Coaching { get; } = [ToggleLiveCoaching];
 
     public static string ToggleWidget(string widgetKey) => WidgetPrefix + widgetKey;
 

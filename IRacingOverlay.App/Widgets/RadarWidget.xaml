@@ -1,0 +1,13 @@
+<ov:OverlayWindowBase x:Class="IRacingOverlay.App.Widgets.RadarWidget"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ov="clr-namespace:IRacingOverlay.App.Overlay"
+        xmlns:w="clr-namespace:IRacingOverlay.App.Widgets"
+        Title="Radar">
+    <Grid>
+        <ov:ScalablePanel x:Name="Scaler" ShowButtons="{Binding IsEditMode}" PersistenceKey="Widget.Radar">
+            <w:RadarPanel/>
+        </ov:ScalablePanel>
+        <Border Style="{StaticResource EditFrame}"/>
+    </Grid>
+</ov:OverlayWindowBase>

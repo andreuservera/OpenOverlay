@@ -66,6 +66,8 @@ public static class WidgetCatalog
     public const string TrackInfo = "TrackInfo";
     public const string Weather = "Weather";
     public const string TrackMap = "TrackMap";
+    public const string CircuitMap = "CircuitMap";
+    public const string Radar = "Radar";
     public const string FuelCalculator = "FuelCalculator";
 
     /// <summary>Grouped by what they are for — the race around you, your car and driving, the track
@@ -80,6 +82,10 @@ public static class WidgetCatalog
 
         new(TrackMap, "M5,7 H13 A5,5 0 0 1 13,17 H9 A4,4 0 0 1 9,9 H19", PreviewWidth: 700, HeaderByDefault: false, PreviewPhoto: "singapur.jpg"),
 
+        // A closed loop: the real shape of the track, learned from a lap driven there.
+        new(CircuitMap, "M7,4 H14 A4,4 0 0 1 18,8 A3,3 0 0 1 15,12 H11 A2,2 0 0 0 11,16 H17 A2,2 0 0 1 17,20 H7 A4,4 0 0 1 3,16 V8 A4,4 0 0 1 7,4 Z",
+            HeaderByDefault: false, PreviewPhoto: "spa.jpg"),
+
         new(Flag, "M5,3 V21 M5,4 H18 L15.5,8.5 L18,13 H5", PreviewPhoto: "spa.jpg"),
 
         new(Incident, "M12,4 L22,20 H2 Z M12,10 V15 M12,17.6 V17.8", HeaderByDefault: false, PreviewPhoto: "nogaro.jpg"),
@@ -91,6 +97,10 @@ public static class WidgetCatalog
         new(FuelCalculator, "M5,3 H19 V21 H5 Z M8,7 H16 M8,11.5 H10 M13.5,11.5 H16 M8,16 H10 M13.5,16 H16", Category: WidgetCategory.Car, PreviewPhoto: "bcn.jpg"),
 
         new(Delta, "M12,21 A8,8 0 1 0 12,5 A8,8 0 0 0 12,21 Z M12,9.5 V13 L14.5,15 M9.5,2.5 H14.5", Category: WidgetCategory.Car, HeaderByDefault: false, PreviewPhoto: "bcn.jpg"),
+
+        // Seen from above: the player's car with one alongside.
+        new(Radar, "M10,8 H14 V16 H10 Z M3,6 H7 V14 H3 Z M17,11 H21 V19 H17 Z", Category: WidgetCategory.Car, HeaderByDefault: false,
+            PreviewPhoto: "spa.jpg"),
 
         new(PedalTrace, "M3,17 L8,9 L12,14 L16,6 L21,12", PreviewHeight: 110, Category: WidgetCategory.Car, PreviewPhoto: "nogaro.jpg"),
 
