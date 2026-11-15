@@ -42,7 +42,7 @@ public partial class RelativePanel : UserControl
             new Dictionary<TableInfoElement, FrameworkElement>
             {
                 [TableInfoElement.SessionType] = SessionTypeText,
-                [TableInfoElement.Sof] = SofText,
+                [TableInfoElement.Sof] = SofField,
                 [TableInfoElement.SessionLaps] = SessionLapsField,
                 [TableInfoElement.SessionTime] = SessionTimeField,
                 [TableInfoElement.BrakeBias] = BrakeBiasField,
@@ -59,7 +59,7 @@ public partial class RelativePanel : UserControl
     public void SetSessionType(string label) =>
         SessionTypeText.Text = label;
 
-    public void SetSof(double sof) => SofText.Text = StandingsPanel.FormatSof(sof);
+    public void SetSof(double sof) => StandingsPanel.ShowSof(SofField, SofText, sof);
 
     public void SetConditions(TableConditions conditions)
     {

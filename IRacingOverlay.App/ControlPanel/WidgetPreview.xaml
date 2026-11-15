@@ -53,8 +53,9 @@
         <!-- Fit / actual size. Says how far a fitted preview is scaled down, so a widget shown
              smaller than it will be is never mistaken for its real size. -->
         <ToggleButton x:Name="ActualSizeToggle" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12"
-                      Cursor="Hand" Focusable="False" Checked="ActualSizeToggle_Changed" Unchecked="ActualSizeToggle_Changed"
-                      ToolTip="{loc:T preview.fitShrinksThePreview}">
+                      Cursor="Hand" FocusVisualStyle="{DynamicResource Cp.FocusRing}"
+                      Checked="ActualSizeToggle_Changed" Unchecked="ActualSizeToggle_Changed"
+                      ToolTip="{loc:T preview.fitShrinksThePreview}" AutomationProperties.Name="{loc:T preview.fitShrinksThePreview}">
             <ToggleButton.Template>
                 <ControlTemplate TargetType="ToggleButton">
                     <Border x:Name="Chrome" Background="#99000000" CornerRadius="5" Padding="8,4"

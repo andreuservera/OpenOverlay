@@ -157,6 +157,8 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
+                // One car parked in the garage, so the absent row shows next to the pit one.
+                InGarage = i == 11,
                 // Every penalty tag: black, furled black, meatball, and two at once split down the middle.
                 HasBlackFlag = i == 6 || i == 10,
                 HasFurledFlag = i == 5 || i == 15,

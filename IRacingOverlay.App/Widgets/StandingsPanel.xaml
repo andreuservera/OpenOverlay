@@ -15,9 +15,15 @@
             <StackPanel x:Name="InfoHolder" DockPanel.Dock="Top" Visibility="Collapsed">
                 <!-- The session being run (RACE, QUALIFYING, PRACTICE). Trimmed rather than allowed
                      to push the band wider than the table. -->
-                <TextBlock x:Name="SessionTypeText" Text="" Style="{StaticResource ColumnHeader}" TextTrimming="CharacterEllipsis"/>
-                <!-- SOF describes the whole lobby, so it belongs here once rather than as a column. -->
-                <TextBlock x:Name="SofText" Text="" Style="{StaticResource ColumnHeader}"/>
+                <TextBlock x:Name="SessionTypeText" Text="" Style="{StaticResource DataCell}" Foreground="{StaticResource Text.Primary}"
+                           TextTrimming="CharacterEllipsis"/>
+                <!-- SOF describes the whole lobby, so it belongs here once rather than as a column. Label
+                     and figure like every other field in the band; hidden when the session has none. -->
+                <StackPanel x:Name="SofField" Orientation="Horizontal" Visibility="Collapsed">
+                    <TextBlock Text="SOF" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="SofText" Text="" Style="{StaticResource DataCell}"
+                               FontFamily="{DynamicResource Theme.NumericFontFamily}" Foreground="{StaticResource Text.Primary}"/>
+                </StackPanel>
                 <StackPanel x:Name="SessionLapsField" Orientation="Horizontal">
                     <TextBlock Text="{loc:T table.lap}" Style="{StaticResource FieldLabel}" Margin="0,0,6,0"/>
                     <TextBlock x:Name="SessionLapsText" Text="—" Style="{StaticResource DataCell}"

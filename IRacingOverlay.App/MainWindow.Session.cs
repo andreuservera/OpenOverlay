@@ -81,6 +81,7 @@ public partial class MainWindow
             _pedalTraceBuilder = new();
             _sessionBestLapTracker = new();
             _pitStopTracker = new();
+            _garageTracker = new();
             _lineCrossings = new();
             _estTimeProfile = new();
             _penaltyTracker = new();

@@ -135,6 +135,20 @@ public class FlagBuilderTests
     }
 
     [Fact]
+    public void BlueFlag_RallycrossStart_PlayerStillOnTheGrid_NobodyIsLappingThem()
+    {
+        // The rallycross grid sits off the lap path, read at ~0.5 of lap 0; the cars that got away
+        // first are just over the line on lap 1. Half a lap apart by the numbers, not a lap down.
+        var (snapshot, session) = BlueOnTheOpeningLaps([(0, 0.48f, 1, 50), (1, 0.02f, 1, 50), (1, 0.01f, 1, 50)]);
+        OpeningLapBlue? reported = null;
+
+        var flags = FlagBuilder.Decode(snapshot, session, check => reported = check);
+
+        Assert.DoesNotContain(flags, f => f.Kind == FlagKind.Blue);
+        Assert.Equal(OpeningLapBlueReason.Unconfirmed, reported?.Reason);
+    }
+
+    [Fact]
     public void BlueFlag_OnTheOpeningLaps_ShownWhenACarIsLappingThePlayer()
     {
         // Towed on lap 1: the player rejoins at 1.3 laps, the leader is coming through on 2.25.

@@ -81,6 +81,8 @@ public partial class MainWindow
         var trackersMark = PerfProbe.Begin();
         // Every tick, whatever is open: a stop is timed on entry and exit, and a missed edge loses it.
         _pitStopGuard.Run(() => _pitStopTracker.Update(telemetry, session), GuardStage.Build);
+        // Every tick too: leaving the world is timed, and a car only counts as gone after a while.
+        _garageGuard.Run(() => _garageTracker.Update(telemetry, session), GuardStage.Build);
         // Every tick too: a crossing is timed from the ticks either side of the line, and the time
         // curve is learned from wherever the cars are each tick.
         _lineCrossingGuard.Run(() => _lineCrossings.Update(telemetry, session), GuardStage.Build);
@@ -114,7 +116,7 @@ public partial class MainWindow
             if (_standingsGuard.TryRun(
                     () => StandingsBuilder.BuildStandings(
                         telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings,
-                        _logPreGreenGrid ??= LogPreGreenGrid),
+                        _logPreGreenGrid ??= LogPreGreenGrid, _garageTracker.InGarage),
                     out var standings))
             {
                 _latestStandings = standings;

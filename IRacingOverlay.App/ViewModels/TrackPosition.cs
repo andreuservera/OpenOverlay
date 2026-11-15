@@ -16,8 +16,19 @@ internal readonly record struct TrackPosition(int Lap, double LapDistPct)
     public double RaceDistance => Lap + LapDistPct;
 
     /// <summary>How far ahead in the race <paramref name="other"/> is, in laps, whole laps included:
-    /// a car a lap down reads about -1 wherever it is on the road.</summary>
-    public double RaceGapTo(TrackPosition other) => other.RaceDistance - RaceDistance;
+    /// a car a lap down reads about -1 wherever it is on the road. A car still on lap 0 counts as on
+    /// the start line (<see cref="LapCountingDistance"/>).</summary>
+    public double RaceGapTo(TrackPosition other) => other.LapCountingDistance - LapCountingDistance;
+
+    /// <summary>
+    /// <see cref="RaceDistance"/> for counting laps up or down. A car on lap 0 hasn't crossed the start
+    /// line since the green, so it counts as on the line: where iRacing places it before then says
+    /// nothing about laps. Rallycross grids sit off the lap path — at Phoenix the grid reads ~0.54 on
+    /// lap 0 and jumps to ~0.97 as the car joins the circuit (seen in an .ibt, 2026-11-09) — so a car
+    /// still on the grid read half a lap behind the player who had just crossed, and the Relative
+    /// showed it as lapped for the seconds it took to get going.
+    /// </summary>
+    private double LapCountingDistance => Lap == 0 ? 1 : RaceDistance;
 
     /// <summary>
     /// How far up the road <paramref name="other"/> is, in laps, folded into [-0.5, 0.5): positive

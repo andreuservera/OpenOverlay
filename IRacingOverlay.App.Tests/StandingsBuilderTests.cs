@@ -2149,10 +2149,10 @@ public class StandingsBuilderTests
     }
 
     [Fact]
-    public void BuildRelative_SessionSmallerThanTheWindow_IsNotPaddedPastItsRoster()
+    public void BuildRelative_SessionSmallerThanTheWindow_StillReservesEverySlot()
     {
-        // Asking for 10 each side in a two-car session must not produce a column of blanks: one
-        // slot each side, the player in the middle.
+        // A two-car session with four slots each side keeps the full nine rows, the player in the
+        // middle: the widget holds the size it was laid out at, alone on track or not.
         var snapshot = TestSnapshotFactory.Build(FieldVars(9), w =>
         {
             w.SetInt("SessionNum", 0);
@@ -2162,12 +2162,30 @@ public class StandingsBuilderTests
             w.SetFloatArray("CarIdxBestLapTime", [94f, 93f, -1f, -1f, -1f, -1f, -1f, -1f, -1f]);
         });
 
-        var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(2, 0), maxEachSide: 10);
+        var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(2, 0), maxEachSide: 4);
 
-        Assert.Equal(3, rows.Count);
-        Assert.IsType<RelativePlaceholderRow>(rows[0]);
-        Assert.True(Assert.IsType<RelativeRow>(rows[1]).IsPlayer);
-        Assert.Equal(1, Assert.IsType<RelativeRow>(rows[2]).CarIdx);
+        Assert.Equal(9, rows.Count);
+        Assert.True(Assert.IsType<RelativeRow>(rows[4]).IsPlayer);
+        Assert.Equal(1, Assert.IsType<RelativeRow>(rows[5]).CarIdx);
+        Assert.Equal(7, rows.OfType<RelativePlaceholderRow>().Count());
+    }
+
+    [Fact]
+    public void BuildRelative_AloneOnTrack_KeepsTheFullWindow()
+    {
+        var snapshot = TestSnapshotFactory.Build(FieldVars(1), w =>
+        {
+            w.SetInt("SessionNum", 0);
+            w.SetIntArray("CarIdxLap", [10]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.5f]);
+            w.SetFloatArray("CarIdxLastLapTime", [95f]);
+        });
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, FieldOf(1, 0), maxEachSide: 3);
+
+        Assert.Equal(7, rows.Count);
+        Assert.True(Assert.IsType<RelativeRow>(rows[3]).IsPlayer);
+        Assert.Equal(6, rows.OfType<RelativePlaceholderRow>().Count());
     }
 
     [Fact]
@@ -2384,6 +2402,33 @@ public class StandingsBuilderTests
         Assert.True(reported?.LapCountDoubted);
         Assert.Equal((3, 3), (reported!.Lapped, reported.OnTrack));
         Assert.Equal(3, reported.Cars.Count);
+    }
+
+    [Fact]
+    public void BuildRelative_RallycrossStart_CarsStillOnTheGridAreNotLapped()
+    {
+        // Logged live at Phoenix rallycross (2026-11-09): the player (2) has just crossed onto lap 1.
+        // Car 1 is still on the off-track grid, which iRacing reads at ~0.5 of lap 0; car 4 is about
+        // to cross; car 5 has crossed but still reads lap 0.
+        var snapshot = RaceAt([1, 0, 1, 1, 0, 0], [0.010f, 0.505f, 0.040f, 0.002f, 0.999f, 0.008f]);
+        OpeningLapLapped? reported = null;
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(6, 2), maxEachSide: 5, onOpeningLapLapped: l => reported = l)
+            .OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
+        Assert.Null(reported);
+    }
+
+    [Fact]
+    public void BuildRelative_CarThatNeverLeftTheGrid_IsLappedOnceThePlayerIsALapUp()
+    {
+        var snapshot = RaceAt([2, 0], [0.30f, 0.505f]);
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(2, 0), maxEachSide: 4)
+            .OfType<RelativeRow>().ToDictionary(r => r.CarIdx, r => r.LapRelation);
+
+        Assert.Equal(LapRelation.Lapped, relative[1]);
     }
 
     [Fact]

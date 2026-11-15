@@ -80,7 +80,12 @@ public sealed partial class ControlPanelViewModel
         _homeScreen = screen;
         OnPropertyChanged(nameof(HomeScreen));
         OnPropertyChanged(nameof(HomeScreenCaption));
+        OnPropertyChanged(nameof(ShowsHomeSetupPrompt));
     }
+
+    /// <summary>Home with nothing switched on: the empty picture of the screen carries the way to
+    /// fill it, rather than only a sentence pointing somewhere else.</summary>
+    public bool ShowsHomeSetupPrompt => IsHomePage && !_slots.Values.Any(slot => slot.IsEnabled);
 
     /// <summary>Under Home's picture: which monitor it is, and how many widgets are on it.</summary>
     public string HomeScreenCaption => _homeScreen is { } screen
@@ -95,19 +100,27 @@ public sealed partial class ControlPanelViewModel
         }
 
         var onScreen = _slots.Values.Where(slot => slot.State == WidgetState.OnScreen).ToList();
-        var switchedOn = _slots.Values.Count(slot => slot.IsEnabled);
-        List<SettingsGroup> groups =
-        [
-            new SettingsGroup(Loc.T("home.rightNow"))
-                .With(
-                    new InfoSetting("iRacing", ConnectionHint.Length > 0 ? ConnectionHint : null, ConnectionLabel),
-                    LayoutRow(),
-                    new InfoSetting(
-                        Loc.T("home.onScreen"),
-                        onScreen.Count > 0 ? string.Join(", ", onScreen.Select(slot => slot.Descriptor.Name)) : null,
-                        Loc.F("home.countOf", onScreen.Count, _slots.Count)),
-                    new InfoSetting(Loc.T("home.switchedOn"), null, Loc.F("home.countOf", switchedOn, _slots.Count))),
-        ];
+        // Switched on but not on screen, each with the reason (waiting for the car, hidden by the
+        // hotkey, couldn't open): a bare "switched on" count next to "on screen" left the
+        // difference between the two numbers unexplained.
+        var notShowing = _slots.Values.Where(slot => slot.IsEnabled && slot.State != WidgetState.OnScreen).ToList();
+        var rightNow = new SettingsGroup(Loc.T("home.rightNow"))
+            .With(
+                new InfoSetting("iRacing", ConnectionHint.Length > 0 ? ConnectionHint : null, ConnectionLabel),
+                LayoutRow(),
+                new InfoSetting(
+                    Loc.T("home.onScreen"),
+                    onScreen.Count > 0 ? string.Join(", ", onScreen.Select(slot => slot.Descriptor.Name)) : null,
+                    Loc.F("home.countOf", onScreen.Count, _slots.Count)));
+        if (notShowing.Count > 0)
+        {
+            rightNow.Items.Add(new InfoSetting(
+                Loc.T("home.notShowing"),
+                string.Join(", ", notShowing.Select(slot => $"{slot.Descriptor.Name} ({slot.StateLabel})")),
+                notShowing.Count.ToString(CultureInfo.CurrentCulture)));
+        }
+
+        List<SettingsGroup> groups = [rightNow];
 
         var attention = Attention().ToList();
         if (attention.Count > 0)
@@ -115,28 +128,43 @@ public sealed partial class ControlPanelViewModel
             groups.Add(new SettingsGroup(Loc.T("home.needsAttention")) { IsWarning = true }.With([.. attention]));
         }
 
-        groups.Add(new SettingsGroup(Loc.T("home.quickActions"))
-            .With(
-                new ActionSetting(
-                    Loc.T("toolbar.editMode.move"),
-                    Loc.T(_isEditMode ? "home.move.editing" : "home.move.idle"),
-                    EditModeLabel,
-                    () => IsEditMode = !IsEditMode),
-                new ActionSetting(
-                    Loc.T(_overlaysHidden ? "home.hidden" : "home.hideAll"),
-                    Loc.T("home.hide.hint"),
-                    Loc.T(_overlaysHidden ? "home.showThem" : "home.hide"),
-                    () => OverlaysHidden = !OverlaysHidden),
-                new ActionSetting(
-                    Loc.T("nav.layouts.title"),
-                    HasLayouts ? Loc.F("home.layouts.saved", LayoutChoices.Count) : Loc.T("home.layouts.none"),
-                    Loc.T("home.layouts.open"),
-                    () => Navigate(LayoutsPageKey)),
-                new ActionSetting(
-                    Loc.T("home.preset"),
-                    Loc.T("home.preset.hint"),
-                    Loc.T("home.preset.start"),
-                    OpenSetupAssistant)));
+        // With nothing switched on, a preset is the next step, so it leads the actions (the empty
+        // picture of the screen beside them carries the primary button); once widgets are on it
+        // drops back to last.
+        var nothingOn = !_slots.Values.Any(slot => slot.IsEnabled);
+        var preset = new ActionSetting(
+            Loc.T("home.preset"),
+            Loc.T("home.preset.hint"),
+            Loc.T("home.preset.start"),
+            OpenSetupAssistant);
+        var quickActions = new SettingsGroup(Loc.T("home.quickActions"));
+        if (nothingOn)
+        {
+            quickActions.Items.Add(preset);
+        }
+
+        quickActions.With(
+            new ActionSetting(
+                Loc.T("toolbar.editMode.move"),
+                Loc.T(_isEditMode ? "home.move.editing" : "home.move.idle"),
+                EditModeLabel,
+                () => IsEditMode = !IsEditMode),
+            new ActionSetting(
+                Loc.T(_overlaysHidden ? "home.hidden" : "home.hideAll"),
+                Loc.T("home.hide.hint"),
+                Loc.T(_overlaysHidden ? "home.showThem" : "home.hide"),
+                () => OverlaysHidden = !OverlaysHidden),
+            new ActionSetting(
+                Loc.T("nav.layouts.title"),
+                HasLayouts ? Loc.F("home.layouts.saved", LayoutChoices.Count) : Loc.T("home.layouts.none"),
+                Loc.T("home.layouts.open"),
+                () => Navigate(LayoutsPageKey)));
+        if (!nothingOn)
+        {
+            quickActions.Items.Add(preset);
+        }
+
+        groups.Add(quickActions);
 
         if (NewVersionNotice() is { } notice)
         {

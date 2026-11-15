@@ -57,6 +57,15 @@ public static class InfoBarDrag
         public FrameworkElement? Over { get; set; }
     }
 
+    /// <summary>Set on each chip, which the keyboard can focus: Enter or Space puts info from the
+    /// tray in the first free slot, Delete or Backspace takes it off the table.</summary>
+    public static readonly DependencyProperty IsChipProperty = DependencyProperty.RegisterAttached(
+        "IsChip", typeof(bool), typeof(InfoBarDrag), new PropertyMetadata(false));
+
+    public static bool GetIsChip(DependencyObject element) => (bool)element.GetValue(IsChipProperty);
+
+    public static void SetIsChip(DependencyObject element, bool value) => element.SetValue(IsChipProperty, value);
+
     private static void OnIsEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not FrameworkElement root || e.NewValue is not true)
@@ -64,10 +73,57 @@ public static class InfoBarDrag
             return;
         }
 
+        root.PreviewKeyDown += OnKey;
         root.PreviewMouseLeftButtonDown += OnPress;
         root.PreviewMouseMove += OnMove;
         root.PreviewMouseLeftButtonUp += OnRelease;
         root.LostMouseCapture += (_, _) => End(root);
+    }
+
+    private static void OnKey(object sender, KeyEventArgs e)
+    {
+        var root = (FrameworkElement)sender;
+        if (root.DataContext is not InfoBarSetting setting ||
+            Keyboard.FocusedElement is not FrameworkElement { DataContext: InfoChip chip } focused || !GetIsChip(focused))
+        {
+            return;
+        }
+
+        var inTray = setting.Available.Contains(chip);
+        if (inTray && e.Key is Key.Enter or Key.Space)
+        {
+            setting.Place(chip);
+        }
+        else if (!inTray && e.Key is Key.Delete or Key.Back)
+        {
+            setting.Move(chip, null);
+        }
+        else
+        {
+            return;
+        }
+
+        e.Handled = true;
+        // The chip is redrawn where it went; the keyboard follows it there.
+        root.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => FindChip(root, chip)?.Focus());
+    }
+
+    private static FrameworkElement? FindChip(DependencyObject node, InfoChip chip)
+    {
+        if (node is FrameworkElement element && GetIsChip(element) && Equals(element.DataContext, chip))
+        {
+            return element;
+        }
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+        {
+            if (FindChip(VisualTreeHelper.GetChild(node, i), chip) is { } found)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private static void OnPress(object sender, MouseButtonEventArgs e)
@@ -138,6 +194,15 @@ public static class InfoBarDrag
         var root = (FrameworkElement)sender;
         if (root.GetValue(StateProperty) is not DragState { Dragging: true } state)
         {
+            // A click without a drag on info that isn't on the table puts it in the first free
+            // slot: the drag stays the way to choose the slot, but is no longer the only way in.
+            if (root.GetValue(StateProperty) is DragState { Chip: var clicked } &&
+                root.DataContext is InfoBarSetting clickedSetting && clickedSetting.Available.Contains(clicked))
+            {
+                clickedSetting.Place(clicked);
+                e.Handled = true;
+            }
+
             root.ClearValue(StateProperty);
             return;
         }
