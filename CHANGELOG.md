@@ -2,7 +2,7 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.16.0] - 2026-11-15
+### [0.16.0] - 2026-11-22
 
 #### Added
 - Standings: cars parked in the garage, retired or disconnected stay in the table, dimmed, instead of looking like they're still racing; cars hidden by iRacing's max-cars setting aren't mistaken for them.
