@@ -2421,6 +2421,20 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildRelative_PaceLaps_LapCountFlippingAtTheLine_MarksNobody()
+    {
+        // Lanier pace laps (.ibt 2026-11-09): crossing the line sets the lap to 1 and it drops back to
+        // 0 some 5 s later, around 0.1–0.16. The player (0) on pole has just dropped back; the cars
+        // behind have just crossed and read lap 1, which made them look about to lap the player.
+        var snapshot = RaceAt([0, 1, 1, 0], [0.12f, 0.06f, 0.01f, 0.95f]);
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4)
+            .OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
+    }
+
+    [Fact]
     public void BuildRelative_CarThatNeverLeftTheGrid_IsLappedOnceThePlayerIsALapUp()
     {
         var snapshot = RaceAt([2, 0], [0.30f, 0.505f]);
