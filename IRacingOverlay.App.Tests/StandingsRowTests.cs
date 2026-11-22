@@ -128,14 +128,4 @@ public class StandingsRowTests
         // Colour follows the rounded value too, so a dash is never tinted as a gain.
         Assert.Equal("#8B95A3", Row(iRatingDelta: 0.4).IRatingDeltaForeground);
     }
-
-    [Theory]
-    [InlineData("Max Verstappen", "Max Verstappen")]
-    [InlineData("  Lando Norris ", "Lando Norris")]
-    [InlineData("Maria Garcia Lopez-Ortega", "M. G. Lopez-Ortega")]
-    [InlineData("José de la Fuente", "J. d. l. Fuente")]
-    public void NameDisplay_KeepsTheRegisteredCase_AndAbbreviatesLongNamesFromTheFront(string name, string expected)
-    {
-        Assert.Equal(expected, Row(name: name).NameDisplay);
-    }
 }

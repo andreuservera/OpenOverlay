@@ -105,6 +105,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private readonly HashSet<TableInfoElement> _shownExtras = [];
     private bool _showClassDrivers;
     private bool _showClassSof;
+    private DriverNameFormat _nameFormat;
+    private bool _uppercaseSurname;
     private DriverTableColumnLayout? _columns;
 
     public DriverTableOptions(DriverTable table)
@@ -359,6 +361,30 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     {
         get => _showClassSof;
         set => SetField(ref _showClassSof, value);
+    }
+
+    /// <summary>How each driver's name is written; <see cref="DriverNameFormat.Auto"/> fits it to the column.</summary>
+    public DriverNameFormat NameFormat
+    {
+        get => _nameFormat;
+        set
+        {
+            var format = Enum.IsDefined(value) ? value : DriverNameFormat.Auto;
+            if (_nameFormat == format)
+            {
+                return;
+            }
+
+            _nameFormat = format;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Writes the surname in capitals ("C. ALVAREZ"), easier to pick out at speed.</summary>
+    public bool UppercaseSurname
+    {
+        get => _uppercaseSurname;
+        set => SetField(ref _uppercaseSurname, value);
     }
 
     /// <summary>How much of the field to show around the player. Standings reads it as the total

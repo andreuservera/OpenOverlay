@@ -49,15 +49,15 @@ public static class PreviewData
         ("TCR", "#FF4F8B"),
     ];
 
-    // Names are invented but shaped like the real thing — a mix of lengths, including two long
-    // enough to exercise DriverRow's abbreviation, so the driver column is judged at its worst case.
+    // Names are invented but shaped like the real thing — a mix of lengths, including some too long
+    // for the driver column, so the preview shows how the chosen name format shortens them.
     private static readonly Entry[] Field =
     [
         new("Carlos Carrasco", "17", 6420, "A 4.21", 0.000, 0),
         new("Andreu Servera", "3", 5870, "A 3.88", 0.412, 0),
         new("Jan Kowalczyk", "44", 5240, "A 2.97", 1.104, 0),
         new("Marco Bianchi", "9", 4980, "B 4.55", 2.318, 1),
-        new("Ana Ruiz Delgado", "28", 4610, "B 3.72", 3.006, 1),
+        new("Ana María Ruiz Delgado", "28", 4610, "B 3.72", 3.006, 1),
         new("Kenji Nakamura", "71", 4330, "B 2.41", 4.221, 0),
         new("Owen Radcliffe", "5", 3980, "C 4.03", 5.517, 2),
         new("Pierre Lacroix", "62", 3720, "C 3.55", 6.884, 1),

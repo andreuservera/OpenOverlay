@@ -30,10 +30,6 @@ public enum PenaltyFlag
 /// </summary>
 public abstract class DriverRow
 {
-    // Roughly what the fixed driver column fits at the base type size. Past this the name is
-    // abbreviated rather than left to the ellipsis.
-    private const int NameBudget = 16;
-
     public required int CarIdx { get; init; }
     public required int Position { get; init; }
     public required int ClassPosition { get; init; }
@@ -130,10 +126,6 @@ public abstract class DriverRow
     /// "no laps", not minus one lap. Shown as a dash like every other unknown value.</summary>
     public string LapDisplay => CurrentLap >= 0 ? CurrentLap.ToString(CultureInfo.InvariantCulture) : "—";
 
-    /// <summary>Always upper case, and short enough to fit the fixed driver column without the
-    /// ellipsis doing the work. See <see cref="ShortenName"/>.</summary>
-    public string NameDisplay => ShortenName(Name);
-
     public string LastLapDisplay => FormatLapTime(LastLapTime);
 
     public bool HasLastPitStop => LastPitStop is not null;
@@ -229,31 +221,6 @@ public abstract class DriverRow
 
     /// <summary>The gap is the number a driver reads the table for, so it gets primary ink.</summary>
     public virtual string GapForeground => "#F2F4F7";
-
-    /// <summary>
-    /// Abbreviates from the front once a name is too long for the driver column: "Maria Garcia
-    /// Lopez" becomes "M. G. Lopez". The name keeps the case the driver registered it in. The surname stays intact because that's what identifies the
-    /// driver on a timing screen, and every row keeps ending in a real word instead of a row of
-    /// ellipses that all look alike at speed. A single long token is left for the UI to trim, since
-    /// there's nothing meaningful to drop.
-    /// </summary>
-    private static string ShortenName(string raw)
-    {
-        var name = (raw ?? string.Empty).Trim();
-        if (name.Length <= NameBudget)
-        {
-            return name;
-        }
-
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 2)
-        {
-            return name;
-        }
-
-        var shortened = string.Concat(parts[..^1].Select(p => $"{p[0]}. ")) + parts[^1];
-        return shortened.Length < name.Length ? shortened : name;
-    }
 
     private static string FormatLapTime(double seconds) =>
         seconds > 0 ? TimeSpan.FromSeconds(seconds).ToString(@"m\:ss\.fff", CultureInfo.InvariantCulture) : "—";

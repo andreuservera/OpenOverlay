@@ -2199,7 +2199,7 @@ public class StandingsBuilderTests
         Assert.Equal("10", me.LapDisplay);
         Assert.Equal("1:30.000", me.BestLapDisplay);
         Assert.Equal("1:35.000", me.LastLapDisplay);
-        Assert.Equal("Driver 4", me.NameDisplay);
+        Assert.Equal("Driver 4", me.Name);
         Assert.True(me.IsSessionFastestLap);
         Assert.Equal("0.0", me.GapDisplay); // the player's own gap to themselves: the reference point
     }

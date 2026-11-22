@@ -217,9 +217,14 @@
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                         <!-- Two pixels over the body size on the same line box: mixed-case names need
                              the extra x-height to read as quickly as the old all-caps ones. -->
-                        <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="16" FontWeight="Medium"
-                                   Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                        <!-- The wrapper writes the name in the chosen format, fitted to the room left. -->
+                        <w:DriverNameText FullName="{Binding Name, Mode=OneTime}"
+                                          Format="{Binding Options.NameFormat, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          UppercaseSurname="{Binding Options.UppercaseSurname, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <TextBlock x:Name="NameText" Style="{StaticResource DataCell}"
+                                       FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="16" FontWeight="Medium"
+                                       Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                        </w:DriverNameText>
                     </DockPanel>
 
                     <!-- Independent of the PIT badge: appears after the first completed stop and

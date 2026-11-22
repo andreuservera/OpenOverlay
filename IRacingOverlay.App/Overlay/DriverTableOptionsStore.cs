@@ -25,6 +25,8 @@ internal static class DriverTableOptionsStore
     private const string ShowClassDriversKey = "ShowClassDrivers";
     private const string ShowClassSofKey = "ShowClassSof";
     private const string ShowSessionTimeKey = "ShowSessionTime";
+    private const string NameFormatKey = "NameFormat";
+    private const string UppercaseSurnameKey = "UppercaseSurname";
 
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -77,6 +79,10 @@ internal static class DriverTableOptionsStore
 
     public static void SaveClassSof(DriverTable table, bool isVisible) => Set(table, ShowClassSofKey, isVisible ? 1 : 0);
 
+    public static void SaveNameFormat(DriverTable table, DriverNameFormat format) => Set(table, NameFormatKey, (int)format);
+
+    public static void SaveUppercaseSurname(DriverTable table, bool isEnabled) => Set(table, UppercaseSurnameKey, isEnabled ? 1 : 0);
+
     public static void SaveColumnOrder(DriverTable table, IReadOnlyList<DriverTableColumn> order)
     {
         Load();
@@ -113,6 +119,8 @@ internal static class DriverTableOptionsStore
 
         _cache[Key(options.Table, ShowClassDriversKey)] = options.ShowClassDrivers ? 1 : 0;
         _cache[Key(options.Table, ShowClassSofKey)] = options.ShowClassSof ? 1 : 0;
+        _cache[Key(options.Table, NameFormatKey)] = (int)options.NameFormat;
+        _cache[Key(options.Table, UppercaseSurnameKey)] = options.UppercaseSurname ? 1 : 0;
 
         SettingsFile.WriteJson(FilePath, _cache);
     }
@@ -146,6 +154,8 @@ internal static class DriverTableOptionsStore
 
         options.ShowClassDrivers = Get(options.Table, ShowClassDriversKey, 0) != 0;
         options.ShowClassSof = Get(options.Table, ShowClassSofKey, 0) != 0;
+        options.NameFormat = (DriverNameFormat)Get(options.Table, NameFormatKey, (int)DriverNameFormat.Auto);
+        options.UppercaseSurname = Get(options.Table, UppercaseSurnameKey, 0) != 0;
 
         options.FocusSize = Get(options.Table, FocusSizeKey, options.Table == DriverTable.Standings
             ? DriverTableOptions.DefaultStandingsFocusSize

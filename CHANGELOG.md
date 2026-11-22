@@ -7,6 +7,7 @@ All notable changes to OpenOverlay, newest first.
 #### Added
 - Standings: cars parked in the garage, retired or disconnected stay in the table, dimmed, instead of looking like they're still racing; cars hidden by iRacing's max-cars setting aren't mistaken for them.
 - Control Panel: reorder any list with Alt+↑ / Alt+↓, click an info item to put it in the first free slot of the info bar, and better support for screen readers.
+- Relative and Standings: choose how driver names are written: automatic (the whole name when it fits, shortened step by step when it doesn't), full name, initial and surname, surname only or a 3-letter code, with the surname in capitals if you like.
 
 #### Changed
 - Relative and Standings: your row stands out in amber with an outline, cars in the pits fade everything but their lap times, and lap times are easier to read.

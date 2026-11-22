@@ -200,7 +200,29 @@ public static class WidgetSettings
             value => SetFocusSize(context.Relative, value, context)));
 
     private static SettingsGroup TableAppearance(DriverTableOptions options, WidgetSettingsContext context) =>
-        new SettingsGroup(Appearance).With(ColumnHeadersToggle(options, context));
+        new SettingsGroup(Appearance).With(ColumnHeadersToggle(options, context), NameFormatChoice(options, context), UppercaseSurnameToggle(options, context));
+
+    // In the enum's order, so the index is the value.
+    private static ChoiceSetting NameFormatChoice(DriverTableOptions options, WidgetSettingsContext context) => new(
+        Loc.T("ws.driverNames"),
+        Loc.T("ws.driverNamesHint"),
+        [Loc.T("ws.nameAuto"), Loc.T("ws.nameFull"), Loc.T("ws.nameInitialSurname"), Loc.T("ws.nameSurname"), Loc.T("ws.nameCode")],
+        (int)options.NameFormat,
+        index =>
+        {
+            options.NameFormat = (DriverNameFormat)index;
+            context.Persist(() => DriverTableOptionsStore.SaveNameFormat(options.Table, options.NameFormat));
+        });
+
+    private static ToggleSetting UppercaseSurnameToggle(DriverTableOptions options, WidgetSettingsContext context) => new(
+        Loc.T("ws.uppercaseSurname"),
+        null,
+        options.UppercaseSurname,
+        value =>
+        {
+            options.UppercaseSurname = value;
+            context.Persist(() => DriverTableOptionsStore.SaveUppercaseSurname(options.Table, value));
+        });
 
     // Bound straight in the panels, so the row goes (and the widget shrinks) without a header nudge.
     private static ToggleSetting ColumnHeadersToggle(DriverTableOptions options, WidgetSettingsContext context) => new(

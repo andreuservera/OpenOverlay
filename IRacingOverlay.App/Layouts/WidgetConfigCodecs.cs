@@ -225,6 +225,8 @@ internal sealed class DriverTableConfigCodec(
             ["showClassName"] = options.ShowClassName,
             ["showSof"] = options.ShowSof,
             ["showColumnHeaders"] = options.ShowColumnHeaders,
+            ["nameFormat"] = Name(options.NameFormat),
+            ["uppercaseSurname"] = options.UppercaseSurname,
             ["sessionTypeSlot"] = Name(options.SlotOf(TableInfoElement.SessionType)),
             ["sofSlot"] = Name(options.SlotOf(TableInfoElement.Sof)),
             ["sessionLapsSlot"] = Name(options.SlotOf(TableInfoElement.SessionLaps)),
@@ -272,6 +274,8 @@ internal sealed class DriverTableConfigCodec(
         Set<bool>(config, "showClassName", value => options.ShowClassName = value);
         Set<bool>(config, "showSof", value => options.ShowSof = value);
         Set<bool>(config, "showColumnHeaders", value => options.ShowColumnHeaders = value);
+        Set<DriverNameFormat>(config, "nameFormat", value => options.NameFormat = value);
+        Set<bool>(config, "uppercaseSurname", value => options.UppercaseSurname = value);
         Set<TableSlot>(config, "sessionTypeSlot", slot => options.SetSlot(TableInfoElement.SessionType, slot));
         Set<TableSlot>(config, "sofSlot", slot => options.SetSlot(TableInfoElement.Sof, slot));
         Set<TableSlot>(config, "sessionLapsSlot", slot => options.SetSlot(TableInfoElement.SessionLaps, slot));
