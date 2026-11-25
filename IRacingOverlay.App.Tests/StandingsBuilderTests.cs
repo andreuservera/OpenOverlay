@@ -55,8 +55,8 @@ public class StandingsBuilderTests
     }
 
     [Theory]
-    [InlineData(1, "Siroco Motorsport Academy", true)]
-    [InlineData(0, "Carlos Carrasco", false)]
+    [InlineData(1, "Apex Endurance Racing", true)]
+    [InlineData(0, "Alex Moreno", false)]
     public void BuildRelative_TeamEvent_NamesTheTeam_WrittenAsRegistered(int teamRacing, string expected, bool isTeam)
     {
         var snapshot = TestSnapshotFactory.Build(RelativeVars(), w =>
@@ -66,8 +66,8 @@ public class StandingsBuilderTests
             w.SetFloatArray("CarIdxEstTime", [9.4f, 0, 0, 0]);
         });
         var session = Field();
-        session.DriverInfo!.Drivers[0].UserName = "Carlos Carrasco";
-        session.DriverInfo.Drivers[0].TeamName = "Siroco Motorsport Academy";
+        session.DriverInfo!.Drivers[0].UserName = "Alex Moreno";
+        session.DriverInfo.Drivers[0].TeamName = "Apex Endurance Racing";
         session.WeekendInfo = new WeekendInfoSection { TeamRacing = teamRacing };
 
         var row = Assert.Single(RelativeRows(snapshot, session));
