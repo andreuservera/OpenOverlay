@@ -24,6 +24,9 @@ All notable changes to OpenOverlay, newest first.
 #### Improved
 - Diagnostics lists the problems of the current run, and update errors now say what happened and when the next check is, instead of a technical message.
 
+#### Removed
+- The Circuit map is unavailable for now: it only drew a track after a full clean lap there, so most tracks never got one. It will return once it can draw the track without that. Layouts that included it simply leave it out.
+
 
 ### [0.15.0] - 2026-11-13
 
