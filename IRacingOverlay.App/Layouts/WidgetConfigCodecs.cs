@@ -93,7 +93,7 @@ public static class WidgetConfigCodecs
             new EmptyConfigCodec(WidgetCatalog.Incident),
             new TrackInfoConfigCodec(targets.TrackInfo, targets.Persist.TrackInfo),
             new EmptyConfigCodec(WidgetCatalog.TrackMap),
-            new EmptyConfigCodec(WidgetCatalog.CircuitMap),
+            // new EmptyConfigCodec(WidgetCatalog.CircuitMap), — switched off with its catalog entry
             new EmptyConfigCodec(WidgetCatalog.Radar),
         ];
 
