@@ -116,7 +116,7 @@ public partial class MainWindow
             if (_standingsGuard.TryRun(
                     () => StandingsBuilder.BuildStandings(
                         telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings,
-                        _logPreGreenGrid ??= LogPreGreenGrid, _garageTracker.InGarage),
+                        _logPreGreenGrid ??= LogPreGreenGrid, _garageTracker.InGarage, _pitStopTracker.OnOutLap),
                     out var standings))
             {
                 _latestStandings = standings;
@@ -170,7 +170,7 @@ public partial class MainWindow
             Relative,
             () => StandingsBuilder.BuildRelative(
                 telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops, _estTimeProfile,
-                LogOpeningLapLapped),
+                LogOpeningLapLapped, _pitStopTracker.OnOutLap),
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);

@@ -210,6 +210,11 @@
                                 Visibility="{Binding OnPitRoad, Mode=OneTime, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{loc:T table.pit}" Style="{StaticResource StatusBadgeText}"/>
                         </Border>
+                        <!-- Same tag, same slot, for the lap after the pits: cold tyres, maybe a slow car. -->
+                        <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
+                                Visibility="{Binding IsOutLap, Mode=OneTime, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{loc:T table.out}" Style="{StaticResource StatusBadgeText}"/>
+                        </Border>
                         <!-- One penalty flag slot, same footprint in every state: black, furled black or
                              meatball, or the two most serious side by side. -->
                         <w:PenaltyFlagTag DockPanel.Dock="Right" Width="{StaticResource Size.RowTagWidth}" Height="18" Margin="6,0,0,0" VerticalAlignment="Center"
@@ -318,7 +323,7 @@
             </DataTrigger>
             <!-- In the pits: not racing anyone this instant, so the row steps back — everything but the
                  timing (LAP, BEST, LAST, GAP), which stays at full strength to be read at a glance. No
-                 fill: the neutral PIT tag says why, and nothing warm competes with your amber row.
+                 row fill: the PIT tag says why, and nothing warm competes with your amber row.
                  Not on your own row, which is always full strength. -->
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>

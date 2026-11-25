@@ -52,6 +52,10 @@ public abstract class DriverRow
     public bool IsGhost { get; init; }
     public required bool OnPitRoad { get; init; }
 
+    /// <summary>Out of the pits (a stop, or the garage) and still on the lap it left on: tagged OUT
+    /// where PIT was. Never together with <see cref="OnPitRoad"/>.</summary>
+    public bool IsOutLap { get; init; }
+
     /// <summary>Out of the race for now: parked in the garage, retired or disconnected (see
     /// GarageTracker). Only Standings sets this, and only in a race; Relative leaves out every car
     /// not on track.</summary>

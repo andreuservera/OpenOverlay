@@ -61,7 +61,8 @@ internal static class StandingsBuilder
         IReadOnlyList<StandingsRow>? standings = null,
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
         EstTimeProfile? estTimeProfile = null,
-        Action<OpeningLapLapped>? onOpeningLapLapped = null)
+        Action<OpeningLapLapped>? onOpeningLapLapped = null,
+        IReadOnlySet<int>? onOutLap = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -305,6 +306,7 @@ internal static class StandingsBuilder
                 StartClassPosition = slot.ClassPosition,
                 Name = RowName(driver, teamRacing),
                 IsTeamName = NamesTeam(driver, teamRacing),
+                IsOutLap = onOutLap?.Contains(driver.CarIdx) == true,
                 CarNumber = driver.CarNumber,
                 IsPlayer = isPlayer,
                 IsGhost = driver.IsGhost,
@@ -385,6 +387,7 @@ internal static class StandingsBuilder
     /// roster and out on track, on every build before the green.</param>
     /// <param name="inGarage">Cars out of the race for now (<see cref="GarageTracker"/>): their
     /// rows stay, marked as absent. Race sessions only.</param>
+    /// <param name="onOutLap">Cars on an out-lap (<see cref="PitStopTracker.OnOutLap"/>), tagged OUT.</param>
     public static List<StandingsRow> BuildStandings(
         TelemetrySnapshot telemetry,
         IracingSessionInfo? session,
@@ -392,7 +395,8 @@ internal static class StandingsBuilder
         IReadOnlyDictionary<int, PitStop>? lastPitStops = null,
         LineCrossingTracker? crossings = null,
         Action<PreGreenGrid>? onPreGreenGrid = null,
-        IReadOnlySet<int>? inGarage = null)
+        IReadOnlySet<int>? inGarage = null,
+        IReadOnlySet<int>? onOutLap = null)
     {
         if (session?.DriverInfo is not { } driverInfo || !HasTrackPositions(telemetry))
         {
@@ -458,7 +462,8 @@ internal static class StandingsBuilder
                 bestLapTracker ?? new SessionBestLapTracker(),
                 CurrentSession.Number(telemetry, session),
                 lastPitStops,
-                teamRacing);
+                teamRacing,
+                onOutLap);
         }
 
         var racing = Racing(driverInfo);
@@ -613,6 +618,7 @@ internal static class StandingsBuilder
                 StartClassPosition = slot.ClassPosition,
                 Name = RowName(driver, teamRacing),
                 IsTeamName = NamesTeam(driver, teamRacing),
+                IsOutLap = onOutLap?.Contains(driver.CarIdx) == true,
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 IsGhost = driver.IsGhost,
@@ -1239,7 +1245,8 @@ internal static class StandingsBuilder
         SessionBestLapTracker bestLapTracker,
         int sessionNum,
         IReadOnlyDictionary<int, PitStop>? lastPitStops,
-        bool teamRacing)
+        bool teamRacing,
+        IReadOnlySet<int>? onOutLap)
     {
         var drivers = Racing(driverInfo);
         var ghost = GhostPlayer(driverInfo);
@@ -1294,6 +1301,7 @@ internal static class StandingsBuilder
                 ClassPosition = rank,
                 Name = RowName(driver, teamRacing),
                 IsTeamName = NamesTeam(driver, teamRacing),
+                IsOutLap = onOutLap?.Contains(driver.CarIdx) == true,
                 CarNumber = driver.CarNumber,
                 IsPlayer = driver.CarIdx == playerCarIdx,
                 IsGhost = driver.IsGhost,

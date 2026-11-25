@@ -157,6 +157,8 @@ public static class PreviewData
                 CarNumber = entry.Number,
                 IsPlayer = i == PlayerPosition - 1,
                 OnPitRoad = i == 12,
+                // One car on its out-lap, in a row both the Standings and Relative previews show.
+                IsOutLap = i == 9,
                 // One car parked in the garage, so the absent row shows next to the pit one.
                 InGarage = i == 11,
                 // Every penalty tag: black, furled black, meatball, and two at once split down the middle.
@@ -222,6 +224,7 @@ public static class PreviewData
                 CarNumber = source.CarNumber,
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
+                IsOutLap = source.IsOutLap,
                 HasBlackFlag = source.HasBlackFlag,
                 HasFurledFlag = source.HasFurledFlag,
                 HasMeatballFlag = source.HasMeatballFlag,

@@ -11,19 +11,31 @@ public readonly record struct PitStop(int Lap, double Seconds);
 /// was seen driving on track before it entered — so leaving the pits at the start of a session,
 /// being towed, or attaching to a car already in the lane never reads as a stop. Reads telemetry
 /// only; it has no effect on any other pit handling.
+///
+/// Also which cars are on an out-lap: from leaving pit road until they complete the lap they left
+/// on. Any exit counts, a stop or a car just out of the garage (it appears in its stall, on pit
+/// road), but only one seen in the lane: attaching to a car already out never guesses.
 /// </summary>
 internal sealed class PitStopTracker
 {
     private const int NotInWorld = -1;
+    private const int InPitStall = 1;
 
     private enum Phase { Unknown, Driving, InLane }
 
     private readonly Dictionary<int, (Phase Phase, double EnteredAt, int Lap)> _cars = new();
     private readonly Dictionary<int, PitStop> _last = new();
+    private readonly HashSet<int> _seenInLane = new();
+    private readonly Dictionary<int, int> _outLapOf = new();
+    private readonly HashSet<int> _onOutLap = new();
     private int? _sessionNum;
     private double _lastSessionTime;
 
     public IReadOnlyDictionary<int, PitStop> LastStops => _last;
+
+    /// <summary>Cars out of the pits on the lap they left on, as of the last update. A car hidden
+    /// by the client's max-cars limit drops out of it while hidden.</summary>
+    public IReadOnlySet<int> OnOutLap => _onOutLap;
 
     public void Update(TelemetrySnapshot telemetry, IracingSessionInfo? session)
     {
@@ -42,7 +54,11 @@ internal sealed class PitStopTracker
             _sessionNum = sessionNum;
             _cars.Clear();
             _last.Clear();
+            _seenInLane.Clear();
+            _outLapOf.Clear();
         }
+
+        _onOutLap.Clear();
 
         _lastSessionTime = now;
 
@@ -80,6 +96,44 @@ internal sealed class PitStopTracker
             }
 
             _cars[carIdx] = state;
+            TrackOutLap(carIdx, inWorld, onPitRoad[carIdx] || (surfaces is not null && carIdx < surfaces.Length && surfaces[carIdx] == InPitStall), laps[carIdx]);
+        }
+    }
+
+    private void TrackOutLap(int carIdx, bool inWorld, bool inLane, int lap)
+    {
+        if (!inWorld)
+        {
+            // Towed, parked or just hidden: the lane has to be seen again. An out-lap already under
+            // way is kept, so a car that drops out of view comes back with it if still on it.
+            _seenInLane.Remove(carIdx);
+            return;
+        }
+
+        if (inLane)
+        {
+            _seenInLane.Add(carIdx);
+            _outLapOf.Remove(carIdx);
+            return;
+        }
+
+        if (_seenInLane.Remove(carIdx))
+        {
+            _outLapOf[carIdx] = lap;
+        }
+
+        if (!_outLapOf.TryGetValue(carIdx, out var outLap))
+        {
+            return;
+        }
+
+        if (lap > outLap)
+        {
+            _outLapOf.Remove(carIdx);
+        }
+        else if (lap == outLap)
+        {
+            _onOutLap.Add(carIdx);
         }
     }
 }
