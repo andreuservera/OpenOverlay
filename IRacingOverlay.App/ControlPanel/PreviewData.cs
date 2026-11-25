@@ -225,6 +225,7 @@ public static class PreviewData
                 IsPlayer = source.IsPlayer,
                 OnPitRoad = source.OnPitRoad,
                 IsOutLap = source.IsOutLap,
+                HasFinished = source.HasFinished,
                 HasBlackFlag = source.HasBlackFlag,
                 HasFurledFlag = source.HasFurledFlag,
                 HasMeatballFlag = source.HasMeatballFlag,

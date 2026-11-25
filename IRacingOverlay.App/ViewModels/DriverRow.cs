@@ -56,6 +56,17 @@ public abstract class DriverRow
     /// where PIT was. Never together with <see cref="OnPitRoad"/>.</summary>
     public bool IsOutLap { get; init; }
 
+    /// <summary>Has taken the chequered flag (Standings, and Relative from it). Its tag is then the
+    /// row's only one, replacing PIT, OUT and any penalty flag: after the line, being done is the
+    /// news, and two tags squeezed the name down to a few letters.</summary>
+    public bool HasFinished { get; init; }
+
+    public bool ShowsPitTag => OnPitRoad && !HasFinished;
+
+    public bool ShowsOutTag => IsOutLap && !HasFinished;
+
+    public bool ShowsPenaltyTag => HasPenaltyFlag && !HasFinished;
+
     /// <summary>Out of the race for now: parked in the garage, retired or disconnected (see
     /// GarageTracker). Only Standings sets this, and only in a race; Relative leaves out every car
     /// not on track.</summary>

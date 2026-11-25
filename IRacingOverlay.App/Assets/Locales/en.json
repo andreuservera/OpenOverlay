@@ -1166,6 +1166,7 @@
   "table.relativeHumidity": "Relative humidity",
   "table.incidents": "Incidents",
   "table.pos": "POS",
+  "table.placesGained": "±POS",
   "table.car": "CAR",
   "table.brand": "BRAND",
   "table.flag": "FLAG",

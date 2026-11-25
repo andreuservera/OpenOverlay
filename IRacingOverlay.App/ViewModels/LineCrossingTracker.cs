@@ -135,6 +135,10 @@ internal sealed class LineCrossingTracker
     public int? HeldPosition(int carIdx) =>
         _heldPositions.TryGetValue(carIdx, out var position) ? position : null;
 
+    /// <summary>Whether the car has taken the chequered flag: crossed the line from the flag on
+    /// (see <see cref="HoldClassification"/>). False before the flag.</summary>
+    public bool HasFinished(int carIdx) => _finishedAt.ContainsKey(carIdx);
+
     private void HoldClassification(TelemetrySnapshot telemetry, int[] laps, double now)
     {
         _chequerAt ??= now;

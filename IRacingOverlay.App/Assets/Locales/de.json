@@ -1166,6 +1166,7 @@
   "table.relativeHumidity": "Relative Luftfeuchtigkeit",
   "table.incidents": "Incidents",
   "table.pos": "POS",
+  "table.placesGained": "±POS",
   "table.car": "NR.",
   "table.brand": "MARKE",
   "table.flag": "LAND",

@@ -135,9 +135,10 @@
     <SolidColorBrush x:Key="Badge.WarningFill" Color="#2EF5A524"/>
     <SolidColorBrush x:Key="Badge.WarningEdge" Color="#D9F5A524"/>
     <!-- 18 high on a driver-table row (2 px off the cell top and bottom): the height of the last-pit
-         chip and the flag tag, so the row's tags line up. At least as wide as the flag tag too, so the
-         two tags next to the name are one size; a longer word ("STAND") still grows it. -->
-    <sys:Double x:Key="Size.RowTagWidth">29</sys:Double>
+         chip and the flag tag, so the row's tags line up. Wide enough for the widest short word (OUT,
+         BOX: 31), so PIT, OUT and the flag tag next to the name are all one size; a longer word
+         ("STAND") still grows it. -->
+    <sys:Double x:Key="Size.RowTagWidth">32</sys:Double>
     <Style x:Key="StatusBadge" TargetType="Border">
         <Setter Property="MinWidth" Value="{StaticResource Size.RowTagWidth}"/>
         <Setter Property="Background" Value="{StaticResource Badge.DarkFill}"/>

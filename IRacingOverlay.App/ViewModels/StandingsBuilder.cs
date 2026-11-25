@@ -187,6 +187,10 @@ internal static class StandingsBuilder
         double IRatingDeltaOf(int carIdx) =>
             standingsByCarIdx.TryGetValue(carIdx, out var ranked) ? ranked.IRatingDelta : 0;
 
+        // Taken the chequered flag: the classification knows, from the line crossings.
+        bool HasFinished(int carIdx) =>
+            standingsByCarIdx.TryGetValue(carIdx, out var ranked) && ranked.HasFinished;
+
         var playerOnTrack = TrackPosition.Read(carIdxLap, carIdxLapDistPct, playerCarIdx);
 
         // Where a car is, as seconds from the line on the player's EstTime clock.
@@ -326,6 +330,7 @@ internal static class StandingsBuilder
                 IRating = driver.IRating,
                 LicString = driver.LicString,
                 IRatingDelta = driver.IsGhost ? 0 : IRatingDeltaOf(driver.CarIdx),
+                HasFinished = HasFinished(driver.CarIdx),
                 IsSessionFastestLap = !driver.IsGhost && bestLapTime > 0 && bestLapTime <= fastestLapByClass.GetValueOrDefault(driver.CarClassID),
                 ClassColor = ClassColorFormat.Normalize(driver.CarClassColor),
                 CarClassID = driver.CarClassID,
@@ -624,6 +629,7 @@ internal static class StandingsBuilder
                 IsGhost = driver.IsGhost,
                 OnPitRoad = onPitRoad is not null && driver.CarIdx < onPitRoad.Length && onPitRoad[driver.CarIdx],
                 InGarage = isRace && inGarage?.Contains(driver.CarIdx) == true,
+                HasFinished = crossings?.HasFinished(driver.CarIdx) == true,
                 HasBlackFlag = penalties.Black,
                 HasFurledFlag = penalties.Furled,
                 HasMeatballFlag = penalties.Meatball,
@@ -1212,7 +1218,7 @@ internal static class StandingsBuilder
         return grid;
     }
 
-    private static bool IsRaceSession(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
+    internal static bool IsRaceSession(TelemetrySnapshot telemetry, IracingSessionInfo? session) =>
         (CurrentSession.Entry(telemetry, session)?.SessionType ?? "").Contains("Race", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsPracticeOrQualifyingSession(TelemetrySnapshot telemetry, IracingSessionInfo? session)

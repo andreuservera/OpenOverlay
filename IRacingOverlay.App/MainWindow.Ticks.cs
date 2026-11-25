@@ -109,6 +109,10 @@ public partial class MainWindow
         // Every tick: the classification itself only moves as cars cross the line, but pit road,
         // flags and tyres are live and should show the moment they change.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
+        // iRating only moves in a race: anywhere else the delta column is left out, whatever the setting.
+        var iRatingAtStake = StandingsBuilder.IsRaceSession(telemetry, session);
+        _vm.StandingsOptions.IRatingAtStake = iRatingAtStake;
+        _vm.RelativeOptions.IRatingAtStake = iRatingAtStake;
         if (needsStandings)
         {
             // A failed rebuild keeps the last good order: a table a tick old beats an empty one.

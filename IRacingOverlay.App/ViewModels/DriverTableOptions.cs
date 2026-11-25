@@ -82,6 +82,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showTireCompound = true;
     private bool _showIRating = true;
     private bool _showIRatingDelta = true;
+    private bool _iRatingAtStake = true;
     private bool _showLicense = true;
     private bool _showLap = true;
     private bool _showLastLap = true;
@@ -162,6 +163,19 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         get => _showIRatingDelta;
         set => SetField(ref _showIRatingDelta, value);
     }
+
+    /// <summary>Whether the session on now moves iRating: only a race does (practice and qualifying
+    /// never change it, and their delta is always zero). Not a setting — the live session sets it,
+    /// and it stays true with nothing connected, so a preview shows the column as configured.</summary>
+    public bool IRatingAtStake
+    {
+        get => _iRatingAtStake;
+        set => SetField(ref _iRatingAtStake, value);
+    }
+
+    /// <summary>The iRating delta actually on screen: switched on, and in a session that moves
+    /// iRating. <see cref="ShowIRatingDelta"/> stays the user's choice.</summary>
+    public bool ShowsIRatingDelta => ShowIRatingDelta && IRatingAtStake;
 
     public bool ShowLicense
     {
@@ -429,7 +443,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
 
     /// <summary>Each column's slot and width for the current order and visibility; what the header
     /// and the rows bind their grid to.</summary>
-    public DriverTableColumnLayout Columns => _columns ??= new DriverTableColumnLayout(_columnOrder, IsVisible);
+    public DriverTableColumnLayout Columns => _columns ??= new DriverTableColumnLayout(
+        _columnOrder, column => column == DriverTableColumn.IRatingDelta ? ShowsIRatingDelta : IsVisible(column));
 
     public bool IsVisible(DriverTableColumn column) => column switch
     {
@@ -485,6 +500,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         // shown or hidden can empty or fill the band above or below the table.
         _columns = null;
         OnPropertyChanged(nameof(Columns));
+        OnPropertyChanged(nameof(ShowsIRatingDelta));
         OnPropertyChanged(nameof(ShowTopInfo));
         OnPropertyChanged(nameof(ShowFooter));
     }

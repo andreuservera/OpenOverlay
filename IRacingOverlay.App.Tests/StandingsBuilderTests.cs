@@ -821,6 +821,67 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_AfterTheChequeredFlag_MarksEachCarFinishedAsItCrossesTheLine()
+    {
+        // Three cars 1s apart on 100s laps; the leader takes the flag completing lap 2 at 200s.
+        var session = RaceSession(
+            new DriverEntry { CarIdx = 0, UserName = "Player", CarNumber = "1", CarClassID = 1 },
+            new DriverEntry { CarIdx = 1, UserName = "Second", CarNumber = "2", CarClassID = 1 },
+            new DriverEntry { CarIdx = 2, UserName = "Third", CarNumber = "3", CarClassID = 1 });
+        var race = new Race(session, cars: 3)
+            .Drive(150.01, 199.9, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        Assert.DoesNotContain(race.Standings().Values, r => r.HasFinished);
+
+        race.State = 5;
+        race.Drive(200.01, 200.5, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        Assert.Equal([0], race.Standings().Values.Where(r => r.HasFinished).Select(r => r.CarIdx));
+
+        race.Drive(200.51, 205, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        Assert.All(race.Standings().Values, r => Assert.True(r.HasFinished));
+    }
+
+    [Fact]
+    public void BuildRelative_FinishedCars_CarryTheFlagFromTheStandings()
+    {
+        var snapshot = TestSnapshotFactory.Build(RelativeVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 3, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0.2f, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [9.4f, 15f, 0, 0]);
+        });
+        var session = Field(Car(1, "Ahead"));
+        StandingsRow Ranked(int carIdx, bool finished) => new()
+        {
+            CarIdx = carIdx, Position = carIdx + 1, ClassPosition = carIdx + 1, Name = "", CarNumber = "", IsPlayer = carIdx == 0,
+            OnPitRoad = false, HasFinished = finished, CurrentLap = 3, LastLapTime = 0, BestLapTime = 0,
+            IsSessionFastestLap = false, IsMultiClass = false, IRating = 0, LicString = "", IRatingDelta = 0, GapToLeaderSeconds = 0,
+        };
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, session, 4, standings: [Ranked(0, false), Ranked(1, true)])
+            .OfType<RelativeRow>().ToList();
+
+        Assert.True(rows.Single(r => r.CarIdx == 1).HasFinished);
+        Assert.False(rows.Single(r => r.CarIdx == 0).HasFinished);
+    }
+
+    [Fact]
+    public void FinishedCar_ShowsOnlyTheChequeredFlag()
+    {
+        var row = new StandingsRow
+        {
+            CarIdx = 0, Position = 1, ClassPosition = 1, Name = "A", CarNumber = "1", IsPlayer = false,
+            OnPitRoad = true, IsOutLap = false, HasFinished = true, HasFurledFlag = true, CurrentLap = 20, LastLapTime = 0,
+            BestLapTime = 0, IsSessionFastestLap = false, IsMultiClass = false, IRating = 0, LicString = "",
+            IRatingDelta = 0, GapToLeaderSeconds = 0,
+        };
+
+        Assert.False(row.ShowsPitTag);
+        Assert.False(row.ShowsOutTag);
+        Assert.True(row.HasPenaltyFlag);
+        Assert.False(row.ShowsPenaltyTag);
+    }
+
+    [Fact]
     public void BuildStandings_FinishAwayFromTheLapLine_TakesThePlaceLostOnTheLastLap()
     {
         // Rallycross: the finish is three quarters round the lap, so the flag comes out with every

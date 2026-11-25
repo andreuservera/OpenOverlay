@@ -1166,6 +1166,7 @@
   "table.relativeHumidity": "Umidità relativa",
   "table.incidents": "Incidenti",
   "table.pos": "POS",
+  "table.placesGained": "±POS",
   "table.car": "N.",
   "table.brand": "MARCA",
   "table.flag": "PAESE",

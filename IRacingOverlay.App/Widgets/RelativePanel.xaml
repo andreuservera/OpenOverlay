@@ -109,19 +109,19 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="{Binding Options.Columns.Position, ElementName=Root}" Text="{loc:T table.pos}" Style="{StaticResource HeadNumeric}"
                            Visibility="{Binding Options.ShowPosition, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="{Binding Options.Columns.PlacesGained, ElementName=Root}" Text="+/-" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="{Binding Options.Columns.PlacesGained, ElementName=Root}" Text="{loc:T table.placesGained}" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowPlacesGained, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.CarNumber, ElementName=Root}" Text="{loc:T table.car}" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowCarNumber, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="{Binding Options.Columns.CarBrand, ElementName=Root}" Text="{loc:T table.brand}" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="{Binding Options.Columns.CarBrand, ElementName=Root}" Text="{loc:T table.brand}" Style="{StaticResource HeadIcon}"
                            Visibility="{Binding Options.ShowCarBrand, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="{Binding Options.Columns.CountryFlag, ElementName=Root}" Text="{loc:T table.flag}" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="{Binding Options.Columns.CountryFlag, ElementName=Root}" Text="{loc:T table.flag}" Style="{StaticResource HeadIcon}"
                            Visibility="{Binding Options.ShowCountryFlag, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.Driver, ElementName=Root}" Text="{loc:T table.driver}" Style="{StaticResource HeadText}"
                            Visibility="{Binding Options.ShowDriver, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.LastPitStop, ElementName=Root}" Text="{loc:T table.lastPit}" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowLastPitStop, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
-                <TextBlock Grid.Column="{Binding Options.Columns.TireCompound, ElementName=Root}" Text="{loc:T table.tire}" Style="{StaticResource HeadCentered}"
+                <TextBlock Grid.Column="{Binding Options.Columns.TireCompound, ElementName=Root}" Text="{loc:T table.tire}" Style="{StaticResource HeadIcon}"
                            Visibility="{Binding Options.ShowTireCompound, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
                 <TextBlock Grid.Column="{Binding Options.Columns.IRating, ElementName=Root}" Grid.ColumnSpan="2" Text="iR" Style="{StaticResource HeadCentered}"
                            Visibility="{Binding Options.ShowIRating, ElementName=Root, Converter={StaticResource ColumnVisibilityConverter}}"/>
