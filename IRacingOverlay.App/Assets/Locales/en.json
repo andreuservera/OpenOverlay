@@ -1157,6 +1157,7 @@
   "changelog.section.security": "Security",
   "home.preview.empty": "Nothing on screen. Switch a widget on from the sidebar, or set up from a preset.",
   "table.lap": "LAP",
+  "table.lapsValue": "{0}L",
   "table.time": "TIME",
   "table.brakeBias": "Brake bias",
   "table.bb": "BB",

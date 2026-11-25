@@ -1157,6 +1157,7 @@
   "changelog.section.security": "Sécurité",
   "home.preview.empty": "Rien à l'écran. Activez un widget depuis la barre latérale, ou configurez à partir d'un preset.",
   "table.lap": "TOUR",
+  "table.lapsValue": "{0}T",
   "table.time": "TEMPS",
   "table.brakeBias": "Répartition de freinage",
   "table.bb": "BB",

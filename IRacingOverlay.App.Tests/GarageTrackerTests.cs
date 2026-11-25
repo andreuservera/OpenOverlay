@@ -52,31 +52,45 @@ public class GarageTrackerTests
     };
 
     [Fact]
-    public void CarLeavingASmallField_IsInTheGarageOnceTheFieldStaysThinner()
+    public void CarLeaving_IsInTheGarageOnlyOnceItStopsScoringLaps()
     {
+        // 90 s laps: gone after 1.5 laps plus a minute without a lap counted, 195 s.
         var tracker = new GarageTracker();
-        var session = Session(3);
+        var session = Session(3, [5, 5, 5]);
         tracker.Update(Tick(100, [OnTrack, OnTrack, OnTrack]), session);
         tracker.Update(Tick(101, [OnTrack, OnTrack, NotInWorld]), session);
-        tracker.Update(Tick(108, [OnTrack, OnTrack, NotInWorld]), session);
+        tracker.Update(Tick(290, [OnTrack, OnTrack, NotInWorld]), session);
         Assert.Empty(tracker.InGarage);
 
-        tracker.Update(Tick(112, [OnTrack, OnTrack, NotInWorld]), session);
+        tracker.Update(Tick(296, [OnTrack, OnTrack, NotInWorld]), session);
 
         Assert.Equal([2], tracker.InGarage);
+    }
+
+    [Fact]
+    public void FieldRenderedThinner_IsNotEnoughOnItsOwn()
+    {
+        // The rule this replaced: fewer cars rendered than before for 10 s read as the missing car
+        // having left. In fields past the client's limit that flickered every hidden car dark.
+        var tracker = new GarageTracker();
+        var session = Session(3, [5, 5, 5]);
+        tracker.Update(Tick(100, [OnTrack, OnTrack, OnTrack]), session);
+        tracker.Update(Tick(101, [OnTrack, OnTrack, NotInWorld]), session);
+        tracker.Update(Tick(150, [OnTrack, OnTrack, NotInWorld]), session);
+
+        Assert.Empty(tracker.InGarage);
     }
 
     [Fact]
     public void CarBackOnTrack_LeavesTheGarage()
     {
         var tracker = new GarageTracker();
-        var session = Session(3);
-        tracker.Update(Tick(100, [OnTrack, OnTrack, OnTrack]), session);
-        tracker.Update(Tick(101, [OnTrack, OnTrack, NotInWorld]), session);
-        tracker.Update(Tick(112, [OnTrack, OnTrack, NotInWorld]), session);
+        var session = Session(3, [5, 5, 5]);
+        tracker.Update(Tick(100, [OnTrack, OnTrack, NotInWorld]), session);
+        tracker.Update(Tick(300, [OnTrack, OnTrack, NotInWorld]), session);
         Assert.Single(tracker.InGarage);
 
-        tracker.Update(Tick(113, [OnTrack, OnTrack, OnTrack]), session);
+        tracker.Update(Tick(301, [OnTrack, OnTrack, OnTrack]), session);
 
         Assert.Empty(tracker.InGarage);
     }
@@ -112,15 +126,12 @@ public class GarageTrackerTests
     }
 
     [Fact]
-    public void PaceCarLeaving_DoesNotThinTheField()
+    public void PaceCar_IsNeverInTheGarage()
     {
-        // Car 3 is hidden by the client's limit; the pace car (car 1) pulling off must not make it
-        // look parked.
         var tracker = new GarageTracker();
-        var session = Session(4, [5, 0, 5, 5], paceCarIdx: 1);
-        tracker.Update(Tick(100, [OnTrack, OnTrack, OnTrack, NotInWorld]), session);
-        tracker.Update(Tick(101, [OnTrack, NotInWorld, OnTrack, NotInWorld]), session);
-        tracker.Update(Tick(130, [OnTrack, NotInWorld, OnTrack, NotInWorld]), session);
+        var session = Session(3, [5, 0, 5], paceCarIdx: 1);
+        tracker.Update(Tick(100, [OnTrack, NotInWorld, OnTrack]), session);
+        tracker.Update(Tick(400, [OnTrack, NotInWorld, OnTrack]), session);
 
         Assert.Empty(tracker.InGarage);
     }
@@ -142,10 +153,9 @@ public class GarageTrackerTests
     public void NewSession_ClearsTheGarage()
     {
         var tracker = new GarageTracker();
-        var session = Session(3);
-        tracker.Update(Tick(100, [OnTrack, OnTrack, OnTrack]), session);
-        tracker.Update(Tick(101, [OnTrack, OnTrack, NotInWorld]), session);
-        tracker.Update(Tick(112, [OnTrack, OnTrack, NotInWorld]), session);
+        var session = Session(3, [5, 5, 5]);
+        tracker.Update(Tick(100, [OnTrack, OnTrack, NotInWorld]), session);
+        tracker.Update(Tick(300, [OnTrack, OnTrack, NotInWorld]), session);
         Assert.Single(tracker.InGarage);
 
         tracker.Update(Tick(5, [OnTrack, OnTrack, NotInWorld], sessionNum: 1), session);

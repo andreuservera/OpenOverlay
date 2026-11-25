@@ -3,20 +3,20 @@ using IRacingOverlay.Sdk;
 namespace IRacingOverlay.App.ViewModels;
 
 /// <summary>
-/// Which cars are out of the session for now — parked in the garage, retired or disconnected — so
-/// Standings can show their rows as absent.
+/// Which cars are out of the race for now — parked in the garage, retired or disconnected — so
+/// Standings can show their rows as absent. Only a race uses it: in Practice and Qualifying the
+/// table ranks best laps, and who is in the garage there is constant churn, not news.
 ///
 /// "Out of the world" alone is not enough. CarIdxTrackSurface (and every other CarIdx* array) reads
 /// -1 both for a car in the garage and for a car this client simply doesn't render: iRacing's "max
 /// cars" setting hides everything past that many cars, and those cars keep racing. So a car out of
-/// the world only counts as gone with a second sign that nobody is driving it:
-/// <list type="bullet">
-/// <item>the client is rendering fewer cars than it has this session, and has been for a while — a
-/// client at its limit swaps a hidden car in for any that leaves, so a field that stays thinner means
-/// the missing cars really left; or</item>
-/// <item>the server's scoring table hasn't counted a lap for the car in longer than a lap and a pit
-/// stop take — a hidden car still racing keeps completing laps there.</item>
-/// </list>
+/// the world only counts as gone once the server's scoring table hasn't counted a lap for it in
+/// longer than a slow lap and a pit stop take — a hidden car still racing keeps completing laps there.
+///
+/// Slow on purpose: a car is marked a few minutes after it leaves. An earlier second rule ("the
+/// client renders fewer cars than it has before") marked it sooner, but read every hidden car as gone
+/// in fields bigger than the client's limit, so far-away rows flickered dark and light as the client
+/// swapped cars in and out of view — seen live in a 50-car team practice with a 20-car client.
 /// Reads telemetry and the scoring table only; it has no effect on any other handling.
 /// </summary>
 internal sealed class GarageTracker
@@ -26,10 +26,6 @@ internal sealed class GarageTracker
     // Long enough that a reset to the pits or a tow's blink never reads as leaving.
     private const double OutSettleSeconds = 3.0;
 
-    // How long the field has to stay thinner before the missing cars are taken as gone, so a client
-    // at its limit still swapping a hidden car in can't make every hidden car look parked.
-    private const double ThinnedSettleSeconds = 10.0;
-
     // No lap counted in this long means nobody is driving the car: a slow lap with a pit stop in it.
     private const double StaleLapFactor = 1.5;
     private const double StalePitAllowanceSeconds = 60.0;
@@ -38,8 +34,6 @@ internal sealed class GarageTracker
     private readonly Dictionary<int, double> _outSince = new();
     private readonly Dictionary<int, (int Laps, double Since)> _scored = new();
     private readonly HashSet<int> _inGarage = new();
-    private int _mostInWorld;
-    private double? _thinnedSince;
     private int? _sessionNum;
     private double _lastSessionTime;
 
@@ -62,26 +56,18 @@ internal sealed class GarageTracker
             _outSince.Clear();
             _scored.Clear();
             _inGarage.Clear();
-            _mostInWorld = 0;
-            _thinnedSince = null;
         }
 
         _lastSessionTime = now;
 
         var surfaces = telemetry.GetIntArray(TelemetryVarNames.CarIdxTrackSurface);
         // The cars in the race. Without the roster every slot is taken: unused ones never enter the
-        // world, so they change no count. The pace car must stay out of the count — it leaving the
-        // track would otherwise read as the field thinning.
+        // world, so they are never marked.
         var cars = session?.DriverInfo?.Drivers
             .Where(d => !d.IsPaceCar && !d.IsGhost && d.CarIdx >= 0 && d.CarIdx < surfaces.Length)
             .Select(d => d.CarIdx)
             .ToList()
             ?? Enumerable.Range(0, surfaces.Length).ToList();
-
-        var inWorld = cars.Count(carIdx => surfaces[carIdx] != NotInWorld);
-        _mostInWorld = Math.Max(_mostInWorld, inWorld);
-        _thinnedSince = inWorld < _mostInWorld ? _thinnedSince ?? now : null;
-        var fieldThinned = _thinnedSince is { } thinnedAt && now - thinnedAt >= ThinnedSettleSeconds;
 
         var results = CurrentSession.Results(telemetry, session);
         var staleAfter = StaleLapFactor * ReferenceLapSeconds(results) + StalePitAllowanceSeconds;
@@ -113,7 +99,7 @@ internal sealed class GarageTracker
                 continue;
             }
 
-            if (fieldThinned || now - lastScored.Since >= staleAfter)
+            if (now - lastScored.Since >= staleAfter)
             {
                 _inGarage.Add(carIdx);
             }

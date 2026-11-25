@@ -1,4 +1,5 @@
 using System.Globalization;
+using IRacingOverlay.App.Localization;
 
 namespace IRacingOverlay.App.ViewModels;
 
@@ -39,6 +40,10 @@ public abstract class DriverRow
     public int StartPosition { get; init; }
     public int StartClassPosition { get; init; }
     public required string Name { get; init; }
+
+    /// <summary>The name is the team's (a team event), written as registered: the driver name
+    /// formats split a person's name and mean nothing for a team's. Trimmed when it doesn't fit.</summary>
+    public bool IsTeamName { get; init; }
     public required string CarNumber { get; init; }
     public required bool IsPlayer { get; init; }
 
@@ -47,8 +52,9 @@ public abstract class DriverRow
     public bool IsGhost { get; init; }
     public required bool OnPitRoad { get; init; }
 
-    /// <summary>Out of the session for now: parked in the garage, retired or disconnected (see
-    /// GarageTracker). Only Standings sets this; Relative leaves out every car not on track.</summary>
+    /// <summary>Out of the race for now: parked in the garage, retired or disconnected (see
+    /// GarageTracker). Only Standings sets this, and only in a race; Relative leaves out every car
+    /// not on track.</summary>
     public bool InGarage { get; init; }
     public bool HasBlackFlag { get; init; }
     /// <summary>The furled black flag: a warning, or a slow-down penalty to serve on track.</summary>
@@ -124,7 +130,7 @@ public abstract class DriverRow
 
     /// <summary>iRacing reports -1 for a car that isn't on track and has nothing scored, which is
     /// "no laps", not minus one lap. Shown as a dash like every other unknown value.</summary>
-    public string LapDisplay => CurrentLap >= 0 ? CurrentLap.ToString(CultureInfo.InvariantCulture) : "—";
+    public string LapDisplay => CurrentLap >= 0 ? Loc.F("table.lapsValue", CurrentLap) : "—";
 
     public string LastLapDisplay => FormatLapTime(LastLapTime);
 

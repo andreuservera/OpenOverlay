@@ -71,7 +71,7 @@ public sealed class DriverTableColumnLayout
         DriverTableColumn.IRating => 40,
         DriverTableColumn.IRatingDelta => 44,
         DriverTableColumn.License => 44,
-        DriverTableColumn.Lap => 34,
+        DriverTableColumn.Lap => 44,
         DriverTableColumn.BestLap => 64,
         DriverTableColumn.LastLap => 64,
         DriverTableColumn.CarBrand => 38,

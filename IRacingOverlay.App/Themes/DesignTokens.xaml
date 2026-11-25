@@ -119,10 +119,10 @@
     <!-- In the pits: no fill, a neutral PIT tag, and the row's content recedes. Not racing anyone
          this instant, so it steps back instead of competing with your amber row. -->
     <sys:Double x:Key="Row.PitOpacity">0.55</sys:Double>
-    <!-- In the garage (retired, parked, disconnected): a darker cell and content barely there, so the
-         row reads as empty — the car is listed, but it isn't in the race right now. -->
-    <SolidColorBrush x:Key="Row.Garage" Color="#80000000"/>
-    <sys:Double x:Key="Row.GarageOpacity">0.32</sys:Double>
+    <!-- In the garage (retired, parked, disconnected; races only): the row steps back as far as a car
+         in the pits, no further, and without a darker fill — a heavier treatment made the least
+         actionable state the loudest thing in the table. Its greyed timing tells it from a pit stop. -->
+    <sys:Double x:Key="Row.GarageOpacity">0.55</sys:Double>
     <!-- Relative: lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
     <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Row.LappingInk" Color="#F26D6D"/>

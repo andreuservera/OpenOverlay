@@ -1157,6 +1157,7 @@
   "changelog.section.security": "Segurança",
   "home.preview.empty": "Nada na tela. Ative um widget pela barra lateral ou configure a partir de um preset.",
   "table.lap": "VLT",
+  "table.lapsValue": "{0}V",
   "table.time": "TEMPO",
   "table.brakeBias": "Balanço de freio",
   "table.bb": "BB",

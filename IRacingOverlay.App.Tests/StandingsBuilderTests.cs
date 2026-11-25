@@ -54,6 +54,35 @@ public class StandingsBuilderTests
         Assert.Equal(0, row.GapSeconds);
     }
 
+    [Theory]
+    [InlineData(1, "Siroco Motorsport Academy", true)]
+    [InlineData(0, "Carlos Carrasco", false)]
+    public void BuildRelative_TeamEvent_NamesTheTeam_WrittenAsRegistered(int teamRacing, string expected, bool isTeam)
+    {
+        var snapshot = TestSnapshotFactory.Build(RelativeVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [9.4f, 0, 0, 0]);
+        });
+        var session = Field();
+        session.DriverInfo!.Drivers[0].UserName = "Carlos Carrasco";
+        session.DriverInfo.Drivers[0].TeamName = "Siroco Motorsport Academy";
+        session.WeekendInfo = new WeekendInfoSection { TeamRacing = teamRacing };
+
+        var row = Assert.Single(RelativeRows(snapshot, session));
+        Assert.Equal(expected, row.Name);
+        Assert.Equal(isTeam, row.IsTeamName);
+    }
+
+    [Fact]
+    public void RowName_TeamEventWithoutATeamName_FallsBackToTheDriver()
+    {
+        var driver = new DriverEntry { CarIdx = 1, UserName = "Solo Driver", TeamName = "  " };
+
+        Assert.Equal("Solo Driver", StandingsBuilder.RowName(driver, teamRacing: true));
+    }
+
     [Fact]
     public void BuildRelative_SameCar_GapIsTheDifferenceInEstimatedTime_NotTheDistance()
     {
@@ -1509,6 +1538,28 @@ public class StandingsBuilderTests
         Assert.DoesNotContain(rows, r => r.CarIdx == 3);
     }
 
+    [Theory]
+    [InlineData(2, true)]   // the race
+    [InlineData(0, false)]  // practice: people come and go all the time, nothing to flag
+    [InlineData(1, false)]  // qualifying
+    public void BuildStandings_CarOutOfTheRace_IsMarkedAbsentOnlyInARace(int sessionNum, bool absent)
+    {
+        var snapshot = TestSnapshotFactory.Build(WeekendVars(), w =>
+        {
+            w.SetInt("SessionNum", sessionNum);
+            w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]);
+            w.SetIntArray("CarIdxLap", [4, 4, 4, -1]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.6f, 0.5f, 0f]);
+            w.SetFloatArray("CarIdxLastLapTime", [91f, 90f, 90.5f, -1f]);
+            w.SetFloatArray("CarIdxBestLapTime", [91f, 90f, 90.5f, -1f]);
+        });
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, Weekend(), new SessionBestLapTracker(), inGarage: new HashSet<int> { 2 });
+
+        Assert.Equal(absent, rows.Single(r => r.CarIdx == 2).InGarage);
+        Assert.DoesNotContain(rows, r => r.CarIdx != 2 && r.InGarage);
+    }
+
     [Fact]
     public void BuildStandings_InTheRace_ShowsBestLapStraightFromTelemetry()
     {
@@ -2012,8 +2063,8 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker());
 
-        Assert.Equal("10", rows.Single(r => r.CarIdx == 1).LapDisplay); // parked, but scored
-        Assert.Equal("4", rows.Single(r => r.CarIdx == 2).LapDisplay);  // live value wins
+        Assert.Equal("10L", rows.Single(r => r.CarIdx == 1).LapDisplay); // parked, but scored
+        Assert.Equal("4L", rows.Single(r => r.CarIdx == 2).LapDisplay);  // live value wins
         Assert.Equal("—", rows.Single(r => r.CarIdx == 3).LapDisplay);  // never out
         Assert.All(rows, r => Assert.DoesNotContain("-", r.LapDisplay));
     }
@@ -2032,7 +2083,7 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildStandings(snapshot, SessionWithScoring("Race", []), new SessionBestLapTracker());
 
-        Assert.All(rows, r => Assert.Equal("0", r.LapDisplay));
+        Assert.All(rows, r => Assert.Equal("0L", r.LapDisplay));
         Assert.DoesNotContain(rows, r => r.CarIdx == 3);
     }
 
@@ -2196,7 +2247,7 @@ public class StandingsBuilderTests
 
         Assert.Equal(2004, me.IRating);
         Assert.Equal("A 3.50", me.LicStringDisplay);
-        Assert.Equal("10", me.LapDisplay);
+        Assert.Equal("10L", me.LapDisplay);
         Assert.Equal("1:30.000", me.BestLapDisplay);
         Assert.Equal("1:35.000", me.LastLapDisplay);
         Assert.Equal("Driver 4", me.Name);

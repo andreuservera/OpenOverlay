@@ -28,6 +28,10 @@ public sealed class DriverNameText : Decorator
         nameof(UppercaseSurname), typeof(bool), typeof(DriverNameText),
         new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure));
 
+    public static readonly DependencyProperty IsTeamNameProperty = DependencyProperty.Register(
+        nameof(IsTeamName), typeof(bool), typeof(DriverNameText),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
     // Widths of texts already measured, per font. Rows are rebuilt every update, so the same names
     // come back again and again; this keeps a refresh from shaping each candidate anew.
     private static readonly Dictionary<(string Text, Typeface Typeface, double Size), double> Widths = [];
@@ -52,6 +56,14 @@ public sealed class DriverNameText : Decorator
         set => SetValue(UppercaseSurnameProperty, value);
     }
 
+    /// <summary>A team's name: shown as registered, never split into given names and surname,
+    /// and trimmed with an ellipsis where the column ends.</summary>
+    public bool IsTeamName
+    {
+        get => (bool)GetValue(IsTeamNameProperty);
+        set => SetValue(IsTeamNameProperty, value);
+    }
+
     protected override Size MeasureOverride(Size constraint)
     {
         if (Child is not TextBlock text)
@@ -59,7 +71,9 @@ public sealed class DriverNameText : Decorator
             return base.MeasureOverride(constraint);
         }
 
-        var candidates = DriverNameFormatter.Candidates(FullName, Format, UppercaseSurname);
+        IReadOnlyList<string> candidates = IsTeamName
+            ? [FullName ?? string.Empty]
+            : DriverNameFormatter.Candidates(FullName, Format, UppercaseSurname);
         var chosen = candidates[^1];
         if (candidates.Count > 1)
         {

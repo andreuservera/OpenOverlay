@@ -1157,6 +1157,7 @@
   "changelog.section.security": "Sicherheit",
   "home.preview.empty": "Nichts auf dem Bildschirm. Schalte ein Widget über die Seitenleiste ein oder richte es mit einem Preset ein.",
   "table.lap": "RD.",
+  "table.lapsValue": "{0}R",
   "table.time": "ZEIT",
   "table.brakeBias": "Bremsbalance",
   "table.bb": "BB",

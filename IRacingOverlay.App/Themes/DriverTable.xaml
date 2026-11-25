@@ -217,8 +217,10 @@
                                           Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                         <!-- Two pixels over the body size on the same line box: mixed-case names need
                              the extra x-height to read as quickly as the old all-caps ones. -->
-                        <!-- The wrapper writes the name in the chosen format, fitted to the room left. -->
+                        <!-- The wrapper writes the name in the chosen format, fitted to the room left;
+                             a team's name (team events) as registered, trimmed where it doesn't fit. -->
                         <w:DriverNameText FullName="{Binding Name, Mode=OneTime}"
+                                          IsTeamName="{Binding IsTeamName, Mode=OneTime}"
                                           Format="{Binding Options.NameFormat, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                           UppercaseSurname="{Binding Options.UppercaseSurname, RelativeSource={RelativeSource AncestorType=UserControl}}">
                             <TextBlock x:Name="NameText" Style="{StaticResource DataCell}"
@@ -335,14 +337,13 @@
                 <Setter TargetName="RatingBadge" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
                 <Setter TargetName="LicenseCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
             </MultiDataTrigger>
-            <!-- In the garage: a darker cell with its content, class bar included, barely there — the
-                 car is listed but not in the race. Its timing goes back to the quieter greys: nothing
-                 on an absent row should read as live data. -->
+            <!-- In the garage (races only): the whole row, class bar included, steps back as far as a
+                 car in the pits. Its timing goes back to the quieter greys: nothing on an absent row
+                 should read as live data. -->
             <DataTrigger Binding="{Binding InGarage, Mode=OneTime}" Value="True">
                 <Setter TargetName="LapText" Property="Foreground" Value="{StaticResource Text.Muted}"/>
                 <Setter TargetName="BestLapText" Property="Foreground" Value="{StaticResource Text.Secondary}"/>
                 <Setter TargetName="LastLapText" Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-                <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Garage}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
                 <Setter TargetName="EdgeBar" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
             </DataTrigger>
