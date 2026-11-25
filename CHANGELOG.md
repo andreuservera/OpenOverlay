@@ -2,20 +2,30 @@
 
 All notable changes to OpenOverlay, newest first.
 
-### [0.16.0] - 2026-11-15
+### [0.16.0] - 2026-11-25
 
 #### Added
-- Standings: cars parked in the garage, retired or disconnected stay in the table, dimmed, instead of looking like they're still racing; cars hidden by iRacing's max-cars setting aren't mistaken for them.
+- Standings: in a race, cars parked in the garage, retired or disconnected stay in the table, faded, once they stop completing laps, instead of looking like they're still racing; cars hidden by iRacing's max-cars setting aren't mistaken for them.
+- Relative and Standings: an OUT tag on cars leaving the pits or the garage, until they complete that lap.
+- Relative and Standings: in team events each row shows the team's name, in full as far as the column allows.
+- Relative and Standings: a chequered flag on each car once it has finished the race, in place of its other tags.
 - Control Panel: reorder any list with Alt+↑ / Alt+↓, click an info item to put it in the first free slot of the info bar, and better support for screen readers.
+- Relative and Standings: choose how driver names are written: automatic (the whole name when it fits, shortened step by step when it doesn't), full name, initial and surname, surname only or a 3-letter code, with the surname in capitals if you like.
 
 #### Changed
 - Relative and Standings: your row stands out in amber with an outline, cars in the pits fade everything but their lap times, and lap times are easier to read.
+- Relative and Standings: the PIT and OUT tags are dark with an orange edge, and the lap count shows its unit (14L, 14V in Spanish).
+- Relative and Standings: the iRating sits in an outlined chip, and its gain or loss only shows in races, the only sessions that change it.
+- Relative and Standings: column headers fit their columns in every language, and the places gained column is headed ±POS.
 - Standings: in small sessions the widget keeps the size it was laid out at, with empty rows holding the space.
 - Home shows which widgets are switched on but not on screen, and why, and offers the setup assistant when none are on.
 - New app icon and logo.
 
 #### Improved
 - Diagnostics lists the problems of the current run, and update errors now say what happened and when the next check is, instead of a technical message.
+
+#### Removed
+- The Circuit map is unavailable for now: it only drew a track after a full clean lap there, so most tracks never got one. It will return once it can draw the track without that. Layouts that included it simply leave it out.
 
 
 ### [0.15.0] - 2026-11-13

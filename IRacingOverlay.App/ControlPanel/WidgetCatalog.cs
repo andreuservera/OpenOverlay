@@ -82,9 +82,14 @@ public static class WidgetCatalog
 
         new(TrackMap, "M5,7 H13 A5,5 0 0 1 13,17 H9 A4,4 0 0 1 9,9 H19", PreviewWidth: 700, HeaderByDefault: false, PreviewPhoto: "singapur.jpg"),
 
-        // A closed loop: the real shape of the track, learned from a lap driven there.
-        new(CircuitMap, "M7,4 H14 A4,4 0 0 1 18,8 A3,3 0 0 1 15,12 H11 A2,2 0 0 0 11,16 H17 A2,2 0 0 1 17,20 H7 A4,4 0 0 1 3,16 V8 A4,4 0 0 1 7,4 Z",
-            HeaderByDefault: false, PreviewPhoto: "spa.jpg"),
+        // Circuit map: switched off for now. Live telemetry carries no positions, so it only drew a
+        // track after a full lap there (line to line, no pits, no reset, with the widget open), and
+        // in practice too few tracks ever got a map. Out of the catalog it can't be switched on, and
+        // saved layouts and settings drop it (Layout.Normalize); the code stays for when the shape
+        // can come from somewhere better (the GPS in the player's .ibt recordings). To bring it back,
+        // restore this entry:
+        // new(CircuitMap, "M7,4 H14 A4,4 0 0 1 18,8 A3,3 0 0 1 15,12 H11 A2,2 0 0 0 11,16 H17 A2,2 0 0 1 17,20 H7 A4,4 0 0 1 3,16 V8 A4,4 0 0 1 7,4 Z",
+        //     HeaderByDefault: false, PreviewPhoto: "spa.jpg"),
 
         new(Flag, "M5,3 V21 M5,4 H18 L15.5,8.5 L18,13 H5", PreviewPhoto: "spa.jpg"),
 

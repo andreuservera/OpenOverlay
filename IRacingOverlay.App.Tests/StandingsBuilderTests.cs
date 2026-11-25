@@ -54,6 +54,35 @@ public class StandingsBuilderTests
         Assert.Equal(0, row.GapSeconds);
     }
 
+    [Theory]
+    [InlineData(1, "Apex Endurance Racing", true)]
+    [InlineData(0, "Alex Moreno", false)]
+    public void BuildRelative_TeamEvent_NamesTheTeam_WrittenAsRegistered(int teamRacing, string expected, bool isTeam)
+    {
+        var snapshot = TestSnapshotFactory.Build(RelativeVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 0, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [9.4f, 0, 0, 0]);
+        });
+        var session = Field();
+        session.DriverInfo!.Drivers[0].UserName = "Alex Moreno";
+        session.DriverInfo.Drivers[0].TeamName = "Apex Endurance Racing";
+        session.WeekendInfo = new WeekendInfoSection { TeamRacing = teamRacing };
+
+        var row = Assert.Single(RelativeRows(snapshot, session));
+        Assert.Equal(expected, row.Name);
+        Assert.Equal(isTeam, row.IsTeamName);
+    }
+
+    [Fact]
+    public void RowName_TeamEventWithoutATeamName_FallsBackToTheDriver()
+    {
+        var driver = new DriverEntry { CarIdx = 1, UserName = "Solo Driver", TeamName = "  " };
+
+        Assert.Equal("Solo Driver", StandingsBuilder.RowName(driver, teamRacing: true));
+    }
+
     [Fact]
     public void BuildRelative_SameCar_GapIsTheDifferenceInEstimatedTime_NotTheDistance()
     {
@@ -792,6 +821,67 @@ public class StandingsBuilderTests
     }
 
     [Fact]
+    public void BuildStandings_AfterTheChequeredFlag_MarksEachCarFinishedAsItCrossesTheLine()
+    {
+        // Three cars 1s apart on 100s laps; the leader takes the flag completing lap 2 at 200s.
+        var session = RaceSession(
+            new DriverEntry { CarIdx = 0, UserName = "Player", CarNumber = "1", CarClassID = 1 },
+            new DriverEntry { CarIdx = 1, UserName = "Second", CarNumber = "2", CarClassID = 1 },
+            new DriverEntry { CarIdx = 2, UserName = "Third", CarNumber = "3", CarClassID = 1 });
+        var race = new Race(session, cars: 3)
+            .Drive(150.01, 199.9, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        Assert.DoesNotContain(race.Standings().Values, r => r.HasFinished);
+
+        race.State = 5;
+        race.Drive(200.01, 200.5, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        Assert.Equal([0], race.Standings().Values.Where(r => r.HasFinished).Select(r => r.CarIdx));
+
+        race.Drive(200.51, 205, t => [t / 100, (t - 1) / 100, (t - 2) / 100], official: [1, 2, 3]);
+        Assert.All(race.Standings().Values, r => Assert.True(r.HasFinished));
+    }
+
+    [Fact]
+    public void BuildRelative_FinishedCars_CarryTheFlagFromTheStandings()
+    {
+        var snapshot = TestSnapshotFactory.Build(RelativeVars(), w =>
+        {
+            w.SetIntArray("CarIdxLap", [3, 3, 0, 0]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.125f, 0.2f, 0, 0]);
+            w.SetFloatArray("CarIdxEstTime", [9.4f, 15f, 0, 0]);
+        });
+        var session = Field(Car(1, "Ahead"));
+        StandingsRow Ranked(int carIdx, bool finished) => new()
+        {
+            CarIdx = carIdx, Position = carIdx + 1, ClassPosition = carIdx + 1, Name = "", CarNumber = "", IsPlayer = carIdx == 0,
+            OnPitRoad = false, HasFinished = finished, CurrentLap = 3, LastLapTime = 0, BestLapTime = 0,
+            IsSessionFastestLap = false, IsMultiClass = false, IRating = 0, LicString = "", IRatingDelta = 0, GapToLeaderSeconds = 0,
+        };
+
+        var rows = StandingsBuilder.BuildRelative(snapshot, session, 4, standings: [Ranked(0, false), Ranked(1, true)])
+            .OfType<RelativeRow>().ToList();
+
+        Assert.True(rows.Single(r => r.CarIdx == 1).HasFinished);
+        Assert.False(rows.Single(r => r.CarIdx == 0).HasFinished);
+    }
+
+    [Fact]
+    public void FinishedCar_ShowsOnlyTheChequeredFlag()
+    {
+        var row = new StandingsRow
+        {
+            CarIdx = 0, Position = 1, ClassPosition = 1, Name = "A", CarNumber = "1", IsPlayer = false,
+            OnPitRoad = true, IsOutLap = false, HasFinished = true, HasFurledFlag = true, CurrentLap = 20, LastLapTime = 0,
+            BestLapTime = 0, IsSessionFastestLap = false, IsMultiClass = false, IRating = 0, LicString = "",
+            IRatingDelta = 0, GapToLeaderSeconds = 0,
+        };
+
+        Assert.False(row.ShowsPitTag);
+        Assert.False(row.ShowsOutTag);
+        Assert.True(row.HasPenaltyFlag);
+        Assert.False(row.ShowsPenaltyTag);
+    }
+
+    [Fact]
     public void BuildStandings_FinishAwayFromTheLapLine_TakesThePlaceLostOnTheLastLap()
     {
         // Rallycross: the finish is three quarters round the lap, so the flag comes out with every
@@ -1509,6 +1599,28 @@ public class StandingsBuilderTests
         Assert.DoesNotContain(rows, r => r.CarIdx == 3);
     }
 
+    [Theory]
+    [InlineData(2, true)]   // the race
+    [InlineData(0, false)]  // practice: people come and go all the time, nothing to flag
+    [InlineData(1, false)]  // qualifying
+    public void BuildStandings_CarOutOfTheRace_IsMarkedAbsentOnlyInARace(int sessionNum, bool absent)
+    {
+        var snapshot = TestSnapshotFactory.Build(WeekendVars(), w =>
+        {
+            w.SetInt("SessionNum", sessionNum);
+            w.SetIntArray("CarIdxPosition", [3, 1, 2, 0]);
+            w.SetIntArray("CarIdxLap", [4, 4, 4, -1]);
+            w.SetFloatArray("CarIdxLapDistPct", [0.4f, 0.6f, 0.5f, 0f]);
+            w.SetFloatArray("CarIdxLastLapTime", [91f, 90f, 90.5f, -1f]);
+            w.SetFloatArray("CarIdxBestLapTime", [91f, 90f, 90.5f, -1f]);
+        });
+
+        var rows = StandingsBuilder.BuildStandings(snapshot, Weekend(), new SessionBestLapTracker(), inGarage: new HashSet<int> { 2 });
+
+        Assert.Equal(absent, rows.Single(r => r.CarIdx == 2).InGarage);
+        Assert.DoesNotContain(rows, r => r.CarIdx != 2 && r.InGarage);
+    }
+
     [Fact]
     public void BuildStandings_InTheRace_ShowsBestLapStraightFromTelemetry()
     {
@@ -2012,8 +2124,8 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildStandings(snapshot, session, new SessionBestLapTracker());
 
-        Assert.Equal("10", rows.Single(r => r.CarIdx == 1).LapDisplay); // parked, but scored
-        Assert.Equal("4", rows.Single(r => r.CarIdx == 2).LapDisplay);  // live value wins
+        Assert.Equal("10L", rows.Single(r => r.CarIdx == 1).LapDisplay); // parked, but scored
+        Assert.Equal("4L", rows.Single(r => r.CarIdx == 2).LapDisplay);  // live value wins
         Assert.Equal("—", rows.Single(r => r.CarIdx == 3).LapDisplay);  // never out
         Assert.All(rows, r => Assert.DoesNotContain("-", r.LapDisplay));
     }
@@ -2032,7 +2144,7 @@ public class StandingsBuilderTests
 
         var rows = StandingsBuilder.BuildStandings(snapshot, SessionWithScoring("Race", []), new SessionBestLapTracker());
 
-        Assert.All(rows, r => Assert.Equal("0", r.LapDisplay));
+        Assert.All(rows, r => Assert.Equal("0L", r.LapDisplay));
         Assert.DoesNotContain(rows, r => r.CarIdx == 3);
     }
 
@@ -2196,10 +2308,10 @@ public class StandingsBuilderTests
 
         Assert.Equal(2004, me.IRating);
         Assert.Equal("A 3.50", me.LicStringDisplay);
-        Assert.Equal("10", me.LapDisplay);
+        Assert.Equal("10L", me.LapDisplay);
         Assert.Equal("1:30.000", me.BestLapDisplay);
         Assert.Equal("1:35.000", me.LastLapDisplay);
-        Assert.Equal("Driver 4", me.NameDisplay);
+        Assert.Equal("Driver 4", me.Name);
         Assert.True(me.IsSessionFastestLap);
         Assert.Equal("0.0", me.GapDisplay); // the player's own gap to themselves: the reference point
     }
@@ -2418,6 +2530,20 @@ public class StandingsBuilderTests
 
         Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
         Assert.Null(reported);
+    }
+
+    [Fact]
+    public void BuildRelative_PaceLaps_LapCountFlippingAtTheLine_MarksNobody()
+    {
+        // Lanier pace laps (.ibt 2026-11-09): crossing the line sets the lap to 1 and it drops back to
+        // 0 some 5 s later, around 0.1–0.16. The player (0) on pole has just dropped back; the cars
+        // behind have just crossed and read lap 1, which made them look about to lap the player.
+        var snapshot = RaceAt([0, 1, 1, 0], [0.12f, 0.06f, 0.01f, 0.95f]);
+
+        var relative = StandingsBuilder.BuildRelative(snapshot, FieldOf(4, 0), maxEachSide: 4)
+            .OfType<RelativeRow>();
+
+        Assert.All(relative, r => Assert.Equal(LapRelation.SameLap, r.LapRelation));
     }
 
     [Fact]

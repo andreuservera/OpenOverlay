@@ -116,32 +116,33 @@
     <!-- Markers that point at you outside the tables (track map). -->
     <SolidColorBrush x:Key="Row.PlayerMarker" Color="#F2F4F7"/>
     <SolidColorBrush x:Key="Row.PlayerInk" Color="#F2F4F7"/>
-    <!-- In the pits: no fill, a neutral PIT tag, and the row's content recedes. Not racing anyone
+    <!-- In the pits: no row fill, the PIT tag, and the row's content recedes. Not racing anyone
          this instant, so it steps back instead of competing with your amber row. -->
     <sys:Double x:Key="Row.PitOpacity">0.55</sys:Double>
-    <!-- In the garage (retired, parked, disconnected): a darker cell and content barely there, so the
-         row reads as empty — the car is listed, but it isn't in the race right now. -->
-    <SolidColorBrush x:Key="Row.Garage" Color="#80000000"/>
-    <sys:Double x:Key="Row.GarageOpacity">0.32</sys:Double>
+    <!-- In the garage (retired, parked, disconnected; races only): the row steps back as far as a car
+         in the pits, no further, and without a darker fill — a heavier treatment made the least
+         actionable state the loudest thing in the table. Its greyed timing tells it from a pit stop. -->
+    <sys:Double x:Key="Row.GarageOpacity">0.55</sys:Double>
     <!-- Relative: lap traffic keeps iRacing's colours, as ink only: blue a lap down, red a lap up. -->
     <SolidColorBrush x:Key="Row.LappedInk" Color="#6CB8FF"/>
     <SolidColorBrush x:Key="Row.LappingInk" Color="#F26D6D"/>
 
     <!-- ===== Status badges =====
-         Short live states (PIT) as a quiet outlined tag in neutral ink: a state, not an alert, and
-         nothing warm that could be confused with your amber row. The last-pit chip keeps the tinted
-         orange: it is a figure to read, and only shows in its own column. -->
-    <SolidColorBrush x:Key="Badge.NeutralEdge" Color="#66B4BCC8"/>
+         Short live states (PIT, OUT) as a dark tag with an orange edge, the orange of the last-pit
+         chip: the pit family reads as one colour across the row. Orange, not the amber of your row,
+         and an outline only, so it can't be read as your highlight. -->
+    <SolidColorBrush x:Key="Badge.DarkFill" Color="#B3000000"/>
     <SolidColorBrush x:Key="Badge.WarningFill" Color="#2EF5A524"/>
     <SolidColorBrush x:Key="Badge.WarningEdge" Color="#D9F5A524"/>
     <!-- 18 high on a driver-table row (2 px off the cell top and bottom): the height of the last-pit
-         chip and the flag tag, so the row's tags line up. At least as wide as the flag tag too, so the
-         two tags next to the name are one size; a longer word ("STAND") still grows it. -->
-    <sys:Double x:Key="Size.RowTagWidth">29</sys:Double>
+         chip and the flag tag, so the row's tags line up. Wide enough for the widest short word (OUT,
+         BOX: 31), so PIT, OUT and the flag tag next to the name are all one size; a longer word
+         ("STAND") still grows it. -->
+    <sys:Double x:Key="Size.RowTagWidth">32</sys:Double>
     <Style x:Key="StatusBadge" TargetType="Border">
         <Setter Property="MinWidth" Value="{StaticResource Size.RowTagWidth}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Badge.NeutralEdge}"/>
+        <Setter Property="Background" Value="{StaticResource Badge.DarkFill}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Badge.WarningEdge}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="3"/>
         <Setter Property="Padding" Value="4,0"/>

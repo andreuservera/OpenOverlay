@@ -65,6 +65,13 @@
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="Margin" Value="0,0,6,0"/>
     </Style>
+    <!-- Over an icon column (make, flag, tyre): centred on the icon, which keeps 4 to its right, and
+         free to use the column's whole width — the icons are narrower than their words ("BRAND",
+         "REIFEN"), and the reserve a chip column needs would clip them. -->
+    <Style x:Key="HeadIcon" TargetType="TextBlock" BasedOn="{StaticResource ColumnHeader}">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="-2,0,2,0"/>
+    </Style>
     <!-- Three tiers of ink on a row: primary (position, name, gap), secondary (lap times) and meta
          (iRating, lap count). The eye lands on the first tier and only reads the rest on purpose. -->
     <!-- The row's figures in the names' face and weight, so the line reads as one piece. -->
@@ -90,10 +97,15 @@
         <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
 
-    <!-- No plate: the iRating is plain secondary text; only its delta segment is tinted. -->
+    <!-- Built like the licence chip next to it: a thin outline, no fill, so it reads as a figure
+         rather than a grey block. The outline wraps the delta segment too, which keeps its own tint,
+         so the two read as one chip. Neutral ink, a step quieter than the licence colours. -->
+    <SolidColorBrush x:Key="Badge.RatingEdge" Color="#73B4BCC8"/>
     <Style x:Key="RatingBadge" TargetType="Border">
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
         <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Badge.RatingEdge}"/>
     </Style>
     <!-- iRating trend: a filled chevron (^ / v), centred in the 7 x 9 box. -->
     <Geometry x:Key="Geometry.ArrowUp">M0,5.3 L3.5,1.8 L7,5.3 L7,7.5 L3.5,4 L0,7.5 Z</Geometry>
@@ -115,9 +127,12 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Chip}"/>
         <Setter Property="Margin" Value="{StaticResource ChipInset}"/>
     </Style>
-    <!-- The car-number chip's text exactly (face, size, line box), so the lap and time sit centred
-         in the chip the same way the number does. -->
-    <Style x:Key="PitStopText" TargetType="TextBlock" BasedOn="{StaticResource ChipText}"/>
+    <!-- The car number's face and size (the label size, a step under the body), so the lap and time
+         sit centred in the chip with room to the edge, the way the number does. -->
+    <Style x:Key="PitStopText" TargetType="TextBlock" BasedOn="{StaticResource ChipText}">
+        <Setter Property="FontSize" Value="{StaticResource Type.Label}"/>
+        <Setter Property="LineHeight" Value="{StaticResource Line.Label}"/>
+    </Style>
 
     <!-- Same height as a data row, so a reserved slot holds its place without the table visibly
          stuttering as cars move in and out of it. -->
@@ -206,20 +221,35 @@
                     <!-- Status badges take their room out of the name, never out of another column. -->
                     <DockPanel x:Name="DriverCell" Grid.Column="{Binding Options.Columns.Driver, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,0,8,0"
                                Visibility="{Binding Options.ShowDriver, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                        <!-- Chequered flag once the car has finished, in the PIT/OUT slot. -->
+                        <w:ChequeredFlagTag DockPanel.Dock="Right" Width="{StaticResource Size.RowTagWidth}" Height="18" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding HasFinished, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                         <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
-                                Visibility="{Binding OnPitRoad, Mode=OneTime, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding ShowsPitTag, Mode=OneTime, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{loc:T table.pit}" Style="{StaticResource StatusBadgeText}"/>
+                        </Border>
+                        <!-- Same tag, same slot, for the lap after the pits: cold tyres, maybe a slow car. -->
+                        <Border DockPanel.Dock="Right" Style="{StaticResource StatusBadge}"
+                                Visibility="{Binding ShowsOutTag, Mode=OneTime, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{loc:T table.out}" Style="{StaticResource StatusBadgeText}"/>
                         </Border>
                         <!-- One penalty flag slot, same footprint in every state: black, furled black or
                              meatball, or the two most serious side by side. -->
                         <w:PenaltyFlagTag DockPanel.Dock="Right" Width="{StaticResource Size.RowTagWidth}" Height="18" Margin="6,0,0,0" VerticalAlignment="Center"
                                           Primary="{Binding PrimaryPenalty, Mode=OneTime}" Secondary="{Binding SecondaryPenalty, Mode=OneTime}"
-                                          Visibility="{Binding HasPenaltyFlag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
+                                          Visibility="{Binding ShowsPenaltyTag, Mode=OneTime, Converter={StaticResource BoolToVis}}"/>
                         <!-- Two pixels over the body size on the same line box: mixed-case names need
                              the extra x-height to read as quickly as the old all-caps ones. -->
-                        <TextBlock x:Name="NameText" Text="{Binding NameDisplay, Mode=OneTime}" Style="{StaticResource DataCell}"
-                                   FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="16" FontWeight="Medium"
-                                   Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                        <!-- The wrapper writes the name in the chosen format, fitted to the room left;
+                             a team's name (team events) as registered, trimmed where it doesn't fit. -->
+                        <w:DriverNameText FullName="{Binding Name, Mode=OneTime}"
+                                          IsTeamName="{Binding IsTeamName, Mode=OneTime}"
+                                          Format="{Binding Options.NameFormat, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          UppercaseSurname="{Binding Options.UppercaseSurname, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <TextBlock x:Name="NameText" Style="{StaticResource DataCell}"
+                                       FontFamily="{DynamicResource Theme.NameFontFamily}" FontSize="16" FontWeight="Medium"
+                                       Foreground="{StaticResource Text.Primary}" TextTrimming="CharacterEllipsis"/>
+                        </w:DriverNameText>
                     </DockPanel>
 
                     <!-- Independent of the PIT badge: appears after the first completed stop and
@@ -229,13 +259,15 @@
                         <Border Style="{StaticResource PitStopChip}"
                                 Visibility="{Binding HasLastPitStop, Mode=OneTime, Converter={StaticResource BoolToVis}}">
                             <Grid>
+                                <!-- The lap segment holds "L99" whatever the lap, so the divider sits in the
+                                     same place on every row; only a three-digit lap pushes it along. -->
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="32"/>
                                     <ColumnDefinition Width="1"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding LastPitLapDisplay, Mode=OneTime}" Style="{StaticResource PitStopText}"
-                                           Margin="5,0" Foreground="{StaticResource State.Warning}"/>
+                                           Margin="4,0" Foreground="{StaticResource State.Warning}"/>
                                 <Border Grid.Column="1" Background="{StaticResource Badge.WarningEdge}" Margin="0,3"/>
                                 <TextBlock Grid.Column="2" Text="{Binding LastPitDurationDisplay, Mode=OneTime}" Style="{StaticResource PitStopText}"
                                            Foreground="#F2E3C6"/>
@@ -258,13 +290,15 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDeltaSegment}}"/>
+                                <ColumnDefinition Width="{Binding Options.ShowsIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}, ConverterParameter={StaticResource W.IRatingDeltaSegment}}"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding IRatingDisplay, Mode=OneTime}" Style="{StaticResource ChipText}" Foreground="{StaticResource Text.Secondary}"
-                                       Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}"/>
+                            <Border x:Name="IRatingSegment"
+                                    Visibility="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                                <TextBlock Text="{Binding IRatingDisplay, Mode=OneTime}" Style="{StaticResource ChipText}" Foreground="{StaticResource Text.Secondary}"/>
+                            </Border>
                             <Border Grid.Column="1" CornerRadius="0,2,2,0"
                                     Background="{Binding IRatingDeltaForeground, Mode=OneTime, Converter={StaticResource ColorAlphaConverter}, ConverterParameter=0.16}"
-                                    Visibility="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
+                                    Visibility="{Binding Options.ShowsIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource ColumnVisibilityConverter}}">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <Path x:Name="TrendArrow" Style="{StaticResource TrendArrow}" Data="{StaticResource Geometry.ArrowUp}"
                                           Fill="{Binding IRatingDeltaForeground, Mode=OneTime, Converter={StaticResource CachedBrushConverter}}"/>
@@ -311,7 +345,7 @@
             </DataTrigger>
             <!-- In the pits: not racing anyone this instant, so the row steps back — everything but the
                  timing (LAP, BEST, LAST, GAP), which stays at full strength to be read at a glance. No
-                 fill: the neutral PIT tag says why, and nothing warm competes with your amber row.
+                 row fill: the PIT tag says why, and nothing warm competes with your amber row.
                  Not on your own row, which is always full strength. -->
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
@@ -330,14 +364,13 @@
                 <Setter TargetName="RatingBadge" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
                 <Setter TargetName="LicenseCell" Property="Opacity" Value="{StaticResource Row.PitOpacity}"/>
             </MultiDataTrigger>
-            <!-- In the garage: a darker cell with its content, class bar included, barely there — the
-                 car is listed but not in the race. Its timing goes back to the quieter greys: nothing
-                 on an absent row should read as live data. -->
+            <!-- In the garage (races only): the whole row, class bar included, steps back as far as a
+                 car in the pits. Its timing goes back to the quieter greys: nothing on an absent row
+                 should read as live data. -->
             <DataTrigger Binding="{Binding InGarage, Mode=OneTime}" Value="True">
                 <Setter TargetName="LapText" Property="Foreground" Value="{StaticResource Text.Muted}"/>
                 <Setter TargetName="BestLapText" Property="Foreground" Value="{StaticResource Text.Secondary}"/>
                 <Setter TargetName="LastLapText" Property="Foreground" Value="{StaticResource Text.Secondary}"/>
-                <Setter TargetName="Band" Property="Background" Value="{StaticResource Row.Garage}"/>
                 <Setter TargetName="Cells" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
                 <Setter TargetName="EdgeBar" Property="Opacity" Value="{StaticResource Row.GarageOpacity}"/>
             </DataTrigger>
@@ -366,7 +399,6 @@
                 <Setter TargetName="Cells" Property="Opacity" Value="1"/>
                 <Setter TargetName="EdgeBar" Property="Opacity" Value="1"/>
                 <Setter TargetName="PositionText" Property="Foreground" Value="{StaticResource State.Accent}"/>
-                <Setter TargetName="NameText" Property="FontWeight" Value="SemiBold"/>
                 <Setter TargetName="NameText" Property="Foreground" Value="{StaticResource Row.PlayerInk}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding IRatingTrend, Mode=OneTime}" Value="-1">
@@ -389,7 +421,7 @@
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
                     <Condition Binding="{Binding Options.ShowIRating, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
-                    <Condition Binding="{Binding Options.ShowIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                    <Condition Binding="{Binding Options.ShowsIRatingDelta, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
                 </MultiDataTrigger.Conditions>
                 <Setter TargetName="RatingBadge" Property="Visibility" Value="Collapsed"/>
             </MultiDataTrigger>

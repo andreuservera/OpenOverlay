@@ -109,6 +109,10 @@ public partial class MainWindow
         // Every tick: the classification itself only moves as cars cross the line, but pit road,
         // flags and tyres are live and should show the moment they change.
         var needsStandings = Standings is not null || _dashboard is not null || Relative is not null;
+        // iRating only moves in a race: anywhere else the delta column is left out, whatever the setting.
+        var iRatingAtStake = StandingsBuilder.IsRaceSession(telemetry, session);
+        _vm.StandingsOptions.IRatingAtStake = iRatingAtStake;
+        _vm.RelativeOptions.IRatingAtStake = iRatingAtStake;
         if (needsStandings)
         {
             // A failed rebuild keeps the last good order: a table a tick old beats an empty one.
@@ -116,7 +120,7 @@ public partial class MainWindow
             if (_standingsGuard.TryRun(
                     () => StandingsBuilder.BuildStandings(
                         telemetry, session, _sessionBestLapTracker, _pitStopTracker.LastStops, _lineCrossings,
-                        _logPreGreenGrid ??= LogPreGreenGrid, _garageTracker.InGarage),
+                        _logPreGreenGrid ??= LogPreGreenGrid, _garageTracker.InGarage, _pitStopTracker.OnOutLap),
                     out var standings))
             {
                 _latestStandings = standings;
@@ -170,7 +174,7 @@ public partial class MainWindow
             Relative,
             () => StandingsBuilder.BuildRelative(
                 telemetry, session, _vm.RelativeOptions.FocusSize, _latestStandings, _pitStopTracker.LastStops, _estTimeProfile,
-                LogOpeningLapLapped),
+                LogOpeningLapLapped, _pitStopTracker.OnOutLap),
             (widget, rows) =>
             {
                 widget.UpdateRows(rows);

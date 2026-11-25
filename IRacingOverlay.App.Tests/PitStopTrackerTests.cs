@@ -94,4 +94,68 @@ public class PitStopTrackerTests
         Assert.Equal("L24", row.LastPitLapDisplay);
         Assert.Equal("01:18", row.LastPitDurationDisplay);
     }
+
+    [Fact]
+    public void AfterAStop_IsOnAnOutLapUntilItCompletesTheLapItLeftOn()
+    {
+        var tracker = new PitStopTracker();
+        tracker.Update(Tick(100, onPitRoad: false, lap: 23), null);
+        tracker.Update(Tick(110, onPitRoad: true, lap: 24), null);
+        Assert.Empty(tracker.OnOutLap); // PIT, not OUT
+
+        tracker.Update(Tick(150, onPitRoad: false, lap: 24), null);
+        Assert.Equal([0], tracker.OnOutLap);
+        tracker.Update(Tick(200, onPitRoad: false, lap: 24), null);
+        Assert.Equal([0], tracker.OnOutLap);
+
+        tracker.Update(Tick(240, onPitRoad: false, lap: 25), null);
+        Assert.Empty(tracker.OnOutLap);
+    }
+
+    [Fact]
+    public void OutOfTheGarage_IsOnAnOutLap()
+    {
+        // Clicking Drive puts the car in its stall: out of the world, then in the stall, then out.
+        var tracker = new PitStopTracker();
+        tracker.Update(Tick(5, onPitRoad: false, lap: -1, surface: NotInWorld), null);
+        tracker.Update(Tick(10, onPitRoad: false, lap: 3, surface: 1), null); // in its stall
+        tracker.Update(Tick(30, onPitRoad: false, lap: 3), null);
+
+        Assert.Equal([0], tracker.OnOutLap);
+    }
+
+    [Fact]
+    public void AttachingToACarAlreadyOnTrack_IsNotAnOutLap()
+    {
+        var tracker = new PitStopTracker();
+        tracker.Update(Tick(100, onPitRoad: false, lap: 5), null);
+        tracker.Update(Tick(101, onPitRoad: false, lap: 5), null);
+
+        Assert.Empty(tracker.OnOutLap);
+    }
+
+    [Fact]
+    public void OutLap_HiddenWhileOutOfView_BackIfStillOnIt()
+    {
+        var tracker = new PitStopTracker();
+        tracker.Update(Tick(100, onPitRoad: true, lap: 4), null);
+        tracker.Update(Tick(110, onPitRoad: false, lap: 4), null);
+        tracker.Update(Tick(120, onPitRoad: false, lap: -1, surface: NotInWorld), null);
+        Assert.Empty(tracker.OnOutLap);
+
+        tracker.Update(Tick(130, onPitRoad: false, lap: 4), null);
+        Assert.Equal([0], tracker.OnOutLap);
+    }
+
+    [Fact]
+    public void NewSession_ClearsTheOutLap()
+    {
+        var tracker = new PitStopTracker();
+        tracker.Update(Tick(100, onPitRoad: true, lap: 4), null);
+        tracker.Update(Tick(110, onPitRoad: false, lap: 4), null);
+
+        tracker.Update(Tick(5, onPitRoad: false, lap: 4, sessionNum: 1), null);
+
+        Assert.Empty(tracker.OnOutLap);
+    }
 }

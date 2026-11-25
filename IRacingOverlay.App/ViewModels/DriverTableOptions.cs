@@ -82,6 +82,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private bool _showTireCompound = true;
     private bool _showIRating = true;
     private bool _showIRatingDelta = true;
+    private bool _iRatingAtStake = true;
     private bool _showLicense = true;
     private bool _showLap = true;
     private bool _showLastLap = true;
@@ -105,6 +106,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
     private readonly HashSet<TableInfoElement> _shownExtras = [];
     private bool _showClassDrivers;
     private bool _showClassSof;
+    private DriverNameFormat _nameFormat;
+    private bool _uppercaseSurname;
     private DriverTableColumnLayout? _columns;
 
     public DriverTableOptions(DriverTable table)
@@ -160,6 +163,19 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         get => _showIRatingDelta;
         set => SetField(ref _showIRatingDelta, value);
     }
+
+    /// <summary>Whether the session on now moves iRating: only a race does (practice and qualifying
+    /// never change it, and their delta is always zero). Not a setting — the live session sets it,
+    /// and it stays true with nothing connected, so a preview shows the column as configured.</summary>
+    public bool IRatingAtStake
+    {
+        get => _iRatingAtStake;
+        set => SetField(ref _iRatingAtStake, value);
+    }
+
+    /// <summary>The iRating delta actually on screen: switched on, and in a session that moves
+    /// iRating. <see cref="ShowIRatingDelta"/> stays the user's choice.</summary>
+    public bool ShowsIRatingDelta => ShowIRatingDelta && IRatingAtStake;
 
     public bool ShowLicense
     {
@@ -361,6 +377,30 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         set => SetField(ref _showClassSof, value);
     }
 
+    /// <summary>How each driver's name is written; <see cref="DriverNameFormat.Auto"/> fits it to the column.</summary>
+    public DriverNameFormat NameFormat
+    {
+        get => _nameFormat;
+        set
+        {
+            var format = Enum.IsDefined(value) ? value : DriverNameFormat.Auto;
+            if (_nameFormat == format)
+            {
+                return;
+            }
+
+            _nameFormat = format;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Writes the surname in capitals ("C. ALVAREZ"), easier to pick out at speed.</summary>
+    public bool UppercaseSurname
+    {
+        get => _uppercaseSurname;
+        set => SetField(ref _uppercaseSurname, value);
+    }
+
     /// <summary>How much of the field to show around the player. Standings reads it as the total
     /// size of the block below the pinned podium; Relative reads it as the number of cars on each
     /// side. The two are genuinely different questions, which is why the defaults differ.</summary>
@@ -403,7 +443,8 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
 
     /// <summary>Each column's slot and width for the current order and visibility; what the header
     /// and the rows bind their grid to.</summary>
-    public DriverTableColumnLayout Columns => _columns ??= new DriverTableColumnLayout(_columnOrder, IsVisible);
+    public DriverTableColumnLayout Columns => _columns ??= new DriverTableColumnLayout(
+        _columnOrder, column => column == DriverTableColumn.IRatingDelta ? ShowsIRatingDelta : IsVisible(column));
 
     public bool IsVisible(DriverTableColumn column) => column switch
     {
@@ -459,6 +500,7 @@ public sealed class DriverTableOptions : INotifyPropertyChanged
         // shown or hidden can empty or fill the band above or below the table.
         _columns = null;
         OnPropertyChanged(nameof(Columns));
+        OnPropertyChanged(nameof(ShowsIRatingDelta));
         OnPropertyChanged(nameof(ShowTopInfo));
         OnPropertyChanged(nameof(ShowFooter));
     }

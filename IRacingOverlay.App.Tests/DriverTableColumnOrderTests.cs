@@ -160,4 +160,23 @@ public class DriverTableColumnOrderTests
         Assert.False(new DriverTableOptions(DriverTable.Relative).ShowFastestLapMark);
         Assert.Equal(0, new DriverTableOptions(DriverTable.Relative).FastestLapMarkWidth);
     }
+
+    [Fact]
+    public void IRatingDelta_OutsideARace_LeavesTheTableButStaysSwitchedOn()
+    {
+        var options = new DriverTableOptions(DriverTable.Standings) { ShowIRatingDelta = true };
+        Assert.Equal(44, options.Columns.Width9);
+
+        options.IRatingAtStake = false;
+
+        Assert.Equal(0, options.Columns.Width9);
+        Assert.False(options.ShowsIRatingDelta);
+        Assert.True(options.ShowIRatingDelta);
+        Assert.True(options.IsVisible(DriverTableColumn.IRatingDelta)); // the setting, as saved
+
+        options.IRatingAtStake = true;
+
+        Assert.Equal(44, options.Columns.Width9);
+        Assert.True(options.ShowsIRatingDelta);
+    }
 }
