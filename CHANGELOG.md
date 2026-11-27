@@ -2,6 +2,13 @@
 
 All notable changes to OpenOverlay, newest first.
 
+### [0.16.1] - 2026-11-27
+
+#### Fixed
+- The app no longer freezes and restarts about once a minute as soon as iRacing is running: the switched-off Circuit map stopped the overlays updating. An error in one update now can't stop the overlays from updating either.
+- Widgets moved with Ctrl+Shift+F10 keep their new place: each one's position is saved as soon as you drop it, so a crash, a restart or Windows shutting down no longer brings them back to where they were.
+
+
 ### [0.16.0] - 2026-11-25
 
 #### Added
