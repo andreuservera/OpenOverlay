@@ -25,7 +25,7 @@ public partial class MainWindow
         var perfMark = PerfProbe.Begin();
         try
         {
-            UiTimer_TickCore();
+            _uiTickGuard.Run(UiTimer_TickCore);
         }
         finally
         {
@@ -391,7 +391,7 @@ public partial class MainWindow
         var perfMark = PerfProbe.Begin();
         try
         {
-            CriticalTimer_TickCore();
+            _criticalTickGuard.Run(CriticalTimer_TickCore);
         }
         finally
         {

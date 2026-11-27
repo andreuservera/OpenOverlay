@@ -255,9 +255,9 @@ public sealed class HealthMonitor
     /// <summary>The most recent snapshot from any monitor; read by crash reporting from any thread.</summary>
     public static HealthReport Latest => _latest;
 
-    public ComponentGuard CreateGuard(string name, Action<GuardStage>? recover = null)
+    public ComponentGuard CreateGuard(string name, Action<GuardStage>? recover = null, int failureThreshold = 3)
     {
-        var guard = new ComponentGuard(name, recover, _clock);
+        var guard = new ComponentGuard(name, recover, _clock, failureThreshold);
         _guards.Add(guard);
         return guard;
     }

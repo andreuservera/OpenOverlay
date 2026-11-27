@@ -35,6 +35,27 @@ public class ComponentGuardTests
     }
 
     [Fact]
+    public void Run_WithNoThreshold_KeepsRunningAfterEveryFailure()
+    {
+        // The update loops: a tick that throws every time must not stop the next one from running.
+        var recovered = new List<GuardStage>();
+        var guard = new HealthMonitor().CreateGuard("Update loop", recovered.Add, failureThreshold: int.MaxValue);
+
+        for (var i = 0; i < 50; i++)
+        {
+            guard.Run(Fail);
+        }
+
+        var ran = false;
+        guard.Run(() => ran = true);
+
+        Assert.True(ran);
+        Assert.False(guard.IsCoolingDown);
+        Assert.Empty(recovered);
+        Assert.Equal(50, guard.Failures);
+    }
+
+    [Fact]
     public void Run_RepeatedFailures_TripRecoveryAndPauseForTheCooldown()
     {
         var clock = new Clock();

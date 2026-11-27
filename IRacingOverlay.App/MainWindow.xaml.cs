@@ -53,6 +53,13 @@ public partial class MainWindow : Window
     private readonly ComponentGuard _autoHideGuard;
     private readonly ComponentGuard _healthGuard;
     private readonly ComponentGuard _trayGuard;
+    // Around each update loop as a whole. WPF only re-arms a DispatcherTimer after its Tick handler
+    // returns, so one exception escaping a tick stopped that loop for good: the overlays froze and the
+    // watchdog restarted the app a minute later (0.16.0, the switched-off Circuit map). Contained, a
+    // failing tick is logged (repeats collapse in the log) and the next one runs as usual: these two
+    // never trip, since a tripped loop would freeze every widget for the cooldown.
+    private readonly ComponentGuard _uiTickGuard;
+    private readonly ComponentGuard _criticalTickGuard;
     private readonly UiWatchdog _watchdog = new();
     private readonly UpdateService _updates;
     private int _healthTicks;
@@ -177,6 +184,8 @@ public partial class MainWindow : Window
         _autoHideGuard = _health.CreateGuard("Auto-hide");
         _healthGuard = _health.CreateGuard("Health report");
         _trayGuard = _health.CreateGuard("Tray icon");
+        _uiTickGuard = _health.CreateGuard("Update loop", failureThreshold: int.MaxValue);
+        _criticalTickGuard = _health.CreateGuard("Fast update loop", failureThreshold: int.MaxValue);
         GlobalExceptionHandler.StormRecovery = RecoverOverlays;
 
         _criticalIntervalMs = _vm.CriticalRefreshIntervalMs;

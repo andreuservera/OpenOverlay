@@ -193,7 +193,10 @@ public sealed partial class ControlPanelViewModel : INotifyPropertyChanged
 
     /// <summary>Typed access to a widget window for the telemetry loop, without every caller having
     /// to know whether it has been created yet.</summary>
-    public T? WidgetOf<T>(string key) where T : OverlayWindowBase => _slots[key].WindowAs<T>();
+    /// <remarks>Null for a key with no slot, such as a widget switched off by taking it out of the
+    /// catalog (the Circuit map in 0.16.0): the loop still asks for it, and must not throw.</remarks>
+    public T? WidgetOf<T>(string key) where T : OverlayWindowBase =>
+        _slots.TryGetValue(key, out var slot) ? slot.WindowAs<T>() : null;
 
     public NavItem? Selected
     {
