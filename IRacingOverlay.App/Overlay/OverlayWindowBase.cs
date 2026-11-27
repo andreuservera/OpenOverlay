@@ -21,6 +21,7 @@ namespace IRacingOverlay.App.Overlay;
 public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
 {
     private const int WmLButtonDown = 0x0201;
+    private const int WmExitSizeMove = 0x0232;
 
     private readonly string _widgetName;
     private readonly double _defaultLeft;
@@ -233,6 +234,17 @@ public abstract class OverlayWindowBase : Window, INotifyPropertyChanged
             NativeMethods.BeginNativeDrag(hwnd);
             handled = true;
             return IntPtr.Zero;
+        }
+
+        // The OS's move loop has ended: the widget is where the user dropped it. Saved now, not just
+        // when edit mode is switched off or the window closes. Reported live: widgets moved in edit
+        // mode were back at their old places after a restart, because the process ended without
+        // either of those happening (a crash, the hang watchdog's restart, Windows shutting down,
+        // the process being killed), and the moves only ever lived in memory.
+        if (msg == WmExitSizeMove)
+        {
+            SaveLayout();
+            HasSavedLayout = true;
         }
 
         return IntPtr.Zero;
